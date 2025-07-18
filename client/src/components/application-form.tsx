@@ -2108,6 +2108,7 @@ export function ApplicationForm() {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
               Rental Application
             </h1>
+            {/* Hidden Missing Documents Button
             <Button
               variant="outline"
               onClick={() => setLocation('/missing-documents')}
@@ -2117,6 +2118,7 @@ export function ApplicationForm() {
               <span className="hidden sm:inline">Missing Documents</span>
               <span className="sm:hidden">Documents</span>
             </Button>
+            */}
           </div>
           
           {/* Progress Steps */}
