@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://hook.us1.make.com; worker-src 'none'; child-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
+    
+    <!-- Simple WebSocket blocking for localhost:8098 -->
+    <script>
+      (function() {
+        'use strict';
+        
+        // Block WebSocket connections to localhost:8098
+        const OriginalWebSocket = window.WebSocket;
+        window.WebSocket = function(url, protocols) {
+          const urlStr = String(url || '');
+          if (urlStr.includes('localhost:8098') || 
+              urlStr.includes('ws://localhost:8098') ||
+              urlStr.includes('localhost:8098/') ||
+              urlStr.includes('ws://localhost:8098/')) {
+            
+            // Return a dummy WebSocket that does nothing
+            return {
+              readyState: 3, // CLOSED
+              url: urlStr,
+              protocol: protocols || '',
+              extensions: '',
+              bufferedAmount: 0,
+              onopen: null,
+              onclose: null,
+              onmessage: null,
+              onerror: null,
+              send: function() { return; },
+              close: function() { return; },
+              addEventListener: function() { return; },
+              removeEventListener: function() { return; },
+              dispatchEvent: function() { return false; }
+            };
+          }
+          return new OriginalWebSocket(url, protocols);
+        };
+        
+        // Block console errors for WebSocket failures
+        const originalError = console.error;
+        console.error = function(...args) {
+          const message = args.join(' ');
+          if (message.includes('WebSocket connection to ws://localhost:8098/') ||
+              message.includes('localhost:8098') ||
+              message.includes('inject.bundle.js')) {
+            return; // Suppress these errors
+          }
+          originalError.apply(console, args);
+        };
+      })();
+    </script>
+    
+    <script type="module" crossorigin src="/src/main.tsx"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
