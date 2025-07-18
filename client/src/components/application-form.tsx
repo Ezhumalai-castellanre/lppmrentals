@@ -980,21 +980,29 @@ export function ApplicationForm() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <IncomeWithFrequencyInput
+                <FormField
+                  control={form.control}
                   name="monthlyRent"
-                  label="Monthly Rent ($)"
-                  value={formData.application?.monthlyRent?.toString() || ''}
-                  frequency={formData.application?.monthlyRentFrequency || 'monthly'}
-                  onValueChange={(value) => {
-                    const numValue = parseFloat(value) || 0;
-                    updateFormData('application', 'monthlyRent', numValue);
-                    form.setValue('monthlyRent', numValue);
-                  }}
-                  onFrequencyChange={(frequency) => {
-                    updateFormData('application', 'monthlyRentFrequency', frequency);
-                  }}
-                  error={form.formState.errors.monthlyRent?.message}
-                  required={true}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Monthly Rent ($) *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number"
+                          placeholder="0.00"
+                          {...field}
+                          className="input-field"
+                          value={formData.application?.monthlyRent?.toString() || ''}
+                          onChange={(e) => {
+                            const numValue = parseFloat(e.target.value) || 0;
+                            field.onChange(numValue);
+                            updateFormData('application', 'monthlyRent', numValue);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
 
                 <FormField
