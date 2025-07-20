@@ -2087,127 +2087,173 @@ export function ApplicationForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 sm:bg-gradient-to-br sm:from-blue-50 sm:to-gray-100 sm:dark:from-gray-900 sm:dark:to-gray-800">
-      {/* Header - Hidden */}
-      {/* <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
-          <div className="text-center">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Liberty Place Property Management</h1>
-            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 space-y-1">
-              <p className="break-words">122 East 42nd Street, Suite 1903, New York, NY 10168</p>
-              <p className="break-words">Tel: (646) 545-6700 | Fax: (646) 304-2255</p>
-              <p className="text-blue-600 dark:text-blue-400 font-medium">Rental Application Form</p>
-            </div>
-          </div>
-        </div>
-      </header> */}
-
-      <div className="w-full max-w-4xl mx-auto px-3 py-4 sm:px-4 sm:py-8">
-        {/* Header with Navigation */}
+      <div className="w-full max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-8">
+        {/* Header */}
         <div className="mb-4 sm:mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-              Rental Application
-            </h1>
-            {/* Hidden Missing Documents Button
-            <Button
-              variant="outline"
-              onClick={() => setLocation('/missing-documents')}
-              className="flex items-center gap-2"
-            >
-              <Search className="w-4 h-4" />
-              <span className="hidden sm:inline">Missing Documents</span>
-              <span className="sm:hidden">Documents</span>
-            </Button>
-            */}
-          </div>
-          
-          {/* Progress Steps */}
-          <div className="flex items-center justify-between mb-2 sm:mb-4 overflow-x-auto">
-            {STEPS.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = currentStep === step.id;
-              const isCompleted = currentStep > step.id;
-
-              return (
-                <div key={step.id} className="flex items-center">
-                  <button
-                    onClick={() => goToStep(step.id)}
-                    className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-colors flex-shrink-0 ${
-                      isActive
-                        ? 'bg-blue-600 border-blue-600 text-white'
-                        : isCompleted
-                        ? 'bg-green-600 border-green-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-500'
-                    }`}
-                  >
-                    {isCompleted ? (
-                      <Check className="w-4 h-4 sm:w-5 sm:h-5" />
-                    ) : (
-                      step.icon ? React.createElement(step.icon, { className: "w-4 h-4 sm:w-5 sm:h-5" }) : step.title[0]
-                    )}
-                  </button>
-                  {index < STEPS.length - 1 && (
-                    <div className={`flex-1 h-1 mx-1 sm:mx-2 ${isCompleted ? 'bg-green-600' : 'bg-gray-300'}`} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {/* Step title and progress indicator removed */}
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white text-center">
+            Rental Application
+          </h1>
         </div>
 
+        {/* Main Layout with Sidebar Navigation */}
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
+          {/* Left Sidebar - Step Navigation */}
+          <div className="lg:w-80 lg:flex-shrink-0 order-2 lg:order-1">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-3 lg:p-4 lg:sticky lg:top-4">
+              <h2 className="text-base lg:text-lg font-semibold text-gray-900 dark:text-white mb-3 lg:mb-4">Application Steps</h2>
+              
+              {/* Mobile: Horizontal Scrollable Steps */}
+              <div className="lg:hidden mb-4">
+                <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+                  {STEPS.map((step, index) => {
+                    const Icon = step.icon;
+                    const isActive = currentStep === step.id;
+                    const isCompleted = currentStep > step.id;
 
-
-        {/* Action Buttons - Removed */}
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-8">
-            {/* Current Step Content */}
-            <div className="form-container">
-              {renderStep()}
-            </div>
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between items-center pt-4 sm:pt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={prevStep}
-                disabled={currentStep === 0}
-                className="flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2"
-              >
-                <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Previous</span>
-                <span className="sm:hidden">Prev</span>
-              </Button>
-
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                Step {currentStep + 1} of {STEPS.length}
+                    return (
+                      <button
+                        key={step.id}
+                        onClick={() => goToStep(step.id)}
+                        className={`flex-shrink-0 flex flex-col items-center p-2 rounded-lg border-2 transition-all duration-200 min-w-[80px] ${
+                          isActive
+                            ? 'bg-blue-50 border-blue-500 text-blue-700'
+                            : isCompleted
+                            ? 'bg-green-50 border-green-500 text-green-700'
+                            : 'bg-gray-50 border-gray-200 text-gray-600'
+                        }`}
+                      >
+                        <div className={`flex items-center justify-center w-6 h-6 rounded-full border-2 mb-1 ${
+                          isActive
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : isCompleted
+                            ? 'bg-green-600 border-green-600 text-white'
+                            : 'bg-white border-gray-300 text-gray-500'
+                        }`}>
+                          {isCompleted ? (
+                            <Check className="w-3 h-3" />
+                          ) : (
+                            step.icon ? React.createElement(step.icon, { className: "w-3 h-3" }) : step.title[0]
+                          )}
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs font-medium leading-tight">{step.title}</div>
+                          <div className="text-xs text-gray-500">Step {step.id + 1}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {currentStep === STEPS.length - 1 ? (
-                <Button
-                  type="button"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold"
-                  onClick={() => onSubmit(form.getValues())}
-                >
-                  <span className="hidden sm:inline">Submit Application</span>
-                  <span className="sm:hidden">Submit</span>
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={nextStep}
-                  className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 sm:px-6 py-2"
-                >
-                  <span className="hidden sm:inline">Next</span>
-                  <span className="sm:hidden">Next</span>
-                  <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
-                </Button>
-              )}
+              {/* Desktop: Vertical Step Navigation */}
+              <div className="hidden lg:block space-y-3">
+                {STEPS.map((step, index) => {
+                  const Icon = step.icon;
+                  const isActive = currentStep === step.id;
+                  const isCompleted = currentStep > step.id;
+
+                  return (
+                    <button
+                      key={step.id}
+                      onClick={() => goToStep(step.id)}
+                      className={`w-full flex items-center p-3 rounded-lg border-2 transition-all duration-200 ${
+                        isActive
+                          ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/20 dark:border-blue-400 dark:text-blue-300'
+                          : isCompleted
+                          ? 'bg-green-50 border-green-500 text-green-700 dark:bg-green-900/20 dark:border-green-400 dark:text-green-300'
+                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 mr-3 flex-shrink-0 ${
+                        isActive
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : isCompleted
+                          ? 'bg-green-600 border-green-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-400'
+                      }`}>
+                        {isCompleted ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          step.icon ? React.createElement(step.icon, { className: "w-4 h-4" }) : step.title[0]
+                        )}
+                      </div>
+                      <div className="text-left">
+                        <div className="text-sm font-medium">{step.title}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Step {step.id + 1}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Progress Indicator */}
+              <div className="mt-4 lg:mt-6 pt-3 lg:pt-4 border-t border-gray-200 dark:border-gray-600">
+                <div className="flex justify-between text-xs lg:text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  <span>Progress</span>
+                  <span>{Math.round(((currentStep + 1) / STEPS.length) * 100)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
             </div>
-          </form>
-        </Form>
+          </div>
+
+          {/* Main Content Area */}
+          <div className="flex-1 order-1 lg:order-2">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-8">
+                {/* Current Step Content */}
+                <div className="form-container">
+                  {renderStep()}
+                </div>
+
+                {/* Navigation Buttons */}
+                <div className="flex justify-between items-center pt-4 sm:pt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={prevStep}
+                    disabled={currentStep === 0}
+                    className="flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2"
+                  >
+                    <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Previous</span>
+                    <span className="sm:hidden">Prev</span>
+                  </Button>
+
+                  <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                    Step {currentStep + 1} of {STEPS.length}
+                  </div>
+
+                  {currentStep === STEPS.length - 1 ? (
+                    <Button
+                      type="button"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold"
+                      onClick={() => onSubmit(form.getValues())}
+                    >
+                      <span className="hidden sm:inline">Submit Application</span>
+                      <span className="sm:hidden">Submit</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={nextStep}
+                      className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 sm:px-6 py-2"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <span className="sm:hidden">Next</span>
+                      <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
+                    </Button>
+                  )}
+                </div>
+              </form>
+            </Form>
+          </div>
+        </div>
       </div>
     </div>
   );
