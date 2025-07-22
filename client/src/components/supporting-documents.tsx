@@ -80,13 +80,6 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
       icon: <FileText className="h-4 w-4" />,
       documents: [
         {
-          id: "1099_forms",
-          name: "W9",
-          description: "Previous year 1099 forms (if self-employed)",
-          required: false,
-          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
-        },
-        {
           id: "accountant_letter",
           name: "Accountant Letter",
           description: "Notarized letter from accountant on company letterhead",
@@ -103,6 +96,13 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
           id: "credit_report",
           name: "Credit Report",
           description: "Recent credit report (optional but recommended)",
+          required: true, // Now required
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
+        },
+        {
+          id: "w9_forms",
+          name: "W9",
+          description: "Previous year 1099 forms (if self-employed)",
           required: false,
           acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         },
