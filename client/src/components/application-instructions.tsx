@@ -38,7 +38,7 @@ export const ApplicationInstructions: React.FC<ApplicationInstructionsProps> = (
       <ol className="list-decimal pl-5 space-y-2">
         <li>Applicants must show income of <span style={{ fontSize: '18px', fontWeight: 500 }}>40 TIMES THE MONTHLY RENT.</span> (may be combined among applicants)</li>
         <li>Guarantors must show income of <span style={{ fontSize: '18px', fontWeight: 500 }}>80 TIMES THE MONTHLY RENT.</span> (may NOT be combined with applicants)</li>
-        <li>Applications packages must be submitted in full as detailed below. Only complete applications will be reviewed and considered for tenancy.</li>
+        <li>Application packages must be submitted in full as detailed below. Only complete applications will be reviewed and considered for tenancy.</li>
         <li>Applications will not remove apartments from the market.</li>
         <li>Lease signings must be scheduled within three (3) days of approval or the backup applicant will be considered.</li>
       </ol>
@@ -62,8 +62,8 @@ export const ApplicationInstructions: React.FC<ApplicationInstructionsProps> = (
         Proof of Employment if you work for a company:
       </div>
       <ol className="list-decimal pl-5 space-y-1">
-        <li>Letter on company letterhead including length of employment, salary & position</li>
-        <li>Last 4 paystubs (If paid weekly) - or - Last 2 paystubs (if paid bi-weekly or semi-monthly)</li>
+        <li>Letter on company letterhead From current employerincluding length of employment, salary & position</li>
+        <li>Last 4 paystubs (If paid weekly) - or - Last 2 paystubs (if paid evry weeks or semi-monthly)</li>
       </ol>
       
       <div className="font-bold">

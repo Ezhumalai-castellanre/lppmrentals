@@ -1189,13 +1189,13 @@ export function ApplicationForm() {
 
                 <div className="flex items-center space-x-2">
                   <div className="flex-1">
-                    <Label className="text-sm font-medium">Age</Label>
+                    {/* <Label className="text-sm font-medium">Age</Label>
                     <Input 
                       value={formData.applicant?.age || ''}
                       className="input-field bg-gray-50"
                       readOnly
                       placeholder="Auto-calculated"
-                    />
+                    /> */}
                   </div>
                 </div>
 
