@@ -97,6 +97,17 @@ const STEPS = [
   { id: 7, title: "Digital Signatures", icon: Check },
 ];
 
+// 1. Add phone formatting helper
+function formatPhoneForPayload(phone: string) {
+  const digits = (phone || '').replace(/\D/g, '');
+  if (digits.length === 10) {
+    return `+1${digits}`;
+  } else if (digits.length === 11 && digits.startsWith('1')) {
+    return `+${digits}`;
+  }
+  return phone;
+}
+
 export function ApplicationForm() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -584,7 +595,7 @@ export function ApplicationForm() {
         applicantName: data.applicantName,
         applicantDob: safeDateToISO(data.applicantDob || formData.applicant?.dob),
         applicantSsn: formData.applicant?.ssn && formData.applicant.ssn.trim() !== '' ? formData.applicant.ssn : null,
-        applicantPhone: formData.applicant?.phone && formData.applicant.phone.trim() !== '' ? formData.applicant.phone : null,
+        applicantPhone: formatPhoneForPayload(formData.applicant?.phone),
         applicantEmail: data.applicantEmail,
         applicantLicense: formData.applicant?.license || data.applicantLicense,
         applicantLicenseState: formData.applicant?.licenseState || data.applicantLicenseState,
@@ -614,7 +625,7 @@ export function ApplicationForm() {
         coApplicantRelationship: formData.coApplicant?.relationship || null,
         coApplicantDob: safeDateToISO(formData.coApplicant?.dob),
         coApplicantSsn: formData.coApplicant?.ssn || null,
-        coApplicantPhone: formData.coApplicant?.phone || null,
+        coApplicantPhone: formatPhoneForPayload(formData.coApplicant?.phone),
         coApplicantEmail: formData.coApplicant?.email || null,
         coApplicantSameAddress: sameAddressCoApplicant,
         coApplicantAddress: formData.coApplicant?.address || null,
@@ -645,7 +656,7 @@ export function ApplicationForm() {
         transformedData.guarantorRelationship = formData.guarantor?.relationship || null;
         transformedData.guarantorDob = safeDateToISO(formData.guarantor?.dob);
         transformedData.guarantorSsn = formData.guarantor?.ssn || null;
-        transformedData.guarantorPhone = formData.guarantor?.phone || null;
+        transformedData.guarantorPhone = formatPhoneForPayload(formData.guarantor?.phone);
         transformedData.guarantorEmail = formData.guarantor?.email || null;
         transformedData.guarantorAddress = formData.guarantor?.address || null;
         transformedData.guarantorCity = formData.guarantor?.city || null;
@@ -865,8 +876,16 @@ export function ApplicationForm() {
 
   // Sync formData.applicant.dob with form.applicantDob
   useEffect(() => {
-    if (formData.applicant?.dob && !form.watch('applicantDob')) {
-      form.setValue('applicantDob', formData.applicant.dob);
+    const formValue = form.watch('applicantDob');
+    const stateValue = formData.applicant?.dob;
+    let dateObj = stateValue;
+    if (stateValue && !(stateValue instanceof Date)) {
+      dateObj = new Date(stateValue);
+    }
+    if (dateObj && dateObj instanceof Date && !isNaN(dateObj.getTime())) {
+      if (!formValue || !(formValue instanceof Date) || formValue.getTime() !== dateObj.getTime()) {
+        form.setValue('applicantDob', dateObj);
+      }
     }
   }, [formData.applicant?.dob, form]);
 
@@ -1162,18 +1181,10 @@ export function ApplicationForm() {
                       <FormControl>
                         <DatePicker
                           key={`applicantDob-${field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value.getTime() : 'empty'}`}
-                          value={field.value}
+                          value={field.value instanceof Date ? field.value : (field.value ? new Date(field.value) : undefined)}
                           onChange={(date) => {
-                            console.log('DatePicker onChange - applicantDob:', date);
-                            console.log('DatePicker onChange - applicantDob type:', typeof date);
-                            console.log('DatePicker onChange - applicantDob instanceof Date:', date instanceof Date);
-                            
-                            // Update form field
                             field.onChange(date);
-                            
-                            // Update form data
                             updateFormData('applicant', 'dob', date);
-                            
                             // Auto-calculate age
                             if (date) {
                               const today = new Date();
@@ -1185,11 +1196,8 @@ export function ApplicationForm() {
                               }
                               updateFormData('applicant', 'age', age);
                             } else {
-                              // Clear age if no date selected
                               updateFormData('applicant', 'age', '');
                             }
-                            
-                            // Trigger form validation
                             form.trigger('applicantDob');
                           }}
                           placeholder="Select date of birth"
