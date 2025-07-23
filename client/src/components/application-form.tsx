@@ -92,9 +92,10 @@ const STEPS = [
   { id: 2, title: "Primary Applicant", icon: UserCheck },
   { id: 3, title: "Financial Info", icon: CalendarDays },
   { id: 4, title: "Supporting Documents", icon: FolderOpen },
-  { id: 5, title: "Other Occupants", icon: Users },
-  { id: 6, title: "Guarantor Documents", icon: Shield },
-  { id: 7, title: "Digital Signatures", icon: Check },
+  { id: 5, title: "Co-Applicant Supporting Documents", icon: FolderOpen },
+  { id: 6, title: "Other Occupants", icon: Users },
+  { id: 7, title: "Guarantor Documents", icon: Shield },
+  { id: 8, title: "Digital Signatures", icon: Check },
 ];
 
 export function ApplicationForm() {
@@ -1534,296 +1535,74 @@ export function ApplicationForm() {
                 enableWebhook={true}
                 applicationId={applicationId}
               />
-              {hasCoApplicant && (
-                <div className="mt-8">
-                  <CardTitle className="flex items-center">
-                    <FolderOpen className="w-5 h-5 mr-2" />
-                    Co-Applicant Supporting Documents
-                  </CardTitle>
-                  <SupportingDocuments
-                    formData={{ coApplicant: formData.coApplicant }}
-                    onDocumentChange={(documentType, files) => {
-                      setDocuments((prev: any) => ({
-                        ...prev,
-                        ["coApplicant_" + documentType]: files,
-                      }));
-                    }}
-                    onEncryptedDocumentChange={(documentType, encryptedFiles) => {
-                      setEncryptedDocuments((prev: any) => ({
-                        ...prev,
-                        ["coApplicant_" + documentType]: encryptedFiles,
-                      }));
-                      const sectionKey = `coApplicant_supporting_${documentType}`;
-                      const docs = encryptedFiles.map(file => ({
-                        reference_id: file.uploadDate + '-' + file.filename,
-                        file_name: file.filename,
-                        section_name: sectionKey
-                      }));
-                      setUploadedDocuments(prev => {
-                        const filtered = prev.filter(doc => doc.section_name !== sectionKey);
-                        return [...filtered, ...docs];
-                      });
-                      const filesMetadata = encryptedFiles.map(file => ({
-                        file_name: file.filename,
-                        file_size: file.originalSize,
-                        mime_type: file.mimeType,
-                        upload_date: file.uploadDate
-                      }));
-                      setUploadedFilesMetadata(prev => ({
-                        ...prev,
-                        [sectionKey]: filesMetadata
-                      }));
-                    }}
-                    referenceId={referenceId}
-                    enableWebhook={true}
-                    applicationId={applicationId}
-                  />
-                </div>
-              )}
             </CardContent>
           </Card>
         );
-
       case 5:
         return (
-          <div className="space-y-8">
+          hasCoApplicant ? (
             <Card className="form-section">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Co-Applicant
+                  <FolderOpen className="w-5 h-5 mr-2" />
+                  Co-Applicant Supporting Documents
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center space-x-3">
-                  <Checkbox 
-                    id="hasCoApplicant"
-                    checked={hasCoApplicant}
-                    onCheckedChange={(checked) => {
-                      setHasCoApplicant(checked as boolean);
-                      form.setValue('hasCoApplicant', checked as boolean);
-                    }}
-                  />
-                  <Label htmlFor="hasCoApplicant" className="text-base font-medium">
-                    Add Co-Applicant
-                  </Label>
-                </div>
-
-
+              <CardContent>
+                <SupportingDocuments
+                  formData={{ coApplicant: formData.coApplicant }}
+                  onDocumentChange={(documentType, files) => {
+                    setDocuments((prev: any) => ({
+                      ...prev,
+                      ["coApplicant_" + documentType]: files,
+                    }));
+                  }}
+                  onEncryptedDocumentChange={(documentType, encryptedFiles) => {
+                    setEncryptedDocuments((prev: any) => ({
+                      ...prev,
+                      ["coApplicant_" + documentType]: encryptedFiles,
+                    }));
+                    const sectionKey = `coApplicant_supporting_${documentType}`;
+                    const docs = encryptedFiles.map(file => ({
+                      reference_id: file.uploadDate + '-' + file.filename,
+                      file_name: file.filename,
+                      section_name: sectionKey
+                    }));
+                    setUploadedDocuments(prev => {
+                      const filtered = prev.filter(doc => doc.section_name !== sectionKey);
+                      return [...filtered, ...docs];
+                    });
+                    const filesMetadata = encryptedFiles.map(file => ({
+                      file_name: file.filename,
+                      file_size: file.originalSize,
+                      mime_type: file.mimeType,
+                      upload_date: file.uploadDate
+                    }));
+                    setUploadedFilesMetadata(prev => ({
+                      ...prev,
+                      [sectionKey]: filesMetadata
+                    }));
+                  }}
+                  referenceId={referenceId}
+                  enableWebhook={true}
+                  applicationId={applicationId}
+                />
               </CardContent>
             </Card>
-
-            {hasCoApplicant && (
-              <Card className="form-section border-l-4 border-l-green-500">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-green-700 dark:text-green-400">
-                    <UserCheck className="w-5 h-5 mr-2" />
-                    Co-Applicant Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Full Name *</Label>
-                      <Input 
-                        placeholder="Enter full name"
-                        className="input-field"
-                        onChange={(e) => updateFormData('coApplicant', 'name', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label>Relationship to Primary Applicant</Label>
-                      <Select onValueChange={(value) => updateFormData('coApplicant', 'relationship', value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select relationship" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="spouse">Spouse</SelectItem>
-                          <SelectItem value="partner">Partner</SelectItem>
-                          <SelectItem value="roommate">Roommate</SelectItem>
-                          <SelectItem value="sibling">Sibling</SelectItem>
-                          <SelectItem value="friend">Friend</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label>Date of Birth *</Label>
-                      <DatePicker
-                        value={formData.coApplicant?.dob || undefined}
-                        onChange={(date) => {
-                          updateFormData('coApplicant', 'dob', date);
-                          // Auto-calculate age for co-applicant
-                          if (date) {
-                            const today = new Date();
-                            const birthDate = new Date(date);
-                            let age = today.getFullYear() - birthDate.getFullYear();
-                            const monthDiff = today.getMonth() - birthDate.getMonth();
-                            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                              age--;
-                            }
-                            updateFormData('coApplicant', 'age', age);
-                          }
-                        }}
-                        placeholder="Select date of birth"
-                        disabled={(date) => date > new Date()}
-                      />
-                    </div>
-                    <div>
-                      <SSNInput
-                        name="coApplicantSsn"
-                        label="Social Security Number *"
-                        value={formData.coApplicant?.ssn || ''}
-                        onChange={(value) => updateFormData('coApplicant', 'ssn', value)}
-                        required={true}
-                      />
-                    </div>
-                    <div>
-                      <PhoneInput
-                        name="coApplicantPhone"
-                        label="Phone Number *"
-                        value={formData.coApplicant?.phone || ''}
-                        onChange={(value) => updateFormData('coApplicant', 'phone', value)}
-                        required={true}
-                      />
-                    </div>
-                    {/* Age field hidden from frontend, still auto-calculated in state */}
-                    
-                    <div>
-                      <Label>Gender</Label>
-                      <Select
-                        value={formData.coApplicant?.gender || ''}
-                        onValueChange={(value) => updateFormData('coApplicant', 'gender', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <EmailInput
-                      name="coApplicantEmail"
-                      label="Email Address *"
-                      value={formData.coApplicant?.email || ''}
-                      onChange={(value) => updateFormData('coApplicant', 'email', value)}
-                      required={true}
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <Checkbox 
-                      id="sameAddressCoApplicant"
-                      checked={sameAddressCoApplicant}
-                      onCheckedChange={(checked) => {
-                        setSameAddressCoApplicant(checked as boolean);
-                        if (checked) {
-                          copyAddressToCoApplicant();
-                        }
-                      }}
-                    />
-                    <Label htmlFor="sameAddressCoApplicant" className="text-sm">
-                      Same address as primary applicant
-                    </Label>
-                  </div>
-
-                  {!sameAddressCoApplicant && (
-                    <div className="space-y-4">
-                      <h4 className="text-lg font-medium text-gray-900 dark:text-white">Current Address</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="md:col-span-2">
-                          <Label>Street Address *</Label>
-                          <Input 
-                            placeholder="Enter street address"
-                            className="input-field"
-                            onChange={(e) => updateFormData('coApplicant', 'address', e.target.value)}
-                          />
-                        </div>
-                        <CitySelector
-                          selectedState={formData.coApplicant?.state || ''}
-                          selectedCity={formData.coApplicant?.city || ''}
-                          onCityChange={(city) => updateFormData('coApplicant', 'city', city)}
-                          label="City *"
-                          required={true}
-                        />
-                        <StateSelector
-                          selectedState={formData.coApplicant?.state || ''}
-                          onStateChange={(state) => updateFormData('coApplicant', 'state', state)}
-                          label="State *"
-                          required={true}
-                        />
-                        <ZIPInput
-                          name="coApplicantZip"
-                          label="ZIP Code *"
-                          value={formData.coApplicant?.zip || ''}
-                          onChange={(value) => updateFormData('coApplicant', 'zip', value)}
-                          required={true}
-                        />
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Years at Address</Label>
-                            <Input
-                              type="number"
-                              min={0}
-                              value={formData.coApplicant?.lengthAtAddressYears ?? ''}
-                              onChange={(e) => updateFormData('coApplicant', 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
-                              className="input-field"
-                            />
-                          </div>
-                          <div>
-                            <Label>Months at Address</Label>
-                            <Input
-                              type="number"
-                              min={0}
-                              max={11}
-                              value={formData.coApplicant?.lengthAtAddressMonths ?? ''}
-                              onChange={(e) => updateFormData('coApplicant', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
-                              className="input-field"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <FinancialSection 
-                    title="Co-Applicant Financial Information"
-                    person="coApplicant"
-                    formData={formData}
-                    updateFormData={updateFormData}
-                  />
-
-                  {["employed", "self-employed"].includes(formData.coApplicant?.employmentType) && (
-                    <DocumentSection 
-                      title="Co-Applicant Documents"
-                      person="coApplicant"
-                      onDocumentChange={handleDocumentChange}
-                      onEncryptedDocumentChange={handleEncryptedDocumentChange}
-                      referenceId={referenceId}
-                      enableWebhook={true}
-                      applicationId={applicationId}
-                    />
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {hasCoApplicant && (
-              null
-            )}
-          </div>
+          ) : (
+            <Card className="form-section">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FolderOpen className="w-5 h-5 mr-2" />
+                  Co-Applicant Supporting Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>No co-applicant added. Please add a co-applicant to upload supporting documents.</p>
+              </CardContent>
+            </Card>
+          )
         );
-
-
 
       case 6:
         return (
