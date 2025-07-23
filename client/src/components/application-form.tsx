@@ -15,7 +15,6 @@ import { SignaturePad } from "@/components/ui/signature-pad";
 import { DatePicker } from "@/components/ui/date-picker";
 import { FinancialSection } from "./financial-section";
 import { DocumentSection } from "./document-section";
-import { LegalQuestions } from "./legal-questions";
 import { SupportingDocuments } from "./supporting-documents";
 import { PDFGenerator } from "@/lib/pdf-generator";
 import { EnhancedPDFGenerator } from "@/lib/pdf-generator-enhanced";
@@ -74,6 +73,7 @@ const applicationSchema = z.object({
   applicantLandlordName: z.string().optional(),
   applicantCurrentRent: z.number().optional().or(z.undefined()),
   applicantReasonForMoving: z.string().optional(),
+  applicantGender: z.string().optional(),
 
   // Conditional fields
   hasCoApplicant: z.boolean().default(false),
@@ -94,8 +94,7 @@ const STEPS = [
   { id: 4, title: "Supporting Documents", icon: FolderOpen },
   { id: 5, title: "Other Occupants", icon: Users },
   { id: 6, title: "Guarantor Documents", icon: Shield },
-  { id: 7, title: "Legal Questions", icon: Shield },
-  { id: 8, title: "Digital Signatures", icon: Check },
+  { id: 7, title: "Digital Signatures", icon: Check },
 ];
 
 export function ApplicationForm() {
@@ -107,9 +106,10 @@ export function ApplicationForm() {
     applicant: {},
     coApplicant: {},
     guarantor: {},
-    occupants: [], // Each occupant: { name, relationship, dob, ssn, age, sex }
+    occupants: [], // Each occupant: { name, relationship, dob, ssn, age, gender }
   });
   const [signatures, setSignatures] = useState<any>({});
+  const [signatureTimestamps, setSignatureTimestamps] = useState<any>({});
   const [documents, setDocuments] = useState<any>({});
   const [encryptedDocuments, setEncryptedDocuments] = useState<any>({});
   const [hasCoApplicant, setHasCoApplicant] = useState(false);
@@ -181,6 +181,7 @@ export function ApplicationForm() {
       applicantLandlordName: "",
       applicantCurrentRent: undefined,
       applicantReasonForMoving: "",
+      applicantGender: "",
 
       // Conditional fields
       hasCoApplicant: false,
@@ -300,6 +301,10 @@ export function ApplicationForm() {
     setSignatures((prev: any) => ({
       ...prev,
       [person]: signature,
+    }));
+    setSignatureTimestamps((prev: any) => ({
+      ...prev,
+      [person]: new Date().toISOString(),
     }));
   };
 
@@ -586,6 +591,7 @@ export function ApplicationForm() {
         applicantLandlordName: data.applicantLandlordName,
         applicantCurrentRent: formData.applicant?.currentRent || data.applicantCurrentRent,
         applicantReasonForMoving: data.applicantReasonForMoving,
+        applicantGender: data.applicantGender,
         
         // Primary Applicant Financial (from formData)
         applicantEmployer: formData.applicant?.employer || null,
@@ -653,13 +659,16 @@ export function ApplicationForm() {
         transformedData.guarantorAccountType = formData.guarantor?.bankRecords?.[0]?.accountType || null;
         transformedData.guarantorBankRecords = formData.guarantor?.bankRecords || [];
         transformedData.guarantorSignature = signatures.guarantor || null;
+        transformedData.guarantorSignatureDate = signatureTimestamps.guarantor || null;
       } else {
         console.log('Skipping guarantor fields - hasGuarantor is false');
       }
 
       // Add signatures for applicant and co-applicant
       transformedData.applicantSignature = signatures.applicant || null;
+      transformedData.applicantSignatureDate = signatureTimestamps.applicant || null;
       transformedData.coApplicantSignature = signatures.coApplicant || null;
+      transformedData.coApplicantSignatureDate = signatureTimestamps.coApplicant || null;
       
       // Other Occupants - send as a list
       transformedData.otherOccupants = formData.occupants || [];
@@ -869,9 +878,22 @@ export function ApplicationForm() {
     }
   };
 
-
-
-
+  // Ensure applicantDob in formData and react-hook-form stay in sync for DatePicker display
+  useEffect(() => {
+    const formValue = form.watch('applicantDob');
+    const stateValue = formData.applicant?.dob;
+    if (stateValue && (!formValue || (formValue instanceof Date && stateValue instanceof Date && formValue.getTime() !== stateValue.getTime()))) {
+      // Only set if different and stateValue is a valid Date
+      if (stateValue instanceof Date && !isNaN(stateValue.getTime())) {
+        form.setValue('applicantDob', stateValue);
+      } else if (typeof stateValue === 'string' || typeof stateValue === 'number') {
+        const parsed = new Date(stateValue);
+        if (!isNaN(parsed.getTime())) {
+          form.setValue('applicantDob', parsed);
+        }
+      }
+    }
+  }, [formData.applicant?.dob, form]);
 
   // Refactor renderStep to accept a stepIdx argument
   const renderStep = (stepIdx = currentStep) => {
@@ -1187,17 +1209,7 @@ export function ApplicationForm() {
                   error={form.formState.errors.applicantSsn?.message}
                 />
 
-                <div className="flex items-center space-x-2">
-                  <div className="flex-1">
-                    {/* <Label className="text-sm font-medium">Age</Label>
-                    <Input 
-                      value={formData.applicant?.age || ''}
-                      className="input-field bg-gray-50"
-                      readOnly
-                      placeholder="Auto-calculated"
-                    /> */}
-                  </div>
-                </div>
+                {/* Age field hidden from frontend, still auto-calculated in state */}
 
                 <PhoneInput
                   name="applicantPhone"
@@ -1335,18 +1347,53 @@ export function ApplicationForm() {
 
           
                   <div className="space-y-2">
-                   
-                    <div>
-                      <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Length at Address</Label>
-                      <Input 
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm input-field"
-                        placeholder="e.g., 2 years 3 months"
-                        onChange={(e) => updateFormData('applicant', 'lengthAtAddress', e.target.value)}
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="applicantLengthAtAddressYears"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Years at Address</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={0}
+                                value={field.value ?? ''}
+                                onChange={(e) => {
+                                  const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                  field.onChange(val);
+                                  updateFormData('applicant', 'lengthAtAddressYears', val);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="applicantLengthAtAddressMonths"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Months at Address</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={0}
+                                max={11}
+                                value={field.value ?? ''}
+                                onChange={(e) => {
+                                  const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                  field.onChange(val);
+                                  updateFormData('applicant', 'lengthAtAddressMonths', val);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
                     </div>
-                    
-                 
-                   
                   </div>
 
                   <div className="space-y-2">
@@ -1391,7 +1438,35 @@ export function ApplicationForm() {
                     />
                   </div>
 
-                 
+                  <FormField
+                    control={form.control}
+                    name="applicantGender"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Gender</FormLabel>
+                        <FormControl>
+                          <Select
+                            value={formData.applicant?.gender || ''}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              updateFormData('applicant', 'gender', value);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                 </div>
               </div>
             </CardContent>
@@ -1538,7 +1613,6 @@ export function ApplicationForm() {
                         value={formData.coApplicant?.dob || undefined}
                         onChange={(date) => {
                           updateFormData('coApplicant', 'dob', date);
-                          
                           // Auto-calculate age for co-applicant
                           if (date) {
                             const today = new Date();
@@ -1573,6 +1647,7 @@ export function ApplicationForm() {
                         required={true}
                       />
                     </div>
+                    {/* Age field hidden from frontend, still auto-calculated in state */}
                     <div>
                       <Label>Age</Label>
                       <Input 
@@ -1581,6 +1656,22 @@ export function ApplicationForm() {
                         readOnly
                         placeholder="Auto-calculated"
                       />
+                    </div>
+                    <div>
+                      <Label>Gender</Label>
+                      <Select
+                        value={formData.coApplicant?.gender || ''}
+                        onValueChange={(value) => updateFormData('coApplicant', 'gender', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -1642,13 +1733,28 @@ export function ApplicationForm() {
                           onChange={(value) => updateFormData('coApplicant', 'zip', value)}
                           required={true}
                         />
-                        <div>
-                          <Label>Length at Address</Label>
-                          <Input 
-                            placeholder="e.g., 2 years 3 months"
-                            className="input-field"
-                            onChange={(e) => updateFormData('coApplicant', 'lengthAtAddress', e.target.value)}
-                          />
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Years at Address</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={formData.coApplicant?.lengthAtAddressYears ?? ''}
+                              onChange={(e) => updateFormData('coApplicant', 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
+                              className="input-field"
+                            />
+                          </div>
+                          <div>
+                            <Label>Months at Address</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={11}
+                              value={formData.coApplicant?.lengthAtAddressMonths ?? ''}
+                              onChange={(e) => updateFormData('coApplicant', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
+                              className="input-field"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1674,139 +1780,8 @@ export function ApplicationForm() {
               </Card>
             )}
 
-
-
-            {stepIdx === 5 && (
-              <Card className="form-section border-l-4 border-l-blue-500">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-blue-700 dark:text-blue-400">
-                    <Users className="w-5 h-5 mr-2" />
-                    Other Occupants (Not Applicants)
-                  </CardTitle>
-                  <p className="text-sm text-gray-600 mt-2">List any other people who will be living in the apartment</p>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {formData.occupants && formData.occupants.length > 0 && formData.occupants.map((occ: any, idx: number) => (
-                    <div key={idx} className="border rounded p-4 mb-2 bg-gray-50">
-                      <div className="font-semibold mb-2">Occupant {idx + 1}</div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <Label>Name</Label>
-                          <Input
-                            value={occ.name || ''}
-                            onChange={e => {
-                              const updated = [...formData.occupants];
-                              updated[idx].name = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                            }}
-                            placeholder="Full name"
-                          />
-                        </div>
-                        <div>
-                          <Label>Relationship</Label>
-                          <Input
-                            value={occ.relationship || ''}
-                            onChange={e => {
-                              const updated = [...formData.occupants];
-                              updated[idx].relationship = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                            }}
-                            placeholder="Relationship"
-                          />
-                        </div>
-                        <div>
-                          <Label>Date of Birth</Label>
-                          <DatePicker
-                            value={occ.dob || undefined}
-                            onChange={date => {
-                              const updated = [...formData.occupants];
-                              updated[idx].dob = date;
-                              
-                              // Auto-calculate age for occupant
-                              if (date) {
-                                const today = new Date();
-                                const birthDate = new Date(date);
-                                let age = today.getFullYear() - birthDate.getFullYear();
-                                const monthDiff = today.getMonth() - birthDate.getMonth();
-                                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                                  age--;
-                                }
-                                updated[idx].age = age;
-                              }
-                              
-                              setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                            }}
-                            placeholder="dd-mm-yyyy"
-                          />
-                        </div>
-                        <div>
-                          <SSNInput
-                            name={`occupantSsn${idx}`}
-                            label="Social Security #"
-                            value={occ.ssn || ''}
-                            onChange={value => {
-                              const updated = [...formData.occupants];
-                              updated[idx].ssn = value;
-                              setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <LicenseInput
-                            name={`occupantLicense${idx}`}
-                            label="Driver's License #"
-                            value={occ.driverLicense || ''}
-                            onChange={value => {
-                              const updated = [...formData.occupants];
-                              updated[idx].driverLicense = value;
-                              setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label>Age</Label>
-                          <Input
-                            type="number"
-                            value={occ.age || ''}
-                            className="input-field bg-gray-50"
-                            readOnly
-                            placeholder="Auto-calculated"
-                          />
-                        </div>
-                        <div>
-                          <Label>Sex</Label>
-                          <Select
-                            onValueChange={value => {
-                              const updated = [...formData.occupants];
-                              updated[idx].sex = value;
-                              setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                            }}
-                            value={occ.sex || ''}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="male">Male</SelectItem>
-                              <SelectItem value="female">Female</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <Button type="button" variant="destructive" onClick={() => {
-                          const updated = formData.occupants.filter((_: any, i: number) => i !== idx);
-                          setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                        }}>Remove</Button>
-                      </div>
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" onClick={() => {
-                    setFormData((prev: any) => ({ ...prev, occupants: [...(prev.occupants || []), { name: '', relationship: '', dob: undefined, ssn: '', age: '', sex: '' }] }));
-                  }}>Add Another Occupant</Button>
-                </CardContent>
-              </Card>
+            {hasCoApplicant && (
+              null
             )}
           </div>
         );
@@ -1859,7 +1834,6 @@ export function ApplicationForm() {
                         value={formData.guarantor?.dob || undefined}
                         onChange={(date) => {
                           updateFormData('guarantor', 'dob', date);
-                          
                           // Auto-calculate age for guarantor
                           if (date) {
                             const today = new Date();
@@ -1894,6 +1868,7 @@ export function ApplicationForm() {
                         required={true}
                       />
                     </div>
+                    {/* Age field hidden from frontend, still auto-calculated in state */}
                     <div>
                       <Label>Age</Label>
                       <Input 
@@ -1902,6 +1877,22 @@ export function ApplicationForm() {
                         readOnly
                         placeholder="Auto-calculated"
                       />
+                    </div>
+                    <div>
+                      <Label>Gender</Label>
+                      <Select
+                        value={formData.guarantor?.gender || ''}
+                        onValueChange={(value) => updateFormData('guarantor', 'gender', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -1946,13 +1937,28 @@ export function ApplicationForm() {
                         onChange={(value) => updateFormData('guarantor', 'zip', value)}
                         required={true}
                       />
-                      <div>
-                        <Label>Length at Address</Label>
-                        <Input 
-                          placeholder="e.g., 2 years 3 months"
-                          className="input-field"
-                          onChange={(e) => updateFormData('guarantor', 'lengthAtAddress', e.target.value)}
-                        />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Years at Address</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={formData.guarantor?.lengthAtAddressYears ?? ''}
+                            onChange={(e) => updateFormData('guarantor', 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
+                            className="input-field"
+                          />
+                        </div>
+                        <div>
+                          <Label>Months at Address</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={11}
+                            value={formData.guarantor?.lengthAtAddressMonths ?? ''}
+                            onChange={(e) => updateFormData('guarantor', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
+                            className="input-field"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1991,6 +1997,10 @@ export function ApplicationForm() {
               </Card>
             )}
 
+            {hasGuarantor && (
+              null
+            )}
+
             {/* Guarantor Documents Section */}
             {hasGuarantor && (
               <Card className="form-section border-l-4 border-l-purple-500">
@@ -2018,24 +2028,6 @@ export function ApplicationForm() {
 
       case 7:
         return (
-          <Card className="form-section">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Shield className="w-5 h-5 mr-2" />
-                Legal Questions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <LegalQuestions 
-                formData={formData.application}
-                updateFormData={(field, value) => updateFormData('application', field, value)}
-              />
-            </CardContent>
-          </Card>
-        );
-
-      case 8:
-        return (
           <div className="space-y-8">
             <Card className="form-section">
               <CardHeader>
@@ -2045,7 +2037,7 @@ export function ApplicationForm() {
                 <div className="mb-6">
                   <h3 className="font-bold uppercase text-sm mb-2">PLEASE READ CAREFULLY BEFORE SIGNING</h3>
                   <p className="text-xs text-gray-700 whitespace-pre-line">
-                    The Landlord will in no event be bound, nor will possession be given, unless and until a lease executed by the Landlord has been delivered to the Tenant. The applicant and his/her references must be satisfactory to the Landlord. Please be advised that the date on page one of the lease is not your move-in date. Your move-in date will be arranged with you after you have been approved. No representations or agreements by agents, brokers or others are binding on the Landlord or Agent unless included in the written lease proposed to be executed. I hereby warrant that all my representations set forth herein are true. I recognize the truth of the information contained herein is essential. I further represent that I am not renting a room or an apartment under any other name, nor have I ever been dispossessed from any apartment, nor am I now being dispossessed. I represent that I am over 18 years of age. I have been advised that I have the right, under section 8068 of the Fair Credit Reporting Act, to make a written request, directed to the appropriate credit reporting agency, within reasonable time, for a complete and accurate disclosure of the nature and scope of any credit investigation. I understand that upon submission, this application and all related documents become the property of the Landlord, and will not be returned to me under any circumstances. I authorize the Landlord, Agent and credit reporting agency to obtain a consumer credit report on me and to verify any information on this application with regard to my employment history, current and prior tenancies, bank accounts, and all other information that the Landlord deems pertinent to my obtaining residency. I understand that I shall not be permitted to receive or review my application file or my credit consumer report. I authorize banks, financial institutions, landlords, business associates, credit bureaus, attorneys, accountants and other persons or institutions with whom I am acquainted to furnish any and all information regarding myself. This authorization also applies to any update reports which may be ordered as needed. A photocopy or fax of this authorization shall be accepted with the same authority as this original. I will present any other information required by the Landlord or Agent in connection with the lease contemplated herein. I understand that the application fee is non-refundable. The Civil Rights Act of 1968, as amended by the Fair Housing Amendments Act of 1988, prohibits discrimination in the rental of housing based on race, color, religion, sex, handicap, familial status or national origin. The Federal Agency, which administers compliance with this law, is the U.S. Department of Housing and Urban Development.
+                    The Landlord will in no event be bound, nor will possession be given, unless and until a lease executed by the Landlord has been delivered to the Tenant. The applicant and his/her references must be satisfactory to the Landlord. Please be advised that the date on page one of the lease is not your move-in date. Your move-in date will be arranged with you after you have been approved. No representations or agreements by agents, brokers or others are binding on the Landlord or Agent unless included in the written lease proposed to be executed. I hereby warrant that all my representations set forth herein are true. I recognize the truth of the information contained herein is essential. I further represent that I am not renting a room or an apartment under any other name, nor have I ever been dispossessed from any apartment, nor am I now being dispossessed. I represent that I am over 18 years of age. I have been advised that I have the right, under section 8068 of the Fair Credit Reporting Act, to make a written request, directed to the appropriate credit reporting agency, within reasonable time, for a complete and accurate disclosure of the nature and scope of any credit investigation. I understand that upon submission, this application and all related documents become the property of the Landlord, and will not be returned to me under any circumstances. I authorize the Landlord, Agent and credit reporting agency to obtain a consumer credit report on me and to verify any information on this application with regard to my employment history, current and prior tenancies, bank accounts, and all other information that the Landlord deems pertinent to my obtaining residency. I understand that I shall not be permitted to receive or review my application file or my credit consumer report. I authorize banks, financial institutions, landlords, business associates, credit bureaus, attorneys, accountants and other persons or institutions with whom I am acquainted to furnish any and all information regarding myself. This authorization also applies to any update reports which may be ordered as needed. A photocopy or fax of this authorization shall be accepted with the same authority as this original. I will present any other information required by the Landlord or Agent in connection with the lease contemplated herein. I understand that the application fee is non-refundable. The Civil Rights Act of 1968, as amended by the Fair Housing Amendments Act of 1988, prohibits discrimination in the rental of housing based on race, color, religion, gender, handicap, familial status or national origin. The Federal Agency, which administers compliance with this law, is the U.S. Department of Housing and Urban Development.
                   </p>
                 </div>
                 <div>
