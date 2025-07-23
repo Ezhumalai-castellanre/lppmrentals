@@ -621,7 +621,8 @@ export function ApplicationForm() {
         coApplicantCity: formData.coApplicant?.city || null,
         coApplicantState: formData.coApplicant?.state || null,
         coApplicantZip: formData.coApplicant?.zip || null,
-        coApplicantLengthAtAddress: formData.coApplicant?.lengthAtAddress || null,
+        coApplicantLengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears ?? null,
+        coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths ?? null,
         
         // Co-Applicant Financial
         coApplicantEmployer: formData.coApplicant?.employer || null,
@@ -650,7 +651,8 @@ export function ApplicationForm() {
         transformedData.guarantorCity = formData.guarantor?.city || null;
         transformedData.guarantorState = formData.guarantor?.state || null;
         transformedData.guarantorZip = formData.guarantor?.zip || null;
-        transformedData.guarantorLengthAtAddress = formData.guarantor?.lengthAtAddress || null;
+        transformedData.guarantorLengthAtAddressYears = formData.guarantor?.lengthAtAddressYears ?? null;
+        transformedData.guarantorLengthAtAddressMonths = formData.guarantor?.lengthAtAddressMonths ?? null;
         
         // Guarantor Financial
         transformedData.guarantorEmployer = formData.guarantor?.employer || null;
