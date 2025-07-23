@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { FileUpload } from "./ui/file-upload";
 import { Badge } from "./ui/badge";
-import { CheckCircle, AlertCircle, FileText, DollarSign, Building, User, CreditCard, Shield } from "lucide-react";
+import { CheckCircle, AlertCircle, FileText, DollarSign, Building, User, CreditCard, Shield, UserCheck } from "lucide-react";
 import { type EncryptedFile } from "@/lib/file-encryption";
 
 interface SupportingDocumentsProps {
@@ -117,6 +117,61 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
     }
   ];
 
+  // Determine employment type for applicant and co-applicant
+  const applicantEmploymentType = formData?.applicant?.employmentType;
+  const coApplicantEmploymentType = formData?.coApplicant?.employmentType;
+
+  // Helper to get allowed categories for a given employment type
+  function allowedCategoriesForType(type: string | undefined) {
+    if (!type) return new Set(requiredDocuments.map(c => c.category));
+    if (type === 'employed') {
+      return new Set(requiredDocuments.map(c => c.category).filter(cat => cat !== 'Self-Employed Documents'));
+    }
+    if (type === 'self-employed') {
+      return new Set(requiredDocuments.map(c => c.category).filter(cat => cat !== 'Employment Verification'));
+    }
+    if (["unemployed", "retired", "student"].includes(type)) {
+      return new Set(requiredDocuments.map(c => c.category).filter(cat => cat !== 'Employment Verification' && cat !== 'Self-Employed Documents'));
+    }
+    return new Set(requiredDocuments.map(c => c.category));
+  }
+
+  // Compute allowed categories (union if both applicant and co-applicant)
+  let allowedCategories = allowedCategoriesForType(applicantEmploymentType);
+  if (coApplicantEmploymentType) {
+    const coAllowed = allowedCategoriesForType(coApplicantEmploymentType);
+    allowedCategories = new Set(Array.from(allowedCategories).concat(Array.from(coAllowed)));
+  }
+
+  // Filter requiredDocuments based on allowed categories
+  const filteredDocuments = requiredDocuments.filter((category) => allowedCategories.has(category.category));
+
+  // Add Other Occupant Documents category if there are other occupants
+  const otherOccupants = Array.isArray(formData?.otherOccupants) ? formData.otherOccupants : [];
+  let filteredDocumentsWithOccupants = [...filteredDocuments];
+  if (otherOccupants.length > 0) {
+    filteredDocumentsWithOccupants.push({
+      category: 'Other Occupant Documents',
+      icon: <User className="h-4 w-4" />,
+      documents: [
+        {
+          id: `other_occupants_identity`,
+          name: `Proof of Identity for Other Occupants`,
+          description: 'Driver\'s license, state ID, or passport for at least one other occupant',
+          required: true,
+          acceptedTypes: '.jpg,.jpeg,.png,.pdf'
+        }
+      ]
+    });
+  }
+
+  // Co-Applicant Documents logic
+  let coApplicantDocuments: any[] = [];
+  if (formData?.coApplicant && formData.coApplicant.employmentType) {
+    const coAllowedCategories = allowedCategoriesForType(formData.coApplicant.employmentType);
+    coApplicantDocuments = requiredDocuments.filter((category) => coAllowedCategories.has(category.category));
+  }
+
   const getDocumentStatus = (documentId: string) => {
     const files = formData.documents?.[documentId];
     if (files && files.length > 0) {
@@ -136,7 +191,7 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {requiredDocuments.map((category) => (
+        {filteredDocumentsWithOccupants.map((category) => (
           <div key={category.category} className="space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b">
               {category.icon}
@@ -200,6 +255,77 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
           </div>
         ))}
         
+        {/* Co-Applicant Documents Section */}
+        {coApplicantDocuments.length > 0 && (
+          <div className="space-y-6 mt-8">
+            <div className="flex items-center gap-2 pb-2 border-b">
+              <UserCheck className="h-4 w-4" />
+              <h3 className="font-medium text-gray-800">Co-Applicant Documents</h3>
+            </div>
+            {coApplicantDocuments.map((category) => (
+              <div key={category.category} className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b">
+                  {category.icon}
+                  <h4 className="font-medium text-gray-800">{category.category}</h4>
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                  {category.documents.map((document: any) => {
+                    const docStatus = getDocumentStatus(document.id);
+                    return (
+                      <div key={document.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-gray-900">{document.name}</h4>
+                              {document.required && (
+                                <Badge variant="destructive" className="text-xs">Required</Badge>
+                              )}
+                              {!document.required && (
+                                <Badge variant="secondary" className="text-xs">Optional</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1">{document.description}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {docStatus.status === "uploaded" ? (
+                              <div className="flex items-center gap-1 text-green-600">
+                                <CheckCircle className="h-4 w-4" />
+                                <span className="text-xs">{docStatus.count} file(s)</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 text-orange-600">
+                                <AlertCircle className="h-4 w-4" />
+                                <span className="text-xs">Pending</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <FileUpload
+                          onFileChange={(files) => onDocumentChange(document.id, files)}
+                          onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
+                          accept={document.acceptedTypes}
+                          multiple={true}
+                          maxFiles={5}
+                          maxSize={10}
+                          label={`Upload ${document.name}`}
+                          description="Max 5 files, 10MB each. Accepted: JPG, PNG, PDF - Encrypted"
+                          className="mt-2"
+                          enableEncryption={true}
+                          referenceId={referenceId}
+                          sectionName={`supporting_${document.id}`}
+                          documentName={document.name}
+                          enableWebhook={enableWebhook}
+                          applicationId={applicationId}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="bg-yellow-50 p-4 rounded-lg">
           <h4 className="font-medium text-yellow-900 mb-2">Important Notes:</h4>
           <ul className="text-sm text-yellow-800 space-y-1">

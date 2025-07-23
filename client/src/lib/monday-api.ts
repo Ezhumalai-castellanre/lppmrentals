@@ -6,6 +6,7 @@ export type UnitItem = {
   propertyName: string; // Building Address
   unitType: string; // Apartment Type
   status: string; // Status (Vacant, etc.)
+  monthlyRent?: number; // Monthly Rent (column ID: numeric_mksz7rkz)
 };
 
 export class MondayApiService {
@@ -23,6 +24,7 @@ export class MondayApiService {
       }
 
       const result = await response.json();
+      console.log('API response from /api/monday/units:', result);
       return result.units || [];
     } catch (error) {
       console.error('Error fetching vacant units:', error);

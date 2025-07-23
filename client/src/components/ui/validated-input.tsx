@@ -258,7 +258,7 @@ export const IncomeWithFrequencyInput: React.FC<IncomeWithFrequencyProps> = ({
 
   const frequencyOptions = [
     { value: 'weekly', label: 'Weekly' },
-    { value: 'bi-weekly', label: 'Bi-Weekly' },
+    { value: 'bi-weekly', label: 'Every 2 weeks' },
     { value: 'monthly', label: 'Monthly' },
     { value: 'quarterly', label: 'Quarterly' },
     { value: 'yearly', label: 'Yearly' }

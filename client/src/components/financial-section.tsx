@@ -31,55 +31,203 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
         <CardTitle className="text-lg font-medium">{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Employer Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="form-field">
-            <Label htmlFor={`${person}-employer`}>Current Employer *</Label>
-            <Input
-              id={`${person}-employer`}
-              placeholder="Company name"
-              value={personData.employer || ""}
-              onChange={(e) => handleChange("employer", e.target.value)}
-              className="input-field"
-            />
-          </div>
-
-          <div className="form-field">
-            <Label htmlFor={`${person}-position`}>Position/Title *</Label>
-            <Input
-              id={`${person}-position`}
-              placeholder="Job title"
-              value={personData.position || ""}
-              onChange={(e) => handleChange("position", e.target.value)}
-              className="input-field"
-            />
-          </div>
+        {/* Employment Type Dropdown */}
+        <div className="form-field">
+          <Label htmlFor={`${person}-employmentType`}>Employment Type *</Label>
+          <Select
+            value={personData.employmentType || ''}
+            onValueChange={(value) => handleChange('employmentType', value)}
+          >
+            <SelectTrigger className="input-field">
+              <SelectValue placeholder="Select employment type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="employed">Employed</SelectItem>
+              <SelectItem value="self-employed">Self-Employed</SelectItem>
+              <SelectItem value="unemployed">Unemployed</SelectItem>
+              <SelectItem value="retired">Retired</SelectItem>
+              <SelectItem value="student">Student</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* Income Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="form-field">
-            <Label htmlFor={`${person}-employmentStart`}>Employment Start Date</Label>
-            <DatePicker
-              value={personData.employmentStart ? new Date(personData.employmentStart) : undefined}
-              onChange={(date) => handleDateChange("employmentStart", date)}
-              placeholder="Select employment start date"
-              disabled={(date) => date > new Date()}
-            />
+        {/* Dynamic Fields Based on Employment Type */}
+        {personData.employmentType === 'employed' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-field">
+              <Label htmlFor={`${person}-employer`}>Employer Name *</Label>
+              <Input
+                id={`${person}-employer`}
+                placeholder="Company name"
+                value={personData.employer || ""}
+                onChange={(e) => handleChange("employer", e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="form-field">
+              <Label htmlFor={`${person}-position`}>Position/Title *</Label>
+              <Input
+                id={`${person}-position`}
+                placeholder="Job title"
+                value={personData.position || ""}
+                onChange={(e) => handleChange("position", e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="form-field">
+              <Label htmlFor={`${person}-employmentStart`}>Employment Start Date</Label>
+              <DatePicker
+                value={personData.employmentStart ? new Date(personData.employmentStart) : undefined}
+                onChange={(date) => handleDateChange("employmentStart", date)}
+                placeholder="Select employment start date"
+                disabled={(date) => date > new Date()}
+              />
+            </div>
+            <div className="form-field">
+              <IncomeWithFrequencyInput
+                name={`${person}-income`}
+                label="Income ($) *"
+                value={personData.income || ""}
+                frequency={personData.incomeFrequency || "yearly"}
+                onValueChange={(value) => handleChange("income", value)}
+                onFrequencyChange={(frequency) => handleChange("incomeFrequency", frequency)}
+                required={true}
+              />
+            </div>
           </div>
+        )}
+        {personData.employmentType === 'self-employed' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-field">
+              <Label htmlFor={`${person}-businessName`}>Business Name *</Label>
+              <Input
+                id={`${person}-businessName`}
+                placeholder="Business name"
+                value={personData.businessName || ""}
+                onChange={(e) => handleChange("businessName", e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="form-field">
+              <Label htmlFor={`${person}-businessType`}>Business Type *</Label>
+              <Input
+                id={`${person}-businessType`}
+                placeholder="Type of business"
+                value={personData.businessType || ""}
+                onChange={(e) => handleChange("businessType", e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="form-field">
+              <Label htmlFor={`${person}-yearsInBusiness`}>Years in Business *</Label>
+              <Input
+                id={`${person}-yearsInBusiness`}
+                placeholder="e.g., 5"
+                type="number"
+                min={0}
+                value={personData.yearsInBusiness || ""}
+                onChange={(e) => handleChange("yearsInBusiness", e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="form-field">
+              <IncomeWithFrequencyInput
+                name={`${person}-income`}
+                label="Monthly Income ($) *"
+                value={personData.income || ""}
+                frequency={personData.incomeFrequency || "monthly"}
+                onValueChange={(value) => handleChange("income", value)}
+                onFrequencyChange={(frequency) => handleChange("incomeFrequency", frequency)}
+                required={true}
+              />
+            </div>
+          </div>
+        )}
+        {personData.employmentType === 'unemployed' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-field">
+              <Label htmlFor={`${person}-incomeSource`}>Source of Income</Label>
+              <Input
+                id={`${person}-incomeSource`}
+                placeholder="e.g., savings, family support"
+                value={personData.incomeSource || ""}
+                onChange={(e) => handleChange("incomeSource", e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="form-field">
+              <IncomeWithFrequencyInput
+                name={`${person}-income`}
+                label="Monthly Income ($)"
+                value={personData.income || ""}
+                frequency={personData.incomeFrequency || "monthly"}
+                onValueChange={(value) => handleChange("income", value)}
+                onFrequencyChange={(frequency) => handleChange("incomeFrequency", frequency)}
+              />
+            </div>
+          </div>
+        )}
+        {personData.employmentType === 'retired' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-field">
+              <Label htmlFor={`${person}-previousOccupation`}>Previous Occupation</Label>
+              <Input
+                id={`${person}-previousOccupation`}
+                placeholder="e.g., teacher, engineer"
+                value={personData.previousOccupation || ""}
+                onChange={(e) => handleChange("previousOccupation", e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="form-field">
+              <IncomeWithFrequencyInput
+                name={`${person}-income`}
+                label="Monthly Pension/Income ($) *"
+                value={personData.income || ""}
+                frequency={personData.incomeFrequency || "monthly"}
+                onValueChange={(value) => handleChange("income", value)}
+                onFrequencyChange={(frequency) => handleChange("incomeFrequency", frequency)}
+                required={true}
+              />
+            </div>
+          </div>
+        )}
+        {personData.employmentType === 'student' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-field">
+              <Label htmlFor={`${person}-schoolName`}>School Name *</Label>
+              <Input
+                id={`${person}-schoolName`}
+                placeholder="School name"
+                value={personData.schoolName || ""}
+                onChange={(e) => handleChange("schoolName", e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="form-field">
+              <Label htmlFor={`${person}-degreeProgram`}>Degree/Program *</Label>
+              <Input
+                id={`${person}-degreeProgram`}
+                placeholder="e.g., BSc Computer Science"
+                value={personData.degreeProgram || ""}
+                onChange={(e) => handleChange("degreeProgram", e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="form-field">
+              <IncomeWithFrequencyInput
+                name={`${person}-income`}
+                label="Monthly Income ($)"
+                value={personData.income || ""}
+                frequency={personData.incomeFrequency || "monthly"}
+                onValueChange={(value) => handleChange("income", value)}
+                onFrequencyChange={(frequency) => handleChange("incomeFrequency", frequency)}
+              />
+            </div>
+          </div>
+        )}
 
-          <div className="form-field">
-            <IncomeWithFrequencyInput
-              name={`${person}-income`}
-              label="Income ($) *"
-              value={personData.income || ""}
-              frequency={personData.incomeFrequency || "yearly"}
-              onValueChange={(value) => handleChange("income", value)}
-              onFrequencyChange={(frequency) => handleChange("incomeFrequency", frequency)}
-              required={true}
-            />
-          </div>
-        </div>
+        {/* Other Income Section (shown for all types) */}
         <div className="form-field">
           <IncomeWithFrequencyInput
             name={`${person}-otherIncome`}
@@ -90,8 +238,6 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
             onFrequencyChange={(frequency) => handleChange("otherIncomeFrequency", frequency)}
           />
         </div>
-
-        {/* Other Income Source */}
         <div className="form-field">
           <Label htmlFor={`${person}-otherIncomeSource`}>Other Income Source</Label>
           <Input
@@ -177,21 +323,6 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              <div className="form-field">
-                <Label>Account Number (Last 4 digits)</Label>
-                <Input
-                  placeholder="XXXX"
-                  className="input-field"
-                  maxLength={4}
-                  value={record.accountNumber || ''}
-                  onChange={(e) => {
-                    const bankRecords = [...(formData[person]?.bankRecords || [])];
-                    bankRecords[index] = { ...bankRecords[index], accountNumber: e.target.value };
-                    updateFormData(person, 'bankRecords', bankRecords);
-                  }}
-                />
               </div>
             </div>
           ))}

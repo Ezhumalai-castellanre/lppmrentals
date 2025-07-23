@@ -23,26 +23,43 @@ export const handler = async (event, context) => {
     console.log('Fetching from Monday.com with token:', MONDAY_API_TOKEN ? 'Present' : 'Missing');
     console.log('Board ID:', BOARD_ID);
 
-    const query = `
-      query {
-        boards(ids: [${BOARD_ID}]) {
-          items_page(query_params: {
-            rules: [
-              { column_id: "color_mkp7fmq4", compare_value: "Vacant", operator: contains_terms }
-            ]
-          }) {
-            items {
+  
+      const query = `
+  query {
+    boards(ids: [${BOARD_ID}]) {
+      items_page(query_params: {
+        rules: [
+          {
+            column_id: "color_mkp7fmq4",
+            compare_value: "Vacant",
+            operator: contains_terms
+          }
+        ]
+      }) {
+        items {
+          id
+          name
+          column_values(ids: ["text_mksxyax3", "color_mkp7xdce", "color_mkp77nrv", "color_mkp7fmq4", "numeric_mksz7rkz"]) {
+            id
+            text
+          }
+          subitems {
+            id
+            name
+            column_values(ids: ["status", "color_mksyqx5h"]) {
               id
-              name
-              column_values(ids: ["color_mkp7xdce", "color_mkp77nrv", "color_mkp7fmq4"]) {
-                id
-                text
+              text
+              ... on StatusValue {
+                label
               }
             }
           }
         }
       }
-    `;
+    }
+  }
+`;
+
 
     const response = await fetch('https://api.monday.com/v2', {
       method: 'POST',
@@ -60,15 +77,22 @@ export const handler = async (event, context) => {
 
     const result = await response.json();
     console.log('Monday API response:', JSON.stringify(result, null, 2));
-    
     const items = result?.data?.boards?.[0]?.items_page?.items ?? [];
-
+    // Debug: Print all column IDs and values for each item
+    items.forEach((item, idx) => {
+      console.log(`Item #${idx + 1} (${item.name}):`);
+      item.column_values.forEach(col => {
+        console.log(`  - ${col.id}: ${col.text}`);
+      });
+    });
+    
     const units = items.map((item) => ({
       id: item.id,
       name: item.name,
-      propertyName: item.column_values.find((c) => c.id === "color_mkp7xdce")?.text || "",
-      unitType: item.column_values.find((c) => c.id === "color_mkp77nrv")?.text || "",
-      status: item.column_values.find((c) => c.id === "color_mkp7fmq4")?.text || ""
+      propertyName: item.column_values.find((col) => col.id === "color_mkp7xdce")?.text || "",
+      unitType: item.column_values.find((col) => col.id === "color_mkp77nrv")?.text || "",
+      status: item.column_values.find((col) => col.id === "color_mkp7fmq4")?.text || "",
+      monthlyRent: item.column_values.find((col) => col.id === "numeric_mksz7rkz")?.text || ""
     }));
 
     console.log('Returning units:', units.length);

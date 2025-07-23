@@ -233,10 +233,12 @@ export function ApplicationForm() {
     // Update form data
     updateFormData('application', 'apartmentNumber', apartmentName);
     updateFormData('application', 'apartmentType', selectedApartment?.unitType || '');
+    updateFormData('application', 'monthlyRent', selectedApartment?.monthlyRent || undefined);
     
     // Update form fields
     form.setValue('apartmentNumber', apartmentName);
     form.setValue('apartmentType', selectedApartment?.unitType || '');
+    form.setValue('monthlyRent', selectedApartment?.monthlyRent || undefined);
   };
 
   const handleDocumentChange = (person: string, documentType: string, files: File[]) => {
