@@ -1175,38 +1175,42 @@ export function ApplicationForm() {
                 <FormField
                   control={form.control}
                   name="applicantDob"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date of Birth *</FormLabel>
-                      <FormControl>
-                        <DatePicker
-                          key={`applicantDob-${field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value.getTime() : 'empty'}`}
-                          value={field.value instanceof Date ? field.value : (field.value ? new Date(field.value) : undefined)}
-                          onChange={(date) => {
-                            field.onChange(date);
-                            updateFormData('applicant', 'dob', date);
-                            // Auto-calculate age
-                            if (date) {
-                              const today = new Date();
-                              const birthDate = new Date(date);
-                              let age = today.getFullYear() - birthDate.getFullYear();
-                              const monthDiff = today.getMonth() - birthDate.getMonth();
-                              if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                                age--;
+                  render={({ field }) => {
+                    const dateVal = toValidDate(field.value);
+                    console.log('DatePicker render - applicantDob field.value:', field.value, 'dateVal:', dateVal);
+                    return (
+                      <FormItem>
+                        <FormLabel>Date of Birth *</FormLabel>
+                        <FormControl>
+                          <DatePicker
+                            key={`applicantDob-${dateVal ? dateVal.getTime() : 'empty'}`}
+                            value={dateVal}
+                            onChange={(date) => {
+                              field.onChange(date);
+                              updateFormData('applicant', 'dob', date);
+                              // Auto-calculate age
+                              if (date) {
+                                const today = new Date();
+                                const birthDate = new Date(date);
+                                let age = today.getFullYear() - birthDate.getFullYear();
+                                const monthDiff = today.getMonth() - birthDate.getMonth();
+                                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                                  age--;
+                                }
+                                updateFormData('applicant', 'age', age);
+                              } else {
+                                updateFormData('applicant', 'age', '');
                               }
-                              updateFormData('applicant', 'age', age);
-                            } else {
-                              updateFormData('applicant', 'age', '');
-                            }
-                            form.trigger('applicantDob');
-                          }}
-                          placeholder="Select date of birth"
-                          disabled={(date) => date > new Date()}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                              form.trigger('applicantDob');
+                            }}
+                            placeholder="Select date of birth"
+                            disabled={(date) => date > new Date()}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
               </div>
 
@@ -2216,6 +2220,48 @@ export function ApplicationForm() {
         return null;
     }
   };
+
+  // Helper to robustly convert to Date or undefined
+  function toValidDate(val: any): Date | undefined {
+    if (!val) return undefined;
+    if (val instanceof Date && !isNaN(val.getTime())) return val;
+    const d = new Date(val);
+    if (d instanceof Date && !isNaN(d.getTime())) return d;
+    return undefined;
+  }
+
+  // On mount, if loading draft from localStorage, always convert dob to Date
+  useEffect(() => {
+    const draft = localStorage.getItem('rentalApplicationDraft');
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed?.formData?.applicant?.dob) {
+          parsed.formData.applicant.dob = toValidDate(parsed.formData.applicant.dob);
+        }
+        setFormData(parsed.formData || {});
+        // ... set other state as needed
+      } catch (e) {
+        console.warn('Failed to parse draft:', e);
+      }
+    }
+  }, []);
+
+  // Enhanced sync effect for applicantDob
+  useEffect(() => {
+    const formValue = form.watch('applicantDob');
+    const stateValue = formData.applicant?.dob;
+    let dateObj = toValidDate(stateValue);
+    console.log('DOB sync effect - formValue:', formValue, 'stateValue:', stateValue, 'dateObj:', dateObj);
+    if (dateObj) {
+      if (!formValue || !(formValue instanceof Date) || formValue.getTime() !== dateObj.getTime()) {
+        form.setValue('applicantDob', dateObj);
+      }
+    } else if (formValue) {
+      // If invalid, clear
+      form.setValue('applicantDob', undefined);
+    }
+  }, [formData.applicant?.dob, form]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 sm:bg-gradient-to-br sm:from-blue-50 sm:to-gray-100 sm:dark:from-gray-900 sm:dark:to-gray-800">
