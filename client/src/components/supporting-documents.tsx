@@ -80,6 +80,13 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
       icon: <FileText className="h-4 w-4" />,
       documents: [
         {
+          id: "form_1099",
+          name: "1099 Form",
+          description: "Previous year 1099 form (PDF, JPG, PNG)",
+          required: false,
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
+        },
+        {
           id: "accountant_letter",
           name: "Accountant Letter",
           description: "Notarized letter from accountant on company letterhead",

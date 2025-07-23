@@ -44,9 +44,6 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
             <SelectContent>
               <SelectItem value="employed">Employed</SelectItem>
               <SelectItem value="self-employed">Self-Employed</SelectItem>
-              <SelectItem value="unemployed">Unemployed</SelectItem>
-              <SelectItem value="retired">Retired</SelectItem>
-              <SelectItem value="student">Student</SelectItem>
             </SelectContent>
           </Select>
         </div>

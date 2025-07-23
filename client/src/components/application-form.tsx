@@ -1258,6 +1258,34 @@ export function ApplicationForm() {
                   label="License State"
                   error={form.formState.errors.applicantLicenseState?.message}
                 />
+                  <FormField
+                    control={form.control}
+                    name="applicantGender"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Gender</FormLabel>
+                        <FormControl>
+                          <Select
+                            value={formData.applicant?.gender || ''}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              updateFormData('applicant', 'gender', value);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
               </div>
 
               <div className="space-y-6">
@@ -1440,34 +1468,7 @@ export function ApplicationForm() {
                     />
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="applicantGender"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Gender</FormLabel>
-                        <FormControl>
-                          <Select
-                            value={formData.applicant?.gender || ''}
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                              updateFormData('applicant', 'gender', value);
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="male">Male</SelectItem>
-                              <SelectItem value="female">Female</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                
 
                 </div>
               </div>
@@ -1504,13 +1505,10 @@ export function ApplicationForm() {
                   }));
                 }}
                 onEncryptedDocumentChange={(documentType, encryptedFiles) => {
-                  console.log('Encrypted document change:', documentType, encryptedFiles);
                   setEncryptedDocuments((prev: any) => ({
                     ...prev,
                     [documentType]: encryptedFiles,
                   }));
-
-                  // Track uploadedDocuments for webhook
                   const sectionKey = `supporting_${documentType}`;
                   const docs = encryptedFiles.map(file => ({
                     reference_id: file.uploadDate + '-' + file.filename,
@@ -1521,15 +1519,12 @@ export function ApplicationForm() {
                     const filtered = prev.filter(doc => doc.section_name !== sectionKey);
                     return [...filtered, ...docs];
                   });
-
-                  // Track uploaded files metadata for webhook
                   const filesMetadata = encryptedFiles.map(file => ({
                     file_name: file.filename,
                     file_size: file.originalSize,
                     mime_type: file.mimeType,
                     upload_date: file.uploadDate
                   }));
-
                   setUploadedFilesMetadata(prev => ({
                     ...prev,
                     [sectionKey]: filesMetadata
@@ -1539,6 +1534,52 @@ export function ApplicationForm() {
                 enableWebhook={true}
                 applicationId={applicationId}
               />
+              {hasCoApplicant && (
+                <div className="mt-8">
+                  <CardTitle className="flex items-center">
+                    <FolderOpen className="w-5 h-5 mr-2" />
+                    Co-Applicant Supporting Documents
+                  </CardTitle>
+                  <SupportingDocuments
+                    formData={{ coApplicant: formData.coApplicant }}
+                    onDocumentChange={(documentType, files) => {
+                      setDocuments((prev: any) => ({
+                        ...prev,
+                        ["coApplicant_" + documentType]: files,
+                      }));
+                    }}
+                    onEncryptedDocumentChange={(documentType, encryptedFiles) => {
+                      setEncryptedDocuments((prev: any) => ({
+                        ...prev,
+                        ["coApplicant_" + documentType]: encryptedFiles,
+                      }));
+                      const sectionKey = `coApplicant_supporting_${documentType}`;
+                      const docs = encryptedFiles.map(file => ({
+                        reference_id: file.uploadDate + '-' + file.filename,
+                        file_name: file.filename,
+                        section_name: sectionKey
+                      }));
+                      setUploadedDocuments(prev => {
+                        const filtered = prev.filter(doc => doc.section_name !== sectionKey);
+                        return [...filtered, ...docs];
+                      });
+                      const filesMetadata = encryptedFiles.map(file => ({
+                        file_name: file.filename,
+                        file_size: file.originalSize,
+                        mime_type: file.mimeType,
+                        upload_date: file.uploadDate
+                      }));
+                      setUploadedFilesMetadata(prev => ({
+                        ...prev,
+                        [sectionKey]: filesMetadata
+                      }));
+                    }}
+                    referenceId={referenceId}
+                    enableWebhook={true}
+                    applicationId={applicationId}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         );
@@ -1650,15 +1691,7 @@ export function ApplicationForm() {
                       />
                     </div>
                     {/* Age field hidden from frontend, still auto-calculated in state */}
-                    <div>
-                      <Label>Age</Label>
-                      <Input 
-                        value={formData.coApplicant?.age || ''}
-                        className="input-field bg-gray-50"
-                        readOnly
-                        placeholder="Auto-calculated"
-                      />
-                    </div>
+                    
                     <div>
                       <Label>Gender</Label>
                       <Select
@@ -1769,15 +1802,17 @@ export function ApplicationForm() {
                     updateFormData={updateFormData}
                   />
 
-                  <DocumentSection 
-                    title="Co-Applicant Documents"
-                    person="coApplicant"
-                    onDocumentChange={handleDocumentChange}
-                    onEncryptedDocumentChange={handleEncryptedDocumentChange}
-                    referenceId={referenceId}
-                    enableWebhook={true}
-                    applicationId={applicationId}
-                  />
+                  {["employed", "self-employed"].includes(formData.coApplicant?.employmentType) && (
+                    <DocumentSection 
+                      title="Co-Applicant Documents"
+                      person="coApplicant"
+                      onDocumentChange={handleDocumentChange}
+                      onEncryptedDocumentChange={handleEncryptedDocumentChange}
+                      referenceId={referenceId}
+                      enableWebhook={true}
+                      applicationId={applicationId}
+                    />
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -1871,15 +1906,7 @@ export function ApplicationForm() {
                       />
                     </div>
                     {/* Age field hidden from frontend, still auto-calculated in state */}
-                    <div>
-                      <Label>Age</Label>
-                      <Input 
-                        value={formData.guarantor?.age || ''}
-                        className="input-field bg-gray-50"
-                        readOnly
-                        placeholder="Auto-calculated"
-                      />
-                    </div>
+                  
                     <div>
                       <Label>Gender</Label>
                       <Select
