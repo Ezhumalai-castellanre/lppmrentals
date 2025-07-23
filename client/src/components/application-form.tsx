@@ -606,8 +606,6 @@ export function ApplicationForm() {
         applicantIncome: formData.applicant?.income ? parseFloat(formData.applicant.income) : null,
         applicantOtherIncome: formData.applicant?.otherIncome ? parseFloat(formData.applicant.otherIncome) : null,
         applicantOtherIncomeSource: formData.applicant?.otherIncomeSource || null,
-        applicantBankName: formData.applicant?.bankRecords?.[0]?.bankName || null,
-        applicantAccountType: formData.applicant?.bankRecords?.[0]?.accountType || null,
         applicantBankRecords: formData.applicant?.bankRecords || [],
         
         // Co-Applicant
@@ -631,8 +629,7 @@ export function ApplicationForm() {
         coApplicantEmploymentStart: safeDateToISO(formData.coApplicant?.employmentStart),
         coApplicantIncome: formData.coApplicant?.income ? parseFloat(formData.coApplicant.income) : null,
         coApplicantOtherIncome: formData.coApplicant?.otherIncome ? parseFloat(formData.coApplicant.otherIncome) : null,
-        coApplicantBankName: formData.coApplicant?.bankRecords?.[0]?.bankName || null,
-        coApplicantAccountType: formData.coApplicant?.bankRecords?.[0]?.accountType || null,
+        coApplicantOtherIncomeSource: formData.coApplicant?.otherIncomeSource || null,
         coApplicantBankRecords: formData.coApplicant?.bankRecords || [],
         
         // Guarantor - only include if hasGuarantor is true
@@ -661,8 +658,7 @@ export function ApplicationForm() {
         transformedData.guarantorEmploymentStart = safeDateToISO(formData.guarantor?.employmentStart);
         transformedData.guarantorIncome = formData.guarantor?.income ? parseFloat(formData.guarantor.income) : null;
         transformedData.guarantorOtherIncome = formData.guarantor?.otherIncome ? parseFloat(formData.guarantor.otherIncome) : null;
-        transformedData.guarantorBankName = formData.guarantor?.bankRecords?.[0]?.bankName || null;
-        transformedData.guarantorAccountType = formData.guarantor?.bankRecords?.[0]?.accountType || null;
+        transformedData.guarantorOtherIncomeSource = formData.guarantor?.otherIncomeSource || null;
         transformedData.guarantorBankRecords = formData.guarantor?.bankRecords || [];
         transformedData.guarantorSignature = signatures.guarantor || null;
         transformedData.guarantorSignatureDate = signatureTimestamps.guarantor || null;
