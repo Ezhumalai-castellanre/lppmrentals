@@ -248,6 +248,16 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                       enableWebhook={enableWebhook}
                       applicationId={applicationId}
                     />
+                    {document.id === 'w9_forms' && (
+                      <a
+                        href="https://www.dropbox.com/scl/fi/oy8nea1nx6k199m5ylpym/fw9-2.pdf?rlkey=ot7y1x1qno3gpwed7lozkpqcv&e=1&st=fd7a1cgj&dl=0"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline text-xs mt-1 block"
+                      >
+                        View Sample W9 Form
+                      </a>
+                    )}
                   </div>
                 );
               })}
