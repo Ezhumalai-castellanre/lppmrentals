@@ -118,28 +118,34 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                 className="input-field"
               />
             </div>
-            <div className="form-field">
-              <Label htmlFor={`${person}-yearsInBusiness`}>Years in Business *</Label>
-              <Input
-                id={`${person}-yearsInBusiness`}
-                placeholder="e.g., 5"
-                type="number"
-                min={0}
-                value={personData.yearsInBusiness || ""}
-                onChange={(e) => handleChange("yearsInBusiness", e.target.value)}
-                className="input-field"
-              />
-            </div>
-            <div className="form-field">
-              <IncomeWithFrequencyInput
-                name={`${person}-income`}
-                label="Monthly Income ($) *"
-                value={personData.income || ""}
-                frequency={personData.incomeFrequency || "monthly"}
-                onValueChange={(value) => handleChange("income", value)}
-                onFrequencyChange={(frequency) => handleChange("incomeFrequency", frequency)}
-                required={true}
-              />
+            {/* Custom row for Years in Business and Monthly Income */}
+            <div className="col-span-1 md:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="form-field flex flex-col justify-end">
+                  <Label htmlFor={`${person}-yearsInBusiness`}>Years in Business *</Label>
+                  <Input
+                    id={`${person}-yearsInBusiness`}
+                    placeholder="e.g., 5"
+                    type="number"
+                    min={0}
+                    value={personData.yearsInBusiness || ""}
+                    onChange={(e) => handleChange("yearsInBusiness", e.target.value)}
+                    className="input-field"
+                  />
+                </div>
+                <div className="form-field flex flex-col justify-end">
+                  <IncomeWithFrequencyInput
+                    name={`${person}-income`}
+                    label="Monthly Income ($) *"
+                    value={personData.income || ""}
+                    frequency={personData.incomeFrequency || "monthly"}
+                    onValueChange={(value) => handleChange("income", value)}
+                    onFrequencyChange={(frequency) => handleChange("incomeFrequency", frequency)}
+                    required={true}
+                    className=""
+                  />
+                </div>
+              </div>
             </div>
           </div>
         )}

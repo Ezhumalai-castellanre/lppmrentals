@@ -1146,20 +1146,20 @@ export function ApplicationForm() {
                 Primary Applicant Information
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+            <CardContent className="p-4 sm:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div className="col-span-1 md:col-span-2">
                   <FormField
                     control={form.control}
                     name="applicantName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Full Name</FormLabel>
+                        <FormLabel className="mb-0.5">Full Name</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Enter full name" 
                             {...field}
-                            className="input-field"
+                            className="input-field w-full mt-1"
                             onChange={(e) => {
                               field.onChange(e);
                               updateFormData('applicant', 'name', e.target.value);
@@ -1171,20 +1171,18 @@ export function ApplicationForm() {
                     )}
                   />
                 </div>
-
                 <FormField
                   control={form.control}
                   name="applicantDob"
                   render={({ field }) => {
                     const dateVal = toValidDate(field.value);
-                    console.log('DatePicker render - applicantDob field.value:', field.value, 'dateVal:', dateVal);
                     return (
                       <FormItem>
-                        <FormLabel>Date of Birth *</FormLabel>
+                        <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
                         <FormControl>
                           <DatePicker
                             key={`applicantDob-${dateVal ? dateVal.getTime() : 'empty'}`}
-                            value={dateVal}
+                            value={dateVal !== undefined ? dateVal : undefined}
                             onChange={(date) => {
                               field.onChange(date);
                               updateFormData('applicant', 'dob', date);
@@ -1205,6 +1203,7 @@ export function ApplicationForm() {
                             }}
                             placeholder="Select date of birth"
                             disabled={(date) => date > new Date()}
+                            className="w-full mt-1"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1213,36 +1212,33 @@ export function ApplicationForm() {
                   }}
                 />
                 <FormField
-                    control={form.control}
-                    name="applicantGender"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Gender</FormLabel>
-                        <FormControl>
-                          <Select
-                            value={formData.applicant?.gender || ''}
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                              updateFormData('applicant', 'gender', value);
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="male">Male</SelectItem>
-                              <SelectItem value="female">Female</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  control={form.control}
+                  name="applicantGender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Gender</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={formData.applicant?.gender || ''}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'gender', value);
+                          }}
+                        >
+                          <SelectTrigger className="w-full mt-1">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <SSNInput
                   name="applicantSsn"
                   label="Social Security Number"
@@ -1252,10 +1248,8 @@ export function ApplicationForm() {
                     form.setValue('applicantSsn', value);
                   }}
                   error={form.formState.errors.applicantSsn?.message}
+                  className="w-full mt-1"
                 />
-
-                {/* Age field hidden from frontend, still auto-calculated in state */}
-
                 <PhoneInput
                   name="applicantPhone"
                   label="Phone Number"
@@ -1265,8 +1259,8 @@ export function ApplicationForm() {
                     form.setValue('applicantPhone', value);
                   }}
                   error={form.formState.errors.applicantPhone?.message}
+                  className="w-full mt-1"
                 />
-
                 <EmailInput
                   name="applicantEmail"
                   label="Email Address"
@@ -1277,10 +1271,8 @@ export function ApplicationForm() {
                   }}
                   error={form.formState.errors.applicantEmail?.message}
                   required={true}
+                  className="w-full mt-1"
                 />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <LicenseInput
                   name="applicantLicense"
                   label="Driver's License Number"
@@ -1290,8 +1282,8 @@ export function ApplicationForm() {
                     form.setValue('applicantLicense', value);
                   }}
                   error={form.formState.errors.applicantLicense?.message}
+                  className="w-full mt-1"
                 />
-
                 <StateSelector
                   selectedState={formData.applicant?.licenseState || ''}
                   onStateChange={(state) => {
@@ -1300,192 +1292,175 @@ export function ApplicationForm() {
                   }}
                   label="License State"
                   error={form.formState.errors.applicantLicenseState?.message}
+                  className="w-full mt-1"
                 />
               </div>
-
-              <div className="space-y-6">
-                <h4 className="text-lg font-medium text-gray-900 dark:text-white">Current Address</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="md:col-span-2">
-                    <FormField
-                      control={form.control}
-                      name="applicantAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Street Address</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Enter street address" 
-                              {...field}
-                              className="input-field"
-                              onChange={(e) => {
-                                field.onChange(e);
-                                updateFormData('applicant', 'address', e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <CitySelector
-                    selectedState={formData.applicant?.state || ''}
-                    selectedCity={formData.applicant?.city || ''}
-                    onCityChange={(city) => {
-                      updateFormData('applicant', 'city', city);
-                      form.setValue('applicantCity', city);
-                    }}
-                    label="City"
-                    required={true}
-                    error={form.formState.errors.applicantCity?.message}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div className="col-span-1 md:col-span-2">
+                  <FormField
+                    control={form.control}
+                    name="applicantAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="mb-0.5">Street Address</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter street address" 
+                            {...field}
+                            className="input-field w-full mt-1"
+                            onChange={(e) => {
+                              field.onChange(e);
+                              updateFormData('applicant', 'address', e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-
-                  <StateSelector
-                    selectedState={formData.applicant?.state || ''}
-                    onStateChange={(state) => {
-                      updateFormData('applicant', 'state', state);
-                      form.setValue('applicantState', state);
-                    }}
-                    label="State"
-                    required={true}
-                    error={form.formState.errors.applicantState?.message}
-                  />
-
-                  <ZIPInput
-                    name="applicantZip"
-                    label="ZIP Code"
-                    value={formData.applicant?.zip || ''}
-                    onChange={(value) => {
-                      updateFormData('applicant', 'zip', value);
-                      form.setValue('applicantZip', value);
-                    }}
-                    error={form.formState.errors.applicantZip?.message}
-                    required={true}
-                  />
-
-                  {/* CURRENT LANDLORDS NAME */}
-                  <div className="space-y-2">
-                    <FormLabel>CURRENT LANDLORDS NAME</FormLabel>
-                    <FormField
-                      control={form.control}
-                      name="applicantLandlordName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Input 
-                              placeholder="Enter landlord's name" 
-                              {...field}
-                              className="input-field border-gray-300 bg-white"
-                              onChange={(e) => {
-                                field.onChange(e);
-                                updateFormData('applicant', 'landlordName', e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-          
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="applicantLengthAtAddressYears"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Length of Stay at Current Address (Years)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min={0}
-                                value={field.value ?? ''}
-                                onChange={(e) => {
-                                  const val = e.target.value === '' ? undefined : Number(e.target.value);
-                                  field.onChange(val);
-                                  updateFormData('applicant', 'lengthAtAddressYears', val);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="applicantLengthAtAddressMonths"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Length of Stay at Current Address (Months)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min={0}
-                                max={11}
-                                value={field.value ?? ''}
-                                onChange={(e) => {
-                                  const val = e.target.value === '' ? undefined : Number(e.target.value);
-                                  field.onChange(val);
-                                  updateFormData('applicant', 'lengthAtAddressMonths', val);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="form-field">
-                      <Label htmlFor="applicantCurrentRent">MONTHLY RENT</Label>
-                      <Input
-                        id="applicantCurrentRent"
-                        type="number"
-                        placeholder="0.00"
-                        value={formData.applicant?.currentRent?.toString() || ''}
-                        onChange={(e) => {
-                          const numValue = parseFloat(e.target.value) || 0;
-                          updateFormData('applicant', 'currentRent', numValue);
-                          form.setValue('applicantCurrentRent', numValue);
-                        }}
-                        className="input-field"
-                      />
-                    </div>
-                  </div>
-                   {/* WHY ARE YOU MOVING */}
-                   <div className="space-y-2">
-                    <FormLabel>WHY ARE YOU MOVING</FormLabel>
-                    <FormField
-                      control={form.control}
-                      name="applicantReasonForMoving"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Please explain your reason for moving" 
-                              {...field}
-                              className="input-field border-gray-300 bg-white min-h-[80px]"
-                              onChange={(e) => {
-                                field.onChange(e);
-                                updateFormData('applicant', 'reasonForMoving', e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  
-
                 </div>
+                <CitySelector
+                  selectedState={formData.applicant?.state || ''}
+                  selectedCity={formData.applicant?.city || ''}
+                  onCityChange={(city) => {
+                    updateFormData('applicant', 'city', city);
+                    form.setValue('applicantCity', city);
+                  }}
+                  label="City"
+                  required={true}
+                  error={form.formState.errors.applicantCity?.message}
+                  className="w-full mt-1"
+                />
+                <StateSelector
+                  selectedState={formData.applicant?.state || ''}
+                  onStateChange={(state) => {
+                    updateFormData('applicant', 'state', state);
+                    form.setValue('applicantState', state);
+                  }}
+                  label="State"
+                  required={true}
+                  error={form.formState.errors.applicantState?.message}
+                  className="w-full mt-1"
+                />
+                <ZIPInput
+                  name="applicantZip"
+                  label="ZIP Code"
+                  value={formData.applicant?.zip || ''}
+                  onChange={(value) => {
+                    updateFormData('applicant', 'zip', value);
+                    form.setValue('applicantZip', value);
+                  }}
+                  error={form.formState.errors.applicantZip?.message}
+                  required={true}
+                  className="w-full mt-1"
+                />
+                <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
+                  <FormLabel className="mb-0.5 col-span-2">Length of Stay at Current Address</FormLabel>
+                  <FormField
+                    control={form.control}
+                    name="applicantLengthAtAddressYears"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={field.value ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? undefined : Number(e.target.value);
+                              field.onChange(val);
+                              updateFormData('applicant', 'lengthAtAddressYears', val);
+                            }}
+                            placeholder="Years"
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="applicantLengthAtAddressMonths"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={11}
+                            value={field.value ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? undefined : Number(e.target.value);
+                              field.onChange(val);
+                              updateFormData('applicant', 'lengthAtAddressMonths', val);
+                            }}
+                            placeholder="Months"
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Current Landlord's Name</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter landlord's name" 
+                          {...field}
+                          className="input-field w-full mt-1 border-gray-300 bg-white"
+                          onChange={(e) => {
+                            field.onChange(e);
+                            updateFormData('applicant', 'landlordName', e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div>
+                  <Label htmlFor="applicantCurrentRent" className="mb-0.5">Monthly Rent</Label>
+                  <Input
+                    id="applicantCurrentRent"
+                    type="number"
+                    placeholder="0.00"
+                    value={formData.applicant?.currentRent?.toString() || ''}
+                    onChange={(e) => {
+                      const numValue = parseFloat(e.target.value) || 0;
+                      updateFormData('applicant', 'currentRent', numValue);
+                      form.setValue('applicantCurrentRent', numValue);
+                    }}
+                    className="input-field w-full mt-1"
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="applicantReasonForMoving"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Please explain your reason for moving" 
+                          {...field}
+                          className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
+                          onChange={(e) => {
+                            field.onChange(e);
+                            updateFormData('applicant', 'reasonForMoving', e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </CardContent>
           </Card>
@@ -1746,7 +1721,7 @@ export function ApplicationForm() {
                         />
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label>Length of Stay at Current Address (Years)</Label>
+                            <Label>Years at Address</Label>
                             <Input
                               type="number"
                               min={0}
@@ -1756,7 +1731,7 @@ export function ApplicationForm() {
                             />
                           </div>
                           <div>
-                            <Label>Length of Stay at Current Address (Months)</Label>
+                            <Label>Months at Address</Label>
                             <Input
                               type="number"
                               min={0}
@@ -2084,7 +2059,7 @@ export function ApplicationForm() {
                       />
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label>Length of Stay at Current Address (Years)</Label>
+                          <Label>Years at Address</Label>
                           <Input
                             type="number"
                             min={0}
@@ -2094,7 +2069,7 @@ export function ApplicationForm() {
                           />
                         </div>
                         <div>
-                          <Label>Length of Stay at Current Address (Months)</Label>
+                          <Label>Months at Address</Label>
                           <Input
                             type="number"
                             min={0}
@@ -2226,8 +2201,10 @@ export function ApplicationForm() {
   function toValidDate(val: any): Date | undefined {
     if (!val) return undefined;
     if (val instanceof Date && !isNaN(val.getTime())) return val;
-    const d = new Date(val);
-    if (d instanceof Date && !isNaN(d.getTime())) return d;
+    if (typeof val === 'string' || typeof val === 'number') {
+      const d = new Date(val);
+      if (d instanceof Date && !isNaN(d.getTime())) return d;
+    }
     return undefined;
   }
 
@@ -2260,7 +2237,7 @@ export function ApplicationForm() {
       }
     } else if (formValue) {
       // If invalid, clear
-      // Do not set to undefined or null to avoid linter error; just skip
+      form.setValue('applicantDob', undefined);
     }
   }, [formData.applicant?.dob, form]);
 

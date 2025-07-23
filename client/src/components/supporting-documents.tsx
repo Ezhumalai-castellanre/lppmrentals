@@ -40,6 +40,13 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
       icon: <DollarSign className="h-4 w-4" />,
       documents: [
         {
+          id: "w9_forms",
+          name: "W9",
+          description: "Previous year 1099 forms (if self-employed)",
+          required: false,
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
+        },
+        {
           id: "bank_statement",
           name: "Bank Statement",
           description: "Most recent bank statement (checking/savings)",
@@ -97,20 +104,6 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
           name: "Credit Report",
           description: "Recent credit report (optional but recommended)",
           required: true, // Now required
-          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
-        },
-        {
-          id: "w9_forms",
-          name: "W9",
-          description: "Previous year 1099 forms (if self-employed)",
-          required: false,
-          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
-        },
-        {
-          id: "reference_letters",
-          name: "Reference Letters",
-          description: "Personal or professional references",
-          required: false,
           acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         }
       ]

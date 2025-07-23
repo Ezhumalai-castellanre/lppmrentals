@@ -11,7 +11,6 @@
 | **Employment Letter** | ✅ Required | ✅ Required | ✅ Required | ✅ Required | ✅ Required |
 | **Pay Stubs** | ✅ Required | ✅ Required | ✅ Required | ✅ Required | ✅ Required |
 | **Credit Report** | 🔶 Optional | 🔶 Optional | ✅ Required | 🔶 Optional | 🔶 Optional |
-| **Reference Letters** | 🔶 Optional | 🔶 Optional | 🔶 Optional | 🔶 Optional | 🔶 Optional |
 | **1099 Forms** | ❌ N/A | ❌ N/A | ❌ N/A | ✅ Required | ❌ N/A |
 | **Accountant Letter** | ❌ N/A | ❌ N/A | ❌ N/A | ✅ Required | ❌ N/A |
 | **Business License** | ❌ N/A | ❌ N/A | ❌ N/A | ✅ Required | ✅ Required |

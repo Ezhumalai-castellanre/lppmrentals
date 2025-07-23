@@ -50,11 +50,6 @@ This document outlines all required and optional documents for each role in the 
    - Shows credit score and history
    - Format: PDF (up to 10MB)
 
-8. **Reference Letters**
-   - Personal or professional references
-   - Character and reliability references
-   - Format: PDF (up to 10MB each, multiple files allowed)
-
 ---
 
 ## 👥 **CO-APPLICANT** Documents
@@ -75,7 +70,6 @@ This document outlines all required and optional documents for each role in the 
 
 ### 📊 **Additional Financial** (Optional)
 7. **Credit Report**
-8. **Reference Letters**
 
 ---
 
