@@ -546,6 +546,8 @@ export function ApplicationForm() {
       });
       return;
     }
+
+    
     try {
       console.log("Submitting application:", { ...data, formData, signatures });
       console.log("Uploaded files metadata:", uploadedFilesMetadata);
