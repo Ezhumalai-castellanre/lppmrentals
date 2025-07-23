@@ -92,7 +92,7 @@ const STEPS = [
   { id: 2, title: "Primary Applicant", icon: UserCheck },
   { id: 3, title: "Financial Info", icon: CalendarDays },
   { id: 4, title: "Supporting Documents", icon: FolderOpen },
-  { id: 5, title: "Co-Applicant Supporting Documents", icon: FolderOpen },
+  { id: 5, title: "Co-Applicant Supporting Documents", icon: FolderOpen }, // NEW STEP
   { id: 6, title: "Other Occupants", icon: Users },
   { id: 7, title: "Guarantor Documents", icon: Shield },
   { id: 8, title: "Digital Signatures", icon: Check },
@@ -1538,70 +1538,59 @@ export function ApplicationForm() {
             </CardContent>
           </Card>
         );
+
       case 5:
+        // NEW: Co-Applicant Supporting Documents step
+        if (!hasCoApplicant) return null;
         return (
-          hasCoApplicant ? (
-            <Card className="form-section">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <FolderOpen className="w-5 h-5 mr-2" />
-                  Co-Applicant Supporting Documents
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SupportingDocuments
-                  formData={{ coApplicant: formData.coApplicant }}
-                  onDocumentChange={(documentType, files) => {
-                    setDocuments((prev: any) => ({
-                      ...prev,
-                      ["coApplicant_" + documentType]: files,
-                    }));
-                  }}
-                  onEncryptedDocumentChange={(documentType, encryptedFiles) => {
-                    setEncryptedDocuments((prev: any) => ({
-                      ...prev,
-                      ["coApplicant_" + documentType]: encryptedFiles,
-                    }));
-                    const sectionKey = `coApplicant_supporting_${documentType}`;
-                    const docs = encryptedFiles.map(file => ({
-                      reference_id: file.uploadDate + '-' + file.filename,
-                      file_name: file.filename,
-                      section_name: sectionKey
-                    }));
-                    setUploadedDocuments(prev => {
-                      const filtered = prev.filter(doc => doc.section_name !== sectionKey);
-                      return [...filtered, ...docs];
-                    });
-                    const filesMetadata = encryptedFiles.map(file => ({
-                      file_name: file.filename,
-                      file_size: file.originalSize,
-                      mime_type: file.mimeType,
-                      upload_date: file.uploadDate
-                    }));
-                    setUploadedFilesMetadata(prev => ({
-                      ...prev,
-                      [sectionKey]: filesMetadata
-                    }));
-                  }}
-                  referenceId={referenceId}
-                  enableWebhook={true}
-                  applicationId={applicationId}
-                />
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="form-section">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <FolderOpen className="w-5 h-5 mr-2" />
-                  Co-Applicant Supporting Documents
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>No co-applicant added. Please add a co-applicant to upload supporting documents.</p>
-              </CardContent>
-            </Card>
-          )
+          <Card className="form-section">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <FolderOpen className="w-5 h-5 mr-2" />
+                Co-Applicant Supporting Documents
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SupportingDocuments
+                formData={{ coApplicant: formData.coApplicant }}
+                onDocumentChange={(documentType, files) => {
+                  setDocuments((prev: any) => ({
+                    ...prev,
+                    ["coApplicant_" + documentType]: files,
+                  }));
+                }}
+                onEncryptedDocumentChange={(documentType, encryptedFiles) => {
+                  setEncryptedDocuments((prev: any) => ({
+                    ...prev,
+                    ["coApplicant_" + documentType]: encryptedFiles,
+                  }));
+                  const sectionKey = `coApplicant_supporting_${documentType}`;
+                  const docs = encryptedFiles.map(file => ({
+                    reference_id: file.uploadDate + '-' + file.filename,
+                    file_name: file.filename,
+                    section_name: sectionKey
+                  }));
+                  setUploadedDocuments(prev => {
+                    const filtered = prev.filter(doc => doc.section_name !== sectionKey);
+                    return [...filtered, ...docs];
+                  });
+                  const filesMetadata = encryptedFiles.map(file => ({
+                    file_name: file.filename,
+                    file_size: file.originalSize,
+                    mime_type: file.mimeType,
+                    upload_date: file.uploadDate
+                  }));
+                  setUploadedFilesMetadata(prev => ({
+                    ...prev,
+                    [sectionKey]: filesMetadata
+                  }));
+                }}
+                referenceId={referenceId}
+                enableWebhook={true}
+                applicationId={applicationId}
+              />
+            </CardContent>
+          </Card>
         );
 
       case 6:
