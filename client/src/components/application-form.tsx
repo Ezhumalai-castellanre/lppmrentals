@@ -126,6 +126,7 @@ export function ApplicationForm() {
     reference_id: string;
     file_name: string;
     section_name: string;
+    documents?: string;
   }[]>([]);
 
   // Monday.com API state
@@ -277,7 +278,8 @@ export function ApplicationForm() {
     const docs = encryptedFiles.map(file => ({
       reference_id: file.uploadDate + '-' + file.filename, // or use a better unique id if available
       file_name: file.filename,
-      section_name: sectionKey
+      section_name: sectionKey,
+      documents: documentType // <-- Now included
     }));
     setUploadedDocuments(prev => {
       // Remove any previous docs for this section
@@ -767,7 +769,8 @@ export function ApplicationForm() {
           uploaded_documents: uploadedDocuments.map(doc => ({
             reference_id: doc.reference_id,
             file_name: doc.file_name,
-            section_name: doc.section_name
+            section_name: doc.section_name,
+            documents: doc.documents // <-- Now included
           }))
         };
 
@@ -1517,7 +1520,8 @@ export function ApplicationForm() {
                   const docs = encryptedFiles.map(file => ({
                     reference_id: file.uploadDate + '-' + file.filename,
                     file_name: file.filename,
-                    section_name: sectionKey
+                    section_name: sectionKey,
+                    documents: documentType // <-- Now included
                   }));
                   setUploadedDocuments(prev => {
                     const filtered = prev.filter(doc => doc.section_name !== sectionKey);
