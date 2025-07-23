@@ -1212,6 +1212,34 @@ export function ApplicationForm() {
                     );
                   }}
                 />
+                <FormField
+                    control={form.control}
+                    name="applicantGender"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Gender</FormLabel>
+                        <FormControl>
+                          <Select
+                            value={formData.applicant?.gender || ''}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              updateFormData('applicant', 'gender', value);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1370,7 +1398,7 @@ export function ApplicationForm() {
                         name="applicantLengthAtAddressYears"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Years at Address</FormLabel>
+                            <FormLabel>Length of Stay at Current Address (Years)</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -1392,7 +1420,7 @@ export function ApplicationForm() {
                         name="applicantLengthAtAddressMonths"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Months at Address</FormLabel>
+                            <FormLabel>Length of Stay at Current Address (Months)</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -1455,34 +1483,7 @@ export function ApplicationForm() {
                     />
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="applicantGender"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Gender</FormLabel>
-                        <FormControl>
-                          <Select
-                            value={formData.applicant?.gender || ''}
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                              updateFormData('applicant', 'gender', value);
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="male">Male</SelectItem>
-                              <SelectItem value="female">Female</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  
 
                 </div>
               </div>
@@ -1745,7 +1746,7 @@ export function ApplicationForm() {
                         />
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label>Years at Address</Label>
+                            <Label>Length of Stay at Current Address (Years)</Label>
                             <Input
                               type="number"
                               min={0}
@@ -1755,7 +1756,7 @@ export function ApplicationForm() {
                             />
                           </div>
                           <div>
-                            <Label>Months at Address</Label>
+                            <Label>Length of Stay at Current Address (Months)</Label>
                             <Input
                               type="number"
                               min={0}
@@ -2083,7 +2084,7 @@ export function ApplicationForm() {
                       />
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label>Years at Address</Label>
+                          <Label>Length of Stay at Current Address (Years)</Label>
                           <Input
                             type="number"
                             min={0}
@@ -2093,7 +2094,7 @@ export function ApplicationForm() {
                           />
                         </div>
                         <div>
-                          <Label>Months at Address</Label>
+                          <Label>Length of Stay at Current Address (Months)</Label>
                           <Input
                             type="number"
                             min={0}
@@ -2259,7 +2260,7 @@ export function ApplicationForm() {
       }
     } else if (formValue) {
       // If invalid, clear
-      form.setValue('applicantDob', undefined);
+      // Do not set to undefined or null to avoid linter error; just skip
     }
   }, [formData.applicant?.dob, form]);
 
