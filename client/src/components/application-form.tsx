@@ -1290,19 +1290,13 @@ export function ApplicationForm() {
                   <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
                     License State
                   </label>
-                  <input
-                    type="text"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="State"
-                    value={formData.applicant?.licenseState || ''}
-                    onChange={e => {
-                      updateFormData('applicant', 'licenseState', e.target.value);
-                      form.setValue('applicantLicenseState', e.target.value);
-                    }}
+                  <StateSelector
+                    selectedState={formData.applicant?.licenseState || ''}
+                    onStateChange={(state) => updateFormData('applicant', 'licenseState', state)}
+                    label="Select state"
+                    required={false}
+                    className="w-full mt-1"
                   />
-                  {form.formState.errors.applicantLicenseState?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.applicantLicenseState.message}</span>
-                  )}
                 </div>
                 <div className="space-y-2"></div>
                 <div className="space-y-2">
@@ -1720,12 +1714,12 @@ export function ApplicationForm() {
                       <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
                         License State
                       </label>
-                      <input
-                        type="text"
-                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                        placeholder="State"
-                        value={formData.coApplicant?.licenseState || ''}
-                        onChange={e => updateFormData('coApplicant', 'licenseState', e.target.value)}
+                      <StateSelector
+                        selectedState={formData.coApplicant?.licenseState || ''}
+                        onStateChange={(state) => updateFormData('coApplicant', 'licenseState', state)}
+                        label="Select state"
+                        required={false}
+                        className="w-full mt-1"
                       />
                     </div>
                     <div className="space-y-2">
@@ -2180,14 +2174,16 @@ export function ApplicationForm() {
                         <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
                           License State
                         </label>
-                        <input
-                          type="text"
-                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                          placeholder="State"
-                          value={formData.guarantor?.licenseState || ''}
-                          onChange={e => updateFormData('guarantor', 'licenseState', e.target.value)}
+                        <StateSelector
+                          selectedState={formData.guarantor?.licenseState || ''}
+                          onStateChange={(state) => updateFormData('guarantor', 'licenseState', state)}
+                          label="Select state"
+                          required={false}
+                          className="w-full mt-1"
                         />
                       </div>
+                      <div className="space-y-2"></div>
+                      <div  className="space-y-2">
                       <div className="space-y-2">
                         <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
                           Street Address
@@ -2199,6 +2195,22 @@ export function ApplicationForm() {
                           value={formData.guarantor?.address || ''}
                           onChange={e => updateFormData('guarantor', 'address', e.target.value)}
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                          ZIP Code*
+                        </label>
+                        <input
+                          type="text"
+                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                          placeholder="ZIP code"
+                          value={formData.guarantor?.zip || ''}
+                          onChange={e => updateFormData('guarantor', 'zip', e.target.value)}
+                        />
+                        {formData.guarantor?.zip && !validateZIPCode(formData.guarantor.zip) && (
+                          <span className="text-red-500 text-xs">Please enter a valid ZIP code</span>
+                        )}
+                      </div>
                       </div>
                       <div className="space-y-2">
                         <StateCitySelector
@@ -2217,21 +2229,8 @@ export function ApplicationForm() {
                           className="mb-4"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          ZIP Code*
-                        </label>
-                        <input
-                          type="text"
-                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                          placeholder="ZIP code"
-                          value={formData.guarantor?.zip || ''}
-                          onChange={e => updateFormData('guarantor', 'zip', e.target.value)}
-                        />
-                        {formData.guarantor?.zip && !validateZIPCode(formData.guarantor.zip) && (
-                          <span className="text-red-500 text-xs">Please enter a valid ZIP code</span>
-                        )}
-                      </div>
+                  
+                      
                     </div>
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                       <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
