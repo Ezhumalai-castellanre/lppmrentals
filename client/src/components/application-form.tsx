@@ -1741,39 +1741,21 @@ export function ApplicationForm() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        State*
-                      </label>
-                      <input
-                        type="text"
-                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                        placeholder="State"
-                        value={formData.coApplicant?.state || ''}
-                        onChange={e => updateFormData('coApplicant', 'state', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        City*
-                      </label>
-                      <input
-                        type="text"
-                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                        placeholder="City"
-                        value={formData.coApplicant?.city || ''}
-                        onChange={e => updateFormData('coApplicant', 'city', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        ZIP Code*
-                      </label>
-                      <input
-                        type="text"
-                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                        placeholder="ZIP code"
-                        value={formData.coApplicant?.zip || ''}
-                        onChange={e => updateFormData('coApplicant', 'zip', e.target.value)}
+                      <StateCitySelector
+                        selectedState={formData.coApplicant?.state || ''}
+                        selectedCity={formData.coApplicant?.city || ''}
+                        onStateChange={(state) => {
+                          updateFormData('coApplicant', 'state', state);
+                          // Clear city if state changes
+                          updateFormData('coApplicant', 'city', '');
+                        }}
+                        onCityChange={(city) => {
+                          updateFormData('coApplicant', 'city', city);
+                        }}
+                        stateLabel="State*"
+                        cityLabel="City*"
+                        required={true}
+                        className="mb-4"
                       />
                     </div>
                   </div>
@@ -2205,39 +2187,21 @@ export function ApplicationForm() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          State*
-                        </label>
-                        <input
-                          type="text"
-                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                          placeholder="State"
-                          value={formData.guarantor?.state || ''}
-                          onChange={e => updateFormData('guarantor', 'state', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          City*
-                        </label>
-                        <input
-                          type="text"
-                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                          placeholder="City"
-                          value={formData.guarantor?.city || ''}
-                          onChange={e => updateFormData('guarantor', 'city', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          ZIP Code*
-                        </label>
-                        <input
-                          type="text"
-                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                          placeholder="ZIP code"
-                          value={formData.guarantor?.zip || ''}
-                          onChange={e => updateFormData('guarantor', 'zip', e.target.value)}
+                        <StateCitySelector
+                          selectedState={formData.guarantor?.state || ''}
+                          selectedCity={formData.guarantor?.city || ''}
+                          onStateChange={(state) => {
+                            updateFormData('guarantor', 'state', state);
+                            // Clear city if state changes
+                            updateFormData('guarantor', 'city', '');
+                          }}
+                          onCityChange={(city) => {
+                            updateFormData('guarantor', 'city', city);
+                          }}
+                          stateLabel="State*"
+                          cityLabel="City*"
+                          required={true}
+                          className="mb-4"
                         />
                       </div>
                     </div>
