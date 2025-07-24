@@ -34,6 +34,20 @@ export default function MissingDocumentsPage() {
   const [uploadingDocuments, setUploadingDocuments] = useState<{ [key: string]: boolean }>({});
   const [uploadedDocuments, setUploadedDocuments] = useState<{ [key: string]: boolean }>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'pending' | 'uploaded'>('pending');
+
+  // Split items by status
+  const uploadedItems = missingItems.filter(item => item.status === 'Received');
+  const pendingItems = missingItems.filter(item => item.status === 'Missing' || item.status === 'Rejected');
+
+  // Auto-switch to pending if any pending, otherwise uploaded
+  useEffect(() => {
+    if (pendingItems.length > 0) {
+      setActiveTab('pending');
+    } else if (uploadedItems.length > 0) {
+      setActiveTab('uploaded');
+    }
+  }, [pendingItems.length, uploadedItems.length]);
 
   // Parse applicant ID from URL query parameters and auto-load
   useEffect(() => {
@@ -341,256 +355,374 @@ export default function MissingDocumentsPage() {
         {/* Results */}
         {searched && !loading && (
           <div className="space-y-6">
-            {/* Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Document Status Summary</span>
-                  <div className="flex items-center gap-2">
-                    {missingItems.length > 0 && (
-                      <Badge variant="outline">
-                        {missingItems.length} missing document{missingItems.length !== 1 ? 's' : ''}
-                      </Badge>
-                    )}
-                    {Object.keys(uploadedDocuments).length > 0 && (
-                      <Badge variant="default" className="bg-green-500">
-                        {Object.keys(uploadedDocuments).length} uploaded
-                      </Badge>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fetchMissingSubitems(applicantId)}
-                      disabled={loading}
-                      className="flex items-center gap-2"
-                    >
-                      <Loader2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                      Refresh
-                    </Button>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {missingItems.length === 0 ? (
-                  <div className="text-center py-8">
-                    <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      All Documents Received!
-                    </h3>
-                    <p className="text-gray-600">
-                      No missing documents found for this applicant.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {missingItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="border rounded-lg bg-white overflow-hidden"
-                      >
-                        <div className="flex items-center justify-between p-4 border-b">
-                          <div className="flex items-center gap-3">
-                            {getStatusIcon(item.status)}
-                            <div>
-                              <h4 className="font-medium text-gray-900">
-                                {item.name}
-                              </h4>
-                              <p className="text-sm text-gray-500">
-                                Applicant: {item.parentItemName}
-                              </p>
+            {/* Tabs */}
+            <div className="flex gap-2 mb-4">
+              <button
+                className={`px-4 py-2 rounded-t font-medium border-b-2 ${activeTab === 'pending' ? 'border-blue-600 text-blue-700 bg-blue-50' : 'border-transparent text-gray-500 bg-gray-100'}`}
+                onClick={() => setActiveTab('pending')}
+                disabled={pendingItems.length === 0}
+              >
+                Pending ({pendingItems.length})
+              </button>
+              <button
+                className={`px-4 py-2 rounded-t font-medium border-b-2 ${activeTab === 'uploaded' ? 'border-green-600 text-green-700 bg-green-50' : 'border-transparent text-gray-500 bg-gray-100'}`}
+                onClick={() => setActiveTab('uploaded')}
+                disabled={uploadedItems.length === 0}
+              >
+                Uploaded ({uploadedItems.length})
+              </button>
+            </div>
+            {/* Tab Content */}
+            {activeTab === 'pending' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Pending Documents</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {pendingItems.length === 0 ? (
+                    <div className="text-center py-8">
+                      <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        No Pending Documents!
+                      </h3>
+                      <p className="text-gray-600">
+                        All documents have been uploaded and received.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {pendingItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="border rounded-lg bg-white overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between p-4 border-b">
+                            <div className="flex items-center gap-3">
+                              {getStatusIcon(item.status)}
+                              <div>
+                                <h4 className="font-medium text-gray-900">
+                                  {item.name}
+                                </h4>
+                                <p className="text-sm text-gray-500">
+                                  Applicant: {item.parentItemName}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {item.applicantType}
+                              </Badge>
+                              {uploadedDocuments[item.id] ? (
+                                <Badge variant="default" className="bg-green-500">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Uploaded
+                                </Badge>
+                              ) : (
+                                getStatusBadge(item.status)
+                              )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
-                              {item.applicantType}
-                            </Badge>
-                            {uploadedDocuments[item.id] ? (
-                              <Badge variant="default" className="bg-green-500">
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Uploaded
-                              </Badge>
+                          {/* Document Preview or Upload Section */}
+                          <div className="p-4 bg-gray-50">
+                            {item.status === 'Received' && (item.publicUrl || item.previewText) ? (
+                              <div className="flex flex-col gap-2">
+                                {item.previewText && (
+                                  <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
+                                    {item.previewText}
+                                  </div>
+                                )}
+                                {item.publicUrl && (
+                                  <div className="flex items-center gap-3">
+                                    <a
+                                      href={item.publicUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
+                                    >
+                                      <Link className="w-4 h-4" />
+                                      Preview
+                                    </a>
+                                    <a
+                                      href={item.publicUrl}
+                                      download
+                                      className="text-green-700 underline text-sm font-medium flex items-center gap-1"
+                                    >
+                                      <ArrowDownToLine className="w-4 h-4" />
+                                      Download
+                                    </a>
+                                    <span className="text-xs text-green-700">Document received and available for preview or download.</span>
+                                  </div>
+                                )}
+                                {/* Always show upload UI for Received as well */}
+                                <div className="mb-3 mt-2">
+                                  <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                    Upload Replacement Document
+                                  </h5>
+                                  <p className="text-xs text-gray-500 mb-3">
+                                    You may upload a replacement document if needed. Files will be encrypted and securely transmitted.
+                                  </p>
+                                </div>
+                                <FileUpload
+                                  onFileChange={(files) => {
+                                    // Only handle file change for non-encrypted uploads
+                                  }}
+                                  onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  multiple={false}
+                                  maxFiles={1}
+                                  maxSize={10}
+                                  label={`Upload ${item.name}`}
+                                  description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
+                                  className="mb-3"
+                                  enableEncryption={true}
+                                  referenceId={applicantId}
+                                  sectionName={`${item.applicantType}`}
+                                  documentName={item.name}
+                                  enableWebhook={true}
+                                  applicationId={applicantId}
+                                />
+                                {uploadingDocuments[item.id] && (
+                                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Uploading document...
+                                  </div>
+                                )}
+                                {uploadedDocuments[item.id] && (
+                                  <div className="flex items-center gap-2 text-sm text-green-600">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Document uploaded successfully!
+                                  </div>
+                                )}
+                              </div>
                             ) : (
-                              getStatusBadge(item.status)
+                              <>
+                                <div className="mb-3">
+                                  <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                    Upload {item.status === 'Rejected' ? 'Replacement' : 'Missing'} Document
+                                  </h5>
+                                  <p className="text-xs text-gray-500 mb-3">
+                                    {item.action === 'Upload Required'
+                                      ? 'Upload the required document to complete your application. Files will be encrypted and securely transmitted.'
+                                      : 'You may upload a replacement document if needed.'}
+                                  </p>
+                                </div>
+                                <FileUpload
+                                  onFileChange={(files) => {
+                                    // Only handle file change for non-encrypted uploads
+                                    // Encrypted uploads are handled by onEncryptedFilesChange
+                                  }}
+                                  onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  multiple={false}
+                                  maxFiles={1}
+                                  maxSize={10}
+                                  label={`Upload ${item.name}`}
+                                  description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
+                                  className="mb-3"
+                                  enableEncryption={true}
+                                  referenceId={applicantId}
+                                  sectionName={`${item.applicantType}`}
+                                  documentName={item.name}
+                                  enableWebhook={true}
+                                  applicationId={applicantId}
+                                />
+                                {uploadingDocuments[item.id] && (
+                                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Uploading document...
+                                  </div>
+                                )}
+                                {uploadedDocuments[item.id] && (
+                                  <div className="flex items-center gap-2 text-sm text-green-600">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Document uploaded successfully!
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
-                        {/* Document Preview or Upload Section */}
-                        <div className="p-4 bg-gray-50">
-                          {item.status === 'Received' && (item.publicUrl || item.previewText) ? (
-                            <div className="flex flex-col gap-2">
-                              {item.previewText && (
-                                <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
-                                  {item.previewText}
-                                </div>
-                              )}
-                              {item.publicUrl && (
-                                <div className="flex items-center gap-3">
-                                  <a
-                                    href={item.publicUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
-                                  >
-                                    <Link className="w-4 h-4" />
-                                    Preview
-                                  </a>
-                                  <a
-                                    href={item.publicUrl}
-                                    download
-                                    className="text-green-700 underline text-sm font-medium flex items-center gap-1"
-                                  >
-                                    <ArrowDownToLine className="w-4 h-4" />
-                                    Download
-                                  </a>
-                                  <span className="text-xs text-green-700">Document received and available for preview or download.</span>
-                                </div>
-                              )}
-                              {/* Always show upload UI for Received as well */}
-                              <div className="mb-3 mt-2">
-                                <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                  Upload Replacement Document
-                                </h5>
-                                <p className="text-xs text-gray-500 mb-3">
-                                  You may upload a replacement document if needed. Files will be encrypted and securely transmitted.
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+            {activeTab === 'uploaded' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Uploaded Documents</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {uploadedItems.length === 0 ? (
+                    <div className="text-center py-8">
+                      <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        No Uploaded Documents
+                      </h3>
+                      <p className="text-gray-600">
+                        No documents have been received yet.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {uploadedItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="border rounded-lg bg-white overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between p-4 border-b">
+                            <div className="flex items-center gap-3">
+                              {getStatusIcon(item.status)}
+                              <div>
+                                <h4 className="font-medium text-gray-900">
+                                  {item.name}
+                                </h4>
+                                <p className="text-sm text-gray-500">
+                                  Applicant: {item.parentItemName}
                                 </p>
                               </div>
-                              <FileUpload
-                                onFileChange={(files) => {
-                                  // Only handle file change for non-encrypted uploads
-                                }}
-                                onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
-                                accept=".pdf,.jpg,.jpeg,.png"
-                                multiple={false}
-                                maxFiles={1}
-                                maxSize={10}
-                                label={`Upload ${item.name}`}
-                                description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
-                                className="mb-3"
-                                enableEncryption={true}
-                                referenceId={applicantId}
-                                sectionName={`${item.applicantType}`}
-                                documentName={item.name}
-                                enableWebhook={true}
-                                applicationId={applicantId}
-                              />
-                              {uploadingDocuments[item.id] && (
-                                <div className="flex items-center gap-2 text-sm text-blue-600">
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Uploading document...
-                                </div>
-                              )}
-                              {uploadedDocuments[item.id] && (
-                                <div className="flex items-center gap-2 text-sm text-green-600">
-                                  <CheckCircle className="w-4 h-4" />
-                                  Document uploaded successfully!
-                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {item.applicantType}
+                              </Badge>
+                              {uploadedDocuments[item.id] ? (
+                                <Badge variant="default" className="bg-green-500">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Uploaded
+                                </Badge>
+                              ) : (
+                                getStatusBadge(item.status)
                               )}
                             </div>
-                          ) : (
-                            <>
-                              <div className="mb-3">
-                                <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                  Upload {item.status === 'Rejected' ? 'Replacement' : 'Missing'} Document
-                                </h5>
-                                <p className="text-xs text-gray-500 mb-3">
-                                  {item.action === 'Upload Required'
-                                    ? 'Upload the required document to complete your application. Files will be encrypted and securely transmitted.'
-                                    : 'You may upload a replacement document if needed.'}
-                                </p>
+                          </div>
+                          {/* Document Preview or Upload Section */}
+                          <div className="p-4 bg-gray-50">
+                            {item.status === 'Received' && (item.publicUrl || item.previewText) ? (
+                              <div className="flex flex-col gap-2">
+                                {item.previewText && (
+                                  <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
+                                    {item.previewText}
+                                  </div>
+                                )}
+                                {item.publicUrl && (
+                                  <div className="flex items-center gap-3">
+                                    <a
+                                      href={item.publicUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
+                                    >
+                                      <Link className="w-4 h-4" />
+                                      Preview
+                                    </a>
+                                    <a
+                                      href={item.publicUrl}
+                                      download
+                                      className="text-green-700 underline text-sm font-medium flex items-center gap-1"
+                                    >
+                                      <ArrowDownToLine className="w-4 h-4" />
+                                      Download
+                                    </a>
+                                    <span className="text-xs text-green-700">Document received and available for preview or download.</span>
+                                  </div>
+                                )}
+                                {/* Always show upload UI for Received as well */}
+                                <div className="mb-3 mt-2">
+                                  <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                    Upload Replacement Document
+                                  </h5>
+                                  <p className="text-xs text-gray-500 mb-3">
+                                    You may upload a replacement document if needed. Files will be encrypted and securely transmitted.
+                                  </p>
+                                </div>
+                                <FileUpload
+                                  onFileChange={(files) => {
+                                    // Only handle file change for non-encrypted uploads
+                                  }}
+                                  onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  multiple={false}
+                                  maxFiles={1}
+                                  maxSize={10}
+                                  label={`Upload ${item.name}`}
+                                  description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
+                                  className="mb-3"
+                                  enableEncryption={true}
+                                  referenceId={applicantId}
+                                  sectionName={`${item.applicantType}`}
+                                  documentName={item.name}
+                                  enableWebhook={true}
+                                  applicationId={applicantId}
+                                />
+                                {uploadingDocuments[item.id] && (
+                                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Uploading document...
+                                  </div>
+                                )}
+                                {uploadedDocuments[item.id] && (
+                                  <div className="flex items-center gap-2 text-sm text-green-600">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Document uploaded successfully!
+                                  </div>
+                                )}
                               </div>
-                              <FileUpload
-                                onFileChange={(files) => {
-                                  // Only handle file change for non-encrypted uploads
-                                  // Encrypted uploads are handled by onEncryptedFilesChange
-                                }}
-                                onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
-                                accept=".pdf,.jpg,.jpeg,.png"
-                                multiple={false}
-                                maxFiles={1}
-                                maxSize={10}
-                                label={`Upload ${item.name}`}
-                                description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
-                                className="mb-3"
-                                enableEncryption={true}
-                                referenceId={applicantId}
-                                sectionName={`${item.applicantType}`}
-                                documentName={item.name}
-                                enableWebhook={true}
-                                applicationId={applicantId}
-                              />
-                              {uploadingDocuments[item.id] && (
-                                <div className="flex items-center gap-2 text-sm text-blue-600">
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Uploading document...
+                            ) : (
+                              <>
+                                <div className="mb-3">
+                                  <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                    Upload {item.status === 'Rejected' ? 'Replacement' : 'Missing'} Document
+                                  </h5>
+                                  <p className="text-xs text-gray-500 mb-3">
+                                    {item.action === 'Upload Required'
+                                      ? 'Upload the required document to complete your application. Files will be encrypted and securely transmitted.'
+                                      : 'You may upload a replacement document if needed.'}
+                                  </p>
                                 </div>
-                              )}
-                              {uploadedDocuments[item.id] && (
-                                <div className="flex items-center gap-2 text-sm text-green-600">
-                                  <CheckCircle className="w-4 h-4" />
-                                  Document uploaded successfully!
-                                </div>
-                              )}
-                            </>
-                          )}
+                                <FileUpload
+                                  onFileChange={(files) => {
+                                    // Only handle file change for non-encrypted uploads
+                                    // Encrypted uploads are handled by onEncryptedFilesChange
+                                  }}
+                                  onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  multiple={false}
+                                  maxFiles={1}
+                                  maxSize={10}
+                                  label={`Upload ${item.name}`}
+                                  description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
+                                  className="mb-3"
+                                  enableEncryption={true}
+                                  referenceId={applicantId}
+                                  sectionName={`${item.applicantType}`}
+                                  documentName={item.name}
+                                  enableWebhook={true}
+                                  applicationId={applicantId}
+                                />
+                                {uploadingDocuments[item.id] && (
+                                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Uploading document...
+                                  </div>
+                                )}
+                                {uploadedDocuments[item.id] && (
+                                  <div className="flex items-center gap-2 text-sm text-green-600">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Document uploaded successfully!
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-                         {/* Applicant Information - Hidden */}
-                         {/* {missingItems.length > 0 && (
-                           <Card>
-                             <CardHeader>
-                               <CardTitle>Applicant Information</CardTitle>
-                             </CardHeader>
-                             <CardContent>
-                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                 <div>
-                                   <Label className="text-sm font-medium text-gray-500">
-                                     Applicant Name
-                                   </Label>
-                                   <p className="text-gray-900">
-                                     {missingItems[0]?.parentItemName || 'N/A'}
-                                   </p>
-                                 </div>
-                                 <div>
-                                   <Label className="text-sm font-medium text-gray-500">
-                                     Applicant ID
-                                   </Label>
-                                   <p className="text-gray-900 font-mono text-sm">
-                                     {applicantId}
-                                   </p>
-                                 </div>
-                                 <div>
-                                   <Label className="text-sm font-medium text-gray-500">
-                                     Total Missing Documents
-                                   </Label>
-                                   <p className="text-gray-900 font-semibold">
-                                     {missingItems.length}
-                                   </p>
-                                 </div>
-                                 <div>
-                                   <Label className="text-sm font-medium text-gray-500">
-                                     Document Types
-                                   </Label>
-                                   <div className="space-y-1">
-                                     {Array.from(new Set(missingItems.map(item => item.applicantType))).map(type => {
-                                       const count = missingItems.filter(item => item.applicantType === type).length;
-                                       return (
-                                         <p key={type} className="text-gray-900 text-sm">
-                                           {type}: {count} document{count !== 1 ? 's' : ''}
-                                         </p>
-                                       );
-                                     })}
-                                   </div>
-                                 </div>
-                               </div>
-                             </CardContent>
-                           </Card>
-                         )} */}
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
       </div>
