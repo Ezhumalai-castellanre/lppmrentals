@@ -18,6 +18,8 @@ interface MissingSubitem {
   parentItemId: string;
   parentItemName: string;
   applicantType: string;
+  publicUrl?: string;
+  action?: string;
 }
 
 export default function MissingDocumentsPage() {
@@ -411,52 +413,66 @@ export default function MissingDocumentsPage() {
                             )}
                           </div>
                         </div>
-                        
-                        {/* Upload Section */}
+                        {/* Document Preview or Upload Section */}
                         <div className="p-4 bg-gray-50">
-                          <div className="mb-3">
-                            <h5 className="text-sm font-medium text-gray-700 mb-2">
-                              Upload Missing Document
-                            </h5>
-                            <p className="text-xs text-gray-500 mb-3">
-                              Upload the required document to complete your application. 
-                              Files will be encrypted and securely transmitted.
-                            </p>
-                          </div>
-                          
-                          <FileUpload
-                            onFileChange={(files) => {
-                              // Only handle file change for non-encrypted uploads
-                              // Encrypted uploads are handled by onEncryptedFilesChange
-                            }}
-                            onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            multiple={false}
-                            maxFiles={1}
-                            maxSize={10}
-                            label={`Upload ${item.name}`}
-                            description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
-                            className="mb-3"
-                            enableEncryption={true}
-                            referenceId={applicantId}
-                            sectionName={`${item.applicantType}`}
-                            documentName={item.name}
-                            enableWebhook={true}
-                            applicationId={applicantId}
-                          />
-                          
-                          {uploadingDocuments[item.id] && (
-                            <div className="flex items-center gap-2 text-sm text-blue-600">
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Uploading document...
+                          {item.status === 'Received' && item.publicUrl ? (
+                            <div className="flex items-center gap-3">
+                              <a
+                                href={item.publicUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
+                              >
+                                <Link className="w-4 h-4" />
+                                Preview Document
+                              </a>
+                              <span className="text-xs text-green-700">Document received and available for preview.</span>
                             </div>
-                          )}
-                          
-                          {uploadedDocuments[item.id] && (
-                            <div className="flex items-center gap-2 text-sm text-green-600">
-                              <CheckCircle className="w-4 h-4" />
-                              Document uploaded successfully!
-                            </div>
+                          ) : (
+                            <>
+                              <div className="mb-3">
+                                <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                  Upload {item.status === 'Rejected' ? 'Replacement' : 'Missing'} Document
+                                </h5>
+                                <p className="text-xs text-gray-500 mb-3">
+                                  {item.action === 'Upload Required'
+                                    ? 'Upload the required document to complete your application. Files will be encrypted and securely transmitted.'
+                                    : 'You may upload a replacement document if needed.'}
+                                </p>
+                              </div>
+                              <FileUpload
+                                onFileChange={(files) => {
+                                  // Only handle file change for non-encrypted uploads
+                                  // Encrypted uploads are handled by onEncryptedFilesChange
+                                }}
+                                onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                multiple={false}
+                                maxFiles={1}
+                                maxSize={10}
+                                label={`Upload ${item.name}`}
+                                description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
+                                className="mb-3"
+                                enableEncryption={true}
+                                referenceId={applicantId}
+                                sectionName={`${item.applicantType}`}
+                                documentName={item.name}
+                                enableWebhook={true}
+                                applicationId={applicantId}
+                              />
+                              {uploadingDocuments[item.id] && (
+                                <div className="flex items-center gap-2 text-sm text-blue-600">
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Uploading document...
+                                </div>
+                              )}
+                              {uploadedDocuments[item.id] && (
+                                <div className="flex items-center gap-2 text-sm text-green-600">
+                                  <CheckCircle className="w-4 h-4" />
+                                  Document uploaded successfully!
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>

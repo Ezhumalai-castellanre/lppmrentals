@@ -70,7 +70,7 @@ export const handler = async (event, context) => {
               subitems {
                 id
                 name
-                column_values(ids: ["status", "color_mksyqx5h"]) {
+                column_values {
                   id
                   text
                   ... on StatusValue {
@@ -150,20 +150,21 @@ export const handler = async (event, context) => {
 
       for (const sub of subitems) {
         const statusValue = sub.column_values.find(cv => cv.id === "status");
-        const status = statusValue?.label || statusValue?.text;
+        const status = statusValue?.label || statusValue?.text || "Unknown";
         const applicantType = sub.column_values.find(cv => cv.id === "color_mksyqx5h")?.text || "Unknown";
-        
-        console.log(`  📋 Subitem: ${sub.name} - Status: ${status} - Applicant Type: ${applicantType}`);
-        
-        if (status === "Missing") {
-          console.log(`  ❌ ADDED MISSING: ${sub.name}`);
+        const publicUrl = sub.column_values.find(cv => cv.id === "link_mkt3nz03")?.text || null;
+
+        console.log(`  📋 Subitem: ${sub.name} - Status: ${status} - Applicant Type: ${applicantType} - Public URL: ${publicUrl}`);
+
+        if (["Received", "Missing", "Rejected"].includes(status)) {
           results.push({
             id: sub.id,
             name: sub.name,
             status,
             parentItemId,
             parentItemName,
-            applicantType
+            applicantType,
+            ...(status === "Received" && publicUrl ? { publicUrl } : { action: "Upload Required" })
           });
         }
       }
