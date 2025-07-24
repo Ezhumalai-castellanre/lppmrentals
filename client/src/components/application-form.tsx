@@ -432,83 +432,58 @@ export function ApplicationForm() {
     });
   };
 
-  const nextStep = () => {
-    if (currentStep < STEPS.length - 1) {
-      setCurrentStep(currentStep + 1);
+  // --- Add this helper to get the next allowed step index ---
+  function getNextAllowedStep(current: number, direction: 1 | -1) {
+    let next = current + direction;
+    // If moving forward and co-applicant is not checked, skip co-applicant docs
+    if (direction === 1 && next === 6 && !hasCoApplicant) {
+      next = 7;
     }
+    // If moving backward and co-applicant is not checked, skip co-applicant docs
+    if (direction === -1 && next === 6 && !hasCoApplicant) {
+      next = 5;
+    }
+    // If moving forward and guarantor is not checked, skip guarantor docs
+    if (direction === 1 && next === 9 && !hasGuarantor) {
+      next = 10;
+    }
+    // If moving backward and guarantor is not checked, skip guarantor docs
+    if (direction === -1 && next === 9 && !hasGuarantor) {
+      next = 8;
+    }
+    return Math.max(0, Math.min(STEPS.length - 1, next));
+  }
+
+  // --- Update nextStep and prevStep to use the helper ---
+  const nextStep = () => {
+    setCurrentStep((prev) => getNextAllowedStep(prev, 1));
   };
 
   const prevStep = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
+    setCurrentStep((prev) => getNextAllowedStep(prev, -1));
   };
 
+  // --- Update goToStep to block manual access to co-applicant/guarantor docs if not allowed ---
   const goToStep = (step: number) => {
-    setCurrentStep(step);
-  };
-
-  const uploadEncryptedFiles = async (encryptedFiles: EncryptedFile[], personType: string) => {
-    try {
-      console.log(`Starting upload of ${encryptedFiles.length} files for ${personType}...`);
-      
-      // Create FormData
-      const formData = new FormData();
-      formData.append('personType', personType);
-      formData.append('applicationId', Date.now().toString());
-      
-      // Add each file to FormData
-      encryptedFiles.forEach((file, index) => {
-        formData.append(`files[${index}][filename]`, file.filename);
-        formData.append(`files[${index}][encryptedData]`, file.encryptedData);
-        formData.append(`files[${index}][originalSize]`, file.originalSize.toString());
-        formData.append(`files[${index}][mimeType]`, file.mimeType);
-        formData.append(`files[${index}][uploadDate]`, file.uploadDate);
+    // Step 6 is Co-Applicant Documents
+    if (step === 6 && !hasCoApplicant) {
+      toast({
+        title: 'Co-Applicant Documents Unavailable',
+        description: 'Please check "Add Co-Applicant" to upload documents.',
+        variant: 'warning',
       });
-      
-      // Create AbortController for timeout handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      const response = await fetch('/api/upload-files', {
-        method: 'POST',
-        body: formData, // Use FormData instead of JSON
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Upload response error:', response.status, response.statusText);
-        console.error('Error response body:', errorText);
-        
-        // Handle specific error cases
-        if (response.status === 413) {
-          throw new Error('Files are too large. Please reduce file sizes and try again.');
-        } else if (response.status === 504) {
-          throw new Error('Upload timed out. Please try again with smaller files or fewer files at once.');
-        } else {
-          throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
-        }
-      }
-
-      const result = await response.json();
-      console.log(`Files uploaded successfully for ${personType}:`, result);
-      
-
-      
-      return result;
-    } catch (error) {
-      console.error(`Failed to upload files for ${personType}:`, error);
-      
-      // Handle timeout errors specifically
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Upload timed out. Please try again with smaller files or fewer files at once.');
-      }
-      
-      throw error;
+      return;
     }
+    // Step 9 is Guarantor Documents
+    if (step === 9 && !hasGuarantor) {
+      toast({
+        title: 'Guarantor Documents Unavailable',
+        description: 'Please check "Add Guarantor" to upload documents.',
+        variant: 'warning',
+      });
+      return;
+    }
+    setCurrentStep(step);
   };
 
   const onSubmit = async (data: ApplicationFormData) => {
