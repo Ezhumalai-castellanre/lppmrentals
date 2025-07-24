@@ -63,7 +63,7 @@ export const ApplicationInstructions: React.FC<ApplicationInstructionsProps> = (
       </div>
       <ol className="list-decimal pl-5 space-y-1">
         <li>Letter on company letterhead From current employerincluding length of employment, salary & position</li>
-        <li>Last 4 paystubs (If paid weekly) - or - Last 2 paystubs (if paid evry weeks or semi-monthly)</li>
+        <li>Last 4 paystubs (If paid weekly) - or - Last 2 paystubs (if paid every weeks or semi-monthly)</li>
       </ol>
       
       <div className="font-bold">

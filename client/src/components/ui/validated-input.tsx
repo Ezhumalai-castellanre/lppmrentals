@@ -177,11 +177,13 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
   };
 
   return (
-    <div className={`space-y-2 ${className}`}>
-      <Label className="text-sm font-medium">
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </Label>
+    <>
+      {label && (
+        <Label className="text-sm font-medium">
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </Label>
+      )}
       <Input
         type={getInputType()}
         value={getDisplayValue()}
@@ -189,14 +191,14 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
         onBlur={handleBlur}
         placeholder={getPlaceholder()}
         disabled={disabled}
-        className={`${isValid === false ? 'border-red-500 focus:border-red-500' : ''}`}
+        className={`${isValid === false ? 'border-red-500 focus:border-red-500' : ''} ${className}`}
       />
       {(error || validationMessage) && (
         <FormMessage className="text-red-500 text-sm">
           {error || validationMessage}
         </FormMessage>
       )}
-    </div>
+    </>
   );
 };
 

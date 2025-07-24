@@ -1600,7 +1600,7 @@ export function ApplicationForm() {
                     <div>
                       <Label>Date of Birth *</Label>
                       <DatePicker
-                        value={formData.coApplicant?.dob || undefined}
+                        value={toValidDate(formData.coApplicant?.dob)}
                         onChange={(date) => {
                           updateFormData('coApplicant', 'dob', date);
                           // Auto-calculate age for co-applicant
@@ -1686,57 +1686,126 @@ export function ApplicationForm() {
                   {!sameAddressCoApplicant && (
                     <div className="space-y-4">
                       <h4 className="text-lg font-medium text-gray-900 dark:text-white">Current Address</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="md:col-span-2">
-                          <Label>Street Address *</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <div className="col-span-1 md:col-span-2">
+                          <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-0.5">Street Address *</Label>
                           <Input 
                             placeholder="Enter street address"
-                            className="input-field"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm mt-1"
+                            value={formData.coApplicant?.address || ''}
                             onChange={(e) => updateFormData('coApplicant', 'address', e.target.value)}
                           />
                         </div>
-                        <CitySelector
-                          selectedState={formData.coApplicant?.state || ''}
-                          selectedCity={formData.coApplicant?.city || ''}
-                          onCityChange={(city) => updateFormData('coApplicant', 'city', city)}
-                          label="City *"
-                          required={true}
-                        />
-                        <StateSelector
-                          selectedState={formData.coApplicant?.state || ''}
-                          onStateChange={(state) => updateFormData('coApplicant', 'state', state)}
-                          label="State *"
-                          required={true}
-                        />
-                        <ZIPInput
-                          name="coApplicantZip"
-                          label="ZIP Code *"
-                          value={formData.coApplicant?.zip || ''}
-                          onChange={(value) => updateFormData('coApplicant', 'zip', value)}
-                          required={true}
-                        />
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Years at Address</Label>
+                        <div>
+                          <CitySelector
+                            selectedState={formData.coApplicant?.state || ''}
+                            selectedCity={formData.coApplicant?.city || ''}
+                            onCityChange={(city) => updateFormData('coApplicant', 'city', city)}
+                            label="City *"
+                            required={true}
+                            className="w-full mt-1"
+                          />
+                        </div>
+                        <div>
+                          <StateSelector
+                            selectedState={formData.coApplicant?.state || ''}
+                            onStateChange={(state) => updateFormData('coApplicant', 'state', state)}
+                            label="State *"
+                            required={true}
+                            className="w-full mt-1"
+                          />
+                        </div>
+                        <div>
+                          <ZIPInput
+                            name="coApplicantZip"
+                            label="ZIP Code *"
+                            value={formData.coApplicant?.zip || ''}
+                            onChange={(value) => updateFormData('coApplicant', 'zip', value)}
+                            required={true}
+                            className="w-full mt-1"
+                          />
+                        </div>
+                        <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
+                          <Label className="mb-0.5 col-span-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Length of Stay at Current Address</Label>
+                          <div className="space-y-2 w-full mt-1">
                             <Input
                               type="number"
                               min={0}
                               value={formData.coApplicant?.lengthAtAddressYears ?? ''}
                               onChange={(e) => updateFormData('coApplicant', 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
-                              className="input-field"
+                              placeholder="e.g. 2"
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                             />
                           </div>
-                          <div>
-                            <Label>Months at Address</Label>
+                          <div className="space-y-2 w-full mt-1">
                             <Input
                               type="number"
                               min={0}
                               max={11}
                               value={formData.coApplicant?.lengthAtAddressMonths ?? ''}
                               onChange={(e) => updateFormData('coApplicant', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
-                              className="input-field"
+                              placeholder="e.g. 6"
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                             />
                           </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 col-span-2">
+                          <div className="space-y-2 w-full">
+                            <Label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                              Driver's License Number
+                            </Label>
+                            <LicenseInput
+                              name="coApplicantLicense"
+                              label=""
+                              value={formData.coApplicant?.license || ''}
+                              onChange={(value) => updateFormData('coApplicant', 'license', value)}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                              placeholder="License number"
+                            />
+                          </div>
+                          <div className="space-y-2 w-full">
+                            <Label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                              License State
+                            </Label>
+                            <StateSelector
+                              selectedState={formData.coApplicant?.licenseState || ''}
+                              onStateChange={(state) => updateFormData('coApplicant', 'licenseState', state)}
+                              label=""
+                              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
+                            />
+                          </div>
+                        </div>
+                        <div className="col-span-1 md:col-span-2 space-y-2 w-full mt-1">
+                          <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-0.5">Current Landlord's Name</Label>
+                          <Input
+                            placeholder="Enter landlord's name"
+                            value={formData.coApplicant?.landlordName || ''}
+                            onChange={(e) => updateFormData('coApplicant', 'landlordName', e.target.value)}
+                            className="flex h-10 rounded-md border px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm input-field w-full mt-1 border-gray-300 bg-white"
+                          />
+                        </div>
+                        <div className="space-y-2 w-full mt-1">
+                          <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-0.5" htmlFor="coApplicantCurrentRent">Monthly Rent</Label>
+                          <Input
+                            id="coApplicantCurrentRent"
+                            type="number"
+                            placeholder="0.00"
+                            value={formData.coApplicant?.currentRent?.toString() || ''}
+                            onChange={(e) => {
+                              const numValue = parseFloat(e.target.value) || 0;
+                              updateFormData('coApplicant', 'currentRent', numValue);
+                            }}
+                            className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm input-field w-full mt-1"
+                          />
+                        </div>
+                        <div className="col-span-1 md:col-span-2 space-y-2 w-full mt-1">
+                          <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-0.5">Why Are You Moving</Label>
+                          <Textarea
+                            placeholder="Please explain your reason for moving"
+                            value={formData.coApplicant?.reasonForMoving || ''}
+                            onChange={(e) => updateFormData('coApplicant', 'reasonForMoving', e.target.value)}
+                            className="flex rounded-md border px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
+                          />
                         </div>
                       </div>
                     </div>
@@ -1755,6 +1824,9 @@ export function ApplicationForm() {
         );
 
       case 6:
+        // Wrapper functions for SupportingDocuments to match expected signature
+        const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicant', documentType, files);
+        const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicant', documentType, encryptedFiles);
         return (
           hasCoApplicant ? (
             <Card className="form-section border-l-4 border-l-green-500">
@@ -1765,14 +1837,14 @@ export function ApplicationForm() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <DocumentSection 
-                  title="Co-Applicant Documents"
-                  person="coApplicant"
-                  onDocumentChange={handleDocumentChange}
-                  onEncryptedDocumentChange={handleEncryptedDocumentChange}
+                <SupportingDocuments
+                  formData={formData}
+                  onDocumentChange={coApplicantDocumentChange}
+                  onEncryptedDocumentChange={coApplicantEncryptedDocumentChange}
                   referenceId={referenceId}
                   enableWebhook={true}
                   applicationId={applicationId}
+                  showOnlyCoApplicant={true}
                 />
               </CardContent>
             </Card>
