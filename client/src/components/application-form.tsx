@@ -1150,14 +1150,14 @@ export function ApplicationForm() {
                   control={form.control}
                   name="applicantDob"
                   render={({ field }) => {
-                    const dateVal = toValidDate(field.value);
+                    const dateVal = toValidDate(formData.applicant?.dob);
+                    const safeDate = (dateVal instanceof Date && !isNaN(dateVal.getTime())) ? dateVal : undefined;
                     return (
                       <FormItem>
                         <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
                         <FormControl>
                           <DatePicker
-                            key={`applicantDob-${dateVal ? dateVal.getTime() : 'empty'}`}
-                            value={dateVal !== undefined ? dateVal : undefined}
+                            value={safeDate as Date | undefined}
                             onChange={(date) => {
                               field.onChange(date);
                               updateFormData('applicant', 'dob', date);
@@ -1174,7 +1174,6 @@ export function ApplicationForm() {
                               } else {
                                 updateFormData('applicant', 'age', '');
                               }
-                              form.trigger('applicantDob');
                             }}
                             placeholder="Select date of birth"
                             disabled={(date) => date > new Date()}
