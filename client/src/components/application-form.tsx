@@ -1239,65 +1239,98 @@ export function ApplicationForm() {
                     </FormItem>
                   )}
                 />
-                <SSNInput
-                  name="applicantSsn"
-                  label="Social Security Number"
-                  value={formData.applicant?.ssn || ''}
-                  onChange={(value) => {
-                    updateFormData('applicant', 'ssn', value);
-                    form.setValue('applicantSsn', value);
-                  }}
-                  error={form.formState.errors.applicantSsn?.message}
-                  className="w-full mt-1"
-                />
-                <PhoneInput
-                  name="applicantPhone"
-                  label="Phone Number"
-                  value={formData.applicant?.phone || ''}
-                  onChange={(value) => {
-                    updateFormData('applicant', 'phone', value);
-                    form.setValue('applicantPhone', value);
-                  }}
-                  error={form.formState.errors.applicantPhone?.message}
-                  className="w-full mt-1"
-                />
-                <EmailInput
-                  name="applicantEmail"
-                  label="Email Address"
-                  value={formData.applicant?.email || ''}
-                  onChange={(value) => {
-                    updateFormData('applicant', 'email', value);
-                    form.setValue('applicantEmail', value);
-                  }}
-                  error={form.formState.errors.applicantEmail?.message}
-                  required={true}
-                  className="w-full mt-1"
-                />
-                <LicenseInput
-                  name="applicantLicense"
-                  label="Driver's License Number"
-                  value={formData.applicant?.license || ''}
-                  onChange={(value) => {
-                    updateFormData('applicant', 'license', value);
-                    form.setValue('applicantLicense', value);
-                  }}
-                  error={form.formState.errors.applicantLicense?.message}
-                  className="w-full mt-1"
-                />
-                <StateSelector
-                  selectedState={formData.applicant?.licenseState || ''}
-                  onStateChange={(state) => {
-                    updateFormData('applicant', 'licenseState', state);
-                    form.setValue('applicantLicenseState', state);
-                  }}
-                  label="License State"
-                  error={form.formState.errors.applicantLicenseState?.message}
-                  className="w-full mt-1"
-                />
-              </div>
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                <div className="col-span-1 md:col-span-2">
-                  <FormField
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    Social Security Number
+                  </label>
+                  <input
+                    type="text"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="XXX-XX-XXXX"
+                    value={formData.applicant?.ssn || ''}
+                    onChange={e => {
+                      updateFormData('applicant', 'ssn', e.target.value);
+                      form.setValue('applicantSsn', e.target.value);
+                    }}
+                  />
+                  {form.formState.errors.applicantSsn?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.applicantSsn.message}</span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="(555) 555-5555"
+                    value={formData.applicant?.phone || ''}
+                    onChange={e => {
+                      updateFormData('applicant', 'phone', e.target.value);
+                      form.setValue('applicantPhone', e.target.value);
+                    }}
+                  />
+                  {form.formState.errors.applicantPhone?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.applicantPhone.message}</span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="you@email.com"
+                    value={formData.applicant?.email || ''}
+                    onChange={e => {
+                      updateFormData('applicant', 'email', e.target.value);
+                      form.setValue('applicantEmail', e.target.value);
+                    }}
+                    required
+                  />
+                  {form.formState.errors.applicantEmail?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.applicantEmail.message}</span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    Driver's License Number
+                  </label>
+                  <input
+                    type="text"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="Enter license number"
+                    value={formData.applicant?.license || ''}
+                    onChange={e => {
+                      updateFormData('applicant', 'license', e.target.value);
+                      form.setValue('applicantLicense', e.target.value);
+                    }}
+                  />
+                  {form.formState.errors.applicantLicense?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.applicantLicense.message}</span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    License State
+                  </label>
+                  <input
+                    type="text"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="State"
+                    value={formData.applicant?.licenseState || ''}
+                    onChange={e => {
+                      updateFormData('applicant', 'licenseState', e.target.value);
+                      form.setValue('applicantLicenseState', e.target.value);
+                    }}
+                  />
+                  {form.formState.errors.applicantLicenseState?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.applicantLicenseState.message}</span>
+                  )}
+                </div>
+                <FormField
                     control={form.control}
                     name="applicantAddress"
                     render={({ field }) => (
@@ -1318,42 +1351,64 @@ export function ApplicationForm() {
                       </FormItem>
                     )}
                   />
-                <StateSelector
-                  selectedState={formData.applicant?.state || ''}
-                  onStateChange={(state) => {
-                    updateFormData('applicant', 'state', state);
-                    form.setValue('applicantState', state);
-                  }}
-                  label="State"
-                  required={true}
-                  error={form.formState.errors.applicantState?.message}
-                  className="w-full mt-1"
-                />
-                <CitySelector
-                  selectedState={formData.applicant?.state || ''}
-                  selectedCity={formData.applicant?.city || ''}
-                  onCityChange={(city) => {
-                    updateFormData('applicant', 'city', city);
-                    form.setValue('applicantCity', city);
-                  }}
-                  label="City"
-                  required={true}
-                  error={form.formState.errors.applicantCity?.message}
-                  className="w-full mt-1"
-                />
-             
-                <ZIPInput
-                  name="applicantZip"
-                  label="ZIP Code"
-                  value={formData.applicant?.zip || ''}
-                  onChange={(value) => {
-                    updateFormData('applicant', 'zip', value);
-                    form.setValue('applicantZip', value);
-                  }}
-                  error={form.formState.errors.applicantZip?.message}
-                  required={true}
-                  className="w-full mt-1"
-                />
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    State*
+                  </label>
+                  <input
+                    type="text"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="State"
+                    value={formData.applicant?.state || ''}
+                    onChange={e => {
+                      updateFormData('applicant', 'state', e.target.value);
+                      form.setValue('applicantState', e.target.value);
+                    }}
+                  />
+                  {form.formState.errors.applicantState?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.applicantState.message}</span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    City*
+                  </label>
+                  <input
+                    type="text"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="City"
+                    value={formData.applicant?.city || ''}
+                    onChange={e => {
+                      updateFormData('applicant', 'city', e.target.value);
+                      form.setValue('applicantCity', e.target.value);
+                    }}
+                  />
+                  {form.formState.errors.applicantCity?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.applicantCity.message}</span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    ZIP Code*
+                  </label>
+                  <input
+                    type="text"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="ZIP code"
+                    value={formData.applicant?.zip || ''}
+                    onChange={e => {
+                      updateFormData('applicant', 'zip', e.target.value);
+                      form.setValue('applicantZip', e.target.value);
+                    }}
+                  />
+                  {form.formState.errors.applicantZip?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.applicantZip.message}</span>
+                  )}
+                </div>
+              </div>
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div className="col-span-1 md:col-span-2">
+                  
                    </div>
                 <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
                   <FormLabel className="mb-0.5 col-span-2">Length of Stay at Current Address</FormLabel>
@@ -1372,7 +1427,7 @@ export function ApplicationForm() {
                               field.onChange(val);
                               updateFormData('applicant', 'lengthAtAddressYears', val);
                             }}
-                            placeholder="e.g. 2"
+                            placeholder="e.g. 2 years"
                             className="w-full mt-1"
                           />
                         </FormControl>
@@ -1396,7 +1451,7 @@ export function ApplicationForm() {
                               field.onChange(val);
                               updateFormData('applicant', 'lengthAtAddressMonths', val);
                             }}
-                            placeholder="e.g. 6"
+                            placeholder="e.g. 4 months"
                             className="w-full mt-1"
                           />
                         </FormControl>
@@ -1698,6 +1753,9 @@ export function ApplicationForm() {
                             value={formData.coApplicant?.address || ''}
                             onChange={(e) => updateFormData('coApplicant', 'address', e.target.value)}
                           />
+                          {form.formState.errors.coApplicantAddress?.message && (
+                            <span className="text-red-500 text-xs">{form.formState.errors.coApplicantAddress.message}</span>
+                          )}
                         </div>
                         <div>
                           <CitySelector
@@ -1727,6 +1785,9 @@ export function ApplicationForm() {
                             required={true}
                             className="w-full mt-1"
                           />
+                          {form.formState.errors.coApplicantZip?.message && (
+                            <span className="text-red-500 text-xs">{form.formState.errors.coApplicantZip.message}</span>
+                          )}
                         </div>
                         <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
                           <Label className="mb-0.5 col-span-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Length of Stay at Current Address</Label>
@@ -1747,7 +1808,7 @@ export function ApplicationForm() {
                               max={11}
                               value={formData.coApplicant?.lengthAtAddressMonths ?? ''}
                               onChange={(e) => updateFormData('coApplicant', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
-                              placeholder="e.g. 6"
+                              placeholder="e.g. 4"
                               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                             />
                           </div>
@@ -2235,7 +2296,7 @@ export function ApplicationForm() {
                             max={11}
                             value={formData.guarantor?.lengthAtAddressMonths ?? ''}
                             onChange={(e) => updateFormData('guarantor', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
-                                placeholder="e.g. 6"
+                                placeholder="e.g. 4"
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                           />
                         </div>
