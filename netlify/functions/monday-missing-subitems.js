@@ -70,7 +70,7 @@ export const handler = async (event, context) => {
               subitems {
                 id
                 name
-                column_values {
+                column_values(ids: ["status", "color_mksyqx5h", "link_mkt3nz03"]) {
                   id
                   text
                   ... on StatusValue {
