@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Search, ArrowLeft, AlertTriangle, CheckCircle, Clock, Share2, Link, X, Upload } from 'lucide-react';
+import { Loader2, Search, ArrowLeft, AlertTriangle, CheckCircle, Clock, Share2, Link, X, Upload, ArrowDownToLine } from 'lucide-react';
 import { FileUpload } from '@/components/ui/file-upload';
 import { encryptFiles, validateFileForEncryption, type EncryptedFile } from '@/lib/file-encryption';
 import { WebhookService } from '@/lib/webhook-service';
@@ -433,6 +433,15 @@ export default function MissingDocumentsPage() {
                                   >
                                     <Link className="w-4 h-4" />
                                     Preview Document
+                                  </a>
+                                  <a
+                                    href={item.publicUrl}
+                                    download
+                                    className="text-green-700 underline text-xs font-medium flex items-center gap-1"
+                                    title="Download Document"
+                                  >
+                                    <ArrowDownToLine className="w-4 h-4" />
+                                    Download
                                   </a>
                                   <span className="text-xs text-green-700">Document received and available for preview.</span>
                                 </div>
