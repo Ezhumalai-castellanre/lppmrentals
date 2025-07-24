@@ -92,9 +92,11 @@ const STEPS = [
   { id: 2, title: "Primary Applicant", icon: UserCheck },
   { id: 3, title: "Financial Info", icon: CalendarDays },
   { id: 4, title: "Supporting Documents", icon: FolderOpen },
-  { id: 5, title: "Other Occupants", icon: Users },
-  { id: 6, title: "Guarantor Documents", icon: Shield },
-  { id: 7, title: "Digital Signatures", icon: Check },
+  { id: 5, title: "Co-Applicant", icon: Users },
+  { id: 6, title: "Co-Applicant Documents", icon: FolderOpen },
+  { id: 7, title: "Other Occupants", icon: Users },
+  { id: 8, title: "Guarantor Documents", icon: Shield },
+  { id: 9, title: "Digital Signatures", icon: Check },
 ];
 
 // 1. Add phone formatting helper
@@ -1039,11 +1041,7 @@ export function ApplicationForm() {
                           {...field}
                           className="input-field"
                           value={formData.application?.monthlyRent?.toString() || ''}
-                          onChange={(e) => {
-                            const numValue = parseFloat(e.target.value) || 0;
-                            field.onChange(numValue);
-                            updateFormData('application', 'monthlyRent', numValue);
-                          }}
+                          disabled
                         />
                       </FormControl>
                       <FormMessage />
@@ -1371,7 +1369,7 @@ export function ApplicationForm() {
                               field.onChange(val);
                               updateFormData('applicant', 'lengthAtAddressYears', val);
                             }}
-                            placeholder="Years"
+                            placeholder="e.g. 2"
                             className="w-full mt-1"
                           />
                         </FormControl>
@@ -1395,7 +1393,7 @@ export function ApplicationForm() {
                               field.onChange(val);
                               updateFormData('applicant', 'lengthAtAddressMonths', val);
                             }}
-                            placeholder="Months"
+                            placeholder="e.g. 6"
                             className="w-full mt-1"
                           />
                         </FormControl>
@@ -1559,8 +1557,6 @@ export function ApplicationForm() {
                     Add Co-Applicant
                   </Label>
                 </div>
-
-
               </CardContent>
             </Card>
 
@@ -1752,164 +1748,6 @@ export function ApplicationForm() {
                     formData={formData}
                     updateFormData={updateFormData}
                   />
-
-                  <DocumentSection 
-                    title="Co-Applicant Documents"
-                    person="coApplicant"
-                    onDocumentChange={handleDocumentChange}
-                    onEncryptedDocumentChange={handleEncryptedDocumentChange}
-                    referenceId={referenceId}
-                    enableWebhook={true}
-                    applicationId={applicationId}
-                  />
-                </CardContent>
-              </Card>
-            )}
-
-            {hasCoApplicant && (
-              <Card className="form-section border-l-4 border-l-blue-500">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-blue-700 dark:text-blue-400">
-                    <Users className="w-5 h-5 mr-2" />
-                    Other Occupants (Not Applicants)
-                  </CardTitle>
-                  <div className="text-sm text-muted-foreground mt-2">
-                    List any other people who will be living in the apartment
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-8">
-                  {(formData.occupants || []).map((occupant: any, idx: number) => (
-                    <div key={idx} className="border rounded-lg p-4 mb-4 bg-gray-50 relative">
-                      <div className="font-semibold mb-2">Occupant {idx + 1}</div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-                        <div>
-                          <Label>Name</Label>
-                          <Input
-                            placeholder="Full name"
-                            value={occupant.name || ''}
-                            onChange={e => {
-                              const updated = [...formData.occupants];
-                              updated[idx] = { ...updated[idx], name: e.target.value };
-                              setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label>Relationship</Label>
-                          <Input
-                            placeholder="Relationship"
-                            value={occupant.relationship || ''}
-                            onChange={e => {
-                              const updated = [...formData.occupants];
-                              updated[idx] = { ...updated[idx], relationship: e.target.value };
-                              setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label>Date of Birth</Label>
-                          <DatePicker
-                            value={occupant.dob || undefined}
-                            onChange={date => {
-                              const updated = [...formData.occupants];
-                              updated[idx] = { ...updated[idx], dob: date };
-                              // Auto-calculate age
-                              if (date) {
-                                const today = new Date();
-                                const birthDate = new Date(date);
-                                let age = today.getFullYear() - birthDate.getFullYear();
-                                const monthDiff = today.getMonth() - birthDate.getMonth();
-                                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                                  age--;
-                                }
-                                updated[idx].age = age;
-                              } else {
-                                updated[idx].age = '';
-                              }
-                              setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                            }}
-                            placeholder="dd-mm-yyyy"
-                            disabled={date => date > new Date()}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-                        <div>
-                         
-                          <SSNInput
-                            name={`occupantSsn${idx}`}
-                            label="Social Security #"
-                            value={occupant.ssn || ''}
-                            onChange={value => {
-                              const updated = [...formData.occupants];
-                              updated[idx] = { ...updated[idx], ssn: value };
-                              setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label>Driver's License #</Label>
-                          <Input
-                            placeholder="License number"
-                            value={occupant.license || ''}
-                            onChange={e => {
-                              const updated = [...formData.occupants];
-                              updated[idx] = { ...updated[idx], license: e.target.value };
-                              setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                            }}
-                          />
-                        </div>
-                       
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-                        <div>
-                          <Label>Gender</Label>
-                          <Select
-                            value={occupant.gender || ''}
-                            onValueChange={value => {
-                              const updated = [...formData.occupants];
-                              updated[idx] = { ...updated[idx], gender: value };
-                              setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="male">Male</SelectItem>
-                              <SelectItem value="female">Female</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-end">
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={() => {
-                              const updated = [...formData.occupants];
-                              updated.splice(idx, 1);
-                              setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                            }}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setFormData((prev: any) => ({
-                        ...prev,
-                        occupants: [...(prev.occupants || []), { name: '', relationship: '', dob: '', ssn: '', license: '', age: '', gender: '' }]
-                      }));
-                    }}
-                  >
-                    Add Another Occupant
-                  </Button>
                 </CardContent>
               </Card>
             )}
@@ -1917,6 +1755,180 @@ export function ApplicationForm() {
         );
 
       case 6:
+        return (
+          hasCoApplicant ? (
+            <Card className="form-section border-l-4 border-l-green-500">
+              <CardHeader>
+                <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                  <FolderOpen className="w-5 h-5 mr-2" />
+                  Co-Applicant Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DocumentSection 
+                  title="Co-Applicant Documents"
+                  person="coApplicant"
+                  onDocumentChange={handleDocumentChange}
+                  onEncryptedDocumentChange={handleEncryptedDocumentChange}
+                  referenceId={referenceId}
+                  enableWebhook={true}
+                  applicationId={applicationId}
+                />
+              </CardContent>
+            </Card>
+          ) : null
+        );
+
+      case 7:
+        return (
+          hasCoApplicant ? (
+            <Card className="form-section border-l-4 border-l-blue-500">
+              <CardHeader>
+                <CardTitle className="flex items-center text-blue-700 dark:text-blue-400">
+                  <Users className="w-5 h-5 mr-2" />
+                  Other Occupants (Not Applicants)
+                </CardTitle>
+                <div className="text-sm text-muted-foreground mt-2">
+                  List any other people who will be living in the apartment
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                {(formData.occupants || []).map((occupant: any, idx: number) => (
+                  <div key={idx} className="border rounded-lg p-4 mb-4 bg-gray-50 relative">
+                    <div className="font-semibold mb-2">Occupant {idx + 1}</div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                      <div>
+                        <Label>Name</Label>
+                        <Input
+                          placeholder="Full name"
+                          value={occupant.name || ''}
+                          onChange={e => {
+                            const updated = [...formData.occupants];
+                            updated[idx] = { ...updated[idx], name: e.target.value };
+                            setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <Label>Relationship</Label>
+                        <Input
+                          placeholder="Relationship"
+                          value={occupant.relationship || ''}
+                          onChange={e => {
+                            const updated = [...formData.occupants];
+                            updated[idx] = { ...updated[idx], relationship: e.target.value };
+                            setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <Label>Date of Birth</Label>
+                        <DatePicker
+                          value={occupant.dob || undefined}
+                          onChange={date => {
+                            const updated = [...formData.occupants];
+                            updated[idx] = { ...updated[idx], dob: date };
+                            // Auto-calculate age
+                            if (date) {
+                              const today = new Date();
+                              const birthDate = new Date(date);
+                              let age = today.getFullYear() - birthDate.getFullYear();
+                              const monthDiff = today.getMonth() - birthDate.getMonth();
+                              if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                                age--;
+                              }
+                              updated[idx].age = age;
+                            } else {
+                              updated[idx].age = '';
+                            }
+                            setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                          }}
+                          placeholder="dd-mm-yyyy"
+                          disabled={date => date > new Date()}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                      <div>
+                        <SSNInput
+                          name={`occupantSsn${idx}`}
+                          label="Social Security #"
+                          value={occupant.ssn || ''}
+                          onChange={value => {
+                            const updated = [...formData.occupants];
+                            updated[idx] = { ...updated[idx], ssn: value };
+                            setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <Label>Driver's License #</Label>
+                        <Input
+                          placeholder="License number"
+                          value={occupant.license || ''}
+                          onChange={e => {
+                            const updated = [...formData.occupants];
+                            updated[idx] = { ...updated[idx], license: e.target.value };
+                            setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                      <div>
+                        <Label>Gender</Label>
+                        <Select
+                          value={occupant.gender || ''}
+                          onValueChange={value => {
+                            const updated = [...formData.occupants];
+                            updated[idx] = { ...updated[idx], gender: value };
+                            setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-end">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          onClick={() => {
+                            const updated = [...formData.occupants];
+                            updated.splice(idx, 1);
+                            setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setFormData((prev: any) => ({
+                      ...prev,
+                      occupants: [...(prev.occupants || []), { name: '', relationship: '', dob: '', ssn: '', license: '', age: '', gender: '' }]
+                    }));
+                  }}
+                >
+                  Add Another Occupant
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null
+        );
+
+      case 8:
         return (
           <div className="space-y-6">
             {/* Guarantor Information Section */}
@@ -2146,7 +2158,7 @@ export function ApplicationForm() {
           </div>
         );
 
-      case 7:
+      case 9:
         return (
           <div className="space-y-8">
             <Card className="form-section">
