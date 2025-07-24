@@ -33,6 +33,7 @@ export default function MissingDocumentsPage() {
   const [uploadingDocuments, setUploadingDocuments] = useState<{ [key: string]: boolean }>({});
   const [uploadedDocuments, setUploadedDocuments] = useState<{ [key: string]: boolean }>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showReplace, setShowReplace] = useState<{ [key: string]: boolean }>({});
 
   // Parse applicant ID from URL query parameters and auto-load
   useEffect(() => {
@@ -348,7 +349,7 @@ export default function MissingDocumentsPage() {
                   <div className="flex items-center gap-2">
                     {missingItems.length > 0 && (
                       <Badge variant="outline">
-                        {missingItems.length} documents
+                        {missingItems.length} missing document{missingItems.length !== 1 ? 's' : ''}
                       </Badge>
                     )}
                     {Object.keys(uploadedDocuments).length > 0 && (
@@ -413,36 +414,41 @@ export default function MissingDocumentsPage() {
                             )}
                           </div>
                         </div>
-                        {/* Document Preview and Upload Section */}
-                        <div className="p-4 bg-gray-50 space-y-3">
-                          {item.status === 'Received' && item.publicUrl && (
-                            <div className="flex items-center gap-3">
-                              <a
-                                href={item.publicUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
+                        {/* Document Preview or Upload Section */}
+                        <div className="p-4 bg-gray-50">
+                          {item.status === 'Received' && item.publicUrl && !showReplace[item.id] ? (
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-3">
+                                <a
+                                  href={item.publicUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
+                                >
+                                  <Link className="w-4 h-4" />
+                                  Preview Document
+                                </a>
+                                <span className="text-xs text-green-700">Document received and available for preview.</span>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-fit mt-2"
+                                onClick={() => setShowReplace(prev => ({ ...prev, [item.id]: true }))}
                               >
-                                <Link className="w-4 h-4" />
-                                Preview Document
-                              </a>
-                              <span className="text-xs text-green-700">Document received and available for preview.</span>
+                                Replace Document
+                              </Button>
                             </div>
-                          )}
-                          {(item.status === 'Received' || item.status === 'Missing' || item.status === 'Rejected') && (
+                          ) : (
                             <>
                               <div className="mb-3">
                                 <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                  {item.status === 'Received'
-                                    ? 'Replace Document'
-                                    : item.status === 'Rejected'
-                                    ? 'Upload Replacement Document'
-                                    : 'Upload Missing Document'}
+                                  Upload {item.status === 'Rejected' ? 'Replacement' : 'Missing'} Document
                                 </h5>
                                 <p className="text-xs text-gray-500 mb-3">
-                                  {item.status === 'Received'
-                                    ? 'You may upload a new file to replace the currently received document. Files will be encrypted and securely transmitted.'
-                                    : 'Upload the required document to complete your application. Files will be encrypted and securely transmitted.'}
+                                  {item.action === 'Upload Required'
+                                    ? 'Upload the required document to complete your application. Files will be encrypted and securely transmitted.'
+                                    : 'You may upload a replacement document if needed.'}
                                 </p>
                               </div>
                               <FileUpload
@@ -450,7 +456,13 @@ export default function MissingDocumentsPage() {
                                   // Only handle file change for non-encrypted uploads
                                   // Encrypted uploads are handled by onEncryptedFilesChange
                                 }}
-                                onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
+                                onEncryptedFilesChange={(encryptedFiles) => {
+                                  handleEncryptedDocumentChange(item.id, encryptedFiles);
+                                  // After upload, revert to preview mode for Received
+                                  if (item.status === 'Received') {
+                                    setShowReplace(prev => ({ ...prev, [item.id]: false }));
+                                  }
+                                }}
                                 accept=".pdf,.jpg,.jpeg,.png"
                                 multiple={false}
                                 maxFiles={1}
