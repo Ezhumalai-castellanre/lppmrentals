@@ -1318,7 +1318,17 @@ export function ApplicationForm() {
                       </FormItem>
                     )}
                   />
-                </div>
+                <StateSelector
+                  selectedState={formData.applicant?.state || ''}
+                  onStateChange={(state) => {
+                    updateFormData('applicant', 'state', state);
+                    form.setValue('applicantState', state);
+                  }}
+                  label="State"
+                  required={true}
+                  error={form.formState.errors.applicantState?.message}
+                  className="w-full mt-1"
+                />
                 <CitySelector
                   selectedState={formData.applicant?.state || ''}
                   selectedCity={formData.applicant?.city || ''}
@@ -1331,17 +1341,7 @@ export function ApplicationForm() {
                   error={form.formState.errors.applicantCity?.message}
                   className="w-full mt-1"
                 />
-                <StateSelector
-                  selectedState={formData.applicant?.state || ''}
-                  onStateChange={(state) => {
-                    updateFormData('applicant', 'state', state);
-                    form.setValue('applicantState', state);
-                  }}
-                  label="State"
-                  required={true}
-                  error={form.formState.errors.applicantState?.message}
-                  className="w-full mt-1"
-                />
+             
                 <ZIPInput
                   name="applicantZip"
                   label="ZIP Code"
@@ -1354,6 +1354,7 @@ export function ApplicationForm() {
                   required={true}
                   className="w-full mt-1"
                 />
+                   </div>
                 <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
                   <FormLabel className="mb-0.5 col-span-2">Length of Stay at Current Address</FormLabel>
                   <FormField
@@ -2036,14 +2037,14 @@ export function ApplicationForm() {
         return (
           <div className="space-y-6">
             {/* Guarantor Section with Checkbox */}
-            <Card className="form-section border-l-4 border-l-purple-500">
-              <CardHeader>
-                <CardTitle className="flex items-center text-purple-700 dark:text-purple-400">
-                  <UserCheck className="w-5 h-5 mr-2" />
+              <Card className="form-section border-l-4 border-l-purple-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-purple-700 dark:text-purple-400">
+                    <UserCheck className="w-5 h-5 mr-2" />
                   Guarantor
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
                 <div className="flex items-center space-x-3 mb-4">
                   <Checkbox 
                     id="hasGuarantor"
@@ -2060,102 +2061,102 @@ export function ApplicationForm() {
                 {hasGuarantor && (
                   <>
                     {/* Guarantor Information Section - mirror Co-Applicant */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Full Name *</Label>
-                        <Input 
-                          placeholder="Enter full name"
-                          className="input-field"
-                          value={formData.guarantor?.name || ''}
-                          onChange={(e) => updateFormData('guarantor', 'name', e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label>Relationship to Applicant(s) *</Label>
-                        <Select value={formData.guarantor?.relationship || ''} onValueChange={(value) => updateFormData('guarantor', 'relationship', value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select relationship" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="parent">Parent</SelectItem>
-                            <SelectItem value="family">Family Member</SelectItem>
-                            <SelectItem value="friend">Friend</SelectItem>
-                            <SelectItem value="employer">Employer</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <Label>Date of Birth *</Label>
-                        <DatePicker
-                          value={formData.guarantor?.dob || undefined}
-                          onChange={(date) => {
-                            updateFormData('guarantor', 'dob', date);
-                            // Auto-calculate age for guarantor
-                            if (date) {
-                              const today = new Date();
-                              const birthDate = new Date(date);
-                              let age = today.getFullYear() - birthDate.getFullYear();
-                              const monthDiff = today.getMonth() - birthDate.getMonth();
-                              if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                                age--;
-                              }
-                              updateFormData('guarantor', 'age', age);
-                            }
-                          }}
-                          placeholder="Select date of birth"
-                          disabled={(date) => date > new Date()}
-                        />
-                      </div>
-                      <div>
-                        <SSNInput
-                          name="guarantorSsn"
-                          label="Social Security Number *"
-                          value={formData.guarantor?.ssn || ''}
-                          onChange={(value) => updateFormData('guarantor', 'ssn', value)}
-                          required={true}
-                        />
-                      </div>
-                      <div>
-                        <PhoneInput
-                          name="guarantorPhone"
-                          label="Phone Number *"
-                          value={formData.guarantor?.phone || ''}
-                          onChange={(value) => updateFormData('guarantor', 'phone', value)}
-                          required={true}
-                        />
-                      </div>
-                      {/* Age field hidden from frontend, still auto-calculated in state */}
-                      <div>
-                        <Label>Gender</Label>
-                        <Select
-                          value={formData.guarantor?.gender || ''}
-                          onValueChange={(value) => updateFormData('guarantor', 'gender', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <EmailInput
-                        name="guarantorEmail"
-                        label="Email Address *"
-                        value={formData.guarantor?.email || ''}
-                        onChange={(value) => updateFormData('guarantor', 'email', value)}
+                        <Label>Full Name *</Label>
+                      <Input 
+                        placeholder="Enter full name"
+                        className="input-field"
+                          value={formData.guarantor?.name || ''}
+                        onChange={(e) => updateFormData('guarantor', 'name', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label>Relationship to Applicant(s) *</Label>
+                        <Select value={formData.guarantor?.relationship || ''} onValueChange={(value) => updateFormData('guarantor', 'relationship', value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select relationship" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="parent">Parent</SelectItem>
+                          <SelectItem value="family">Family Member</SelectItem>
+                          <SelectItem value="friend">Friend</SelectItem>
+                          <SelectItem value="employer">Employer</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label>Date of Birth *</Label>
+                      <DatePicker
+                        value={formData.guarantor?.dob || undefined}
+                        onChange={(date) => {
+                          updateFormData('guarantor', 'dob', date);
+                          // Auto-calculate age for guarantor
+                          if (date) {
+                            const today = new Date();
+                            const birthDate = new Date(date);
+                            let age = today.getFullYear() - birthDate.getFullYear();
+                            const monthDiff = today.getMonth() - birthDate.getMonth();
+                            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                              age--;
+                            }
+                            updateFormData('guarantor', 'age', age);
+                          }
+                        }}
+                        placeholder="Select date of birth"
+                        disabled={(date) => date > new Date()}
+                      />
+                    </div>
+                    <div>
+                      <SSNInput
+                        name="guarantorSsn"
+                        label="Social Security Number *"
+                        value={formData.guarantor?.ssn || ''}
+                        onChange={(value) => updateFormData('guarantor', 'ssn', value)}
                         required={true}
                       />
                     </div>
+                    <div>
+                      <PhoneInput
+                        name="guarantorPhone"
+                        label="Phone Number *"
+                        value={formData.guarantor?.phone || ''}
+                        onChange={(value) => updateFormData('guarantor', 'phone', value)}
+                        required={true}
+                      />
+                    </div>
+                    {/* Age field hidden from frontend, still auto-calculated in state */}
+                    <div>
+                      <Label>Gender</Label>
+                      <Select
+                        value={formData.guarantor?.gender || ''}
+                        onValueChange={(value) => updateFormData('guarantor', 'gender', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <EmailInput
+                      name="guarantorEmail"
+                      label="Email Address *"
+                      value={formData.guarantor?.email || ''}
+                      onChange={(value) => updateFormData('guarantor', 'email', value)}
+                      required={true}
+                    />
+                  </div>
 
                     <div className="flex items-center space-x-3">
                       <Checkbox 
@@ -2174,71 +2175,71 @@ export function ApplicationForm() {
                     </div>
 
                     {!sameAddressGuarantor && (
-                      <div className="space-y-4">
+                  <div className="space-y-4">
                         <h4 className="text-lg font-medium text-gray-900 dark:text-white">Current Address</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                           <div className="col-span-1 md:col-span-2">
                             <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-0.5">Street Address *</Label>
-                            <Input 
-                              placeholder="Enter street address"
+                        <Input 
+                          placeholder="Enter street address"
                               className="input-field w-full mt-1"
                               value={formData.guarantor?.address || ''}
-                              onChange={(e) => updateFormData('guarantor', 'address', e.target.value)}
-                            />
+                          onChange={(e) => updateFormData('guarantor', 'address', e.target.value)}
+                        />
+                      </div>
+                          <div>
+                      <CitySelector
+                        selectedState={formData.guarantor?.state || ''}
+                        selectedCity={formData.guarantor?.city || ''}
+                        onCityChange={(city) => updateFormData('guarantor', 'city', city)}
+                        label="City *"
+                        required={true}
+                              className="w-full mt-1"
+                      />
                           </div>
                           <div>
-                            <CitySelector
-                              selectedState={formData.guarantor?.state || ''}
-                              selectedCity={formData.guarantor?.city || ''}
-                              onCityChange={(city) => updateFormData('guarantor', 'city', city)}
-                              label="City *"
-                              required={true}
+                      <StateSelector
+                        selectedState={formData.guarantor?.state || ''}
+                        onStateChange={(state) => updateFormData('guarantor', 'state', state)}
+                        label="State *"
+                        required={true}
                               className="w-full mt-1"
-                            />
+                      />
                           </div>
                           <div>
-                            <StateSelector
-                              selectedState={formData.guarantor?.state || ''}
-                              onStateChange={(state) => updateFormData('guarantor', 'state', state)}
-                              label="State *"
-                              required={true}
+                      <ZIPInput
+                        name="guarantorZip"
+                        label="ZIP Code *"
+                        value={formData.guarantor?.zip || ''}
+                        onChange={(value) => updateFormData('guarantor', 'zip', value)}
+                        required={true}
                               className="w-full mt-1"
-                            />
-                          </div>
-                          <div>
-                            <ZIPInput
-                              name="guarantorZip"
-                              label="ZIP Code *"
-                              value={formData.guarantor?.zip || ''}
-                              onChange={(value) => updateFormData('guarantor', 'zip', value)}
-                              required={true}
-                              className="w-full mt-1"
-                            />
+                      />
                           </div>
                           <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
                             <Label className="mb-0.5 col-span-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Length of Stay at Current Address</Label>
                             <div className="space-y-2 w-full mt-1">
-                              <Input
-                                type="number"
-                                min={0}
-                                value={formData.guarantor?.lengthAtAddressYears ?? ''}
-                                onChange={(e) => updateFormData('guarantor', 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
+                          <Input
+                            type="number"
+                            min={0}
+                            value={formData.guarantor?.lengthAtAddressYears ?? ''}
+                            onChange={(e) => updateFormData('guarantor', 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
                                 placeholder="e.g. 2"
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                              />
-                            </div>
+                          />
+                        </div>
                             <div className="space-y-2 w-full mt-1">
-                              <Input
-                                type="number"
-                                min={0}
-                                max={11}
-                                value={formData.guarantor?.lengthAtAddressMonths ?? ''}
-                                onChange={(e) => updateFormData('guarantor', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
+                          <Input
+                            type="number"
+                            min={0}
+                            max={11}
+                            value={formData.guarantor?.lengthAtAddressMonths ?? ''}
+                            onChange={(e) => updateFormData('guarantor', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
                                 placeholder="e.g. 6"
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                              />
-                            </div>
-                          </div>
+                          />
+                        </div>
+                      </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 col-span-2">
                             <div className="space-y-2 w-full">
                               <Label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
@@ -2252,7 +2253,7 @@ export function ApplicationForm() {
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                                 placeholder="License number"
                               />
-                            </div>
+                    </div>
                             <div className="space-y-2 w-full">
                               <Label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
                                 License State
@@ -2263,7 +2264,7 @@ export function ApplicationForm() {
                                 label=""
                                 className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
                               />
-                            </div>
+                  </div>
                           </div>
                           <div className="col-span-1 md:col-span-2 space-y-2 w-full mt-1">
                             <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-0.5">Current Landlord's Name</Label>
@@ -2301,42 +2302,42 @@ export function ApplicationForm() {
                       </div>
                     )}
 
-                    <FinancialSection 
-                      title="Guarantor Financial Information"
-                      person="guarantor"
-                      formData={formData}
-                      updateFormData={updateFormData}
-                    />
+                  <FinancialSection 
+                    title="Guarantor Financial Information"
+                    person="guarantor"
+                    formData={formData}
+                    updateFormData={updateFormData}
+                  />
                   </>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Card>
+                  </div>
         );
 
       case 9:
         // Guarantor Documents Step
         return (
           hasGuarantor ? (
-            <Card className="form-section border-l-4 border-l-purple-500">
-              <CardHeader>
-                <CardTitle className="flex items-center text-purple-700 dark:text-purple-400">
-                  <Shield className="w-5 h-5 mr-2" />
-                  Guarantor Documents
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+              <Card className="form-section border-l-4 border-l-purple-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-purple-700 dark:text-purple-400">
+                    <Shield className="w-5 h-5 mr-2" />
+                    Guarantor Documents
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
                 <SupportingDocuments
                   formData={formData}
                   onDocumentChange={(documentType, files) => handleDocumentChange('guarantor', documentType, files)}
                   onEncryptedDocumentChange={(documentType, encryptedFiles) => handleEncryptedDocumentChange('guarantor', documentType, encryptedFiles)}
-                  referenceId={referenceId}
-                  enableWebhook={true}
-                  applicationId={applicationId}
+                    referenceId={referenceId}
+                    enableWebhook={true}
+                    applicationId={applicationId}
                   showOnlyGuarantor={true}
-                />
-              </CardContent>
-            </Card>
+                  />
+                </CardContent>
+              </Card>
           ) : null
         );
 
