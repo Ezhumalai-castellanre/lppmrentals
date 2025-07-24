@@ -348,7 +348,7 @@ export default function MissingDocumentsPage() {
                   <div className="flex items-center gap-2">
                     {missingItems.length > 0 && (
                       <Badge variant="outline">
-                        {missingItems.length} document{missingItems.length !== 1 ? 's' : ''}
+                        {missingItems.length} documents
                       </Badge>
                     )}
                     {Object.keys(uploadedDocuments).length > 0 && (
@@ -424,7 +424,7 @@ export default function MissingDocumentsPage() {
                                 className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
                               >
                                 <Link className="w-4 h-4" />
-                                Preview
+                                Preview Document
                               </a>
                               <span className="text-xs text-green-700">Document received and available for preview.</span>
                             </div>
