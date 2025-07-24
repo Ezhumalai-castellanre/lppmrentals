@@ -19,6 +19,7 @@ interface MissingSubitem {
   parentItemName: string;
   applicantType: string;
   publicUrl?: string;
+  previewText?: string;
   action?: string;
 }
 
@@ -415,18 +416,27 @@ export default function MissingDocumentsPage() {
                         </div>
                         {/* Document Preview or Upload Section */}
                         <div className="p-4 bg-gray-50">
-                          {item.status === 'Received' && item.publicUrl ? (
-                            <div className="flex items-center gap-3">
-                              <a
-                                href={item.publicUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
-                              >
-                                <Link className="w-4 h-4" />
-                                Preview Document
-                              </a>
-                              <span className="text-xs text-green-700">Document received and available for preview.</span>
+                          {item.status === 'Received' && (item.publicUrl || item.previewText) ? (
+                            <div className="flex flex-col gap-2">
+                              {item.previewText && (
+                                <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
+                                  {item.previewText}
+                                </div>
+                              )}
+                              {item.publicUrl && (
+                                <div className="flex items-center gap-3">
+                                  <a
+                                    href={item.publicUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
+                                  >
+                                    <Link className="w-4 h-4" />
+                                    Preview Document
+                                  </a>
+                                  <span className="text-xs text-green-700">Document received and available for preview.</span>
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <>

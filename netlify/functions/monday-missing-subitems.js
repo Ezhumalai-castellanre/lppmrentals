@@ -153,8 +153,9 @@ export const handler = async (event, context) => {
         const status = statusValue?.label || statusValue?.text || "Unknown";
         const applicantType = sub.column_values.find(cv => cv.id === "color_mksyqx5h")?.text || "Unknown";
         const publicUrl = sub.column_values.find(cv => cv.id === "link_mkt3nz03")?.text || null;
+        const previewText = sub.column_values.find(cv => cv.id === "text_mkt5m32r")?.text || null;
 
-        console.log(`  📋 Subitem: ${sub.name} - Status: ${status} - Applicant Type: ${applicantType} - Public URL: ${publicUrl}`);
+        console.log(`  📋 Subitem: ${sub.name} - Status: ${status} - Applicant Type: ${applicantType} - Public URL: ${publicUrl} - Preview Text: ${previewText}`);
 
         if (["Received", "Missing", "Rejected"].includes(status)) {
           results.push({
@@ -164,7 +165,8 @@ export const handler = async (event, context) => {
             parentItemId,
             parentItemName,
             applicantType,
-            ...(status === "Received" && publicUrl ? { publicUrl } : { action: "Upload Required" })
+            ...(status === "Received" && publicUrl ? { publicUrl } : { action: "Upload Required" }),
+            ...(status === "Received" && previewText ? { previewText } : {})
           });
         }
       }
