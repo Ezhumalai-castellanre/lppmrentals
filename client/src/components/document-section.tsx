@@ -10,15 +10,15 @@ interface DocumentSectionProps {
   referenceId?: string;
   enableWebhook?: boolean;
   applicationId?: string;
-  documentStatuses?: {
-    [documentType: string]: {
+  uploadedDocuments?: {
+    [key: string]: {
       status: string;
       publicUrl?: string;
     };
   };
 }
 
-export function DocumentSection({ title, person, onDocumentChange, onEncryptedDocumentChange, referenceId, enableWebhook, applicationId, documentStatuses = {} }: DocumentSectionProps) {
+export function DocumentSection({ title, person, onDocumentChange, onEncryptedDocumentChange, referenceId, enableWebhook, applicationId, uploadedDocuments = {} }: DocumentSectionProps) {
   // Debug logging
   console.log('DocumentSection props:', { title, person, referenceId, enableWebhook, applicationId });
   
@@ -94,22 +94,22 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {documentTypes.map((docType) => {
-            const docStatus = documentStatuses[docType.key]?.status;
-            const publicUrl = documentStatuses[docType.key]?.publicUrl;
+            const docKey = `${person}_${docType.key}`;
+            const uploaded = uploadedDocuments[docKey];
             return (
               <div key={docType.key} className="form-field">
-                {docStatus === 'Received' && publicUrl ? (
+                {uploaded && uploaded.status === 'Received' && uploaded.publicUrl ? (
                   <div className="flex flex-col gap-2">
-                    <span className="text-green-700 text-sm font-medium">Document received and available for preview.</span>
                     <a
-                      href={publicUrl}
+                      href={uploaded.publicUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
                     >
-                      {/* You can use an icon here if desired */}
-                      Preview Document
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m4 4h1a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v7a2 2 0 002 2h1" /></svg>
+                      Preview Uploaded File
                     </a>
+                    <span className="text-xs text-green-700">Document received and available for preview.</span>
                   </div>
                 ) : (
                   <FileUpload
@@ -121,7 +121,7 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
                     onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(person, docType.key, encryptedFiles)}
                     enableEncryption={true}
                     referenceId={referenceId}
-                    sectionName={`${person}_${docType.key}`}
+                    sectionName={docKey}
                     documentName={docType.label}
                     enableWebhook={enableWebhook}
                     applicationId={applicationId}
