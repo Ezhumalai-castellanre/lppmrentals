@@ -1304,6 +1304,8 @@ export function ApplicationForm() {
                     <span className="text-red-500 text-xs">{form.formState.errors.applicantLicenseState.message}</span>
                   )}
                 </div>
+                <div className="space-y-2"></div>
+                <div className="space-y-2">
                 <FormField
                     control={form.control}
                     name="applicantAddress"
@@ -1325,6 +1327,26 @@ export function ApplicationForm() {
                       </FormItem>
                     )}
                   />
+                      <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    ZIP Code*
+                  </label>
+                  <input
+                    type="text"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="ZIP code"
+                    value={formData.applicant?.zip || ''}
+                    onChange={e => {
+                      updateFormData('applicant', 'zip', e.target.value);
+                      form.setValue('applicantZip', e.target.value);
+                    }}
+                  />
+                  {form.formState.errors.applicantZip?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.applicantZip.message}</span>
+                  )}
+                </div>
+                </div>
+                
                 <div className="space-y-2">
                   {/* Replace State* and City* text inputs with StateCitySelector */}
                   <StateCitySelector
@@ -1348,24 +1370,7 @@ export function ApplicationForm() {
                     className="mb-4"
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    ZIP Code*
-                  </label>
-                  <input
-                    type="text"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="ZIP code"
-                    value={formData.applicant?.zip || ''}
-                    onChange={e => {
-                      updateFormData('applicant', 'zip', e.target.value);
-                      form.setValue('applicantZip', e.target.value);
-                    }}
-                  />
-                  {form.formState.errors.applicantZip?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.applicantZip.message}</span>
-                  )}
-                </div>
+            
               </div>
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                 <div className="col-span-1 md:col-span-2">
@@ -1494,6 +1499,22 @@ export function ApplicationForm() {
         );
 
       case 4:
+        // Only show Supporting Documents if applicant employmentType is selected
+        if (!formData.applicant?.employmentType) {
+          return (
+            <Card className="form-section">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FolderOpen className="w-5 h-5 mr-2" />
+                  Supporting Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-gray-500 text-sm">Please select Employment Type in the Financial Information section to upload supporting documents.</div>
+              </CardContent>
+            </Card>
+          );
+        }
         return (
           <Card className="form-section">
             <CardHeader>
