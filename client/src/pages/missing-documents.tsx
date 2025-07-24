@@ -38,6 +38,7 @@ export default function MissingDocumentsPage() {
   const [activeTab, setActiveTab] = useState<'pending' | 'uploaded'>('pending');
   const [modalUrl, setModalUrl] = useState<string | null>(null);
   const [modalTitle, setModalTitle] = useState<string | null>(null);
+  const [iframeError, setIframeError] = useState(false);
 
   // Split items by status
   const uploadedItems = missingItems.filter(item => item.status === 'Received');
@@ -442,16 +443,28 @@ export default function MissingDocumentsPage() {
                               <div className="flex flex-col gap-2">
                                 {item.previewText && (
                                   isUrl(item.previewText) ? (
-                                    <button
-                                      className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
-                                      onClick={() => {
-                                        setModalUrl(item.previewText!);
-                                        setModalTitle(item.name);
-                                      }}
-                                    >
-                                      <Link className="w-4 h-4" />
-                                      Preview
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
+                                        onClick={() => {
+                                          setModalUrl(item.previewText!);
+                                          setModalTitle(item.name);
+                                          setIframeError(false);
+                                        }}
+                                      >
+                                        <Link className="w-4 h-4" />
+                                        Preview
+                                      </button>
+                                      <a
+                                        href={item.previewText}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
+                                      >
+                                        <Link className="w-4 h-4" />
+                                        Preview in New Tab
+                                      </a>
+                                    </div>
                                   ) : (
                                     <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
                                       {item.previewText}
@@ -630,16 +643,28 @@ export default function MissingDocumentsPage() {
                               <div className="flex flex-col gap-2">
                                 {item.previewText && (
                                   isUrl(item.previewText) ? (
-                                    <button
-                                      className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
-                                      onClick={() => {
-                                        setModalUrl(item.previewText!);
-                                        setModalTitle(item.name);
-                                      }}
-                                    >
-                                      <Link className="w-4 h-4" />
-                                      Preview
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
+                                        onClick={() => {
+                                          setModalUrl(item.previewText!);
+                                          setModalTitle(item.name);
+                                          setIframeError(false);
+                                        }}
+                                      >
+                                        <Link className="w-4 h-4" />
+                                        Preview
+                                      </button>
+                                      <a
+                                        href={item.previewText}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
+                                      >
+                                        <Link className="w-4 h-4" />
+                                        Preview in New Tab
+                                      </a>
+                                    </div>
                                   ) : (
                                     <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
                                       {item.previewText}
@@ -766,7 +791,7 @@ export default function MissingDocumentsPage() {
           </div>
         )}
       </div>
-      <Dialog open={!!modalUrl} onOpenChange={open => { if (!open) setModalUrl(null); }}>
+      <Dialog open={!!modalUrl} onOpenChange={open => { if (!open) { setModalUrl(null); setIframeError(false); } }}>
         <DialogContent className="max-w-2xl w-full">
           <DialogHeader>
             <DialogTitle>{modalTitle || 'Document Preview'}</DialogTitle>
@@ -774,11 +799,28 @@ export default function MissingDocumentsPage() {
               <button className="absolute top-2 right-2 text-gray-500 hover:text-gray-700">×</button>
             </DialogClose>
           </DialogHeader>
-          {modalUrl && (modalUrl.endsWith('.pdf') ? (
-            <iframe src={modalUrl} title="Document Preview" className="w-full h-[70vh] rounded border" />
-          ) : (
-            <iframe src={modalUrl} title="Document Preview" className="w-full h-[70vh] rounded border" />
-          ))}
+          {modalUrl && !iframeError && (
+            <iframe
+              src={modalUrl}
+              title="Document Preview"
+              className="w-full h-[70vh] rounded border"
+              onError={() => setIframeError(true)}
+            />
+          )}
+          {modalUrl && iframeError && (
+            <div className="flex flex-col items-center justify-center h-[70vh]">
+              <div className="text-red-600 font-semibold mb-2">Preview not available here.</div>
+              <a
+                href={modalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
+              >
+                <Link className="w-4 h-4" />
+                Open in New Tab
+              </a>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
