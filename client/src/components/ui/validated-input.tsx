@@ -304,7 +304,7 @@ export const IncomeWithFrequencyInput: React.FC<IncomeWithFrequencyProps> = ({
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </Label>
-      <div className="flex flex-row gap-2 items-center">
+      <div className="flex flex-row gap-2 items-center" style={{ marginTop: '19px' }}>
         <div className="flex-1 min-w-0">
           <Input
             type="number"

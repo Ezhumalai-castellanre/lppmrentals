@@ -22,6 +22,13 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
       icon: <User className="h-4 w-4" />,
       documents: [
         {
+          id: "w9_forms",
+          name: "W9",
+          description: "W9 form",
+          required: true,
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
+        },
+        {
           id: "photo_id",
           name: "Driver's License",
           description: "Driver's license, state ID, or passport (all applicants 18+)",
@@ -41,13 +48,7 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
       category: "Financial Documents",
       icon: <DollarSign className="h-4 w-4" />,
       documents: [
-        {
-          id: "w9_forms",
-          name: "W9",
-          description: "Previous year 1099 forms (if self-employed)",
-          required: false,
-          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
-        },
+        // W9 removed from here
         {
           id: "bank_statement",
           name: "Bank Statement",
@@ -119,10 +120,12 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
   // Helper to get allowed categories for a given employment type
   function allowedCategoriesForType(type: string | undefined) {
     if (!type) return new Set(requiredDocuments.map(c => c.category));
-    if (type === 'employed') {
+    if (type === 'salaried' || type === 'employed') {
+      // Hide Self-Employed Documents
       return new Set(requiredDocuments.map(c => c.category).filter(cat => cat !== 'Self-Employed Documents'));
     }
     if (type === 'self-employed') {
+      // Hide Employment Verification
       return new Set(requiredDocuments.map(c => c.category).filter(cat => cat !== 'Employment Verification'));
     }
     if (["unemployed", "retired", "student"].includes(type)) {
