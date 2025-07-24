@@ -42,17 +42,14 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
               <SelectValue placeholder="Select employment type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="employed">Employed</SelectItem>
+              <SelectItem value="salaried">Salaried</SelectItem>
               <SelectItem value="self-employed">Self-Employed</SelectItem>
-              <SelectItem value="unemployed">Unemployed</SelectItem>
-              <SelectItem value="retired">Retired</SelectItem>
-              <SelectItem value="student">Student</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Dynamic Fields Based on Employment Type */}
-        {personData.employmentType === 'employed' && (
+        {personData.employmentType === 'salaried' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="form-field">
               <Label htmlFor={`${person}-employer`}>Employer Name *</Label>
