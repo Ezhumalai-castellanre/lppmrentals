@@ -2309,29 +2309,42 @@ export function ApplicationForm() {
         );
 
       case 9:
-        // Guarantor Documents Step
+        // Only show Guarantor Supporting Documents if employmentType is selected
+        if (!formData.guarantor?.employmentType) {
+          return (
+            <Card className="form-section">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FolderOpen className="w-5 h-5 mr-2" />
+                  Guarantor Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-gray-500 text-sm">Please select Employment Type in the Guarantor Financial Information section to upload supporting documents.</div>
+              </CardContent>
+            </Card>
+          );
+        }
         return (
-          hasGuarantor ? (
-              <Card className="form-section border-l-4 border-l-purple-500">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-purple-700 dark:text-purple-400">
-                    <Shield className="w-5 h-5 mr-2" />
-                    Guarantor Documents
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                <SupportingDocuments
-                  formData={formData}
-                  onDocumentChange={(documentType, files) => handleDocumentChange('guarantor', documentType, files)}
-                  onEncryptedDocumentChange={(documentType, encryptedFiles) => handleEncryptedDocumentChange('guarantor', documentType, encryptedFiles)}
-                    referenceId={referenceId}
-                    enableWebhook={true}
-                    applicationId={applicationId}
-                  showOnlyGuarantor={true}
-                  />
-                </CardContent>
-              </Card>
-          ) : null
+          <SupportingDocuments
+            formData={formData}
+            onDocumentChange={(documentType, files) => {
+              setDocuments((prev: any) => ({
+                ...prev,
+                [documentType]: files,
+              }));
+            }}
+            onEncryptedDocumentChange={(documentType, encryptedFiles) => {
+              setEncryptedDocuments((prev: any) => ({
+                ...prev,
+                [documentType]: encryptedFiles,
+              }));
+            }}
+            referenceId={referenceId}
+            enableWebhook={true}
+            applicationId={applicationId}
+            showOnlyGuarantor={true}
+          />
         );
 
       case 10:
