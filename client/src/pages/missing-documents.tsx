@@ -67,6 +67,7 @@ export default function MissingDocumentsPage() {
       }
       
       const data = await response.json();
+      console.log('Fetched missingItems:', data); // <-- Add this line
       setMissingItems(data);
       setSearched(true);
       
