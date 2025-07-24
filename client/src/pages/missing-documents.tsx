@@ -432,18 +432,17 @@ export default function MissingDocumentsPage() {
                                     className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
                                   >
                                     <Link className="w-4 h-4" />
-                                    Preview Document
+                                    Preview
                                   </a>
                                   <a
                                     href={item.publicUrl}
                                     download
-                                    className="text-green-700 underline text-xs font-medium flex items-center gap-1"
-                                    title="Download Document"
+                                    className="text-green-700 underline text-sm font-medium flex items-center gap-1"
                                   >
                                     <ArrowDownToLine className="w-4 h-4" />
                                     Download
                                   </a>
-                                  <span className="text-xs text-green-700">Document received and available for preview.</span>
+                                  <span className="text-xs text-green-700">Document received and available for preview or download.</span>
                                 </div>
                               )}
                               {/* Always show upload UI for Received as well */}
