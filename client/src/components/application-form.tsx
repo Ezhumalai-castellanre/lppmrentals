@@ -30,6 +30,7 @@ import { MondayApiService, type UnitItem } from "@/lib/monday-api";
 import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "@/components/ui/validated-input";
 import { StateCitySelector, StateSelector, CitySelector } from "@/components/ui/state-city-selector";
 import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail } from "@/lib/validation";
+import { FileUpload } from "@/components/ui/file-upload";
 
 
 const applicationSchema = z.object({
@@ -1882,6 +1883,26 @@ export function ApplicationForm() {
                         />
                       </div>
                       <div>
+                        <Label>Gender</Label>
+                        <Select
+                          value={occupant.gender || ''}
+                          onValueChange={value => {
+                            const updated = [...formData.occupants];
+                            updated[idx] = { ...updated[idx], gender: value };
+                            setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
                         <Label>Relationship</Label>
                         <Input
                           placeholder="Relationship"
@@ -1893,6 +1914,8 @@ export function ApplicationForm() {
                           }}
                         />
                       </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
                       <div>
                         <Label>Date of Birth</Label>
                         <DatePicker
@@ -1919,8 +1942,6 @@ export function ApplicationForm() {
                           disabled={date => date > new Date()}
                         />
                       </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
                       <div>
                         <SSNInput
                           name={`occupantSsn${idx}`}
@@ -1946,27 +1967,37 @@ export function ApplicationForm() {
                         />
                       </div>
                     </div>
+                    <div className="mb-2">
+                      <FileUpload
+                        label="Social Security Card (Required)"
+                        description="Upload SSN card (.pdf, .jpg, .jpeg, .png, max 10MB)"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        multiple={false}
+                        maxFiles={1}
+                        maxSize={10}
+                        enableEncryption={true}
+                        onFileChange={files => {
+                          const updated = [...formData.occupants];
+                          updated[idx] = { ...updated[idx], ssnDocument: files[0] };
+                          setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                        }}
+                        onEncryptedFilesChange={encryptedFiles => {
+                          const updated = [...formData.occupants];
+                          updated[idx] = { ...updated[idx], ssnEncryptedDocument: encryptedFiles[0] };
+                          setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                        }}
+                        referenceId={referenceId}
+                        sectionName={`occupant_${idx}_ssn`}
+                        documentName="ssn"
+                        enableWebhook={true}
+                        applicationId={applicationId}
+                      />
+                      {(!occupant.ssnEncryptedDocument) && (
+                        <div className="text-red-600 text-xs mt-1">SSN document upload is required.</div>
+                      )}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-                      <div>
-                        <Label>Gender</Label>
-                        <Select
-                          value={occupant.gender || ''}
-                          onValueChange={value => {
-                            const updated = [...formData.occupants];
-                            updated[idx] = { ...updated[idx], gender: value };
-                            setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                   
                       <div className="flex items-end">
                         <Button
                           type="button"
@@ -1989,7 +2020,7 @@ export function ApplicationForm() {
                   onClick={() => {
                     setFormData((prev: any) => ({
                       ...prev,
-                      occupants: [...(prev.occupants || []), { name: '', relationship: '', dob: '', ssn: '', license: '', age: '', gender: '' }]
+                      occupants: [...(prev.occupants || []), { name: '', relationship: '', dob: '', ssn: '', license: '', age: '', gender: '', ssnDocument: null, ssnEncryptedDocument: null }]
                     }));
                   }}
                 >
