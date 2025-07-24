@@ -437,6 +437,46 @@ export default function MissingDocumentsPage() {
                                   <span className="text-xs text-green-700">Document received and available for preview.</span>
                                 </div>
                               )}
+                              {/* Always show upload UI for Received as well */}
+                              <div className="mb-3 mt-2">
+                                <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                  Upload Replacement Document
+                                </h5>
+                                <p className="text-xs text-gray-500 mb-3">
+                                  You may upload a replacement document if needed. Files will be encrypted and securely transmitted.
+                                </p>
+                              </div>
+                              <FileUpload
+                                onFileChange={(files) => {
+                                  // Only handle file change for non-encrypted uploads
+                                }}
+                                onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                multiple={false}
+                                maxFiles={1}
+                                maxSize={10}
+                                label={`Upload ${item.name}`}
+                                description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
+                                className="mb-3"
+                                enableEncryption={true}
+                                referenceId={applicantId}
+                                sectionName={`${item.applicantType}`}
+                                documentName={item.name}
+                                enableWebhook={true}
+                                applicationId={applicantId}
+                              />
+                              {uploadingDocuments[item.id] && (
+                                <div className="flex items-center gap-2 text-sm text-blue-600">
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Uploading document...
+                                </div>
+                              )}
+                              {uploadedDocuments[item.id] && (
+                                <div className="flex items-center gap-2 text-sm text-green-600">
+                                  <CheckCircle className="w-4 h-4" />
+                                  Document uploaded successfully!
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <>
