@@ -96,8 +96,9 @@ const STEPS = [
   { id: 5, title: "Co-Applicant", icon: Users },
   { id: 6, title: "Co-Applicant Documents", icon: FolderOpen },
   { id: 7, title: "Other Occupants", icon: Users },
-  { id: 8, title: "Guarantor Documents", icon: Shield },
-  { id: 9, title: "Digital Signatures", icon: Check },
+  { id: 8, title: "Guarantor", icon: Shield },
+  { id: 9, title: "Guarantor Documents", icon: FolderOpen },
+  { id: 10, title: "Digital Signatures", icon: Check },
 ];
 
 // 1. Add phone formatting helper
@@ -2034,234 +2035,312 @@ export function ApplicationForm() {
       case 8:
         return (
           <div className="space-y-6">
-            {/* Guarantor Information Section */}
-            {hasGuarantor ? (
-              <Card className="form-section border-l-4 border-l-purple-500">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-purple-700 dark:text-purple-400">
-                    <UserCheck className="w-5 h-5 mr-2" />
-                    Guarantor Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Full Name</Label>
-                      <Input 
-                        placeholder="Enter full name"
-                        className="input-field"
-                        onChange={(e) => updateFormData('guarantor', 'name', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label>Relationship to Applicant(s) *</Label>
-                      <Select onValueChange={(value) => updateFormData('guarantor', 'relationship', value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select relationship" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="parent">Parent</SelectItem>
-                          <SelectItem value="family">Family Member</SelectItem>
-                          <SelectItem value="friend">Friend</SelectItem>
-                          <SelectItem value="employer">Employer</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label>Date of Birth *</Label>
-                      <DatePicker
-                        value={formData.guarantor?.dob || undefined}
-                        onChange={(date) => {
-                          updateFormData('guarantor', 'dob', date);
-                          // Auto-calculate age for guarantor
-                          if (date) {
-                            const today = new Date();
-                            const birthDate = new Date(date);
-                            let age = today.getFullYear() - birthDate.getFullYear();
-                            const monthDiff = today.getMonth() - birthDate.getMonth();
-                            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                              age--;
-                            }
-                            updateFormData('guarantor', 'age', age);
-                          }
-                        }}
-                        placeholder="Select date of birth"
-                        disabled={(date) => date > new Date()}
-                      />
-                    </div>
-                    <div>
-                      <SSNInput
-                        name="guarantorSsn"
-                        label="Social Security Number *"
-                        value={formData.guarantor?.ssn || ''}
-                        onChange={(value) => updateFormData('guarantor', 'ssn', value)}
-                        required={true}
-                      />
-                    </div>
-                    <div>
-                      <PhoneInput
-                        name="guarantorPhone"
-                        label="Phone Number *"
-                        value={formData.guarantor?.phone || ''}
-                        onChange={(value) => updateFormData('guarantor', 'phone', value)}
-                        required={true}
-                      />
-                    </div>
-                    {/* Age field hidden from frontend, still auto-calculated in state */}
-                  
-                    <div>
-                      <Label>Gender</Label>
-                      <Select
-                        value={formData.guarantor?.gender || ''}
-                        onValueChange={(value) => updateFormData('guarantor', 'gender', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <EmailInput
-                      name="guarantorEmail"
-                      label="Email Address *"
-                      value={formData.guarantor?.email || ''}
-                      onChange={(value) => updateFormData('guarantor', 'email', value)}
-                      required={true}
-                    />
-                  </div>
-
-                  <div className="space-y-4">
-                    <h4 className="text-lg font-medium text-gray-900 dark:text-white">Address</h4>
+            {/* Guarantor Section with Checkbox */}
+            <Card className="form-section border-l-4 border-l-purple-500">
+              <CardHeader>
+                <CardTitle className="flex items-center text-purple-700 dark:text-purple-400">
+                  <UserCheck className="w-5 h-5 mr-2" />
+                  Guarantor
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center space-x-3 mb-4">
+                  <Checkbox 
+                    id="hasGuarantor"
+                    checked={hasGuarantor}
+                    onCheckedChange={(checked) => {
+                      setHasGuarantor(checked as boolean);
+                      form.setValue('hasGuarantor', checked as boolean);
+                    }}
+                  />
+                  <Label htmlFor="hasGuarantor" className="text-base font-medium">
+                    Add Guarantor
+                  </Label>
+                </div>
+                {hasGuarantor && (
+                  <>
+                    {/* Guarantor Information Section - mirror Co-Applicant */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="md:col-span-2">
-                        <Label>Street Address *</Label>
+                      <div>
+                        <Label>Full Name *</Label>
                         <Input 
-                          placeholder="Enter street address"
+                          placeholder="Enter full name"
                           className="input-field"
-                          onChange={(e) => updateFormData('guarantor', 'address', e.target.value)}
+                          value={formData.guarantor?.name || ''}
+                          onChange={(e) => updateFormData('guarantor', 'name', e.target.value)}
                         />
                       </div>
-                      <CitySelector
-                        selectedState={formData.guarantor?.state || ''}
-                        selectedCity={formData.guarantor?.city || ''}
-                        onCityChange={(city) => updateFormData('guarantor', 'city', city)}
-                        label="City *"
-                        required={true}
-                      />
-                      <StateSelector
-                        selectedState={formData.guarantor?.state || ''}
-                        onStateChange={(state) => updateFormData('guarantor', 'state', state)}
-                        label="State *"
-                        required={true}
-                      />
-                      <ZIPInput
-                        name="guarantorZip"
-                        label="ZIP Code *"
-                        value={formData.guarantor?.zip || ''}
-                        onChange={(value) => updateFormData('guarantor', 'zip', value)}
-                        required={true}
-                      />
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Years at Address</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={formData.guarantor?.lengthAtAddressYears ?? ''}
-                            onChange={(e) => updateFormData('guarantor', 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
-                            className="input-field"
-                          />
-                        </div>
-                        <div>
-                          <Label>Months at Address</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            max={11}
-                            value={formData.guarantor?.lengthAtAddressMonths ?? ''}
-                            onChange={(e) => updateFormData('guarantor', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
-                            className="input-field"
-                          />
-                        </div>
+                      <div>
+                        <Label>Relationship to Applicant(s) *</Label>
+                        <Select value={formData.guarantor?.relationship || ''} onValueChange={(value) => updateFormData('guarantor', 'relationship', value)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select relationship" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="parent">Parent</SelectItem>
+                            <SelectItem value="family">Family Member</SelectItem>
+                            <SelectItem value="friend">Friend</SelectItem>
+                            <SelectItem value="employer">Employer</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                  </div>
 
-                  <FinancialSection 
-                    title="Guarantor Financial Information"
-                    person="guarantor"
-                    formData={formData}
-                    updateFormData={updateFormData}
-                  />
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="form-section border-l-4 border-l-gray-300">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-gray-600">
-                    <UserCheck className="w-5 h-5 mr-2" />
-                    Guarantor Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8">
-                    <p className="text-gray-500 mb-4">No guarantor has been added to this application.</p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setHasGuarantor(true);
-                        form.setValue('hasGuarantor', true);
-                      }}
-                    >
-                      Add Guarantor
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label>Date of Birth *</Label>
+                        <DatePicker
+                          value={formData.guarantor?.dob || undefined}
+                          onChange={(date) => {
+                            updateFormData('guarantor', 'dob', date);
+                            // Auto-calculate age for guarantor
+                            if (date) {
+                              const today = new Date();
+                              const birthDate = new Date(date);
+                              let age = today.getFullYear() - birthDate.getFullYear();
+                              const monthDiff = today.getMonth() - birthDate.getMonth();
+                              if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                                age--;
+                              }
+                              updateFormData('guarantor', 'age', age);
+                            }
+                          }}
+                          placeholder="Select date of birth"
+                          disabled={(date) => date > new Date()}
+                        />
+                      </div>
+                      <div>
+                        <SSNInput
+                          name="guarantorSsn"
+                          label="Social Security Number *"
+                          value={formData.guarantor?.ssn || ''}
+                          onChange={(value) => updateFormData('guarantor', 'ssn', value)}
+                          required={true}
+                        />
+                      </div>
+                      <div>
+                        <PhoneInput
+                          name="guarantorPhone"
+                          label="Phone Number *"
+                          value={formData.guarantor?.phone || ''}
+                          onChange={(value) => updateFormData('guarantor', 'phone', value)}
+                          required={true}
+                        />
+                      </div>
+                      {/* Age field hidden from frontend, still auto-calculated in state */}
+                      <div>
+                        <Label>Gender</Label>
+                        <Select
+                          value={formData.guarantor?.gender || ''}
+                          onValueChange={(value) => updateFormData('guarantor', 'gender', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
 
-            {hasGuarantor && (
-              null
-            )}
+                    <div>
+                      <EmailInput
+                        name="guarantorEmail"
+                        label="Email Address *"
+                        value={formData.guarantor?.email || ''}
+                        onChange={(value) => updateFormData('guarantor', 'email', value)}
+                        required={true}
+                      />
+                    </div>
 
-            {/* Guarantor Documents Section */}
-            {hasGuarantor && (
-              <Card className="form-section border-l-4 border-l-purple-500">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-purple-700 dark:text-purple-400">
-                    <Shield className="w-5 h-5 mr-2" />
-                    Guarantor Documents
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <DocumentSection 
-                    title="Guarantor Documents"
-                    person="guarantor"
-                    onDocumentChange={handleDocumentChange}
-                    onEncryptedDocumentChange={handleEncryptedDocumentChange}
-                    referenceId={referenceId}
-                    enableWebhook={true}
-                    applicationId={applicationId}
-                  />
-                </CardContent>
-              </Card>
-            )}
+                    <div className="flex items-center space-x-3">
+                      <Checkbox 
+                        id="sameAddressGuarantor"
+                        checked={sameAddressGuarantor}
+                        onCheckedChange={(checked) => {
+                          setSameAddressGuarantor(checked as boolean);
+                          if (checked) {
+                            copyAddressToGuarantor();
+                          }
+                        }}
+                      />
+                      <Label htmlFor="sameAddressGuarantor" className="text-sm">
+                        Same address as primary applicant
+                      </Label>
+                    </div>
+
+                    {!sameAddressGuarantor && (
+                      <div className="space-y-4">
+                        <h4 className="text-lg font-medium text-gray-900 dark:text-white">Current Address</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                          <div className="col-span-1 md:col-span-2">
+                            <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-0.5">Street Address *</Label>
+                            <Input 
+                              placeholder="Enter street address"
+                              className="input-field w-full mt-1"
+                              value={formData.guarantor?.address || ''}
+                              onChange={(e) => updateFormData('guarantor', 'address', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <CitySelector
+                              selectedState={formData.guarantor?.state || ''}
+                              selectedCity={formData.guarantor?.city || ''}
+                              onCityChange={(city) => updateFormData('guarantor', 'city', city)}
+                              label="City *"
+                              required={true}
+                              className="w-full mt-1"
+                            />
+                          </div>
+                          <div>
+                            <StateSelector
+                              selectedState={formData.guarantor?.state || ''}
+                              onStateChange={(state) => updateFormData('guarantor', 'state', state)}
+                              label="State *"
+                              required={true}
+                              className="w-full mt-1"
+                            />
+                          </div>
+                          <div>
+                            <ZIPInput
+                              name="guarantorZip"
+                              label="ZIP Code *"
+                              value={formData.guarantor?.zip || ''}
+                              onChange={(value) => updateFormData('guarantor', 'zip', value)}
+                              required={true}
+                              className="w-full mt-1"
+                            />
+                          </div>
+                          <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
+                            <Label className="mb-0.5 col-span-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Length of Stay at Current Address</Label>
+                            <div className="space-y-2 w-full mt-1">
+                              <Input
+                                type="number"
+                                min={0}
+                                value={formData.guarantor?.lengthAtAddressYears ?? ''}
+                                onChange={(e) => updateFormData('guarantor', 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
+                                placeholder="e.g. 2"
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                              />
+                            </div>
+                            <div className="space-y-2 w-full mt-1">
+                              <Input
+                                type="number"
+                                min={0}
+                                max={11}
+                                value={formData.guarantor?.lengthAtAddressMonths ?? ''}
+                                onChange={(e) => updateFormData('guarantor', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
+                                placeholder="e.g. 6"
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 col-span-2">
+                            <div className="space-y-2 w-full">
+                              <Label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                                Driver's License Number
+                              </Label>
+                              <LicenseInput
+                                name="guarantorLicense"
+                                label=""
+                                value={formData.guarantor?.license || ''}
+                                onChange={(value) => updateFormData('guarantor', 'license', value)}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                                placeholder="License number"
+                              />
+                            </div>
+                            <div className="space-y-2 w-full">
+                              <Label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                                License State
+                              </Label>
+                              <StateSelector
+                                selectedState={formData.guarantor?.licenseState || ''}
+                                onStateChange={(state) => updateFormData('guarantor', 'licenseState', state)}
+                                label=""
+                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
+                              />
+                            </div>
+                          </div>
+                          <div className="col-span-1 md:col-span-2 space-y-2 w-full mt-1">
+                            <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-0.5">Current Landlord's Name</Label>
+                            <Input
+                              placeholder="Enter landlord's name"
+                              value={formData.guarantor?.landlordName || ''}
+                              onChange={(e) => updateFormData('guarantor', 'landlordName', e.target.value)}
+                              className="flex h-10 rounded-md border px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm input-field w-full mt-1 border-gray-300 bg-white"
+                            />
+                          </div>
+                          <div className="space-y-2 w-full mt-1">
+                            <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-0.5" htmlFor="guarantorCurrentRent">Monthly Rent</Label>
+                            <Input
+                              id="guarantorCurrentRent"
+                              type="number"
+                              placeholder="0.00"
+                              value={formData.guarantor?.currentRent?.toString() || ''}
+                              onChange={(e) => {
+                                const numValue = parseFloat(e.target.value) || 0;
+                                updateFormData('guarantor', 'currentRent', numValue);
+                              }}
+                              className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm input-field w-full mt-1"
+                            />
+                          </div>
+                          <div className="col-span-1 md:col-span-2 space-y-2 w-full mt-1">
+                            <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-0.5">Why Are You Moving</Label>
+                            <Textarea
+                              placeholder="Please explain your reason for moving"
+                              value={formData.guarantor?.reasonForMoving || ''}
+                              onChange={(e) => updateFormData('guarantor', 'reasonForMoving', e.target.value)}
+                              className="flex rounded-md border px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <FinancialSection 
+                      title="Guarantor Financial Information"
+                      person="guarantor"
+                      formData={formData}
+                      updateFormData={updateFormData}
+                    />
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </div>
         );
 
       case 9:
+        // Guarantor Documents Step
+        return (
+          hasGuarantor ? (
+            <Card className="form-section border-l-4 border-l-purple-500">
+              <CardHeader>
+                <CardTitle className="flex items-center text-purple-700 dark:text-purple-400">
+                  <Shield className="w-5 h-5 mr-2" />
+                  Guarantor Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SupportingDocuments
+                  formData={formData}
+                  onDocumentChange={(documentType, files) => handleDocumentChange('guarantor', documentType, files)}
+                  onEncryptedDocumentChange={(documentType, encryptedFiles) => handleEncryptedDocumentChange('guarantor', documentType, encryptedFiles)}
+                  referenceId={referenceId}
+                  enableWebhook={true}
+                  applicationId={applicationId}
+                  showOnlyGuarantor={true}
+                />
+              </CardContent>
+            </Card>
+          ) : null
+        );
+
+      case 10:
         return (
           <div className="space-y-8">
             <Card className="form-section">

@@ -12,9 +12,10 @@ interface SupportingDocumentsProps {
   enableWebhook?: boolean;
   applicationId?: string;
   showOnlyCoApplicant?: boolean;
+  showOnlyGuarantor?: boolean;
 }
 
-export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDocumentChange, referenceId, enableWebhook, applicationId, showOnlyCoApplicant = false }: SupportingDocumentsProps) {
+export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDocumentChange, referenceId, enableWebhook, applicationId, showOnlyCoApplicant = false, showOnlyGuarantor = false }: SupportingDocumentsProps) {
   const requiredDocuments = [
     {
       category: "Identity Documents",
@@ -166,6 +167,15 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
     coApplicantDocuments = requiredDocuments.filter((category) => coAllowedCategories.has(category.category));
   }
 
+  // Guarantor Documents logic
+  let guarantorDocuments: any[] = [];
+  if (formData?.guarantor && formData.guarantor.employmentType) {
+    const guarAllowedCategories = allowedCategoriesForType(formData.guarantor.employmentType);
+    guarantorDocuments = requiredDocuments.filter((category) => guarAllowedCategories.has(category.category));
+  } else {
+    guarantorDocuments = requiredDocuments;
+  }
+
   const getDocumentStatus = (documentId: string) => {
     const files = formData.documents?.[documentId];
     if (files && files.length > 0) {
@@ -177,7 +187,13 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
   return (
     <Card className="mb-6">
       <CardHeader>
-        <CardTitle className="text-lg font-medium">{showOnlyCoApplicant ? 'Co-Applicant Documents' : 'Supporting Documents'}</CardTitle>
+        <CardTitle className="text-lg font-medium">
+          {showOnlyCoApplicant
+            ? 'Co-Applicant Documents'
+            : showOnlyGuarantor
+            ? 'Guarantor Documents'
+            : 'Supporting Documents'}
+        </CardTitle>
         <div className="bg-green-50 p-3 rounded-lg">
           <p className="text-sm text-green-800">
             <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
@@ -244,6 +260,76 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                             enableEncryption={true}
                             referenceId={referenceId}
                             sectionName={`coapplicant_${document.id}`}
+                            documentName={document.name}
+                            enableWebhook={enableWebhook}
+                            applicationId={applicationId}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : showOnlyGuarantor ? (
+          guarantorDocuments.length > 0 && (
+            <div className="space-y-6 mt-8">
+              <div className="flex items-center gap-2 pb-2 border-b">
+                <Shield className="h-4 w-4" />
+                <h3 className="font-medium text-gray-800">Guarantor Documents</h3>
+              </div>
+              {guarantorDocuments.map((category) => (
+                <div key={category.category} className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b">
+                    {category.icon}
+                    <h4 className="font-medium text-gray-800">{category.category}</h4>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    {category.documents.map((document: any) => {
+                      const docStatus = getDocumentStatus(document.id);
+                      return (
+                        <div key={document.id} className="border rounded-lg p-4 space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium text-gray-900">{document.name}</h4>
+                                {document.required && (
+                                  <Badge variant="destructive" className="text-xs">Required</Badge>
+                                )}
+                                {!document.required && (
+                                  <Badge variant="secondary" className="text-xs">Optional</Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600 mt-1">{document.description}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {docStatus.status === "uploaded" ? (
+                                <div className="flex items-center gap-1 text-green-600">
+                                  <CheckCircle className="h-4 w-4" />
+                                  <span className="text-xs">{docStatus.count} file(s)</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 text-orange-600">
+                                  <AlertCircle className="h-4 w-4" />
+                                  <span className="text-xs">Pending</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <FileUpload
+                            onFileChange={(files) => onDocumentChange(document.id, files)}
+                            onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
+                            accept={document.acceptedTypes}
+                            multiple={true}
+                            maxFiles={5}
+                            maxSize={10}
+                            label={`Upload ${document.name}`}
+                            description="Max 5 files, 10MB each. Accepted: JPG, PNG, PDF - Encrypted"
+                            className="mt-2"
+                            enableEncryption={true}
+                            referenceId={referenceId}
+                            sectionName={`guarantor_${document.id}`}
                             documentName={document.name}
                             enableWebhook={enableWebhook}
                             applicationId={applicationId}
