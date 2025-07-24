@@ -33,7 +33,6 @@ export default function MissingDocumentsPage() {
   const [uploadingDocuments, setUploadingDocuments] = useState<{ [key: string]: boolean }>({});
   const [uploadedDocuments, setUploadedDocuments] = useState<{ [key: string]: boolean }>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [showReplace, setShowReplace] = useState<{ [key: string]: boolean }>({});
 
   // Parse applicant ID from URL query parameters and auto-load
   useEffect(() => {
@@ -416,28 +415,18 @@ export default function MissingDocumentsPage() {
                         </div>
                         {/* Document Preview or Upload Section */}
                         <div className="p-4 bg-gray-50">
-                          {item.status === 'Received' && item.publicUrl && !showReplace[item.id] ? (
-                            <div className="flex flex-col gap-2">
-                              <div className="flex items-center gap-3">
-                                <a
-                                  href={item.publicUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
-                                >
-                                  <Link className="w-4 h-4" />
-                                  Preview Document
-                                </a>
-                                <span className="text-xs text-green-700">Document received and available for preview.</span>
-                              </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-fit mt-2"
-                                onClick={() => setShowReplace(prev => ({ ...prev, [item.id]: true }))}
+                          {item.status === 'Received' && item.publicUrl ? (
+                            <div className="flex items-center gap-3">
+                              <a
+                                href={item.publicUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
                               >
-                                Replace Document
-                              </Button>
+                                <Link className="w-4 h-4" />
+                                Preview Document
+                              </a>
+                              <span className="text-xs text-green-700">Document received and available for preview.</span>
                             </div>
                           ) : (
                             <>
@@ -456,13 +445,7 @@ export default function MissingDocumentsPage() {
                                   // Only handle file change for non-encrypted uploads
                                   // Encrypted uploads are handled by onEncryptedFilesChange
                                 }}
-                                onEncryptedFilesChange={(encryptedFiles) => {
-                                  handleEncryptedDocumentChange(item.id, encryptedFiles);
-                                  // After upload, revert to preview mode for Received
-                                  if (item.status === 'Received') {
-                                    setShowReplace(prev => ({ ...prev, [item.id]: false }));
-                                  }
-                                }}
+                                onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
                                 accept=".pdf,.jpg,.jpeg,.png"
                                 multiple={false}
                                 maxFiles={1}
