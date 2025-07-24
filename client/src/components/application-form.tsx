@@ -1326,40 +1326,27 @@ export function ApplicationForm() {
                     )}
                   />
                 <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    State*
-                  </label>
-                  <input
-                    type="text"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="State"
-                    value={formData.applicant?.state || ''}
-                    onChange={e => {
-                      updateFormData('applicant', 'state', e.target.value);
-                      form.setValue('applicantState', e.target.value);
+                  {/* Replace State* and City* text inputs with StateCitySelector */}
+                  <StateCitySelector
+                    selectedState={formData.applicant?.state || ''}
+                    selectedCity={formData.applicant?.city || ''}
+                    onStateChange={(state) => {
+                      updateFormData('applicant', 'state', state);
+                      form.setValue('applicantState', state);
+                      // Clear city if state changes
+                      updateFormData('applicant', 'city', '');
+                      form.setValue('applicantCity', '');
                     }}
-                  />
-                  {form.formState.errors.applicantState?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.applicantState.message}</span>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    City*
-                  </label>
-                  <input
-                    type="text"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="City"
-                    value={formData.applicant?.city || ''}
-                    onChange={e => {
-                      updateFormData('applicant', 'city', e.target.value);
-                      form.setValue('applicantCity', e.target.value);
+                    onCityChange={(city) => {
+                      updateFormData('applicant', 'city', city);
+                      form.setValue('applicantCity', city);
                     }}
+                    stateLabel="State*"
+                    cityLabel="City*"
+                    required={true}
+                    error={form.formState.errors.applicantState?.message || form.formState.errors.applicantCity?.message}
+                    className="mb-4"
                   />
-                  {form.formState.errors.applicantCity?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.applicantCity.message}</span>
-                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
