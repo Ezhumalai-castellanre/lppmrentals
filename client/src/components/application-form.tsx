@@ -1297,6 +1297,9 @@ export function ApplicationForm() {
                   />
                 </div>
                 <div className="space-y-2"></div>
+                <h5>Current Address</h5>
+                <div className="space-y-2"></div>
+             
                 <div className="space-y-2">
                 <FormField
                     control={form.control}
@@ -1491,7 +1494,6 @@ export function ApplicationForm() {
         );
 
       case 4:
-        // Only show Supporting Documents if applicant employmentType is selected
         if (!formData.applicant?.employmentType) {
           return (
             <Card className="form-section">
@@ -1502,7 +1504,25 @@ export function ApplicationForm() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-gray-500 text-sm">Please select Employment Type in the Financial Information section to upload supporting documents.</div>
+                <div className="text-gray-500 text-sm mb-4">Please select Employment Type in the Financial Information section to upload supporting documents.</div>
+                {/* Info blocks: Security Notice and Important Notes */}
+                <div className="flex flex-col space-y-1.5 p-6">
+                  <div className="tracking-tight text-lg font-medium">Supporting Documents</div>
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <p className="text-sm text-green-800">
+                      <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+                  <h4 className="font-medium text-yellow-900 mb-2">Important Notes:</h4>
+                  <ul className="text-sm text-yellow-800 space-y-1">
+                    <li>• Documents must be current and legible</li>
+                    <li>• Corporate applicants require additional documentation</li>
+                    <li>• Self-employed applicants need accountant verification</li>
+                    <li>• Incomplete applications will delay processing</li>
+                  </ul>
+                </div>
               </CardContent>
             </Card>
           );
@@ -1610,7 +1630,26 @@ export function ApplicationForm() {
                         value={formData.coApplicant?.name || ''}
                         onChange={(e) => updateFormData('coApplicant', 'name', e.target.value)}
                       />
+                       <div className="space-y-2">
+                      <Label className="mb-0.5">Relationship</Label>
+                      <Select
+                        value={formData.coApplicant?.relationship || ''}
+                        onValueChange={(value) => updateFormData('coApplicant', 'relationship', value)}
+                      >
+                        <SelectTrigger className="w-full mt-1">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="spouse">Spouse</SelectItem>
+                          <SelectItem value="partner">Partner</SelectItem>
+                          <SelectItem value="parent">Parent</SelectItem>
+                          <SelectItem value="child">Child</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
+                    </div>
+                   
                     <div>
                       <Label className="mb-0.5">Date of Birth *</Label>
                       {(() => {
@@ -1718,6 +1757,8 @@ export function ApplicationForm() {
                         className="w-full mt-1"
                       />
                     </div>
+                    <div className="space-y-2"></div>
+                    <h5>Current Address</h5>
                     <div className="space-y-2"></div>
                     <div className="space-y-2">
                       <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
@@ -1832,6 +1873,40 @@ export function ApplicationForm() {
         );
 
       case 6:
+        if (hasCoApplicant && !formData.coApplicant?.employmentType) {
+          return (
+            <Card className="form-section border-l-4 border-l-green-500">
+              <CardHeader>
+                <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                  <FolderOpen className="w-5 h-5 mr-2" />
+                  Co-Applicant Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-gray-500 text-sm mb-4">Please select Employment Type in the Financial Information section to upload supporting documents.</div>
+                {/* Info blocks: Security Notice and Important Notes */}
+                <div className="flex flex-col space-y-1.5 p-6">
+                  <div className="tracking-tight text-lg font-medium">Supporting Documents</div>
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <p className="text-sm text-green-800">
+                      <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+                  <h4 className="font-medium text-yellow-900 mb-2">Important Notes:</h4>
+                  <ul className="text-sm text-yellow-800 space-y-1">
+                    <li>• Documents must be current and legible</li>
+                    <li>• Corporate applicants require additional documentation</li>
+                    <li>• Self-employed applicants need accountant verification</li>
+                    <li>• Incomplete applications will delay processing</li>
+                  </ul>
+                </div>
+
+              </CardContent>
+            </Card>
+          );
+        }
         // Wrapper functions for SupportingDocuments to match expected signature
         const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicant', documentType, files);
         const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicant', documentType, encryptedFiles);
@@ -2072,7 +2147,26 @@ export function ApplicationForm() {
                           value={formData.guarantor?.name || ''}
                           onChange={(e) => updateFormData('guarantor', 'name', e.target.value)}
                         />
+                        <div>
+                        <Label className="mb-0.5">Relationship</Label>
+                        <Select
+                          value={formData.guarantor?.relationship || ''}
+                          onValueChange={(value) => updateFormData('guarantor', 'relationship', value)}
+                        >
+                          <SelectTrigger className="w-full mt-1">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="spouse">Spouse</SelectItem>
+                            <SelectItem value="partner">Partner</SelectItem>
+                            <SelectItem value="parent">Parent</SelectItem>
+                            <SelectItem value="child">Child</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
+                      </div>
+                      
                       <div>
                         <Label className="mb-0.5">Date of Birth *</Label>
                         {(() => {
@@ -2178,6 +2272,8 @@ export function ApplicationForm() {
                           className="w-full mt-1"
                         />
                       </div>
+                      <div className="space-y-2"></div>
+                      <h5>Current Address</h5>
                       <div className="space-y-2"></div>
                       <div  className="space-y-2">
                       <div className="space-y-2">
@@ -2296,7 +2392,6 @@ export function ApplicationForm() {
         );
 
       case 9:
-        // Only show Guarantor Supporting Documents if employmentType is selected
         if (!formData.guarantor?.employmentType) {
           return (
             <Card className="form-section">
@@ -2307,7 +2402,25 @@ export function ApplicationForm() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-gray-500 text-sm">Please select Employment Type in the Guarantor Financial Information section to upload supporting documents.</div>
+                <div className="text-gray-500 text-sm mb-4">Please select Employment Type in the Guarantor Financial Information section to upload supporting documents.</div>
+                {/* Info blocks: Security Notice and Important Notes */}
+                <div className="flex flex-col space-y-1.5 p-6">
+                  <div className="tracking-tight text-lg font-medium">Supporting Documents</div>
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <p className="text-sm text-green-800">
+                      <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+                  <h4 className="font-medium text-yellow-900 mb-2">Important Notes:</h4>
+                  <ul className="text-sm text-yellow-800 space-y-1">
+                    <li>• Documents must be current and legible</li>
+                    <li>• Corporate applicants require additional documentation</li>
+                    <li>• Self-employed applicants need accountant verification</li>
+                    <li>• Incomplete applications will delay processing</li>
+                  </ul>
+                </div>
               </CardContent>
             </Card>
           );
