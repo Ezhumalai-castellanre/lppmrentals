@@ -1746,7 +1746,6 @@ export function ApplicationForm() {
                         selectedCity={formData.coApplicant?.city || ''}
                         onStateChange={(state) => {
                           updateFormData('coApplicant', 'state', state);
-                          // Clear city if state changes
                           updateFormData('coApplicant', 'city', '');
                         }}
                         onCityChange={(city) => {
@@ -1757,6 +1756,21 @@ export function ApplicationForm() {
                         required={true}
                         className="mb-4"
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                        ZIP Code*
+                      </label>
+                      <input
+                        type="text"
+                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                        placeholder="ZIP code"
+                        value={formData.coApplicant?.zip || ''}
+                        onChange={e => updateFormData('coApplicant', 'zip', e.target.value)}
+                      />
+                      {formData.coApplicant?.zip && !validateZIPCode(formData.coApplicant.zip) && (
+                        <span className="text-red-500 text-xs">Please enter a valid ZIP code</span>
+                      )}
                     </div>
                   </div>
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
@@ -2192,7 +2206,6 @@ export function ApplicationForm() {
                           selectedCity={formData.guarantor?.city || ''}
                           onStateChange={(state) => {
                             updateFormData('guarantor', 'state', state);
-                            // Clear city if state changes
                             updateFormData('guarantor', 'city', '');
                           }}
                           onCityChange={(city) => {
@@ -2203,6 +2216,21 @@ export function ApplicationForm() {
                           required={true}
                           className="mb-4"
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                          ZIP Code*
+                        </label>
+                        <input
+                          type="text"
+                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                          placeholder="ZIP code"
+                          value={formData.guarantor?.zip || ''}
+                          onChange={e => updateFormData('guarantor', 'zip', e.target.value)}
+                        />
+                        {formData.guarantor?.zip && !validateZIPCode(formData.guarantor.zip) && (
+                          <span className="text-red-500 text-xs">Please enter a valid ZIP code</span>
+                        )}
                       </div>
                     </div>
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
