@@ -348,7 +348,7 @@ export default function MissingDocumentsPage() {
                   <div className="flex items-center gap-2">
                     {missingItems.length > 0 && (
                       <Badge variant="outline">
-                        {missingItems.length} missing document{missingItems.length !== 1 ? 's' : ''}
+                        {missingItems.length} document{missingItems.length !== 1 ? 's' : ''}
                       </Badge>
                     )}
                     {Object.keys(uploadedDocuments).length > 0 && (
@@ -413,9 +413,9 @@ export default function MissingDocumentsPage() {
                             )}
                           </div>
                         </div>
-                        {/* Document Preview or Upload Section */}
-                        <div className="p-4 bg-gray-50">
-                          {item.status === 'Received' && item.publicUrl ? (
+                        {/* Document Preview and Upload Section */}
+                        <div className="p-4 bg-gray-50 space-y-3">
+                          {item.status === 'Received' && item.publicUrl && (
                             <div className="flex items-center gap-3">
                               <a
                                 href={item.publicUrl}
@@ -428,16 +428,21 @@ export default function MissingDocumentsPage() {
                               </a>
                               <span className="text-xs text-green-700">Document received and available for preview.</span>
                             </div>
-                          ) : (
+                          )}
+                          {(item.status === 'Received' || item.status === 'Missing' || item.status === 'Rejected') && (
                             <>
                               <div className="mb-3">
                                 <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                  Upload {item.status === 'Rejected' ? 'Replacement' : 'Missing'} Document
+                                  {item.status === 'Received'
+                                    ? 'Replace Document'
+                                    : item.status === 'Rejected'
+                                    ? 'Upload Replacement Document'
+                                    : 'Upload Missing Document'}
                                 </h5>
                                 <p className="text-xs text-gray-500 mb-3">
-                                  {item.action === 'Upload Required'
-                                    ? 'Upload the required document to complete your application. Files will be encrypted and securely transmitted.'
-                                    : 'You may upload a replacement document if needed.'}
+                                  {item.status === 'Received'
+                                    ? 'You may upload a new file to replace the currently received document. Files will be encrypted and securely transmitted.'
+                                    : 'Upload the required document to complete your application. Files will be encrypted and securely transmitted.'}
                                 </p>
                               </div>
                               <FileUpload
