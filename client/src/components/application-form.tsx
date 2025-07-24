@@ -1293,7 +1293,7 @@ export function ApplicationForm() {
                   <StateSelector
                     selectedState={formData.applicant?.licenseState || ''}
                     onStateChange={(state) => updateFormData('applicant', 'licenseState', state)}
-                    label="Select state"
+                    label="License State"
                     required={false}
                     className="w-full mt-1"
                   />
@@ -1717,7 +1717,7 @@ export function ApplicationForm() {
                       <StateSelector
                         selectedState={formData.coApplicant?.licenseState || ''}
                         onStateChange={(state) => updateFormData('coApplicant', 'licenseState', state)}
-                        label="Select state"
+                        label="License State"
                         required={false}
                         className="w-full mt-1"
                       />
@@ -2177,7 +2177,7 @@ export function ApplicationForm() {
                         <StateSelector
                           selectedState={formData.guarantor?.licenseState || ''}
                           onStateChange={(state) => updateFormData('guarantor', 'licenseState', state)}
-                          label="Select state"
+                          label="License State"
                           required={false}
                           className="w-full mt-1"
                         />
