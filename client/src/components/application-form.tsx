@@ -844,6 +844,27 @@ export function ApplicationForm() {
     }
   }, [sameAddressCoApplicant, hasCoApplicant, formData.applicant]);
 
+  // Auto-map landlordName to coApplicant when applicant's landlordName changes and sameAddressCoApplicant is checked
+  useEffect(() => {
+    if (sameAddressCoApplicant && hasCoApplicant) {
+      updateFormData('coApplicant', 'landlordName', formData.applicant?.landlordName || '');
+    }
+  }, [formData.applicant?.landlordName, sameAddressCoApplicant, hasCoApplicant]);
+
+  // Effect to copy address when checkbox is checked
+  useEffect(() => {
+    if (sameAddressGuarantor && hasGuarantor) {
+      copyAddressToGuarantor();
+    }
+  }, [sameAddressGuarantor, hasGuarantor, formData.applicant]);
+
+  // Auto-map landlordName to guarantor when applicant's landlordName changes and sameAddressGuarantor is checked
+  useEffect(() => {
+    if (sameAddressGuarantor && hasGuarantor) {
+      updateFormData('guarantor', 'landlordName', formData.applicant?.landlordName || '');
+    }
+  }, [formData.applicant?.landlordName, sameAddressGuarantor, hasGuarantor]);
+
   // Debug effect for Date of Birth
   useEffect(() => {
     console.log('Form applicantDob value:', form.watch('applicantDob'));
@@ -2022,6 +2043,31 @@ export function ApplicationForm() {
                         const updated = [...formData.occupants];
                         updated[idx] = { ...updated[idx], ssnEncryptedDocument: encryptedFiles[0] };
                         setFormData((prev: any) => ({ ...prev, occupants: updated }));
+
+                        // Add to uploadedDocuments array
+                        const sectionKey = `occupant_${idx}_ssn`;
+                        const docs = encryptedFiles.map(file => ({
+                          reference_id: file.uploadDate + '-' + file.filename,
+                          file_name: file.filename,
+                          section_name: sectionKey,
+                          documents: 'ssn'
+                        }));
+                        setUploadedDocuments(prev => {
+                          const filtered = prev.filter(doc => doc.section_name !== sectionKey);
+                          return [...filtered, ...docs];
+                        });
+
+                        // Add to uploadedFilesMetadata
+                        const filesMetadata = encryptedFiles.map(file => ({
+                          file_name: file.filename,
+                          file_size: file.originalSize,
+                          mime_type: file.mimeType,
+                          upload_date: file.uploadDate
+                        }));
+                        setUploadedFilesMetadata(prev => ({
+                          ...prev,
+                          [sectionKey]: filesMetadata
+                        }));
                       }}
                       referenceId={referenceId}
                       sectionName={`occupant_${idx}_ssn`}
