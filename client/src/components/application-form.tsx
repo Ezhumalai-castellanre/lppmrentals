@@ -583,15 +583,28 @@ export function ApplicationForm() {
         applicantLengthAtAddressYears: data.applicantLengthAtAddressYears,
         applicantLengthAtAddressMonths: data.applicantLengthAtAddressMonths,
         applicantLandlordName: data.applicantLandlordName,
+        applicantLandlordAddress: formData.applicant?.landlordAddress || null,
+        applicantLandlordContact: formData.applicant?.landlordContact || null,
         applicantCurrentRent: formData.applicant?.currentRent || data.applicantCurrentRent,
         applicantReasonForMoving: data.applicantReasonForMoving,
         
         // Primary Applicant Financial (from formData)
-        applicantEmployer: formData.applicant?.employer || null,
-        applicantPosition: formData.applicant?.position || null,
-        applicantEmploymentStart: safeDateToISO(formData.applicant?.employmentStart),
+        applicantEmploymentType: formData.applicant?.employmentType || null,
+        // Salaried fields
+        applicantEmployer: formData.applicant?.employmentType === 'salaried' ? formData.applicant?.employer || null : null,
+        applicantPosition: formData.applicant?.employmentType === 'salaried' ? formData.applicant?.position || null : null,
+        applicantEmploymentStart: formData.applicant?.employmentType === 'salaried' ? safeDateToISO(formData.applicant?.employmentStart) : null,
+        applicantLengthAtCurrentPositionYears: formData.applicant?.employmentType === 'salaried' ? formData.applicant?.lengthAtCurrentPositionYears ?? null : null,
+        applicantLengthAtCurrentPositionMonths: formData.applicant?.employmentType === 'salaried' ? formData.applicant?.lengthAtCurrentPositionMonths ?? null : null,
+        // Self-Employed fields
+        applicantBusinessName: formData.applicant?.employmentType === 'self-employed' ? formData.applicant?.businessName || null : null,
+        applicantBusinessType: formData.applicant?.employmentType === 'self-employed' ? formData.applicant?.businessType || null : null,
+        applicantYearsInBusiness: formData.applicant?.employmentType === 'self-employed' ? formData.applicant?.yearsInBusiness || null : null,
+        // Common fields
         applicantIncome: formData.applicant?.income ? parseFloat(formData.applicant.income) : null,
+        applicantIncomeFrequency: formData.applicant?.incomeFrequency || null,
         applicantOtherIncome: formData.applicant?.otherIncome ? parseFloat(formData.applicant.otherIncome) : null,
+        applicantOtherIncomeFrequency: formData.applicant?.otherIncomeFrequency || null,
         applicantOtherIncomeSource: formData.applicant?.otherIncomeSource || null,
         applicantBankRecords: formData.applicant?.bankRecords || [],
         
@@ -610,18 +623,70 @@ export function ApplicationForm() {
         coApplicantZip: formData.coApplicant?.zip || null,
         coApplicantLengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears ?? null,
         coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths ?? null,
+        coApplicantLandlordName: formData.coApplicant?.landlordName || null,
+        coApplicantLandlordAddress: formData.coApplicant?.landlordAddress || null,
+        coApplicantLandlordContact: formData.coApplicant?.landlordContact || null,
         
         // Co-Applicant Financial
-        coApplicantEmployer: formData.coApplicant?.employer || null,
-        coApplicantPosition: formData.coApplicant?.position || null,
-        coApplicantEmploymentStart: safeDateToISO(formData.coApplicant?.employmentStart),
+        coApplicantEmploymentType: formData.coApplicant?.employmentType || null,
+        // Salaried fields
+        coApplicantEmployer: formData.coApplicant?.employmentType === 'salaried' ? formData.coApplicant?.employer || null : null,
+        coApplicantPosition: formData.coApplicant?.employmentType === 'salaried' ? formData.coApplicant?.position || null : null,
+        coApplicantEmploymentStart: formData.coApplicant?.employmentType === 'salaried' ? safeDateToISO(formData.coApplicant?.employmentStart) : null,
+        coApplicantLengthAtCurrentPositionYears: formData.coApplicant?.employmentType === 'salaried' ? formData.coApplicant?.lengthAtCurrentPositionYears ?? null : null,
+        coApplicantLengthAtCurrentPositionMonths: formData.coApplicant?.employmentType === 'salaried' ? formData.coApplicant?.lengthAtCurrentPositionMonths ?? null : null,
+        // Self-Employed fields
+        coApplicantBusinessName: formData.coApplicant?.employmentType === 'self-employed' ? formData.coApplicant?.businessName || null : null,
+        coApplicantBusinessType: formData.coApplicant?.employmentType === 'self-employed' ? formData.coApplicant?.businessType || null : null,
+        coApplicantYearsInBusiness: formData.coApplicant?.employmentType === 'self-employed' ? formData.coApplicant?.yearsInBusiness || null : null,
+        // Common fields
         coApplicantIncome: formData.coApplicant?.income ? parseFloat(formData.coApplicant.income) : null,
+        coApplicantIncomeFrequency: formData.coApplicant?.incomeFrequency || null,
         coApplicantOtherIncome: formData.coApplicant?.otherIncome ? parseFloat(formData.coApplicant.otherIncome) : null,
+        coApplicantOtherIncomeFrequency: formData.coApplicant?.otherIncomeFrequency || null,
         coApplicantOtherIncomeSource: formData.coApplicant?.otherIncomeSource || null,
         coApplicantBankRecords: formData.coApplicant?.bankRecords || [],
         
         // Guarantor - only include if hasGuarantor is true
         hasGuarantor: hasGuarantor,
+        guarantorName: formData.guarantor?.name || null,
+        guarantorRelationship: formData.guarantor?.relationship || null,
+        guarantorDob: safeDateToISO(formData.guarantor?.dob),
+        guarantorSsn: formData.guarantor?.ssn || null,
+        guarantorPhone: formatPhoneForPayload(formData.guarantor?.phone),
+        guarantorEmail: formData.guarantor?.email || null,
+        guarantorAddress: formData.guarantor?.address || null,
+        guarantorCity: formData.guarantor?.city || null,
+        guarantorState: formData.guarantor?.state || null,
+        guarantorZip: formData.guarantor?.zip || null,
+        guarantorLengthAtAddressYears: formData.guarantor?.lengthAtAddressYears ?? null,
+        guarantorLengthAtAddressMonths: formData.guarantor?.lengthAtAddressMonths ?? null,
+        guarantorLandlordName: formData.guarantor?.landlordName || null,
+        guarantorLandlordAddress: formData.guarantor?.landlordAddress || null,
+        guarantorLandlordContact: formData.guarantor?.landlordContact || null,
+        
+        // Guarantor Financial
+        guarantorEmploymentType: formData.guarantor?.employmentType || null,
+        // Salaried fields
+        guarantorEmployer: formData.guarantor?.employmentType === 'salaried' ? formData.guarantor?.employer || null : null,
+        guarantorPosition: formData.guarantor?.employmentType === 'salaried' ? formData.guarantor?.position || null : null,
+        guarantorEmploymentStart: formData.guarantor?.employmentType === 'salaried' ? safeDateToISO(formData.guarantor?.employmentStart) : null,
+        guarantorLengthAtCurrentPositionYears: formData.guarantor?.employmentType === 'salaried' ? formData.guarantor?.lengthAtCurrentPositionYears ?? null : null,
+        guarantorLengthAtCurrentPositionMonths: formData.guarantor?.employmentType === 'salaried' ? formData.guarantor?.lengthAtCurrentPositionMonths ?? null : null,
+        // Self-Employed fields
+        guarantorBusinessName: formData.guarantor?.employmentType === 'self-employed' ? formData.guarantor?.businessName || null : null,
+        guarantorBusinessType: formData.guarantor?.employmentType === 'self-employed' ? formData.guarantor?.businessType || null : null,
+        guarantorYearsInBusiness: formData.guarantor?.employmentType === 'self-employed' ? formData.guarantor?.yearsInBusiness || null : null,
+        // Common fields
+        guarantorIncome: formData.guarantor?.income ? parseFloat(formData.guarantor.income) : null,
+        guarantorIncomeFrequency: formData.guarantor?.incomeFrequency || null,
+        guarantorOtherIncome: formData.guarantor?.otherIncome ? parseFloat(formData.guarantor.otherIncome) : null,
+        guarantorOtherIncomeFrequency: formData.guarantor?.otherIncomeFrequency || null,
+        guarantorOtherIncomeSource: formData.guarantor?.otherIncomeSource || null,
+        guarantorBankRecords: formData.guarantor?.bankRecords || [],
+        guarantorSignature: signatures.guarantor || null,
+        guarantorSignatureDate: signatureTimestamps.guarantor || null,
+        guarantorEmploymentType: formData.guarantor?.employmentType || null,
       };
 
       // Only add guarantor fields if hasGuarantor is true
@@ -651,6 +716,7 @@ export function ApplicationForm() {
         transformedData.guarantorBankRecords = formData.guarantor?.bankRecords || [];
         transformedData.guarantorSignature = signatures.guarantor || null;
         transformedData.guarantorSignatureDate = signatureTimestamps.guarantor || null;
+        transformedData.guarantorEmploymentType = formData.guarantor?.employmentType || null;
       } else {
         console.log('Skipping guarantor fields - hasGuarantor is false');
       }
