@@ -870,6 +870,10 @@ export function ApplicationForm() {
         console.log('Uploaded Documents Count:', uploadedDocuments.length);
         console.log('=== END WEBHOOK PAYLOAD DEBUG ===');
 
+        // --- DEBUG: Log the webhook payload before sending ---
+        console.log('WEBHOOK PAYLOAD DEBUG:', JSON.stringify(webhookPayload, null, 2));
+        // --- END DEBUG ---
+
         console.log('Form submission webhook payload:', JSON.stringify(webhookPayload, null, 2));
         console.log('Uploaded documents array:', JSON.stringify(uploadedDocuments, null, 2));
         const webhookResult = await WebhookService.sendFormDataToWebhook(
