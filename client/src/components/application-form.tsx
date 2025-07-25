@@ -74,7 +74,6 @@ const applicationSchema = z.object({
   applicantLandlordName: z.string().optional(),
   applicantCurrentRent: z.number().optional().or(z.undefined()),
   applicantReasonForMoving: z.string().optional(),
-  applicantGender: z.string().optional(),
 
   // Conditional fields
   hasCoApplicant: z.boolean().default(false),
@@ -197,7 +196,6 @@ export function ApplicationForm() {
       applicantLandlordName: "",
       applicantCurrentRent: undefined,
       applicantReasonForMoving: "",
-      applicantGender: "",
 
       // Conditional fields
       hasCoApplicant: false,
@@ -587,7 +585,6 @@ export function ApplicationForm() {
         applicantLandlordName: data.applicantLandlordName,
         applicantCurrentRent: formData.applicant?.currentRent || data.applicantCurrentRent,
         applicantReasonForMoving: data.applicantReasonForMoving,
-        applicantGender: data.applicantGender,
         
         // Primary Applicant Financial (from formData)
         applicantEmployer: formData.applicant?.employer || null,
@@ -1185,34 +1182,6 @@ export function ApplicationForm() {
                     );
                   }}
                 />
-                <FormField
-                  control={form.control}
-                  name="applicantGender"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="mb-0.5">Gender</FormLabel>
-                      <FormControl>
-                        <Select
-                          value={formData.applicant?.gender || ''}
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            updateFormData('applicant', 'gender', value);
-                          }}
-                        >
-                          <SelectTrigger className="w-full mt-1">
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <div className="space-y-2">
                   <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
                     Social Security Number
@@ -1296,7 +1265,7 @@ export function ApplicationForm() {
                     className="w-full mt-1"
                   />
                 </div>
-                <div className="space-y-2"></div>
+            
                 <h5>Current Address</h5>
                 <div className="space-y-2"></div>
              
@@ -1442,6 +1411,32 @@ export function ApplicationForm() {
                     </FormItem>
                   )}
                 />
+                {/* New: Current Landlord Address */}
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    Current Landlord Address
+                  </label>
+                  <input
+                    type="text"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="Enter landlord's address"
+                    value={formData.applicant?.landlordAddress || ''}
+                    onChange={e => updateFormData('applicant', 'landlordAddress', e.target.value)}
+                  />
+                </div>
+                {/* New: Current Landlord Contact */}
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    Current Landlord Contact
+                  </label>
+                  <input
+                    type="text"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="Enter landlord's phone or email"
+                    value={formData.applicant?.landlordContact || ''}
+                    onChange={e => updateFormData('applicant', 'landlordContact', e.target.value)}
+                  />
+                </div>
                 <div>
                   <Label htmlFor="applicantCurrentRent" className="mb-0.5">Monthly Rent</Label>
                   <Input
@@ -1682,22 +1677,6 @@ export function ApplicationForm() {
                         );
                       })()}
                     </div>
-                    <div>
-                      <Label className="mb-0.5">Gender</Label>
-                      <Select
-                        value={formData.coApplicant?.gender || ''}
-                        onValueChange={(value) => updateFormData('coApplicant', 'gender', value)}
-                      >
-                        <SelectTrigger className="w-full mt-1">
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <div className="space-y-2">
                       <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
                         Social Security Number
@@ -1757,7 +1736,7 @@ export function ApplicationForm() {
                         className="w-full mt-1"
                       />
                     </div>
-                    <div className="space-y-2"></div>
+                    
                     <h5>Current Address</h5>
                     <div className="space-y-2"></div>
                     <div className="space-y-2">
@@ -1834,6 +1813,32 @@ export function ApplicationForm() {
                         value={formData.coApplicant?.landlordName || ''}
                         onChange={e => updateFormData('coApplicant', 'landlordName', e.target.value)}
                         className="input-field w-full mt-1 border-gray-300 bg-white"
+                      />
+                    </div>
+                    {/* New: Current Landlord Address */}
+                    <div className="space-y-2">
+                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                        Current Landlord Address
+                      </label>
+                      <input
+                        type="text"
+                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                        placeholder="Enter landlord's address"
+                        value={formData.coApplicant?.landlordAddress || ''}
+                        onChange={e => updateFormData('coApplicant', 'landlordAddress', e.target.value)}
+                      />
+                    </div>
+                    {/* New: Current Landlord Contact */}
+                    <div className="space-y-2">
+                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                        Current Landlord Contact
+                      </label>
+                      <input
+                        type="text"
+                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                        placeholder="Enter landlord's phone or email"
+                        value={formData.coApplicant?.landlordContact || ''}
+                        onChange={e => updateFormData('coApplicant', 'landlordContact', e.target.value)}
                       />
                     </div>
                     <div>
@@ -1962,26 +1967,6 @@ export function ApplicationForm() {
                           setFormData((prev: any) => ({ ...prev, occupants: updated }));
                         }}
                       />
-                    </div>
-                    <div>
-                      <Label>Gender</Label>
-                      <Select
-                        value={occupant.gender || ''}
-                        onValueChange={value => {
-                          const updated = [...formData.occupants];
-                          updated[idx] = { ...updated[idx], gender: value };
-                          setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
                     <div>
                       <Label>Relationship</Label>
@@ -2197,22 +2182,6 @@ export function ApplicationForm() {
                           );
                         })()}
                       </div>
-                      <div>
-                        <Label className="mb-0.5">Gender</Label>
-                        <Select
-                          value={formData.guarantor?.gender || ''}
-                          onValueChange={(value) => updateFormData('guarantor', 'gender', value)}
-                        >
-                          <SelectTrigger className="w-full mt-1">
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
                       <div className="space-y-2">
                         <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
                           Social Security Number
@@ -2272,7 +2241,7 @@ export function ApplicationForm() {
                           className="w-full mt-1"
                         />
                       </div>
-                      <div className="space-y-2"></div>
+                  
                       <h5>Current Address</h5>
                       <div className="space-y-2"></div>
                       <div  className="space-y-2">
@@ -2352,6 +2321,32 @@ export function ApplicationForm() {
                           value={formData.guarantor?.landlordName || ''}
                           onChange={e => updateFormData('guarantor', 'landlordName', e.target.value)}
                           className="input-field w-full mt-1 border-gray-300 bg-white"
+                        />
+                      </div>
+                      {/* New: Current Landlord Address */}
+                      <div className="space-y-2">
+                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                          Current Landlord Address
+                        </label>
+                        <input
+                          type="text"
+                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                          placeholder="Enter landlord's address"
+                          value={formData.guarantor?.landlordAddress || ''}
+                          onChange={e => updateFormData('guarantor', 'landlordAddress', e.target.value)}
+                        />
+                      </div>
+                      {/* New: Current Landlord Contact */}
+                      <div className="space-y-2">
+                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                          Current Landlord Contact
+                        </label>
+                        <input
+                          type="text"
+                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                          placeholder="Enter landlord's phone or email"
+                          value={formData.guarantor?.landlordContact || ''}
+                          onChange={e => updateFormData('guarantor', 'landlordContact', e.target.value)}
                         />
                       </div>
                       <div>
