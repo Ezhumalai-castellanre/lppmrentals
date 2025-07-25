@@ -2527,21 +2527,47 @@ export function ApplicationForm() {
             </Card>
           );
         }
+        // --- PATCH: Add handler for Guarantor Documents upload ---
+        const guarantorDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('guarantor', documentType, files);
+        const guarantorEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => {
+          // Update encryptedDocuments state
+          setEncryptedDocuments((prev: any) => ({
+            ...prev,
+            guarantor: {
+              ...prev.guarantor,
+              [documentType]: encryptedFiles,
+            },
+          }));
+          // Track uploadedDocuments for webhook
+          const sectionKey = `guarantor_${documentType}`;
+          const docs = encryptedFiles.map(file => ({
+            reference_id: file.uploadDate + '-' + file.filename,
+            file_name: file.filename,
+            section_name: sectionKey,
+            documents: documentType
+          }));
+          setUploadedDocuments(prev => {
+            const filtered = prev.filter(doc => doc.section_name !== sectionKey);
+            return [...filtered, ...docs];
+          });
+          // Track uploaded files metadata for webhook
+          const filesMetadata = encryptedFiles.map(file => ({
+            file_name: file.filename,
+            file_size: file.originalSize,
+            mime_type: file.mimeType,
+            upload_date: file.uploadDate
+          }));
+          setUploadedFilesMetadata(prev => ({
+            ...prev,
+            [sectionKey]: filesMetadata
+          }));
+        };
+        // --- END PATCH ---
         return (
           <SupportingDocuments
             formData={formData}
-            onDocumentChange={(documentType, files) => {
-              setDocuments((prev: any) => ({
-                ...prev,
-                [documentType]: files,
-              }));
-            }}
-            onEncryptedDocumentChange={(documentType, encryptedFiles) => {
-              setEncryptedDocuments((prev: any) => ({
-                ...prev,
-                [documentType]: encryptedFiles,
-              }));
-            }}
+            onDocumentChange={guarantorDocumentChange}
+            onEncryptedDocumentChange={guarantorEncryptedDocumentChange}
             referenceId={referenceId}
             enableWebhook={true}
             applicationId={applicationId}
