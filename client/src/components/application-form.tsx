@@ -485,6 +485,14 @@ export function ApplicationForm() {
   };
 
   const onSubmit = async (data: ApplicationFormData) => {
+    if (!form.formState.isValid) {
+      toast({
+        title: "Form is invalid",
+        description: "Please correct the errors before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
     console.log("=== FORM SUBMISSION DEBUG ===");
     console.log("Form data received:", data);
     console.log("Form data applicantDob:", data.applicantDob);
