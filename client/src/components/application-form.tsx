@@ -749,10 +749,43 @@ export function ApplicationForm() {
 
       // On form submit, send only form data, application_id, and uploadedDocuments to the webhook
       try {
+        // --- BEGIN PATCH: Ensure all document fields are present in uploadedDocuments ---
+        // Enumerate all possible document sections/types
+        const allSections: { section: string; documents: string }[] = [];
+        // SupportingDocuments types (from supporting-documents.tsx)
+        const supportingTypes = [
+          'photo_id', 'social_security', 'w9_forms',
+          'bank_statement', 'tax_returns',
+          'employment_letter', 'pay_stubs',
+          'accountant_letter', 'credit_report'
+        ];
+        // Applicant supporting
+        supportingTypes.forEach(type => allSections.push({ section: `supporting_${type}`, documents: type }));
+        // Co-Applicant supporting
+        if (hasCoApplicant) supportingTypes.forEach(type => allSections.push({ section: `coApplicant_${type}`, documents: type }));
+        // Guarantor supporting
+        if (hasGuarantor) supportingTypes.forEach(type => allSections.push({ section: `guarantor_${type}`, documents: type }));
+        // Occupant SSN
+        (formData.occupants || []).forEach((_: any, idx: number) => {
+          allSections.push({ section: `occupant_${idx}_ssn`, documents: 'ssn' });
+        });
+        // Now, for each section, ensure uploadedDocuments has an entry (if not, add empty)
+        let patchedUploadedDocuments = [...uploadedDocuments];
+        allSections.forEach(({ section, documents }) => {
+          if (!patchedUploadedDocuments.some(doc => doc.section_name === section)) {
+            patchedUploadedDocuments.push({
+              reference_id: '',
+              file_name: '',
+              section_name: section,
+              documents: documents
+            });
+          }
+        });
+        // --- END PATCH ---
         const webhookPayload = {
           ...transformedData, // all form fields
           application_id: applicationId,
-          uploaded_documents: uploadedDocuments.map(doc => ({
+          uploaded_documents: patchedUploadedDocuments.map(doc => ({
             reference_id: doc.reference_id,
             file_name: doc.file_name,
             section_name: doc.section_name,
