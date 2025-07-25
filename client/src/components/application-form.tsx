@@ -1750,9 +1750,7 @@ export function ApplicationForm() {
                       })()}
                     </div>
                     <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        Social Security Number
-                      </label>
+                      
                       <SSNInput
                         name="coApplicantSsn"
                         label="Social Security Number"
@@ -1762,9 +1760,7 @@ export function ApplicationForm() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        Phone Number
-                      </label>
+                     
                       <PhoneInput
                         name="coApplicantPhone"
                         label="Phone Number"
@@ -1774,9 +1770,7 @@ export function ApplicationForm() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        Email Address
-                      </label>
+                      
                       <EmailInput
                         name="coApplicantEmail"
                         label="Email Address"
@@ -1786,9 +1780,7 @@ export function ApplicationForm() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        Driver's License Number
-                      </label>
+                     
                       <LicenseInput
                         name="coApplicantLicense"
                         label="Driver's License Number"
@@ -2262,9 +2254,7 @@ export function ApplicationForm() {
                         })()}
                       </div>
                       <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          Social Security Number
-                        </label>
+                        
                         <SSNInput
                           name="guarantorSsn"
                           label="Social Security Number"
@@ -2274,9 +2264,7 @@ export function ApplicationForm() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          Phone Number
-                        </label>
+                      
                         <PhoneInput
                           name="guarantorPhone"
                           label="Phone Number"
@@ -2286,9 +2274,7 @@ export function ApplicationForm() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          Email Address
-                        </label>
+                     
                         <EmailInput
                           name="guarantorEmail"
                           label="Email Address"
@@ -2298,9 +2284,7 @@ export function ApplicationForm() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          Driver's License Number
-                        </label>
+                      
                         <LicenseInput
                           name="guarantorLicense"
                           label="Driver's License Number"
