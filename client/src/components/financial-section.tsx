@@ -14,6 +14,11 @@ interface FinancialSectionProps {
   updateFormData: (person: string, field: string, value: any) => void;
 }
 
+// Helper to guarantee string for value prop
+function getStringValue(v: any): string {
+  return (typeof v === 'number' && !isNaN(v)) ? String(v) : '';
+}
+
 export function FinancialSection({ title, person, formData, updateFormData }: FinancialSectionProps) {
   const personData = formData[person] || {};
 
@@ -71,6 +76,17 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                 className="input-field"
               />
             </div>
+            {/* New: Title (if not redundant, otherwise skip) */}
+            {/* <div className="form-field">
+              <Label htmlFor={`${person}-title`}>Title</Label>
+              <Input
+                id={`${person}-title`}
+                placeholder="Title (optional)"
+                value={personData.title || ""}
+                onChange={(e) => handleChange("title", e.target.value)}
+                className="input-field"
+              />
+            </div> */}
             <div className="form-field">
               <Label htmlFor={`${person}-employmentStart`}>Employment Start Date</Label>
               <DatePicker
@@ -78,6 +94,27 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                 onChange={(date) => handleDateChange("employmentStart", date)}
                 placeholder="Select employment start date"
                 disabled={(date) => date > new Date()}
+              />
+            </div>
+            {/* New: Length of Employment in Current Position */}
+            <div className="form-field col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
+              <Label className="mb-0.5 col-span-2">Length of Employment in Current Position</Label>
+              <Input
+                type="number"
+                min={0}
+                value={(`${personData.lengthAtCurrentPositionYears ?? ''}`) as string}
+                onChange={e => handleChange('lengthAtCurrentPositionYears', e.target.value === '' ? undefined : Number(e.target.value))}
+                placeholder="e.g. 2 years"
+                className="w-full mt-1"
+              />
+              <Input
+                type="number"
+                min={0}
+                max={11}
+                value={(`${personData.lengthAtCurrentPositionMonths ?? ''}`) as string}
+                onChange={e => handleChange('lengthAtCurrentPositionMonths', e.target.value === '' ? undefined : Number(e.target.value))}
+                placeholder="e.g. 4 months"
+                className="w-full mt-1"
               />
             </div>
             <div className="form-field">
