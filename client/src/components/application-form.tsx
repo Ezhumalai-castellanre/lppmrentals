@@ -1964,18 +1964,29 @@ export function ApplicationForm() {
                     </div>
                     <div>
                       <Label>Relationship</Label>
-                      <Input
-                        placeholder="Relationship"
+                      <Select
                         value={occupant.relationship || ''}
-                        onChange={e => {
+                        onValueChange={value => {
                           const updated = [...formData.occupants];
-                          updated[idx] = { ...updated[idx], relationship: e.target.value };
+                          updated[idx] = { ...updated[idx], relationship: value };
                           setFormData((prev: any) => ({ ...prev, occupants: updated }));
                         }}
-                      />
+                      >
+                        <SelectTrigger className="w-full mt-1">
+                          <SelectValue placeholder="Select relationship" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="spouse">Spouse</SelectItem>
+                          <SelectItem value="partner">Partner</SelectItem>
+                          <SelectItem value="parent">Parent</SelectItem>
+                          <SelectItem value="child">Child</SelectItem>
+                          <SelectItem value="sibling">Sibling</SelectItem>
+                          <SelectItem value="relative">Relative</SelectItem>
+                          <SelectItem value="roommate">Roommate</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
                     <div>
                       <Label>Date of Birth</Label>
                       <DatePicker
@@ -2002,6 +2013,9 @@ export function ApplicationForm() {
                         disabled={date => date > new Date()}
                       />
                     </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                 
                     <div>
                       <SSNInput
                         name={`occupantSsn${idx}`}
