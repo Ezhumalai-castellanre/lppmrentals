@@ -1246,164 +1246,65 @@ export function ApplicationForm() {
                     className="w-full mt-1"
                   />
                 </div>
-                <div className="space-y-2">
-                  <ZIPInput
-                    name="applicantZip"
-                    label="ZIP Code*"
-                    value={formData.applicant?.zip || ''}
-                    onChange={value => {
-                      updateFormData('applicant', 'zip', value);
-                      form.setValue('applicantZip', value);
-                    }}
-                    required={true}
-                    error={form.formState.errors.applicantZip?.message}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <FormField
-                    control={form.control}
-                    name="applicantLengthAtAddressYears"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={0}
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            value={field.value ?? ''}
-                            onChange={(e) => {
-                              // Only allow digits
-                              const val = e.target.value.replace(/\D/g, '');
-                              const numVal = val === '' ? undefined : Number(val);
-                              field.onChange(numVal);
-                              updateFormData('applicant', 'lengthAtAddressYears', numVal);
-                            }}
-                            placeholder="e.g. 2 years"
-                            className="w-full mt-1"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="applicantLengthAtAddressMonths"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={0}
-                            max={11}
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            value={field.value ?? ''}
-                            onChange={(e) => {
-                              // Only allow digits
-                              const val = e.target.value.replace(/\D/g, '');
-                              const numVal = val === '' ? undefined : Number(val);
-                              field.onChange(numVal);
-                              updateFormData('applicant', 'lengthAtAddressMonths', numVal);
-                            }}
-                            placeholder="e.g. 4 months"
-                            className="w-full mt-1"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="applicantLandlordName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="mb-0.5">Current Landlord's Name</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Enter landlord's name" 
-                          {...field}
-                          className="input-field w-full mt-1 border-gray-300 bg-white"
-                          onChange={(e) => {
-                            field.onChange(e);
-                            updateFormData('applicant', 'landlordName', e.target.value);
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* New: Current Landlord Address */}
-                <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    Current Landlord Address
-                  </label>
-                  <input
-                    type="text"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="Enter landlord's address"
-                    value={formData.applicant?.landlordAddress || ''}
-                    onChange={e => updateFormData('applicant', 'landlordAddress', e.target.value)}
-                  />
-                </div>
-                {/* New: Current Landlord Contact */}
-                <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    Current Landlord Contact
-                  </label>
-                  <input
-                    type="text"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="Enter landlord's phone or email"
-                    value={formData.applicant?.landlordContact || ''}
-                    onChange={e => updateFormData('applicant', 'landlordContact', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="applicantCurrentRent" className="mb-0.5">Monthly Rent</Label>
-                  <Input
-                    id="applicantCurrentRent"
-                    type="number"
-                    placeholder="0.00"
-                    value={formData.applicant?.currentRent?.toString() || ''}
-                    onChange={(e) => {
-                      const numValue = parseFloat(e.target.value) || 0;
-                      updateFormData('applicant', 'currentRent', numValue);
-                      form.setValue('applicantCurrentRent', numValue);
-                    }}
-                    className="input-field w-full mt-1"
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="applicantReasonForMoving"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Please explain your reason for moving" 
-                          {...field}
-                          className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
-                          onChange={(e) => {
-                            field.onChange(e);
-                            updateFormData('applicant', 'reasonForMoving', e.target.value);
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+               <h5>Current Address</h5>
+                    <div className="space-y-2"></div>
+                    <div className="space-y-2">
+                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                        Street Address
+                      </label>
+                      <input
+                        type="text"
+                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                        placeholder="Enter street address"
+                        value={formData.applicant?.address || ''}
+                        onChange={e => {
+                          updateFormData('applicant', 'address', e.target.value);
+                          form.setValue('applicantAddress', e.target.value);
+                        }}
+                      />
+                      <div className="space-y-2">
+                     
+                      <ZIPInput
+                        name="applicantZip"
+                        label="ZIP Code*"
+                        value={formData.applicant?.zip || ''}
+                        onChange={value => {
+                          updateFormData('applicant', 'zip', value);
+                          form.setValue('applicantZip', value);
+                        }}
+                        required={true}
+                        error={form.formState.errors.applicantZip?.message}
+                      />
+                      {formData.applicant?.zip && !validateZIPCode(formData.applicant.zip) && (
+                        <span className="text-red-500 text-xs">Please enter a valid ZIP code</span>
+                      )}
+                    </div>
+                    </div>
+                    <div className="space-y-2">
+                      <StateCitySelector
+                        selectedState={formData.applicant?.state || ''}
+                        selectedCity={formData.applicant?.city || ''}
+                        onStateChange={state => {
+                          updateFormData('applicant', 'state', state);
+                          form.setValue('applicantState', state);
+                          updateFormData('applicant', 'city', '');
+                          form.setValue('applicantCity', '');
+                        }}
+                        onCityChange={city => {
+                          updateFormData('applicant', 'city', city);
+                          form.setValue('applicantCity', city);
+                        }}
+                        stateLabel="State*"
+                        cityLabel="City*"
+                        required={true}
+                        error={form.formState.errors.applicantState?.message || form.formState.errors.applicantCity?.message}
+                        className="mb-4"
+                      />
+                    </div>
+                    
+             
               </div>
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                <div className="col-span-1 md:col-span-2">
-                  
-                   </div>
                 <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
                   <FormLabel className="mb-0.5 col-span-2">Length of Stay at Current Address</FormLabel>
                   <FormField
@@ -1814,9 +1715,7 @@ export function ApplicationForm() {
                         onChange={e => updateFormData('coApplicant', 'address', e.target.value)}
                       />
                       <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        ZIP Code*
-                      </label>
+                     
                       <ZIPInput
                         name="coApplicantZip"
                         label="ZIP Code*"
