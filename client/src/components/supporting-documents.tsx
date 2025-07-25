@@ -21,17 +21,11 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
       category: "Identity Documents",
       icon: <User className="h-4 w-4" />,
       documents: [
-        {
-          id: "w9_forms",
-          name: "W9",
-          description: "W9 form",
-          required: true,
-          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
-        },
+        
         {
           id: "photo_id",
           name: "Driver's License",
-          description: "Driver's license, state ID, or passport (all applicants 18+)",
+          description: "Driver's License",
           required: true,
           acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         },
@@ -39,6 +33,13 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
           id: "social_security",
           name: "Social Security Card",
           description: "Original or certified copy",
+          required: true,
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
+        },
+        {
+          id: "w9_forms",
+          name: "W9",
+          description: "W9 form",
           required: true,
           acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         }

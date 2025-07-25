@@ -1806,7 +1806,7 @@ export function ApplicationForm() {
                         className="w-full mt-1"
                       />
                     </div>
-                    <div className="col-span-1 md:col-span-2">
+                    <div>
                       <FormLabel className="mb-0.5">Current Landlord's Name</FormLabel>
                       <Input
                         placeholder="Enter landlord's name"
@@ -1815,34 +1815,28 @@ export function ApplicationForm() {
                         className="input-field w-full mt-1 border-gray-300 bg-white"
                       />
                     </div>
-                    {/* New: Current Landlord Address */}
-                    <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        Current Landlord Address
-                      </label>
-                      <input
+                    <div>
+                      <FormLabel className="mb-0.5">Current Landlord Address</FormLabel>
+                      <Input
                         type="text"
-                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
                         placeholder="Enter landlord's address"
                         value={formData.coApplicant?.landlordAddress || ''}
                         onChange={e => updateFormData('coApplicant', 'landlordAddress', e.target.value)}
-                      />
-                    </div>
-                    {/* New: Current Landlord Contact */}
-                    <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        Current Landlord Contact
-                      </label>
-                      <input
-                        type="text"
-                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                        placeholder="Enter landlord's phone or email"
-                        value={formData.coApplicant?.landlordContact || ''}
-                        onChange={e => updateFormData('coApplicant', 'landlordContact', e.target.value)}
+                        className="input-field w-full mt-1 border-gray-300 bg-white"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="coApplicantCurrentRent" className="mb-0.5">Monthly Rent</Label>
+                      <FormLabel className="mb-0.5">Current Landlord Contact</FormLabel>
+                      <Input
+                        type="text"
+                        placeholder="Enter landlord's phone or email"
+                        value={formData.coApplicant?.landlordContact || ''}
+                        onChange={e => updateFormData('coApplicant', 'landlordContact', e.target.value)}
+                        className="input-field w-full mt-1 border-gray-300 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <FormLabel htmlFor="coApplicantCurrentRent" className="mb-0.5">Monthly Rent</FormLabel>
                       <Input
                         id="coApplicantCurrentRent"
                         type="number"
@@ -2314,7 +2308,7 @@ export function ApplicationForm() {
                           className="w-full mt-1"
                         />
                       </div>
-                      <div className="col-span-1 md:col-span-2">
+                      <div className="">
                         <FormLabel className="mb-0.5">Current Landlord's Name</FormLabel>
                         <Input
                           placeholder="Enter landlord's name"
@@ -2363,7 +2357,7 @@ export function ApplicationForm() {
                           className="input-field w-full mt-1"
                         />
                       </div>
-                      <div className="col-span-1 md:col-span-2">
+                      <div className="">
                         <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
                         <Textarea
                           placeholder="Please explain your reason for moving"
