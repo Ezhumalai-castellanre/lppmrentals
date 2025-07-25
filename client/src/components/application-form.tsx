@@ -712,7 +712,8 @@ export function ApplicationForm() {
       
       // Create AbortController for submission timeout
       const submissionController = new AbortController();
-      const submissionTimeoutId = setTimeout(() => submissionController.abort(), 45000); // 45 second timeout
+      // Increased timeout to 120 seconds to reduce AbortError for large/slow submissions
+      const submissionTimeoutId = setTimeout(() => submissionController.abort(), 120000); // 120 second timeout
       
       const submissionResponse = await fetch(apiEndpoint + '/submit-application', {
         method: 'POST',
@@ -2494,7 +2495,8 @@ export function ApplicationForm() {
       }
     } else if (formValue) {
       // If invalid, clear
-      form.setValue('applicantDob', undefined);
+      // Fix: set to null instead of undefined to avoid type error
+      form.setValue('applicantDob', null as any);
     }
   }, [formData.applicant?.dob, form]);
 
