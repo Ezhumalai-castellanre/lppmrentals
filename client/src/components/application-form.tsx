@@ -851,12 +851,14 @@ export function ApplicationForm() {
         const webhookPayload = {
           ...transformedData, // all form fields
           application_id: applicationId,
-          uploaded_documents: patchedUploadedDocuments.map(doc => ({
-            reference_id: doc.reference_id,
-            file_name: doc.file_name,
-            section_name: doc.section_name,
-            documents: doc.documents // <-- Now included
-          }))
+          uploaded_documents: patchedUploadedDocuments
+            .filter(doc => doc.reference_id && doc.file_name)
+            .map(doc => ({
+              reference_id: doc.reference_id,
+              file_name: doc.file_name,
+              section_name: doc.section_name,
+              documents: doc.documents
+            }))
         };
 
         console.log('=== WEBHOOK PAYLOAD DEBUG ===');
