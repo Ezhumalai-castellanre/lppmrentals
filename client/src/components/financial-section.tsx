@@ -159,7 +159,7 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
               <div className="form-field">
                 <IncomeWithFrequencyInput
                   name={`${person}-income`}
-                  label="Monthly Income ($) *"
+                  label=" Income ($) "
                   value={personData.income || ""}
                   frequency={personData.incomeFrequency || "monthly"}
                   onValueChange={(value) => handleChange("income", value)}
