@@ -486,11 +486,6 @@ export function ApplicationForm() {
 
   const onSubmit = async (data: ApplicationFormData) => {
     if (!form.formState.isValid) {
-      toast({
-        title: "Form is invalid",
-        description: "Please correct the errors before submitting.",
-        variant: "destructive",
-      });
       return;
     }
     console.log("=== FORM SUBMISSION DEBUG ===");
@@ -694,13 +689,13 @@ export function ApplicationForm() {
         guarantorBankRecords: formData.guarantor?.bankRecords || [],
         guarantorSignature: signatures.guarantor || null,
         guarantorSignatureDate: signatureTimestamps.guarantor || null,
-        guarantorEmploymentType: formData.guarantor?.employmentType || null,
       };
 
       // Only add guarantor fields if hasGuarantor is true
       console.log('hasGuarantor value:', hasGuarantor);
       if (hasGuarantor) {
         console.log('Adding guarantor fields...');
+        // Basic guarantor info
         transformedData.guarantorName = formData.guarantor?.name || null;
         transformedData.guarantorRelationship = formData.guarantor?.relationship || null;
         transformedData.guarantorDob = safeDateToISO(formData.guarantor?.dob);
@@ -714,17 +709,35 @@ export function ApplicationForm() {
         transformedData.guarantorLengthAtAddressYears = formData.guarantor?.lengthAtAddressYears ?? null;
         transformedData.guarantorLengthAtAddressMonths = formData.guarantor?.lengthAtAddressMonths ?? null;
         
-        // Guarantor Financial
-        transformedData.guarantorEmployer = formData.guarantor?.employer || null;
-        transformedData.guarantorPosition = formData.guarantor?.position || null;
-        transformedData.guarantorEmploymentStart = safeDateToISO(formData.guarantor?.employmentStart);
-        transformedData.guarantorIncome = formData.guarantor?.income ? parseFloat(formData.guarantor.income) : null;
-        transformedData.guarantorOtherIncome = formData.guarantor?.otherIncome ? parseFloat(formData.guarantor.otherIncome) : null;
-        transformedData.guarantorOtherIncomeSource = formData.guarantor?.otherIncomeSource || null;
-        transformedData.guarantorBankRecords = formData.guarantor?.bankRecords || [];
-        transformedData.guarantorSignature = signatures.guarantor || null;
-        transformedData.guarantorSignatureDate = signatureTimestamps.guarantor || null;
-        transformedData.guarantorEmploymentType = formData.guarantor?.employmentType || null;
+        // Guarantor Financial - only set if not already set in the initial object
+        if (!transformedData.guarantorEmployer) {
+          transformedData.guarantorEmployer = formData.guarantor?.employer || null;
+        }
+        if (!transformedData.guarantorPosition) {
+          transformedData.guarantorPosition = formData.guarantor?.position || null;
+        }
+        if (!transformedData.guarantorEmploymentStart) {
+          transformedData.guarantorEmploymentStart = safeDateToISO(formData.guarantor?.employmentStart);
+        }
+        if (!transformedData.guarantorIncome) {
+          transformedData.guarantorIncome = formData.guarantor?.income ? parseFloat(formData.guarantor.income) : null;
+        }
+        if (!transformedData.guarantorOtherIncome) {
+          transformedData.guarantorOtherIncome = formData.guarantor?.otherIncome ? parseFloat(formData.guarantor.otherIncome) : null;
+        }
+        if (!transformedData.guarantorOtherIncomeSource) {
+          transformedData.guarantorOtherIncomeSource = formData.guarantor?.otherIncomeSource || null;
+        }
+        if (!transformedData.guarantorBankRecords) {
+          transformedData.guarantorBankRecords = formData.guarantor?.bankRecords || [];
+        }
+        if (!transformedData.guarantorSignature) {
+          transformedData.guarantorSignature = signatures.guarantor || null;
+        }
+        if (!transformedData.guarantorSignatureDate) {
+          transformedData.guarantorSignatureDate = signatureTimestamps.guarantor || null;
+        }
+
       } else {
         console.log('Skipping guarantor fields - hasGuarantor is false');
       }
