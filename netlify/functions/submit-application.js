@@ -7,9 +7,9 @@ export const handler = async (event, context) => {
   const preflightResponse = handlePreflight(event);
   if (preflightResponse) return preflightResponse;
 
-      if (event.httpMethod !== 'POST') {
-      return createCorsResponse(405, { error: 'Method not allowed' });
-    }
+  if (event.httpMethod !== 'POST') {
+    return createCorsResponse(405, { error: 'Method not allowed' });
+  }
 
   try {
     console.log('=== SUBMIT-APPLICATION FUNCTION CALLED ===');
@@ -36,8 +36,28 @@ export const handler = async (event, context) => {
       'monthlyRent',
       'applicantLengthAtAddressYears',
       'applicantLengthAtAddressMonths',
-      'applicantCurrentRent'
+      'applicantCurrentRent',
+      'applicantLengthAtCurrentPositionYears',
+      'applicantLengthAtCurrentPositionMonths',
+      'applicantYearsInBusiness',
+      'applicantIncome',
+      'applicantOtherIncome',
+      'coApplicantLengthAtAddressYears',
+      'coApplicantLengthAtAddressMonths',
+      'coApplicantLengthAtCurrentPositionYears',
+      'coApplicantLengthAtCurrentPositionMonths',
+      'coApplicantYearsInBusiness',
+      'coApplicantIncome',
+      'coApplicantOtherIncome',
+      'guarantorLengthAtAddressYears',
+      'guarantorLengthAtAddressMonths',
+      'guarantorLengthAtCurrentPositionYears',
+      'guarantorLengthAtCurrentPositionMonths',
+      'guarantorYearsInBusiness',
+      'guarantorIncome',
+      'guarantorOtherIncome'
     ];
+    
     for (const field of numberFields) {
       if (field in applicationData && typeof applicationData[field] === 'string' && applicationData[field].trim() !== '') {
         const coerced = Number(applicationData[field]);
@@ -45,9 +65,35 @@ export const handler = async (event, context) => {
       }
     }
 
+    // Clean up the data before validation
+    const cleanedData = { ...applicationData };
+    
+    // Remove any undefined values but keep null values
+    Object.keys(cleanedData).forEach(key => {
+      if (cleanedData[key] === undefined) {
+        delete cleanedData[key];
+      }
+    });
+
+    // Handle arrays and objects properly
+    if (cleanedData.applicantBankRecords && !Array.isArray(cleanedData.applicantBankRecords)) {
+      cleanedData.applicantBankRecords = [];
+    }
+    if (cleanedData.coApplicantBankRecords && !Array.isArray(cleanedData.coApplicantBankRecords)) {
+      cleanedData.coApplicantBankRecords = [];
+    }
+    if (cleanedData.guarantorBankRecords && !Array.isArray(cleanedData.guarantorBankRecords)) {
+      cleanedData.guarantorBankRecords = [];
+    }
+    if (cleanedData.otherOccupants && !Array.isArray(cleanedData.otherOccupants)) {
+      cleanedData.otherOccupants = [];
+    }
+
+    console.log('Cleaned data before validation:', JSON.stringify(cleanedData, null, 2));
+
     // Validate application data
     try {
-      const validatedData = insertRentalApplicationSchema.parse(applicationData);
+      const validatedData = insertRentalApplicationSchema.parse(cleanedData);
       console.log('Validation passed. validatedData:', validatedData);
 
       // Create application in database
@@ -65,10 +111,15 @@ export const handler = async (event, context) => {
     } catch (validationError) {
       // Zod validation error
       if (validationError && validationError.errors) {
-        console.error('Validation error:', validationError.errors);
+        console.error('Validation error details:', validationError.errors);
+        const errorMessages = validationError.errors.map(err => 
+          `${err.path?.join('.') || 'unknown'}: ${err.message}`
+        ).join(', ');
+        
         return createCorsResponse(400, {
           error: 'Validation failed',
-          details: validationError.errors
+          details: validationError.errors,
+          message: errorMessages
         });
       }
       // Other error

@@ -22,7 +22,7 @@ function getStringValue(v: any): string {
 export function FinancialSection({ title, person, formData, updateFormData }: FinancialSectionProps) {
   const personData = formData[person] || {};
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | number | undefined) => {
     updateFormData(person, field, value);
   };
 
