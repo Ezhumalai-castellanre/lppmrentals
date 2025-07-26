@@ -35,14 +35,14 @@ import { FileUpload } from "@/components/ui/file-upload";
 
 const applicationSchema = z.object({
   // Application Info
-  buildingAddress: z.string().optional(),
-  apartmentNumber: z.string().optional(),
+  buildingAddress: z.string().min(1, "Building address is required"),
+  apartmentNumber: z.string().min(1, "Apartment number is required"),
   moveInDate: z.date({
     required_error: "Move-in date is required",
     invalid_type_error: "Please select a valid move-in date",
   }),
-  monthlyRent: z.number().optional().or(z.undefined()),
-  apartmentType: z.string().optional(),
+  monthlyRent: z.number().positive("Monthly rent must be positive").or(z.undefined()),
+  apartmentType: z.string().min(1, "Apartment type is required"),
   howDidYouHear: z.string().optional(),
   howDidYouHearOther: z.string().optional(),
 
@@ -58,15 +58,13 @@ const applicationSchema = z.object({
   applicantPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
     message: "Please enter a valid US phone number"
   }),
-  applicantEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
-    message: "Please enter a valid email address"
-  }),
+  applicantEmail: z.string().email("Valid email is required"),
   applicantLicense: z.string().optional(),
   applicantLicenseState: z.string().optional(),
-  applicantAddress: z.string().optional(),
-  applicantCity: z.string().optional(),
-  applicantState: z.string().optional(),
-  applicantZip: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+  applicantAddress: z.string().min(1, "Address is required"),
+  applicantCity: z.string().min(1, "City is required"),
+  applicantState: z.string().min(1, "State is required"),
+  applicantZip: z.string().min(1, "ZIP code is required").refine((val) => validateZIPCode(val), {
     message: "Please enter a valid ZIP code"
   }),
   applicantLengthAtAddressYears: z.number().optional().or(z.undefined()),
@@ -486,11 +484,20 @@ export function ApplicationForm() {
 
   const onSubmit = async (data: ApplicationFormData) => {
     if (!form.formState.isValid) {
+      // Get all validation errors
+      const errors = form.formState.errors;
+      const errorMessages = Object.entries(errors).map(([field, error]) => {
+        return `${field}: ${error?.message || 'Invalid value'}`;
+      }).join(', ');
+      
       toast({
         title: "Form is invalid",
-        description: "Please correct the errors before submitting.",
+        description: `Please fix these errors: ${errorMessages}`,
         variant: "destructive",
       });
+      
+      // Log detailed errors for debugging
+      console.log('Form validation errors:', errors);
       return;
     }
     console.log("=== FORM SUBMISSION DEBUG ===");
