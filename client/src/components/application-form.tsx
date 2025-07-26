@@ -2159,7 +2159,7 @@ export function ApplicationForm() {
                   </div>
                   <div className="mb-2">
                     <FileUpload
-                      label="Social Security Card (Required)"
+                      label={`Occupant ${idx + 1} - Social Security Card (Required)`}
                       description="Upload SSN card (.pdf, .jpg, .jpeg, .png, max 10MB)"
                       accept=".pdf,.jpg,.jpeg,.png"
                       multiple={false}
@@ -2167,11 +2167,13 @@ export function ApplicationForm() {
                       maxSize={10}
                       enableEncryption={true}
                       onFileChange={files => {
+                        console.log(`Occupant ${idx} file change:`, files);
                         const updated = [...formData.occupants];
                         updated[idx] = { ...updated[idx], ssnDocument: files[0] };
                         setFormData((prev: any) => ({ ...prev, occupants: updated }));
                       }}
                       onEncryptedFilesChange={encryptedFiles => {
+                        console.log(`Occupant ${idx} encrypted file change:`, encryptedFiles);
                         const updated = [...formData.occupants];
                         updated[idx] = { ...updated[idx], ssnEncryptedDocument: encryptedFiles[0] };
                         setFormData((prev: any) => ({ ...prev, occupants: updated }));

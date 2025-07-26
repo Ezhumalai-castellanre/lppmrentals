@@ -227,7 +227,12 @@ export function FileUpload({
           });
           const fileInput = document.getElementById(`file-input-${label}`);
           console.log('File input element found:', !!fileInput);
-          fileInput?.click();
+          if (fileInput) {
+            fileInput.click();
+            console.log('File input click triggered');
+          } else {
+            console.error('File input element not found for:', label);
+          }
         }}
       >
         {isEncrypting ? (
