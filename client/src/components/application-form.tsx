@@ -41,7 +41,6 @@ const applicationSchema = z.object({
     required_error: "Move-in date is required",
     invalid_type_error: "Please select a valid move-in date",
   }),
-  monthlyRent: z.number().positive("Monthly rent must be positive").or(z.undefined()),
   apartmentType: z.string().min(1, "Apartment type is required"),
   howDidYouHear: z.string().optional(),
   howDidYouHearOther: z.string().optional(),
@@ -172,7 +171,6 @@ export function ApplicationForm() {
       buildingAddress: "",
       apartmentNumber: "",
       moveInDate: undefined as any,
-      monthlyRent: undefined,
       apartmentType: "",
       howDidYouHear: "",
       howDidYouHearOther: "",
@@ -337,7 +335,6 @@ export function ApplicationForm() {
       buildingAddress: currentFormData.buildingAddress || formData.application?.buildingAddress,
       apartmentNumber: currentFormData.apartmentNumber || formData.application?.apartmentNumber,
       moveInDate: currentFormData.moveInDate || formData.application?.moveInDate,
-      monthlyRent: currentFormData.monthlyRent || formData.application?.monthlyRent,
       apartmentType: currentFormData.apartmentType || formData.application?.apartmentType,
       howDidYouHear: currentFormData.howDidYouHear || formData.application?.howDidYouHear,
     };
@@ -805,7 +802,6 @@ export function ApplicationForm() {
         buildingAddress: data.buildingAddress,
         apartmentNumber: data.apartmentNumber,
         moveInDate: safeDateToISO(data.moveInDate || formData.application?.moveInDate),
-        monthlyRent: data.monthlyRent,
         apartmentType: data.apartmentType,
         howDidYouHear: data.howDidYouHear,
         
@@ -1359,26 +1355,18 @@ export function ApplicationForm() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="monthlyRent"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Monthly Rent ($) *</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number"
-                          placeholder="0.00"
-                          {...field}
-                          className="input-field"
-                          value={formData.application?.monthlyRent?.toString() || ''}
-                          disabled
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormItem>
+                  <FormLabel>Monthly Rent ($) *</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="text"
+                      placeholder="0.00"
+                      value={selectedUnit?.monthlyRent?.toString() || ''}
+                      disabled
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
 
                 <FormField
                   control={form.control}
