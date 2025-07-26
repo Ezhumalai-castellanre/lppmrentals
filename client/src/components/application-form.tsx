@@ -509,31 +509,7 @@ export function ApplicationForm() {
         break;
         
       case 4: // Supporting Documents
-        // Check if required documents are uploaded
-        const requiredDocs = ['photo_id', 'social_security', 'bank_statement', 'tax_returns'];
-        
-        console.log('🔍 Document Validation Debug - Step 4:');
-        console.log('Required docs:', requiredDocs);
-        console.log('FormData documents:', formData.documents);
-        console.log('Encrypted documents state:', encryptedDocuments);
-        console.log('Documents state:', documents);
-        
-        const missingDocs = requiredDocs.filter(doc => {
-          // Check both possible storage locations
-          const formDataDocs = formData.documents?.[doc];
-          const encryptedDocs = encryptedDocuments[doc];
-          const hasDocs = (formDataDocs && formDataDocs.length > 0) || (encryptedDocs && encryptedDocs.length > 0);
-          console.log(`Document ${doc}:`, {
-            formDataDocs: formDataDocs?.length || 0,
-            encryptedDocs: encryptedDocs?.length || 0,
-            hasDocs
-          });
-          return !hasDocs;
-        });
-        
-        if (missingDocs.length > 0) {
-          errors.push(`Missing required documents: ${missingDocs.join(', ')}`);
-        }
+        // Document validation removed - always allow progression
         break;
         
       case 5: // Co-Applicant
@@ -565,26 +541,7 @@ export function ApplicationForm() {
         break;
         
       case 6: // Co-Applicant Documents
-        if (hasCoApplicant) {
-          const coRequiredDocs = ['photo_id', 'social_security', 'bank_statement', 'tax_returns'];
-          const coApplicantDocs = documents.coApplicant || {};
-          
-          console.log('🔍 Document Validation Debug - Step 6 (Co-Applicant):');
-          console.log('Required docs:', coRequiredDocs);
-          console.log('Co-applicant docs:', coApplicantDocs);
-          console.log('Documents state:', documents);
-          
-          const coMissingDocs = coRequiredDocs.filter(doc => {
-            const docArray = coApplicantDocs[doc];
-            const hasDocs = docArray && docArray.length > 0;
-            console.log(`Co-applicant document ${doc}:`, hasDocs ? `Found ${docArray.length} files` : 'Missing');
-            return !hasDocs;
-          });
-          
-          if (coMissingDocs.length > 0) {
-            errors.push(`Missing required co-applicant documents: ${coMissingDocs.join(', ')}`);
-          }
-        }
+        // Document validation removed - always allow progression
         break;
         
       case 7: // Other Occupants
@@ -627,26 +584,7 @@ export function ApplicationForm() {
         break;
         
       case 9: // Guarantor Documents
-        if (hasGuarantor) {
-          const guarantorRequiredDocs = ['photo_id', 'social_security', 'bank_statement', 'tax_returns'];
-          const guarantorDocs = documents.guarantor || {};
-          
-          console.log('🔍 Document Validation Debug - Step 9 (Guarantor):');
-          console.log('Required docs:', guarantorRequiredDocs);
-          console.log('Guarantor docs:', guarantorDocs);
-          console.log('Documents state:', documents);
-          
-          const guarantorMissingDocs = guarantorRequiredDocs.filter(doc => {
-            const docArray = guarantorDocs[doc];
-            const hasDocs = docArray && docArray.length > 0;
-            console.log(`Guarantor document ${doc}:`, hasDocs ? `Found ${docArray.length} files` : 'Missing');
-            return !hasDocs;
-          });
-          
-          if (guarantorMissingDocs.length > 0) {
-            errors.push(`Missing required guarantor documents: ${guarantorMissingDocs.join(', ')}`);
-          }
-        }
+        // Document validation removed - always allow progression
         break;
         
       case 10: // Digital Signatures
@@ -1932,19 +1870,11 @@ export function ApplicationForm() {
                   }));
                 }}
                 onEncryptedDocumentChange={(documentType, encryptedFiles) => {
-                  console.log('🔍 Primary Applicant Encrypted Document Change:', {
-                    documentType,
-                    encryptedFilesCount: encryptedFiles.length,
-                    encryptedFiles: encryptedFiles.map(f => ({ filename: f.filename, size: f.encryptedData.length }))
-                  });
-                  setEncryptedDocuments((prev: any) => {
-                    const updated = {
-                      ...prev,
-                      [documentType]: encryptedFiles,
-                    };
-                    console.log('Updated encryptedDocuments:', updated);
-                    return updated;
-                  });
+                  console.log('Encrypted document change:', documentType, encryptedFiles);
+                  setEncryptedDocuments((prev: any) => ({
+                    ...prev,
+                    [documentType]: encryptedFiles,
+                  }));
 
                   // Track uploadedDocuments for webhook
                   const sectionKey = `supporting_${documentType}`;
