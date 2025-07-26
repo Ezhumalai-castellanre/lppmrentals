@@ -673,28 +673,7 @@ export function ApplicationForm() {
         guarantorLandlordAddress: formData.guarantor?.landlordAddress || null,
         guarantorLandlordContact: formData.guarantor?.landlordContact || null,
         
-        // Guarantor Financial
-        guarantorEmploymentType: formData.guarantor?.employmentType || null,
-        // Salaried fields
-        guarantorEmployer: formData.guarantor?.employmentType === 'salaried' ? formData.guarantor?.employer || null : null,
-        guarantorPosition: formData.guarantor?.employmentType === 'salaried' ? formData.guarantor?.position || null : null,
-        guarantorEmploymentStart: formData.guarantor?.employmentType === 'salaried' ? safeDateToISO(formData.guarantor?.employmentStart) : null,
-        guarantorLengthAtCurrentPositionYears: formData.guarantor?.employmentType === 'salaried' ? formData.guarantor?.lengthAtCurrentPositionYears ?? null : null,
-        guarantorLengthAtCurrentPositionMonths: formData.guarantor?.employmentType === 'salaried' ? formData.guarantor?.lengthAtCurrentPositionMonths ?? null : null,
-        // Self-Employed fields
-        guarantorBusinessName: formData.guarantor?.employmentType === 'self-employed' ? formData.guarantor?.businessName || null : null,
-        guarantorBusinessType: formData.guarantor?.employmentType === 'self-employed' ? formData.guarantor?.businessType || null : null,
-        guarantorYearsInBusiness: formData.guarantor?.employmentType === 'self-employed' ? formData.guarantor?.yearsInBusiness || null : null,
-        // Common fields
-        guarantorIncome: formData.guarantor?.income ? parseFloat(formData.guarantor.income) : null,
-        guarantorIncomeFrequency: formData.guarantor?.incomeFrequency || null,
-        guarantorOtherIncome: formData.guarantor?.otherIncome ? parseFloat(formData.guarantor.otherIncome) : null,
-        guarantorOtherIncomeFrequency: formData.guarantor?.otherIncomeFrequency || null,
-        guarantorOtherIncomeSource: formData.guarantor?.otherIncomeSource || null,
-        guarantorBankRecords: formData.guarantor?.bankRecords || [],
-        guarantorSignature: signatures.guarantor || null,
-        guarantorSignatureDate: signatureTimestamps.guarantor || null,
-        guarantorEmploymentType: formData.guarantor?.employmentType || null,
+        // Guarantor Financial - will be set conditionally below
       };
 
       // Only add guarantor fields if hasGuarantor is true
@@ -715,16 +694,26 @@ export function ApplicationForm() {
         transformedData.guarantorLengthAtAddressMonths = formData.guarantor?.lengthAtAddressMonths ?? null;
         
         // Guarantor Financial
-        transformedData.guarantorEmployer = formData.guarantor?.employer || null;
-        transformedData.guarantorPosition = formData.guarantor?.position || null;
-        transformedData.guarantorEmploymentStart = safeDateToISO(formData.guarantor?.employmentStart);
+        transformedData.guarantorEmploymentType = formData.guarantor?.employmentType || null;
+        // Salaried fields
+        transformedData.guarantorEmployer = formData.guarantor?.employmentType === 'salaried' ? formData.guarantor?.employer || null : null;
+        transformedData.guarantorPosition = formData.guarantor?.employmentType === 'salaried' ? formData.guarantor?.position || null : null;
+        transformedData.guarantorEmploymentStart = formData.guarantor?.employmentType === 'salaried' ? safeDateToISO(formData.guarantor?.employmentStart) : null;
+        transformedData.guarantorLengthAtCurrentPositionYears = formData.guarantor?.employmentType === 'salaried' ? formData.guarantor?.lengthAtCurrentPositionYears ?? null : null;
+        transformedData.guarantorLengthAtCurrentPositionMonths = formData.guarantor?.employmentType === 'salaried' ? formData.guarantor?.lengthAtCurrentPositionMonths ?? null : null;
+        // Self-Employed fields
+        transformedData.guarantorBusinessName = formData.guarantor?.employmentType === 'self-employed' ? formData.guarantor?.businessName || null : null;
+        transformedData.guarantorBusinessType = formData.guarantor?.employmentType === 'self-employed' ? formData.guarantor?.businessType || null : null;
+        transformedData.guarantorYearsInBusiness = formData.guarantor?.employmentType === 'self-employed' ? formData.guarantor?.yearsInBusiness || null : null;
+        // Common fields
         transformedData.guarantorIncome = formData.guarantor?.income ? parseFloat(formData.guarantor.income) : null;
+        transformedData.guarantorIncomeFrequency = formData.guarantor?.incomeFrequency || null;
         transformedData.guarantorOtherIncome = formData.guarantor?.otherIncome ? parseFloat(formData.guarantor.otherIncome) : null;
+        transformedData.guarantorOtherIncomeFrequency = formData.guarantor?.otherIncomeFrequency || null;
         transformedData.guarantorOtherIncomeSource = formData.guarantor?.otherIncomeSource || null;
         transformedData.guarantorBankRecords = formData.guarantor?.bankRecords || [];
         transformedData.guarantorSignature = signatures.guarantor || null;
         transformedData.guarantorSignatureDate = signatureTimestamps.guarantor || null;
-        transformedData.guarantorEmploymentType = formData.guarantor?.employmentType || null;
       } else {
         console.log('Skipping guarantor fields - hasGuarantor is false');
       }
@@ -2379,12 +2368,10 @@ export function ApplicationForm() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          ZIP Code*
-                        </label>
+                  
                         <ZIPInput
                           name="guarantorZip"
-                          label="ZIP Code*"
+                          label="ZIP Code"
                           value={formData.guarantor?.zip || ''}
                           onChange={value => updateFormData('guarantor', 'zip', value)}
                           required={true}
@@ -2405,8 +2392,8 @@ export function ApplicationForm() {
                           onCityChange={(city) => {
                             updateFormData('guarantor', 'city', city);
                           }}
-                          stateLabel="State*"
-                          cityLabel="City*"
+                          stateLabel="State"
+                          cityLabel="City"
                           required={true}
                           className="mb-4"
                         />
