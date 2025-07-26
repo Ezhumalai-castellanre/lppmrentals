@@ -20,7 +20,7 @@ export const insertRentalApplicationSchema = z.object({
   buildingAddress: z.string().min(1, "Building address is required"),
   apartmentNumber: z.string().min(1, "Apartment number is required"),
   moveInDate: dateStringToDate.refine((val) => val !== null, "Move-in date is required"),
-  monthlyRent: z.number().optional(),
+  monthlyRent: z.any().optional(),
   apartmentType: z.string().min(1, "Apartment type is required"),
   howDidYouHear: z.string().optional(),
   howDidYouHearOther: z.string().optional(),
