@@ -587,9 +587,13 @@ export function ApplicationForm() {
         applicantReasonForMoving: data.applicantReasonForMoving,
         
         // Primary Applicant Financial (from formData)
+        applicantEmploymentType: formData.applicant?.employmentType || null,
         applicantEmployer: formData.applicant?.employer || null,
         applicantPosition: formData.applicant?.position || null,
         applicantEmploymentStart: safeDateToISO(formData.applicant?.employmentStart),
+        applicantBusinessName: formData.applicant?.businessName || null,
+        applicantBusinessType: formData.applicant?.businessType || null,
+        applicantYearsInBusiness: formData.applicant?.yearsInBusiness || null,
         applicantIncome: formData.applicant?.income ? parseFloat(formData.applicant.income) : null,
         applicantOtherIncome: formData.applicant?.otherIncome ? parseFloat(formData.applicant.otherIncome) : null,
         applicantOtherIncomeSource: formData.applicant?.otherIncomeSource || null,
@@ -612,9 +616,13 @@ export function ApplicationForm() {
         coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths ?? null,
         
         // Co-Applicant Financial
+        coApplicantEmploymentType: formData.coApplicant?.employmentType || null,
         coApplicantEmployer: formData.coApplicant?.employer || null,
         coApplicantPosition: formData.coApplicant?.position || null,
         coApplicantEmploymentStart: safeDateToISO(formData.coApplicant?.employmentStart),
+        coApplicantBusinessName: formData.coApplicant?.businessName || null,
+        coApplicantBusinessType: formData.coApplicant?.businessType || null,
+        coApplicantYearsInBusiness: formData.coApplicant?.yearsInBusiness || null,
         coApplicantIncome: formData.coApplicant?.income ? parseFloat(formData.coApplicant.income) : null,
         coApplicantOtherIncome: formData.coApplicant?.otherIncome ? parseFloat(formData.coApplicant.otherIncome) : null,
         coApplicantOtherIncomeSource: formData.coApplicant?.otherIncomeSource || null,
@@ -642,9 +650,13 @@ export function ApplicationForm() {
         transformedData.guarantorLengthAtAddressMonths = formData.guarantor?.lengthAtAddressMonths ?? null;
         
         // Guarantor Financial
+        transformedData.guarantorEmploymentType = formData.guarantor?.employmentType || null;
         transformedData.guarantorEmployer = formData.guarantor?.employer || null;
         transformedData.guarantorPosition = formData.guarantor?.position || null;
         transformedData.guarantorEmploymentStart = safeDateToISO(formData.guarantor?.employmentStart);
+        transformedData.guarantorBusinessName = formData.guarantor?.businessName || null;
+        transformedData.guarantorBusinessType = formData.guarantor?.businessType || null;
+        transformedData.guarantorYearsInBusiness = formData.guarantor?.yearsInBusiness || null;
         transformedData.guarantorIncome = formData.guarantor?.income ? parseFloat(formData.guarantor.income) : null;
         transformedData.guarantorOtherIncome = formData.guarantor?.otherIncome ? parseFloat(formData.guarantor.otherIncome) : null;
         transformedData.guarantorOtherIncomeSource = formData.guarantor?.otherIncomeSource || null;

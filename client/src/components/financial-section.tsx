@@ -115,7 +115,7 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                 className="input-field"
               />
             </div>
-            {/* Custom row for Years in Business and Monthly Income */}
+            {/* Custom row for Years in Business and  Income */}
             <div className="col-span-1 md:col-span-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-field flex flex-col justify-end">
@@ -133,7 +133,7 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                 <div className="form-field flex flex-col justify-end">
                   <IncomeWithFrequencyInput
                     name={`${person}-income`}
-                    label="Monthly Income ($) *"
+                    label=" Income ($) *"
                     value={personData.income || ""}
                     frequency={personData.incomeFrequency || "monthly"}
                     onValueChange={(value) => handleChange("income", value)}
@@ -143,89 +143,6 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                   />
                 </div>
               </div>
-            </div>
-          </div>
-        )}
-        {personData.employmentType === 'unemployed' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="form-field">
-              <Label htmlFor={`${person}-incomeSource`}>Source of Income</Label>
-              <Input
-                id={`${person}-incomeSource`}
-                placeholder="e.g., savings, family support"
-                value={personData.incomeSource || ""}
-                onChange={(e) => handleChange("incomeSource", e.target.value)}
-                className="input-field"
-              />
-            </div>
-            <div className="form-field">
-              <IncomeWithFrequencyInput
-                name={`${person}-income`}
-                label="Monthly Income ($)"
-                value={personData.income || ""}
-                frequency={personData.incomeFrequency || "monthly"}
-                onValueChange={(value) => handleChange("income", value)}
-                onFrequencyChange={(frequency) => handleChange("incomeFrequency", frequency)}
-              />
-            </div>
-          </div>
-        )}
-        {personData.employmentType === 'retired' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="form-field">
-              <Label htmlFor={`${person}-previousOccupation`}>Previous Occupation</Label>
-              <Input
-                id={`${person}-previousOccupation`}
-                placeholder="e.g., teacher, engineer"
-                value={personData.previousOccupation || ""}
-                onChange={(e) => handleChange("previousOccupation", e.target.value)}
-                className="input-field"
-              />
-            </div>
-            <div className="form-field">
-              <IncomeWithFrequencyInput
-                name={`${person}-income`}
-                label="Monthly Pension/Income ($) *"
-                value={personData.income || ""}
-                frequency={personData.incomeFrequency || "monthly"}
-                onValueChange={(value) => handleChange("income", value)}
-                onFrequencyChange={(frequency) => handleChange("incomeFrequency", frequency)}
-                required={true}
-              />
-            </div>
-          </div>
-        )}
-        {personData.employmentType === 'student' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="form-field">
-              <Label htmlFor={`${person}-schoolName`}>School Name *</Label>
-              <Input
-                id={`${person}-schoolName`}
-                placeholder="School name"
-                value={personData.schoolName || ""}
-                onChange={(e) => handleChange("schoolName", e.target.value)}
-                className="input-field"
-              />
-            </div>
-            <div className="form-field">
-              <Label htmlFor={`${person}-degreeProgram`}>Degree/Program *</Label>
-              <Input
-                id={`${person}-degreeProgram`}
-                placeholder="e.g., BSc Computer Science"
-                value={personData.degreeProgram || ""}
-                onChange={(e) => handleChange("degreeProgram", e.target.value)}
-                className="input-field"
-              />
-            </div>
-            <div className="form-field">
-              <IncomeWithFrequencyInput
-                name={`${person}-income`}
-                label="Monthly Income ($)"
-                value={personData.income || ""}
-                frequency={personData.incomeFrequency || "monthly"}
-                onValueChange={(value) => handleChange("income", value)}
-                onFrequencyChange={(frequency) => handleChange("incomeFrequency", frequency)}
-              />
             </div>
           </div>
         )}
