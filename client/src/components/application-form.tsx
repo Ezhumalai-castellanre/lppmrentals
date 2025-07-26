@@ -802,7 +802,7 @@ export function ApplicationForm() {
         buildingAddress: data.buildingAddress,
         apartmentNumber: data.apartmentNumber,
         moveInDate: safeDateToISO(data.moveInDate || formData.application?.moveInDate),
-        monthlyRent: selectedUnit?.monthlyRent || 0,
+        monthlyRent: selectedUnit?.monthlyRent || "",
         apartmentType: data.apartmentType,
         howDidYouHear: data.howDidYouHear,
         
