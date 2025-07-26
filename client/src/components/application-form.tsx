@@ -443,9 +443,7 @@ export function ApplicationForm() {
         if (!formData.application?.moveInDate) {
           errors.push("Move-in date is required");
         }
-        if (!formData.application?.monthlyRent || formData.application.monthlyRent <= 0) {
-          errors.push("Monthly rent must be greater than 0");
-        }
+        // Monthly rent validation removed - always allow progression
         if (!formData.application?.apartmentType?.trim()) {
           errors.push("Apartment type is required");
         }
@@ -738,7 +736,7 @@ export function ApplicationForm() {
       'buildingAddress',
       'apartmentNumber',
       'moveInDate',
-      'monthlyRent',
+              // 'monthlyRent', // removed
       'apartmentType',
       'applicantName',
       'applicantDob',
@@ -754,7 +752,7 @@ export function ApplicationForm() {
         data[field] === undefined ||
         data[field] === null ||
         (typeof data[field] === 'string' && data[field].trim() === '') ||
-        (field === 'monthlyRent' && (!data[field] || isNaN(data[field] as any) || (data[field] as any) <= 0)) ||
+        // Monthly rent validation removed
         (field === 'applicantDob' && !data[field]) ||
         (field === 'moveInDate' && !data[field])
       ) {
@@ -1024,11 +1022,28 @@ export function ApplicationForm() {
         console.error('Submission response error:', submissionResponse.status, submissionResponse.statusText);
         console.error('Error response body:', errorText);
         
+        // Try to parse error details
+        let errorDetails = '';
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.details && Array.isArray(errorJson.details)) {
+            errorDetails = errorJson.details.map((err: any) => 
+              `${err.path?.join('.') || 'unknown'}: ${err.message}`
+            ).join(', ');
+          } else if (errorJson.error) {
+            errorDetails = errorJson.error;
+          }
+        } catch (e) {
+          errorDetails = errorText;
+        }
+        
         // Handle specific error cases
         if (submissionResponse.status === 413) {
           throw new Error('Application data is too large. Please reduce file sizes and try again.');
         } else if (submissionResponse.status === 504) {
           throw new Error('Submission timed out. Please try again with smaller files or fewer files at once.');
+        } else if (submissionResponse.status === 400) {
+          throw new Error(`Validation failed: ${errorDetails || 'Unknown validation error'}`);
         } else {
           throw new Error(`Submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
         }
