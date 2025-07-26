@@ -1,12 +1,32 @@
 import { createCorsResponse, handlePreflight } from './utils.js';
 
 export const handler = async (event, context) => {
+  console.log('=== SUBMIT-APPLICATION FUNCTION CALLED ===');
+  console.log('Event method:', event.httpMethod);
+  console.log('Event path:', event.path);
+  console.log('Event headers:', event.headers);
+  console.log('Event body length:', event.body ? event.body.length : 0);
+  
   // Handle preflight requests
   const preflightResponse = handlePreflight(event);
-  if (preflightResponse) return preflightResponse;
+  if (preflightResponse) {
+    console.log('Returning preflight response');
+    return preflightResponse;
+  }
 
   if (event.httpMethod !== 'POST') {
+    console.log('Method not allowed:', event.httpMethod);
     return createCorsResponse(405, { error: 'Method not allowed' });
+  }
+
+  // Simple test response to verify function is working
+  if (event.path && event.path.includes('test')) {
+    console.log('Returning test response');
+    return createCorsResponse(200, { 
+      success: true, 
+      message: 'Function is working correctly',
+      timestamp: new Date().toISOString()
+    });
   }
 
   try {
@@ -15,6 +35,7 @@ export const handler = async (event, context) => {
     let body;
     try {
       body = JSON.parse(event.body);
+      console.log('Successfully parsed JSON body');
     } catch (jsonErr) {
       console.error('JSON parse error:', jsonErr, 'Body:', event.body);
       return createCorsResponse(400, { error: 'Malformed JSON', message: jsonErr instanceof Error ? jsonErr.message : 'Unknown JSON error' });

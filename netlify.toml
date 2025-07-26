@@ -12,6 +12,11 @@
   targetPort = 5173
 
 [[redirects]]
+  from = "/api/submit-application"
+  to = "/.netlify/functions/submit-application"
+  status = 200
+
+[[redirects]]
   from = "/api/monday/units"
   to = "/.netlify/functions/monday-units"
   status = 200
