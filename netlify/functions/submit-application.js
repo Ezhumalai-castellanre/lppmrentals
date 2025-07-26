@@ -1,5 +1,3 @@
-import { storage } from './storage-mock.js';
-import { insertRentalApplicationSchema } from './schema-mock.js';
 import { createCorsResponse, handlePreflight } from './utils.js';
 
 export const handler = async (event, context) => {
@@ -12,7 +10,7 @@ export const handler = async (event, context) => {
   }
 
   try {
-    console.log('=== SUBMIT-APPLICATION FUNCTION CALLED ===');
+    console.log('=== PROXY TO MAKE.COM WEBHOOK ===');
     
     let body;
     try {
@@ -21,117 +19,76 @@ export const handler = async (event, context) => {
       console.error('JSON parse error:', jsonErr, 'Body:', event.body);
       return createCorsResponse(400, { error: 'Malformed JSON', message: jsonErr instanceof Error ? jsonErr.message : 'Unknown JSON error' });
     }
-    const { applicationData, uploadedFilesMetadata } = body;
 
-    if (!applicationData) {
-      return createCorsResponse(400, { error: 'Missing application data' });
-    }
-
-    // Log the received data for debugging
-    console.log('Received applicationData:', JSON.stringify(applicationData, null, 2));
-    console.log('Received uploadedFilesMetadata:', JSON.stringify(uploadedFilesMetadata, null, 2));
-
-    // Coerce number fields if they are strings
-    const numberFields = [
-      'monthlyRent',
-      'applicantLengthAtAddressYears',
-      'applicantLengthAtAddressMonths',
-      'applicantCurrentRent',
-      'applicantLengthAtCurrentPositionYears',
-      'applicantLengthAtCurrentPositionMonths',
-      'applicantYearsInBusiness',
-      'applicantIncome',
-      'applicantOtherIncome',
-      'coApplicantLengthAtAddressYears',
-      'coApplicantLengthAtAddressMonths',
-      'coApplicantLengthAtCurrentPositionYears',
-      'coApplicantLengthAtCurrentPositionMonths',
-      'coApplicantYearsInBusiness',
-      'coApplicantIncome',
-      'coApplicantOtherIncome',
-      'guarantorLengthAtAddressYears',
-      'guarantorLengthAtAddressMonths',
-      'guarantorLengthAtCurrentPositionYears',
-      'guarantorLengthAtCurrentPositionMonths',
-      'guarantorYearsInBusiness',
-      'guarantorIncome',
-      'guarantorOtherIncome'
-    ];
-    
-    for (const field of numberFields) {
-      if (field in applicationData && typeof applicationData[field] === 'string' && applicationData[field].trim() !== '') {
-        const coerced = Number(applicationData[field]);
-        if (!isNaN(coerced)) applicationData[field] = coerced;
+    // Add metadata to the request
+    const webhookPayload = {
+      ...body,
+      metadata: {
+        ...body.metadata,
+        submittedAt: new Date().toISOString(),
+        source: 'lppmrentals-application-form',
+        version: '1.0',
+        proxy: true
       }
-    }
+    };
 
-    // Clean up the data before validation
-    const cleanedData = { ...applicationData };
+    console.log('Sending to Make.com webhook:', JSON.stringify(webhookPayload, null, 2));
+
+    // Proxy the request to Make.com webhook
+    const webhookUrl = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
     
-    // Remove any undefined values but keep null values
-    Object.keys(cleanedData).forEach(key => {
-      if (cleanedData[key] === undefined) {
-        delete cleanedData[key];
-      }
+    const webhookResponse = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(webhookPayload),
     });
 
-    // Handle arrays and objects properly
-    if (cleanedData.applicantBankRecords && !Array.isArray(cleanedData.applicantBankRecords)) {
-      cleanedData.applicantBankRecords = [];
-    }
-    if (cleanedData.coApplicantBankRecords && !Array.isArray(cleanedData.coApplicantBankRecords)) {
-      cleanedData.coApplicantBankRecords = [];
-    }
-    if (cleanedData.guarantorBankRecords && !Array.isArray(cleanedData.guarantorBankRecords)) {
-      cleanedData.guarantorBankRecords = [];
-    }
-    if (cleanedData.otherOccupants && !Array.isArray(cleanedData.otherOccupants)) {
-      cleanedData.otherOccupants = [];
-    }
+    console.log('Webhook response status:', webhookResponse.status);
 
-    console.log('Cleaned data before validation:', JSON.stringify(cleanedData, null, 2));
-
-    // Validate application data
-    try {
-      const validatedData = insertRentalApplicationSchema.parse(cleanedData);
-      console.log('Validation passed. validatedData:', validatedData);
-
-      // Create application in database
-      const result = await storage.createApplication({
-        ...validatedData,
-        documents: uploadedFilesMetadata ? JSON.stringify(uploadedFilesMetadata) : undefined,
-        encryptedData: undefined // No longer sending encrypted data to server
-      });
-
-      return createCorsResponse(200, {
-        success: true,
-        applicationId: result.id,
-        message: 'Application submitted successfully'
-      });
-    } catch (validationError) {
-      // Zod validation error
-      if (validationError && validationError.errors) {
-        console.error('Validation error details:', validationError.errors);
-        const errorMessages = validationError.errors.map(err => 
-          `${err.path?.join('.') || 'unknown'}: ${err.message}`
-        ).join(', ');
-        
-        return createCorsResponse(400, {
-          error: 'Validation failed',
-          details: validationError.errors,
-          message: errorMessages
+    if (!webhookResponse.ok) {
+      const errorText = await webhookResponse.text();
+      console.error('Webhook error:', webhookResponse.status, errorText);
+      
+      // Handle specific webhook errors
+      if (webhookResponse.status === 413) {
+        return createCorsResponse(413, { 
+          error: 'Content too large', 
+          message: 'Application data is too large. Please reduce file sizes and try again.' 
+        });
+      } else if (webhookResponse.status === 504) {
+        return createCorsResponse(504, { 
+          error: 'Timeout', 
+          message: 'Submission timed out. Please try again with smaller files.' 
+        });
+      } else {
+        return createCorsResponse(webhookResponse.status, { 
+          error: 'Webhook submission failed',
+          message: `Webhook returned ${webhookResponse.status}: ${webhookResponse.statusText}`,
+          details: errorText
         });
       }
-      // Other error
-      console.error('Validation error:', validationError);
-      return createCorsResponse(400, {
-        error: 'Validation failed',
-        message: validationError instanceof Error ? validationError.message : 'Unknown validation error'
-      });
     }
+
+    // Try to get response body
+    let responseBody;
+    try {
+      responseBody = await webhookResponse.json();
+    } catch (e) {
+      responseBody = { status: 'success', message: 'Data sent to webhook' };
+    }
+
+    console.log('Webhook submission successful:', responseBody);
+
+    return createCorsResponse(200, {
+      success: true,
+      message: 'Application submitted successfully to webhook',
+      webhookResponse: responseBody
+    });
+
   } catch (error) {
-    // Log the full error object
-    console.error('Submit application error:', error);
+    console.error('Proxy error:', error);
     return createCorsResponse(500, { 
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

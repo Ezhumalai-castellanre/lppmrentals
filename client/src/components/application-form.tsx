@@ -930,9 +930,9 @@ export function ApplicationForm() {
       console.log('  - moveInDate (transformed):', transformedData.moveInDate);
       console.log('Current window location:', window.location.href);
       
-      // Use Make.com webhook endpoint
-      const apiEndpoint = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
-      console.log('Making request to Make.com webhook:', apiEndpoint);
+      // Use local API endpoint which will proxy to Make.com webhook
+      const apiEndpoint = '/api';
+      console.log('Making request to local API (will proxy to Make.com webhook):', window.location.origin + apiEndpoint + '/submit-application');
       
       const requestBody = {
         applicationData: transformedData,
@@ -986,7 +986,7 @@ export function ApplicationForm() {
       // Increased timeout to 120 seconds to reduce AbortError for large/slow submissions
       const submissionTimeoutId = setTimeout(() => submissionController.abort(), 120000); // 120 second timeout
       
-      const submissionResponse = await fetch(apiEndpoint, {
+      const submissionResponse = await fetch(apiEndpoint + '/submit-application', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -999,26 +999,39 @@ export function ApplicationForm() {
 
       if (!submissionResponse.ok) {
         const errorText = await submissionResponse.text();
-        console.error('Webhook submission error:', submissionResponse.status, submissionResponse.statusText);
+        console.error('API submission error:', submissionResponse.status, submissionResponse.statusText);
         console.error('Error response body:', errorText);
         
-        // Handle webhook-specific error cases
+        // Try to parse error details
+        let errorDetails = '';
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.message) {
+            errorDetails = errorJson.message;
+          } else if (errorJson.error) {
+            errorDetails = errorJson.error;
+          }
+        } catch (e) {
+          errorDetails = errorText;
+        }
+        
+        // Handle specific error cases
         if (submissionResponse.status === 413) {
           throw new Error('Application data is too large. Please reduce file sizes and try again.');
         } else if (submissionResponse.status === 504) {
           throw new Error('Submission timed out. Please try again with smaller files or fewer files at once.');
         } else if (submissionResponse.status >= 400 && submissionResponse.status < 500) {
-          throw new Error(`Webhook submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
+          throw new Error(`Submission failed: ${errorDetails || submissionResponse.statusText}`);
         } else {
-          throw new Error(`Webhook submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
+          throw new Error(`Submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
         }
       }
 
       const submissionResult = await submissionResponse.json();
-      console.log('Application submitted successfully to Make.com webhook:', submissionResult);
+      console.log('Application submitted successfully:', submissionResult);
 
-      // Note: All data sent to Make.com webhook
-      console.log('Application submitted successfully to Make.com webhook. All data and files sent.');
+      // Note: Data sent via proxy to Make.com webhook
+      console.log('Application submitted successfully via proxy to Make.com webhook.');
 
       // On form submit, send only form data, application_id, and uploadedDocuments to the webhook
       try {
