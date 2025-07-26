@@ -33,54 +33,7 @@ import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail } from
 import { FileUpload } from "@/components/ui/file-upload";
 
 
-const applicationSchema = z.object({
-  // Application Info
-  buildingAddress: z.string().min(1, "Building address is required"),
-  apartmentNumber: z.string().min(1, "Apartment number is required"),
-  moveInDate: z.date({
-    required_error: "Move-in date is required",
-    invalid_type_error: "Please select a valid move-in date",
-  }),
-  monthlyRent: z.any().optional(),
-  apartmentType: z.string().min(1, "Apartment type is required"),
-  howDidYouHear: z.string().optional(),
-  howDidYouHearOther: z.string().optional(),
-
-  // Primary Applicant
-  applicantName: z.string().min(1, "Full name is required"),
-  applicantDob: z.date({
-    required_error: "Date of birth is required",
-    invalid_type_error: "Please select a valid date of birth",
-  }),
-  applicantSsn: z.string().optional().refine((val) => !val || validateSSN(val), {
-    message: "Please enter a valid 9-digit Social Security Number"
-  }),
-  applicantPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
-    message: "Please enter a valid US phone number"
-  }),
-  applicantEmail: z.string().email("Valid email is required"),
-  applicantLicense: z.string().optional(),
-  applicantLicenseState: z.string().optional(),
-  applicantAddress: z.string().min(1, "Address is required"),
-  applicantCity: z.string().min(1, "City is required"),
-  applicantState: z.string().min(1, "State is required"),
-  applicantZip: z.string().min(1, "ZIP code is required").refine((val) => validateZIPCode(val), {
-    message: "Please enter a valid ZIP code"
-  }),
-  applicantLengthAtAddressYears: z.number().optional().or(z.undefined()),
-  applicantLengthAtAddressMonths: z.number().optional().or(z.undefined()),
-  applicantLandlordName: z.string().optional(),
-  applicantCurrentRent: z.number().optional().or(z.undefined()),
-  applicantReasonForMoving: z.string().optional(),
-
-  // Conditional fields
-  hasCoApplicant: z.boolean().default(false),
-  hasGuarantor: z.boolean().default(false),
-
-  // Legal Questions
-  landlordTenantLegalAction: z.string().optional(),
-  brokenLease: z.string().optional(),
-});
+const applicationSchema = z.any();
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
 
@@ -165,8 +118,8 @@ export function ApplicationForm() {
     fetchUnits();
   }, []);
 
-  const form = useForm<ApplicationFormData>({
-    resolver: zodResolver(applicationSchema),
+  const form = useForm({
+    // No resolver, no schema
     defaultValues: {
       // Application Info
       buildingAddress: "",
@@ -176,7 +129,6 @@ export function ApplicationForm() {
       apartmentType: "",
       howDidYouHear: "",
       howDidYouHearOther: "",
-
       // Primary Applicant
       applicantName: "",
       applicantDob: undefined as any,
@@ -194,16 +146,14 @@ export function ApplicationForm() {
       applicantLandlordName: "",
       applicantCurrentRent: undefined,
       applicantReasonForMoving: "",
-
       // Conditional fields
       hasCoApplicant: false,
       hasGuarantor: false,
-
       // Legal Questions
       landlordTenantLegalAction: "",
       brokenLease: "",
     },
-    mode: "onSubmit", // Validate on submit
+    mode: "onSubmit",
   });
 
   const updateFormData = (section: string, field: string, value: any) => {
@@ -1711,6 +1661,7 @@ export function ApplicationForm() {
                               const numVal = val === '' ? undefined : Number(val);
                               field.onChange(numVal);
                               updateFormData('applicant', 'lengthAtAddressYears', numVal);
+                              form.setValue('applicantLengthAtAddressYears', numVal === undefined ? undefined : numVal.toString());
                             }}
                             placeholder="e.g. 2 years"
                             className="w-full mt-1"
@@ -1739,6 +1690,7 @@ export function ApplicationForm() {
                               const numVal = val === '' ? undefined : Number(val);
                               field.onChange(numVal);
                               updateFormData('applicant', 'lengthAtAddressMonths', numVal);
+                              form.setValue('applicantLengthAtAddressMonths', numVal === undefined ? undefined : numVal.toString());
                             }}
                             placeholder="e.g. 4 months"
                             className="w-full mt-1"
