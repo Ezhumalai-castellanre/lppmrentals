@@ -1795,11 +1795,11 @@ export function ApplicationForm() {
       case 5:
         return (
           <div className="space-y-8">
-            <Card className="form-section">
+            <Card className="form-section border-l-4 border-l-green-500">
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                   <Users className="w-5 h-5 mr-2" />
-                  Co-Applicant
+                  Co-Applicant Information
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -2514,11 +2514,11 @@ export function ApplicationForm() {
         return (
           <div className="space-y-6">
             {/* Guarantor Section with Checkbox */}
-              <Card className="form-section border-l-4 border-l-purple-500">
+              <Card className="form-section border-l-4 border-l-green-500">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-purple-700 dark:text-purple-400">
-                    <UserCheck className="w-5 h-5 mr-2" />
-                  Guarantor
+                  <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                    <Shield className="w-5 h-5 mr-2" />
+                    Guarantor Information
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
