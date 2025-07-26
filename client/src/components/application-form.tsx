@@ -428,6 +428,204 @@ export function ApplicationForm() {
     });
   };
 
+  // Step validation functions
+  const validateStep = async (step: number): Promise<{ isValid: boolean; errors: string[] }> => {
+    const errors: string[] = [];
+    
+    switch (step) {
+      case 0: // Instructions - always valid
+        return { isValid: true, errors: [] };
+        
+      case 1: // Application Info
+        if (!formData.application?.buildingAddress?.trim()) {
+          errors.push("Building address is required");
+        }
+        if (!formData.application?.apartmentNumber?.trim()) {
+          errors.push("Apartment number is required");
+        }
+        if (!formData.application?.moveInDate) {
+          errors.push("Move-in date is required");
+        }
+        if (!formData.application?.monthlyRent || formData.application.monthlyRent <= 0) {
+          errors.push("Monthly rent must be greater than 0");
+        }
+        if (!formData.application?.apartmentType?.trim()) {
+          errors.push("Apartment type is required");
+        }
+        break;
+        
+      case 2: // Primary Applicant
+        if (!formData.applicant?.name?.trim()) {
+          errors.push("Applicant name is required");
+        }
+        if (!formData.applicant?.dob) {
+          errors.push("Applicant date of birth is required");
+        }
+        if (!formData.applicant?.email?.trim()) {
+          errors.push("Applicant email is required");
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.applicant.email)) {
+          errors.push("Valid email address is required");
+        }
+        if (!formData.applicant?.address?.trim()) {
+          errors.push("Applicant address is required");
+        }
+        if (!formData.applicant?.city?.trim()) {
+          errors.push("Applicant city is required");
+        }
+        if (!formData.applicant?.state?.trim()) {
+          errors.push("Applicant state is required");
+        }
+        if (!formData.applicant?.zip?.trim()) {
+          errors.push("Applicant ZIP code is required");
+        }
+        break;
+        
+      case 3: // Financial Info
+        if (!formData.applicant?.employmentType) {
+          errors.push("Employment type is required");
+        }
+        if (formData.applicant?.employmentType === 'salaried') {
+          if (!formData.applicant?.employer?.trim()) {
+            errors.push("Employer name is required for salaried employment");
+          }
+          if (!formData.applicant?.position?.trim()) {
+            errors.push("Position is required for salaried employment");
+          }
+          if (!formData.applicant?.employmentStart) {
+            errors.push("Employment start date is required for salaried employment");
+          }
+        }
+        if (formData.applicant?.employmentType === 'self-employed') {
+          if (!formData.applicant?.businessName?.trim()) {
+            errors.push("Business name is required for self-employed");
+          }
+          if (!formData.applicant?.businessType?.trim()) {
+            errors.push("Business type is required for self-employed");
+          }
+        }
+        if (!formData.applicant?.income || formData.applicant.income <= 0) {
+          errors.push("Income is required and must be greater than 0");
+        }
+        break;
+        
+      case 4: // Supporting Documents
+        // Check if required documents are uploaded
+        const requiredDocs = ['photo_id', 'social_security', 'bank_statement', 'tax_returns'];
+        const uploadedDocs = Object.keys(encryptedDocuments.applicant || {});
+        const missingDocs = requiredDocs.filter(doc => !uploadedDocs.includes(doc));
+        
+        if (missingDocs.length > 0) {
+          errors.push(`Missing required documents: ${missingDocs.join(', ')}`);
+        }
+        break;
+        
+      case 5: // Co-Applicant
+        if (hasCoApplicant) {
+          if (!formData.coApplicant?.name?.trim()) {
+            errors.push("Co-applicant name is required");
+          }
+          if (!formData.coApplicant?.dob) {
+            errors.push("Co-applicant date of birth is required");
+          }
+          if (!formData.coApplicant?.email?.trim()) {
+            errors.push("Co-applicant email is required");
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.coApplicant.email)) {
+            errors.push("Valid co-applicant email address is required");
+          }
+          if (!formData.coApplicant?.address?.trim()) {
+            errors.push("Co-applicant address is required");
+          }
+          if (!formData.coApplicant?.city?.trim()) {
+            errors.push("Co-applicant city is required");
+          }
+          if (!formData.coApplicant?.state?.trim()) {
+            errors.push("Co-applicant state is required");
+          }
+          if (!formData.coApplicant?.zip?.trim()) {
+            errors.push("Co-applicant ZIP code is required");
+          }
+        }
+        break;
+        
+      case 6: // Co-Applicant Documents
+        if (hasCoApplicant) {
+          const coRequiredDocs = ['photo_id', 'social_security', 'bank_statement', 'tax_returns'];
+          const coUploadedDocs = Object.keys(encryptedDocuments.coApplicant || {});
+          const coMissingDocs = coRequiredDocs.filter(doc => !coUploadedDocs.includes(doc));
+          
+          if (coMissingDocs.length > 0) {
+            errors.push(`Missing required co-applicant documents: ${coMissingDocs.join(', ')}`);
+          }
+        }
+        break;
+        
+      case 7: // Other Occupants
+        // Check if occupants have required SSN documents
+        const occupants = formData.occupants || [];
+        for (let i = 0; i < occupants.length; i++) {
+          const occupant = occupants[i];
+          if (occupant.name?.trim() && !occupant.ssnEncryptedDocument) {
+            errors.push(`SSN document is required for occupant ${i + 1}`);
+          }
+        }
+        break;
+        
+      case 8: // Guarantor
+        if (hasGuarantor) {
+          if (!formData.guarantor?.name?.trim()) {
+            errors.push("Guarantor name is required");
+          }
+          if (!formData.guarantor?.dob) {
+            errors.push("Guarantor date of birth is required");
+          }
+          if (!formData.guarantor?.email?.trim()) {
+            errors.push("Guarantor email is required");
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.guarantor.email)) {
+            errors.push("Valid guarantor email address is required");
+          }
+          if (!formData.guarantor?.address?.trim()) {
+            errors.push("Guarantor address is required");
+          }
+          if (!formData.guarantor?.city?.trim()) {
+            errors.push("Guarantor city is required");
+          }
+          if (!formData.guarantor?.state?.trim()) {
+            errors.push("Guarantor state is required");
+          }
+          if (!formData.guarantor?.zip?.trim()) {
+            errors.push("Guarantor ZIP code is required");
+          }
+        }
+        break;
+        
+      case 9: // Guarantor Documents
+        if (hasGuarantor) {
+          const guarantorRequiredDocs = ['photo_id', 'social_security', 'bank_statement', 'tax_returns'];
+          const guarantorUploadedDocs = Object.keys(encryptedDocuments.guarantor || {});
+          const guarantorMissingDocs = guarantorRequiredDocs.filter(doc => !guarantorUploadedDocs.includes(doc));
+          
+          if (guarantorMissingDocs.length > 0) {
+            errors.push(`Missing required guarantor documents: ${guarantorMissingDocs.join(', ')}`);
+          }
+        }
+        break;
+        
+      case 10: // Digital Signatures
+        if (!signatures.applicant) {
+          errors.push("Primary applicant signature is required");
+        }
+        if (hasCoApplicant && !signatures.coApplicant) {
+          errors.push("Co-applicant signature is required");
+        }
+        if (hasGuarantor && !signatures.guarantor) {
+          errors.push("Guarantor signature is required");
+        }
+        break;
+    }
+    
+    return { isValid: errors.length === 0, errors };
+  };
+
   // --- Add this helper to get the next allowed step index ---
   function getNextAllowedStep(current: number, direction: 1 | -1) {
     let next = current + direction;
@@ -450,8 +648,20 @@ export function ApplicationForm() {
     return Math.max(0, Math.min(STEPS.length - 1, next));
   }
 
-  // --- Update nextStep and prevStep to use the helper ---
-  const nextStep = () => {
+  // --- Update nextStep and prevStep to use validation ---
+  const nextStep = async () => {
+    // Validate current step before moving to next
+    const validation = await validateStep(currentStep);
+    
+    if (!validation.isValid) {
+      toast({
+        title: "Step Validation Failed",
+        description: `Please fix these errors: ${validation.errors.join(', ')}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setCurrentStep((prev) => getNextAllowedStep(prev, 1));
   };
 
@@ -459,8 +669,8 @@ export function ApplicationForm() {
     setCurrentStep((prev) => getNextAllowedStep(prev, -1));
   };
 
-  // --- Update goToStep to block manual access to co-applicant/guarantor docs if not allowed ---
-  const goToStep = (step: number) => {
+  // --- Update goToStep to validate and block manual access ---
+  const goToStep = async (step: number) => {
     // Step 6 is Co-Applicant Documents
     if (step === 6 && !hasCoApplicant) {
       toast({
@@ -479,6 +689,22 @@ export function ApplicationForm() {
       });
       return;
     }
+    
+    // Validate all previous steps before allowing jump
+    if (step > currentStep) {
+      for (let i = currentStep; i < step; i++) {
+        const validation = await validateStep(i);
+        if (!validation.isValid) {
+          toast({
+            title: "Cannot Skip Steps",
+            description: `Please complete step ${i + 1} first: ${validation.errors.join(', ')}`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+    }
+    
     setCurrentStep(step);
   };
 
@@ -1053,7 +1279,7 @@ export function ApplicationForm() {
   const renderStep = (stepIdx = currentStep) => {
     switch (stepIdx) {
       case 0:
-        return <ApplicationInstructions onNext={nextStep} />;
+        return <ApplicationInstructions onNext={async () => await nextStep()} />;
       case 1:
         return (
           <Card className="form-section">
@@ -2740,7 +2966,7 @@ export function ApplicationForm() {
               return (
                 <div key={step.id} className="flex items-center">
                   <button
-                    onClick={() => goToStep(step.id)}
+                    onClick={async () => await goToStep(step.id)}
                     className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-colors flex-shrink-0 ${
                       isActive
                         ? 'bg-blue-600 border-blue-600 text-white'
@@ -2781,7 +3007,7 @@ export function ApplicationForm() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={prevStep}
+                onClick={() => prevStep()}
                 disabled={currentStep === 0}
                 className="flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2"
               >
@@ -2806,7 +3032,7 @@ export function ApplicationForm() {
               ) : (
                 <Button
                   type="button"
-                  onClick={nextStep}
+                  onClick={() => nextStep()}
                   className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 sm:px-6 py-2"
                 >
                   <span className="hidden sm:inline">Next</span>

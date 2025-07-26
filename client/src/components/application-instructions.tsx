@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 
 interface ApplicationInstructionsProps {
-  onNext: () => void;
+  onNext: () => Promise<void>;
 }
 
 export const ApplicationInstructions: React.FC<ApplicationInstructionsProps> = ({
@@ -92,7 +92,15 @@ export const ApplicationInstructions: React.FC<ApplicationInstructionsProps> = (
       </ul>
     </div>
 
-  
+    {/* Next Button */}
+    <div className="flex justify-center mt-8">
+      <Button
+        onClick={async () => await onNext()}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg font-semibold"
+      >
+        Start Application
+      </Button>
+    </div>
   </div>
 );
 
