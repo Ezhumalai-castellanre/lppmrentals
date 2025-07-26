@@ -11,6 +11,8 @@ export const handler = async (event, context) => {
       return createCorsResponse(405, { error: 'Method not allowed' });
     }
 
+
+    
   try {
     console.log('=== SUBMIT-APPLICATION FUNCTION CALLED ===');
     
