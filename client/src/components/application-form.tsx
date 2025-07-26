@@ -511,18 +511,23 @@ export function ApplicationForm() {
       case 4: // Supporting Documents
         // Check if required documents are uploaded
         const requiredDocs = ['photo_id', 'social_security', 'bank_statement', 'tax_returns'];
-        const applicantDocs = formData.documents || {};
         
         console.log('🔍 Document Validation Debug - Step 4:');
         console.log('Required docs:', requiredDocs);
-        console.log('Applicant docs:', applicantDocs);
         console.log('FormData documents:', formData.documents);
         console.log('Encrypted documents state:', encryptedDocuments);
+        console.log('Documents state:', documents);
         
         const missingDocs = requiredDocs.filter(doc => {
-          const docArray = applicantDocs[doc];
-          const hasDocs = docArray && docArray.length > 0;
-          console.log(`Document ${doc}:`, hasDocs ? `Found ${docArray.length} files` : 'Missing');
+          // Check both possible storage locations
+          const formDataDocs = formData.documents?.[doc];
+          const encryptedDocs = encryptedDocuments[doc];
+          const hasDocs = (formDataDocs && formDataDocs.length > 0) || (encryptedDocs && encryptedDocs.length > 0);
+          console.log(`Document ${doc}:`, {
+            formDataDocs: formDataDocs?.length || 0,
+            encryptedDocs: encryptedDocs?.length || 0,
+            hasDocs
+          });
           return !hasDocs;
         });
         
@@ -1927,11 +1932,19 @@ export function ApplicationForm() {
                   }));
                 }}
                 onEncryptedDocumentChange={(documentType, encryptedFiles) => {
-                  console.log('Encrypted document change:', documentType, encryptedFiles);
-                  setEncryptedDocuments((prev: any) => ({
-                    ...prev,
-                    [documentType]: encryptedFiles,
-                  }));
+                  console.log('🔍 Primary Applicant Encrypted Document Change:', {
+                    documentType,
+                    encryptedFilesCount: encryptedFiles.length,
+                    encryptedFiles: encryptedFiles.map(f => ({ filename: f.filename, size: f.encryptedData.length }))
+                  });
+                  setEncryptedDocuments((prev: any) => {
+                    const updated = {
+                      ...prev,
+                      [documentType]: encryptedFiles,
+                    };
+                    console.log('Updated encryptedDocuments:', updated);
+                    return updated;
+                  });
 
                   // Track uploadedDocuments for webhook
                   const sectionKey = `supporting_${documentType}`;
