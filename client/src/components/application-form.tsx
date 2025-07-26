@@ -203,7 +203,7 @@ export function ApplicationForm() {
       landlordTenantLegalAction: "",
       brokenLease: "",
     },
-    mode: "onChange", // Enable real-time validation
+    mode: "onSubmit", // Validate on submit
   });
 
   const updateFormData = (section: string, field: string, value: any) => {
@@ -483,22 +483,45 @@ export function ApplicationForm() {
   };
 
   const onSubmit = async (data: ApplicationFormData) => {
-    if (!form.formState.isValid) {
+    console.log('=== FORM SUBMISSION DEBUG ===');
+    console.log('Form data received:', data);
+    console.log('Form is valid:', form.formState.isValid);
+    console.log('Form is dirty:', form.formState.isDirty);
+    console.log('Form errors:', form.formState.errors);
+    console.log('Form touched fields:', form.formState.touchedFields);
+    console.log('Form default values:', form.formState.defaultValues);
+    
+    // Trigger validation for all fields
+    const isValid = await form.trigger();
+    console.log('Manual validation result:', isValid);
+    console.log('Form is dirty:', form.formState.isDirty);
+    console.log('Form is touched:', Object.keys(form.formState.touchedFields).length > 0);
+    
+    if (!isValid) {
       // Get all validation errors
       const errors = form.formState.errors;
       const errorMessages = Object.entries(errors).map(([field, error]) => {
         return `${field}: ${error?.message || 'Invalid value'}`;
       }).join(', ');
       
-      toast({
-        title: "Form is invalid",
-        description: `Please fix these errors: ${errorMessages}`,
-        variant: "destructive",
-      });
+      // Check if form has been touched at all
+      const hasTouchedFields = Object.keys(form.formState.touchedFields).length > 0;
       
-      // Log detailed errors for debugging
-      console.log('Form validation errors:', errors);
-      return;
+      if (!hasTouchedFields) {
+        console.log('Form has not been touched, allowing submission...');
+        // Continue with submission if form hasn't been touched
+      } else {
+        toast({
+          title: "Form is invalid",
+          description: `Please fix these errors: ${errorMessages || 'Unknown validation error'}`,
+          variant: "destructive",
+        });
+        
+        // Log detailed errors for debugging
+        console.log('Form validation errors:', errors);
+        console.log('=== END DEBUG ===');
+        return;
+      }
     }
     console.log("=== FORM SUBMISSION DEBUG ===");
     console.log("Form data received:", data);
