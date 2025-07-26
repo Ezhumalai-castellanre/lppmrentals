@@ -74,7 +74,6 @@ const applicationSchema = z.object({
   applicantLandlordName: z.string().optional(),
   applicantCurrentRent: z.number().optional().or(z.undefined()),
   applicantReasonForMoving: z.string().optional(),
-  applicantGender: z.string().optional(),
 
   // Conditional fields
   hasCoApplicant: z.boolean().default(false),
@@ -121,7 +120,7 @@ export function ApplicationForm() {
     applicant: {},
     coApplicant: {},
     guarantor: {},
-    occupants: [], // Each occupant: { name, relationship, dob, ssn, age, gender }
+    occupants: [], // Each occupant: { name, relationship, dob, ssn, age }
   });
   const [signatures, setSignatures] = useState<any>({});
   const [signatureTimestamps, setSignatureTimestamps] = useState<any>({});
@@ -197,7 +196,6 @@ export function ApplicationForm() {
       applicantLandlordName: "",
       applicantCurrentRent: undefined,
       applicantReasonForMoving: "",
-      applicantGender: "",
 
       // Conditional fields
       hasCoApplicant: false,
@@ -587,7 +585,6 @@ export function ApplicationForm() {
         applicantLandlordName: data.applicantLandlordName,
         applicantCurrentRent: formData.applicant?.currentRent || data.applicantCurrentRent,
         applicantReasonForMoving: data.applicantReasonForMoving,
-        applicantGender: data.applicantGender,
         
         // Primary Applicant Financial (from formData)
         applicantEmployer: formData.applicant?.employer || null,
@@ -1185,36 +1182,7 @@ export function ApplicationForm() {
                     );
                   }}
                 />
-                <FormField
-                  control={form.control}
-                  name="applicantGender"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="mb-0.5">Gender</FormLabel>
-                      <FormControl>
-                        <Select
-                          value={formData.applicant?.gender || ''}
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            updateFormData('applicant', 'gender', value);
-                          }}
-                        >
-                          <SelectTrigger className="w-full mt-1">
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
-                
                 <div className="space-y-2">
                   <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
                     Social Security Number
@@ -1298,7 +1266,6 @@ export function ApplicationForm() {
                     className="w-full mt-1"
                   />
                 </div>
-                <div className="space-y-2"></div>
                 <h5>Current Address</h5>
                 <div className="space-y-2"></div>
              
@@ -1684,22 +1651,7 @@ export function ApplicationForm() {
                         );
                       })()}
                     </div>
-                    <div>
-                      <Label className="mb-0.5">Gender</Label>
-                      <Select
-                        value={formData.coApplicant?.gender || ''}
-                        onValueChange={(value) => updateFormData('coApplicant', 'gender', value)}
-                      >
-                        <SelectTrigger className="w-full mt-1">
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+
                     <div className="space-y-2">
                       <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
                         Social Security Number
@@ -1759,7 +1711,6 @@ export function ApplicationForm() {
                         className="w-full mt-1"
                       />
                     </div>
-                    <div className="space-y-2"></div>
                     <h5>Current Address</h5>
                     <div className="space-y-2"></div>
                     <div className="space-y-2">
@@ -1965,26 +1916,7 @@ export function ApplicationForm() {
                         }}
                       />
                     </div>
-                    <div>
-                      <Label>Gender</Label>
-                      <Select
-                        value={occupant.gender || ''}
-                        onValueChange={value => {
-                          const updated = [...formData.occupants];
-                          updated[idx] = { ...updated[idx], gender: value };
-                          setFormData((prev: any) => ({ ...prev, occupants: updated }));
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+
                     <div>
                       <Label>Relationship</Label>
                       <Input
@@ -1997,8 +1929,7 @@ export function ApplicationForm() {
                         }}
                       />
                     </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+
                     <div>
                       <Label>Date of Birth</Label>
                       <DatePicker
@@ -2025,6 +1956,8 @@ export function ApplicationForm() {
                         disabled={date => date > new Date()}
                       />
                     </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                     <div>
                       <SSNInput
                         name={`occupantSsn${idx}`}
@@ -2052,7 +1985,7 @@ export function ApplicationForm() {
                   </div>
                   <div className="mb-2">
                     <FileUpload
-                      label="Social Security Card (Required)"
+                      label={`Occupant ${idx + 1} - Social Security Card (Required)`}
                       description="Upload SSN card (.pdf, .jpg, .jpeg, .png, max 10MB)"
                       accept=".pdf,.jpg,.jpeg,.png"
                       multiple={false}
@@ -2069,7 +2002,7 @@ export function ApplicationForm() {
                         updated[idx] = { ...updated[idx], ssnEncryptedDocument: encryptedFiles[0] };
                         setFormData((prev: any) => ({ ...prev, occupants: updated }));
                       }}
-                      referenceId={referenceId}
+                      referenceId={`${referenceId}_occupant_${idx}`}
                       sectionName={`occupant_${idx}_ssn`}
                       documentName="ssn"
                       enableWebhook={true}
@@ -2102,7 +2035,7 @@ export function ApplicationForm() {
                 onClick={() => {
                   setFormData((prev: any) => ({
                     ...prev,
-                    occupants: [...(prev.occupants || []), { name: '', relationship: '', dob: '', ssn: '', license: '', age: '', gender: '', ssnDocument: null, ssnEncryptedDocument: null }]
+                                            occupants: [...(prev.occupants || []), { name: '', relationship: '', dob: '', ssn: '', license: '', age: '', ssnDocument: null, ssnEncryptedDocument: null }]
                   }));
                 }}
               >
@@ -2199,22 +2132,7 @@ export function ApplicationForm() {
                           );
                         })()}
                       </div>
-                      <div>
-                        <Label className="mb-0.5">Gender</Label>
-                        <Select
-                          value={formData.guarantor?.gender || ''}
-                          onValueChange={(value) => updateFormData('guarantor', 'gender', value)}
-                        >
-                          <SelectTrigger className="w-full mt-1">
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+
                       <div className="space-y-2">
                         <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
                           Social Security Number
@@ -2274,7 +2192,6 @@ export function ApplicationForm() {
                           className="w-full mt-1"
                         />
                       </div>
-                      <div className="space-y-2"></div>
                       <h5>Current Address</h5>
                       <div className="space-y-2"></div>
                       <div  className="space-y-2">
@@ -2539,8 +2456,8 @@ export function ApplicationForm() {
         form.setValue('applicantDob', dateObj);
       }
     } else if (formValue) {
-      // If invalid, clear
-      form.setValue('applicantDob', undefined);
+      // If invalid, clear by setting to a default date or handling differently
+      // Don't set undefined for required date field
     }
   }, [formData.applicant?.dob, form]);
 
