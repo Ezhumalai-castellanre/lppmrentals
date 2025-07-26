@@ -511,8 +511,19 @@ export function ApplicationForm() {
       case 4: // Supporting Documents
         // Check if required documents are uploaded
         const requiredDocs = ['photo_id', 'social_security', 'bank_statement', 'tax_returns'];
-        const uploadedDocs = Object.keys(encryptedDocuments.applicant || {});
-        const missingDocs = requiredDocs.filter(doc => !uploadedDocs.includes(doc));
+        const applicantDocs = encryptedDocuments.applicant || {};
+        
+        console.log('🔍 Document Validation Debug - Step 4:');
+        console.log('Required docs:', requiredDocs);
+        console.log('Applicant docs:', applicantDocs);
+        console.log('Encrypted documents state:', encryptedDocuments);
+        
+        const missingDocs = requiredDocs.filter(doc => {
+          const docArray = applicantDocs[doc];
+          const hasDocs = docArray && docArray.length > 0;
+          console.log(`Document ${doc}:`, hasDocs ? `Found ${docArray.length} files` : 'Missing');
+          return !hasDocs;
+        });
         
         if (missingDocs.length > 0) {
           errors.push(`Missing required documents: ${missingDocs.join(', ')}`);
@@ -550,8 +561,18 @@ export function ApplicationForm() {
       case 6: // Co-Applicant Documents
         if (hasCoApplicant) {
           const coRequiredDocs = ['photo_id', 'social_security', 'bank_statement', 'tax_returns'];
-          const coUploadedDocs = Object.keys(encryptedDocuments.coApplicant || {});
-          const coMissingDocs = coRequiredDocs.filter(doc => !coUploadedDocs.includes(doc));
+          const coApplicantDocs = encryptedDocuments.coApplicant || {};
+          
+          console.log('🔍 Document Validation Debug - Step 6 (Co-Applicant):');
+          console.log('Required docs:', coRequiredDocs);
+          console.log('Co-applicant docs:', coApplicantDocs);
+          
+          const coMissingDocs = coRequiredDocs.filter(doc => {
+            const docArray = coApplicantDocs[doc];
+            const hasDocs = docArray && docArray.length > 0;
+            console.log(`Co-applicant document ${doc}:`, hasDocs ? `Found ${docArray.length} files` : 'Missing');
+            return !hasDocs;
+          });
           
           if (coMissingDocs.length > 0) {
             errors.push(`Missing required co-applicant documents: ${coMissingDocs.join(', ')}`);
@@ -601,8 +622,18 @@ export function ApplicationForm() {
       case 9: // Guarantor Documents
         if (hasGuarantor) {
           const guarantorRequiredDocs = ['photo_id', 'social_security', 'bank_statement', 'tax_returns'];
-          const guarantorUploadedDocs = Object.keys(encryptedDocuments.guarantor || {});
-          const guarantorMissingDocs = guarantorRequiredDocs.filter(doc => !guarantorUploadedDocs.includes(doc));
+          const guarantorDocs = encryptedDocuments.guarantor || {};
+          
+          console.log('🔍 Document Validation Debug - Step 9 (Guarantor):');
+          console.log('Required docs:', guarantorRequiredDocs);
+          console.log('Guarantor docs:', guarantorDocs);
+          
+          const guarantorMissingDocs = guarantorRequiredDocs.filter(doc => {
+            const docArray = guarantorDocs[doc];
+            const hasDocs = docArray && docArray.length > 0;
+            console.log(`Guarantor document ${doc}:`, hasDocs ? `Found ${docArray.length} files` : 'Missing');
+            return !hasDocs;
+          });
           
           if (guarantorMissingDocs.length > 0) {
             errors.push(`Missing required guarantor documents: ${guarantorMissingDocs.join(', ')}`);
