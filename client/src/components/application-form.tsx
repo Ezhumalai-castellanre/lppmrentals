@@ -984,11 +984,34 @@ export function ApplicationForm() {
       
       const requestBody = {
         applicationData: transformedData,
-        uploadedFilesMetadata: uploadedFilesMetadata
+        files: uploadedFilesMetadata,
+        signatures: {
+          applicant: signatures.applicant,
+          coApplicant: signatures.coApplicant,
+          guarantor: signatures.guarantor
+        },
+        encryptedData: {
+          documents: encryptedDocuments,
+          allEncryptedFiles: uploadedDocuments
+        }
       };
       
       console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
-      console.log('Request body uploadedFilesMetadata:', requestBody.uploadedFilesMetadata);
+      console.log('Request body files:', requestBody.files);
+      console.log('=== FULL REQUEST BODY DEBUG ===');
+      console.log('transformedData keys:', Object.keys(transformedData));
+      console.log('transformedData sample values:', {
+        buildingAddress: transformedData.buildingAddress,
+        apartmentNumber: transformedData.apartmentNumber,
+        applicantName: transformedData.applicantName,
+        applicantEmail: transformedData.applicantEmail,
+        applicantPhone: transformedData.applicantPhone,
+        applicantSsn: transformedData.applicantSsn,
+        applicantDob: transformedData.applicantDob,
+        moveInDate: transformedData.moveInDate,
+        monthlyRent: transformedData.monthlyRent
+      });
+      console.log('=== END REQUEST BODY DEBUG ===');
       
       // Validate required fields before submission
       if (!transformedData.applicantDob) {
