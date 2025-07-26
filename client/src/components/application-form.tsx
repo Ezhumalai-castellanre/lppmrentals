@@ -72,6 +72,19 @@ const applicationSchema = z.object({
   applicantLengthAtAddressYears: z.number().optional().or(z.undefined()),
   applicantLengthAtAddressMonths: z.number().optional().or(z.undefined()),
   applicantLandlordName: z.string().optional(),
+  applicantLandlordAddressLine1: z.string().optional(),
+  applicantLandlordAddressLine2: z.string().optional(),
+  applicantLandlordCity: z.string().optional(),
+  applicantLandlordState: z.string().optional(),
+  applicantLandlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+    message: "Please enter a valid ZIP code"
+  }),
+  applicantLandlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+    message: "Please enter a valid US phone number"
+  }),
+  applicantLandlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+    message: "Please enter a valid email address"
+  }),
   applicantCurrentRent: z.number().optional().or(z.undefined()),
   applicantReasonForMoving: z.string().optional(),
 
@@ -93,11 +106,13 @@ const STEPS = [
   { id: 3, title: "Financial Info", icon: CalendarDays },
   { id: 4, title: "Supporting Documents", icon: FolderOpen },
   { id: 5, title: "Co-Applicant", icon: Users },
-  { id: 6, title: "Co-Applicant Documents", icon: FolderOpen },
-  { id: 7, title: "Other Occupants", icon: Users },
-  { id: 8, title: "Guarantor", icon: Shield },
-  { id: 9, title: "Guarantor Documents", icon: FolderOpen },
-  { id: 10, title: "Digital Signatures", icon: Check },
+  { id: 6, title: "Co-Applicant Financial", icon: CalendarDays },
+  { id: 7, title: "Co-Applicant Documents", icon: FolderOpen },
+  { id: 8, title: "Other Occupants", icon: Users },
+  { id: 9, title: "Guarantor", icon: Shield },
+  { id: 10, title: "Guarantor Financial", icon: CalendarDays },
+  { id: 11, title: "Guarantor Documents", icon: FolderOpen },
+  { id: 12, title: "Digital Signatures", icon: Check },
 ];
 
 // 1. Add phone formatting helper
@@ -194,6 +209,13 @@ export function ApplicationForm() {
       applicantLengthAtAddressYears: undefined,
       applicantLengthAtAddressMonths: undefined,
       applicantLandlordName: "",
+      applicantLandlordAddressLine1: "",
+      applicantLandlordAddressLine2: "",
+      applicantLandlordCity: "",
+      applicantLandlordState: "",
+      applicantLandlordZipCode: "",
+      applicantLandlordPhone: "",
+      applicantLandlordEmail: "",
       applicantCurrentRent: undefined,
       applicantReasonForMoving: "",
 
@@ -433,21 +455,21 @@ export function ApplicationForm() {
   // --- Add this helper to get the next allowed step index ---
   function getNextAllowedStep(current: number, direction: 1 | -1) {
     let next = current + direction;
-    // If moving forward and co-applicant is not checked, skip co-applicant docs
-    if (direction === 1 && next === 6 && !hasCoApplicant) {
-      next = 7;
+    // If moving forward and co-applicant is not checked, skip co-applicant financial and docs
+    if (direction === 1 && (next === 6 || next === 7) && !hasCoApplicant) {
+      next = 8;
     }
-    // If moving backward and co-applicant is not checked, skip co-applicant docs
-    if (direction === -1 && next === 6 && !hasCoApplicant) {
+    // If moving backward and co-applicant is not checked, skip co-applicant financial and docs
+    if (direction === -1 && (next === 6 || next === 7) && !hasCoApplicant) {
       next = 5;
     }
-    // If moving forward and guarantor is not checked, skip guarantor docs
-    if (direction === 1 && next === 9 && !hasGuarantor) {
-      next = 10;
+    // If moving forward and guarantor is not checked, skip guarantor financial and docs
+    if (direction === 1 && (next === 10 || next === 11) && !hasGuarantor) {
+      next = 12;
     }
-    // If moving backward and guarantor is not checked, skip guarantor docs
-    if (direction === -1 && next === 9 && !hasGuarantor) {
-      next = 8;
+    // If moving backward and guarantor is not checked, skip guarantor financial and docs
+    if (direction === -1 && (next === 10 || next === 11) && !hasGuarantor) {
+      next = 9;
     }
     return Math.max(0, Math.min(STEPS.length - 1, next));
   }
@@ -463,8 +485,17 @@ export function ApplicationForm() {
 
   // --- Update goToStep to block manual access to co-applicant/guarantor docs if not allowed ---
   const goToStep = (step: number) => {
-    // Step 6 is Co-Applicant Documents
+    // Step 6 is Co-Applicant Financial Information
     if (step === 6 && !hasCoApplicant) {
+      toast({
+        title: 'Co-Applicant Financial Information Unavailable',
+        description: 'Please check "Add Co-Applicant" to access financial information.',
+        variant: 'warning',
+      });
+      return;
+    }
+    // Step 7 is Co-Applicant Documents
+    if (step === 7 && !hasCoApplicant) {
       toast({
         title: 'Co-Applicant Documents Unavailable',
         description: 'Please check "Add Co-Applicant" to upload documents.',
@@ -472,8 +503,17 @@ export function ApplicationForm() {
       });
       return;
     }
-    // Step 9 is Guarantor Documents
-    if (step === 9 && !hasGuarantor) {
+    // Step 10 is Guarantor Financial Information
+    if (step === 10 && !hasGuarantor) {
+      toast({
+        title: 'Guarantor Financial Information Unavailable',
+        description: 'Please check "Add Guarantor" to access financial information.',
+        variant: 'warning',
+      });
+      return;
+    }
+    // Step 11 is Guarantor Documents
+    if (step === 11 && !hasGuarantor) {
       toast({
         title: 'Guarantor Documents Unavailable',
         description: 'Please check "Add Guarantor" to upload documents.',
@@ -583,6 +623,13 @@ export function ApplicationForm() {
         applicantLengthAtAddressYears: data.applicantLengthAtAddressYears,
         applicantLengthAtAddressMonths: data.applicantLengthAtAddressMonths,
         applicantLandlordName: data.applicantLandlordName,
+        applicantLandlordAddressLine1: data.applicantLandlordAddressLine1,
+        applicantLandlordAddressLine2: data.applicantLandlordAddressLine2,
+        applicantLandlordCity: data.applicantLandlordCity,
+        applicantLandlordState: data.applicantLandlordState,
+        applicantLandlordZipCode: data.applicantLandlordZipCode,
+        applicantLandlordPhone: data.applicantLandlordPhone,
+        applicantLandlordEmail: data.applicantLandlordEmail,
         applicantCurrentRent: formData.applicant?.currentRent || data.applicantCurrentRent,
         applicantReasonForMoving: data.applicantReasonForMoving,
         
@@ -614,6 +661,14 @@ export function ApplicationForm() {
         coApplicantZip: formData.coApplicant?.zip || null,
         coApplicantLengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears ?? null,
         coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths ?? null,
+        coApplicantLandlordName: formData.coApplicant?.landlordName || null,
+        coApplicantLandlordAddressLine1: formData.coApplicant?.landlordAddressLine1 || null,
+        coApplicantLandlordAddressLine2: formData.coApplicant?.landlordAddressLine2 || null,
+        coApplicantLandlordCity: formData.coApplicant?.landlordCity || null,
+        coApplicantLandlordState: formData.coApplicant?.landlordState || null,
+        coApplicantLandlordZipCode: formData.coApplicant?.landlordZipCode || null,
+        coApplicantLandlordPhone: formData.coApplicant?.landlordPhone || null,
+        coApplicantLandlordEmail: formData.coApplicant?.landlordEmail || null,
         
         // Co-Applicant Financial
         coApplicantEmploymentType: formData.coApplicant?.employmentType || null,
@@ -648,6 +703,14 @@ export function ApplicationForm() {
         transformedData.guarantorZip = formData.guarantor?.zip || null;
         transformedData.guarantorLengthAtAddressYears = formData.guarantor?.lengthAtAddressYears ?? null;
         transformedData.guarantorLengthAtAddressMonths = formData.guarantor?.lengthAtAddressMonths ?? null;
+        transformedData.guarantorLandlordName = formData.guarantor?.landlordName || null;
+        transformedData.guarantorLandlordAddressLine1 = formData.guarantor?.landlordAddressLine1 || null;
+        transformedData.guarantorLandlordAddressLine2 = formData.guarantor?.landlordAddressLine2 || null;
+        transformedData.guarantorLandlordCity = formData.guarantor?.landlordCity || null;
+        transformedData.guarantorLandlordState = formData.guarantor?.landlordState || null;
+        transformedData.guarantorLandlordZipCode = formData.guarantor?.landlordZipCode || null;
+        transformedData.guarantorLandlordPhone = formData.guarantor?.landlordPhone || null;
+        transformedData.guarantorLandlordEmail = formData.guarantor?.landlordEmail || null;
         
         // Guarantor Financial
         transformedData.guarantorEmploymentType = formData.guarantor?.employmentType || null;
@@ -843,6 +906,13 @@ export function ApplicationForm() {
       updateFormData('coApplicant', 'state', applicantAddress.state);
       updateFormData('coApplicant', 'zip', applicantAddress.zip);
       updateFormData('coApplicant', 'landlordName', applicantAddress.landlordName);
+      updateFormData('coApplicant', 'landlordAddressLine1', applicantAddress.landlordAddressLine1);
+      updateFormData('coApplicant', 'landlordAddressLine2', applicantAddress.landlordAddressLine2);
+      updateFormData('coApplicant', 'landlordCity', applicantAddress.landlordCity);
+      updateFormData('coApplicant', 'landlordState', applicantAddress.landlordState);
+      updateFormData('coApplicant', 'landlordZipCode', applicantAddress.landlordZipCode);
+      updateFormData('coApplicant', 'landlordPhone', applicantAddress.landlordPhone);
+      updateFormData('coApplicant', 'landlordEmail', applicantAddress.landlordEmail);
       updateFormData('coApplicant', 'currentRent', applicantAddress.currentRent);
       updateFormData('coApplicant', 'lengthAtAddress', applicantAddress.lengthAtAddress);
     }
@@ -885,6 +955,13 @@ export function ApplicationForm() {
       updateFormData('guarantor', 'state', applicantAddress.state);
       updateFormData('guarantor', 'zip', applicantAddress.zip);
       updateFormData('guarantor', 'landlordName', applicantAddress.landlordName);
+      updateFormData('guarantor', 'landlordAddressLine1', applicantAddress.landlordAddressLine1);
+      updateFormData('guarantor', 'landlordAddressLine2', applicantAddress.landlordAddressLine2);
+      updateFormData('guarantor', 'landlordCity', applicantAddress.landlordCity);
+      updateFormData('guarantor', 'landlordState', applicantAddress.landlordState);
+      updateFormData('guarantor', 'landlordZipCode', applicantAddress.landlordZipCode);
+      updateFormData('guarantor', 'landlordPhone', applicantAddress.landlordPhone);
+      updateFormData('guarantor', 'landlordEmail', applicantAddress.landlordEmail);
       updateFormData('guarantor', 'currentRent', applicantAddress.currentRent);
       updateFormData('guarantor', 'lengthAtAddress', applicantAddress.lengthAtAddress);
     }
@@ -1407,7 +1484,7 @@ export function ApplicationForm() {
                   name="applicantLandlordName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="mb-0.5">Current Landlord's Name</FormLabel>
+                      <FormLabel className="mb-0.5">Landlord Name</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="Enter landlord's name" 
@@ -1417,6 +1494,155 @@ export function ApplicationForm() {
                             field.onChange(e);
                             updateFormData('applicant', 'landlordName', e.target.value);
                           }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordAddressLine1"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Landlord Street Address</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter landlord's street address" 
+                          {...field}
+                          className="input-field w-full mt-1 border-gray-300 bg-white"
+                          onChange={(e) => {
+                            field.onChange(e);
+                            updateFormData('applicant', 'landlordAddressLine1', e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordAddressLine2"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Landlord Address Line 2 (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Apartment, suite, etc." 
+                          {...field}
+                          className="input-field w-full mt-1 border-gray-300 bg-white"
+                          onChange={(e) => {
+                            field.onChange(e);
+                            updateFormData('applicant', 'landlordAddressLine2', e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordState"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <StateSelector
+                          selectedState={field.value || ''}
+                          onStateChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'landlordState', value);
+                          }}
+                          label="Landlord State"
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordCity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <CitySelector
+                          selectedState={formData.applicant?.landlordState || ''}
+                          selectedCity={field.value || ''}
+                          onCityChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'landlordCity', value);
+                          }}
+                          label="Landlord City"
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordZipCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <ZIPInput
+                          name="applicantLandlordZipCode"
+                          label="Landlord ZIP Code"
+                          placeholder="Enter landlord's ZIP code"
+                          value={field.value || ''}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'landlordZipCode', value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <PhoneInput
+                          name="applicantLandlordPhone"
+                          label="Landlord Phone Number"
+                          placeholder="Enter landlord's phone number"
+                          value={field.value || ''}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'landlordPhone', value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <EmailInput
+                          name="applicantLandlordEmail"
+                          label="Landlord Email Address (Optional)"
+                          placeholder="Enter landlord's email address"
+                          value={field.value || ''}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'landlordEmail', value);
+                          }}
+                          className="w-full mt-1"
                         />
                       </FormControl>
                       <FormMessage />
@@ -1601,176 +1827,211 @@ export function ApplicationForm() {
                     Co-Applicant Information
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                    <div className="col-span-1 md:col-span-2">
-                      <Label className="mb-0.5">Full Name *</Label>
-                      <Input 
-                        placeholder="Enter full name"
-                        className="input-field w-full mt-1"
-                        value={formData.coApplicant?.name || ''}
-                        onChange={(e) => updateFormData('coApplicant', 'name', e.target.value)}
-                      />
-                       <div className="space-y-2">
-                      <Label className="mb-0.5">Relationship</Label>
-                      <Select
-                        value={formData.coApplicant?.relationship || ''}
-                        onValueChange={(value) => updateFormData('coApplicant', 'relationship', value)}
-                      >
-                        <SelectTrigger className="w-full mt-1">
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="spouse">Spouse</SelectItem>
-                          <SelectItem value="partner">Partner</SelectItem>
-                          <SelectItem value="parent">Parent</SelectItem>
-                          <SelectItem value="child">Child</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    </div>
-                   
-                    <div>
-                      <Label className="mb-0.5">Date of Birth *</Label>
-                      {(() => {
-                        const dateVal = toValidDate(formData.coApplicant?.dob);
-                        const safeDate = (dateVal instanceof Date && !isNaN(dateVal.getTime())) ? dateVal : undefined;
-                        return (
-                          <>
-                            <DatePicker
-                              value={safeDate as Date | undefined}
-                              onChange={(date) => {
-                                updateFormData('coApplicant', 'dob', date);
-                                if (date) {
-                                  const today = new Date();
-                                  const birthDate = new Date(date);
-                                  let age = today.getFullYear() - birthDate.getFullYear();
-                                  const monthDiff = today.getMonth() - birthDate.getMonth();
-                                  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                                    age--;
-                                  }
-                                  updateFormData('coApplicant', 'age', age);
-                                } else {
-                                  updateFormData('coApplicant', 'age', '');
+                <CardContent className="p-4 sm:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div className="col-span-1 md:col-span-2">
+                  <FormField
+                    control={form.control}
+                    name="applicantName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="mb-0.5">Full Name</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter full name" 
+                            {...field}
+                            className="input-field w-full mt-1"
+                            onChange={(e) => {
+                              field.onChange(e);
+                              updateFormData('coApplicant', 'name', e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="col-span-1 md:col-span-2">
+                  <Label className="mb-0.5">Relationship</Label>
+                  <Select
+                    value={formData.coApplicant?.relationship || ''}
+                    onValueChange={(value) => updateFormData('coApplicant', 'relationship', value)}
+                  >
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="spouse">Spouse</SelectItem>
+                      <SelectItem value="partner">Partner</SelectItem>
+                      <SelectItem value="parent">Parent</SelectItem>
+                      <SelectItem value="child">Child</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="applicantDob"
+                  render={({ field }) => {
+                    const dateVal = toValidDate(formData.coApplicant?.dob);
+                    const safeDate = (dateVal instanceof Date && !isNaN(dateVal.getTime())) ? dateVal : undefined;
+                    return (
+                      <FormItem>
+                        <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
+                        <FormControl>
+                          <DatePicker
+                            value={safeDate as Date | undefined}
+                            onChange={(date) => {
+                              field.onChange(date);
+                              updateFormData('coApplicant', 'dob', date);
+                              // Auto-calculate age
+                              if (date) {
+                                const today = new Date();
+                                const birthDate = new Date(date);
+                                let age = today.getFullYear() - birthDate.getFullYear();
+                                const monthDiff = today.getMonth() - birthDate.getMonth();
+                                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                                  age--;
                                 }
-                              }}
-                              placeholder="Select date of birth"
-                              disabled={(date) => date > new Date()}
-                              className="w-full mt-1"
-                            />
-                          </>
-                        );
-                      })()}
-                    </div>
+                                updateFormData('coApplicant', 'age', age);
+                              } else {
+                                updateFormData('coApplicant', 'age', '');
+                              }
+                            }}
+                            placeholder="Select date of birth"
+                            disabled={(date) => date > new Date()}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
 
-                    <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        Social Security Number
-                      </label>
-                      <input
-                        type="text"
-                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                        placeholder="XXX-XX-XXXX"
-                        value={formData.coApplicant?.ssn || ''}
-                        onChange={e => updateFormData('coApplicant', 'ssn', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                        placeholder="(555) 555-5555"
-                        value={formData.coApplicant?.phone || ''}
-                        onChange={e => updateFormData('coApplicant', 'phone', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        Email Address
-                      </label>
-                      <input
-                        type="email"
-                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                        placeholder="you@email.com"
-                        value={formData.coApplicant?.email || ''}
-                        onChange={e => updateFormData('coApplicant', 'email', e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        Driver's License Number
-                      </label>
-                      <input
-                        type="text"
-                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                        placeholder="Enter license number"
-                        value={formData.coApplicant?.license || ''}
-                        onChange={e => updateFormData('coApplicant', 'license', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      
-                      <StateSelector
-                        selectedState={formData.coApplicant?.licenseState || ''}
-                        onStateChange={(state) => updateFormData('coApplicant', 'licenseState', state)}
-                        label="License State"
-                        required={false}
-                        className="w-full mt-1"
-                      />
-                    </div>
-                    <h5>Current Address</h5>
-                    <div className="space-y-2"></div>
-                    <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        Street Address
-                      </label>
-                      <input
-                        type="text"
-                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                        placeholder="Enter street address"
-                        value={formData.coApplicant?.address || ''}
-                        onChange={e => updateFormData('coApplicant', 'address', e.target.value)}
-                      />
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    Social Security Number
+                  </label>
+                  <input
+                    type="text"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="XXX-XX-XXXX"
+                    value={formData.coApplicant?.ssn || ''}
+                    onChange={e => updateFormData('coApplicant', 'ssn', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="(555) 555-5555"
+                    value={formData.coApplicant?.phone || ''}
+                    onChange={e => updateFormData('coApplicant', 'phone', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="you@email.com"
+                    value={formData.coApplicant?.email || ''}
+                    onChange={e => updateFormData('coApplicant', 'email', e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    Driver's License Number
+                  </label>
+                  <input
+                    type="text"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="Enter license number"
+                    value={formData.coApplicant?.license || ''}
+                    onChange={e => updateFormData('coApplicant', 'license', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  
+                  <StateSelector
+                    selectedState={formData.coApplicant?.licenseState || ''}
+                    onStateChange={(state) => updateFormData('coApplicant', 'licenseState', state)}
+                    label="License State"
+                    required={false}
+                    className="w-full mt-1"
+                  />
+                </div>
+                <h5>Current Address</h5>
+                <div className="space-y-2"></div>
+             
+                <div className="space-y-2">
+                <FormField
+                    control={form.control}
+                    name="applicantAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="mb-0.5">Street Address</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter street address" 
+                            {...field}
+                            className="input-field w-full mt-1"
+                            onChange={(e) => {
+                              field.onChange(e);
+                              updateFormData('coApplicant', 'address', e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                       <div className="space-y-2">
-                      <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                        ZIP Code*
-                      </label>
-                      <input
-                        type="text"
-                        className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                        placeholder="ZIP code"
-                        value={formData.coApplicant?.zip || ''}
-                        onChange={e => updateFormData('coApplicant', 'zip', e.target.value)}
-                      />
-                      {formData.coApplicant?.zip && !validateZIPCode(formData.coApplicant.zip) && (
-                        <span className="text-red-500 text-xs">Please enter a valid ZIP code</span>
-                      )}
-                    </div>
-                    </div>
-                    <div className="space-y-2">
-                      <StateCitySelector
-                        selectedState={formData.coApplicant?.state || ''}
-                        selectedCity={formData.coApplicant?.city || ''}
-                        onStateChange={(state) => {
-                          updateFormData('coApplicant', 'state', state);
-                          updateFormData('coApplicant', 'city', '');
-                        }}
-                        onCityChange={(city) => {
-                          updateFormData('coApplicant', 'city', city);
-                        }}
-                        stateLabel="State*"
-                        cityLabel="City*"
-                        required={true}
-                        className="mb-4"
-                      />
-                    </div>
-                    
-                  </div>
+                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                    ZIP Code*
+                  </label>
+                  <input
+                    type="text"
+                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                    placeholder="ZIP code"
+                    value={formData.coApplicant?.zip || ''}
+                    onChange={e => updateFormData('coApplicant', 'zip', e.target.value)}
+                  />
+                  {formData.coApplicant?.zip && !validateZIPCode(formData.coApplicant.zip) && (
+                    <span className="text-red-500 text-xs">Please enter a valid ZIP code</span>
+                  )}
+                </div>
+                </div>
+                
+                <div className="space-y-2">
+                  {/* Replace State* and City* text inputs with StateCitySelector */}
+                  <StateCitySelector
+                    selectedState={formData.coApplicant?.state || ''}
+                    selectedCity={formData.coApplicant?.city || ''}
+                    onStateChange={(state) => {
+                      updateFormData('coApplicant', 'state', state);
+                      // Clear city if state changes
+                      updateFormData('coApplicant', 'city', '');
+                    }}
+                    onCityChange={(city) => {
+                      updateFormData('coApplicant', 'city', city);
+                    }}
+                    stateLabel="State*"
+                    cityLabel="City*"
+                    required={true}
+                    className="mb-4"
+                  />
+                </div>
+            
+              </div>
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                     <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
                       <FormLabel className="mb-0.5 col-span-2">Length of Stay at Current Address</FormLabel>
@@ -1792,15 +2053,176 @@ export function ApplicationForm() {
                         className="w-full mt-1"
                       />
                     </div>
-                    <div className="col-span-1 md:col-span-2">
-                      <FormLabel className="mb-0.5">Current Landlord's Name</FormLabel>
-                      <Input
-                        placeholder="Enter landlord's name"
-                        value={formData.coApplicant?.landlordName || ''}
-                        onChange={e => updateFormData('coApplicant', 'landlordName', e.target.value)}
-                        className="input-field w-full mt-1 border-gray-300 bg-white"
-                      />
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="applicantLandlordName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Landlord Name</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter landlord's name" 
+                              {...field}
+                              className="input-field w-full mt-1 border-gray-300 bg-white"
+                              onChange={(e) => {
+                                field.onChange(e);
+                                updateFormData('coApplicant', 'landlordName', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="applicantLandlordAddressLine1"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Landlord Street Address</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter landlord's street address" 
+                              {...field}
+                              className="input-field w-full mt-1 border-gray-300 bg-white"
+                              onChange={(e) => {
+                                field.onChange(e);
+                                updateFormData('coApplicant', 'landlordAddressLine1', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="applicantLandlordAddressLine2"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Landlord Address Line 2 (Optional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Apartment, suite, etc." 
+                              {...field}
+                              className="input-field w-full mt-1 border-gray-300 bg-white"
+                              onChange={(e) => {
+                                field.onChange(e);
+                                updateFormData('coApplicant', 'landlordAddressLine2', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="applicantLandlordState"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <StateSelector
+                              selectedState={field.value || ''}
+                              onStateChange={(value) => {
+                                field.onChange(value);
+                                updateFormData('coApplicant', 'landlordState', value);
+                              }}
+                              label="Landlord State"
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="applicantLandlordCity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <CitySelector
+                              selectedState={formData.coApplicant?.landlordState || ''}
+                              selectedCity={field.value || ''}
+                              onCityChange={(value) => {
+                                field.onChange(value);
+                                updateFormData('coApplicant', 'landlordCity', value);
+                              }}
+                              label="Landlord City"
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="applicantLandlordZipCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <ZIPInput
+                              name="applicantLandlordZipCode"
+                              label="Landlord ZIP Code"
+                              placeholder="Enter landlord's ZIP code"
+                              value={field.value || ''}
+                              onChange={(value) => {
+                                field.onChange(value);
+                                updateFormData('coApplicant', 'landlordZipCode', value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="applicantLandlordPhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <PhoneInput
+                              name="applicantLandlordPhone"
+                              label="Landlord Phone Number"
+                              placeholder="Enter landlord's phone number"
+                              value={field.value || ''}
+                              onChange={(value) => {
+                                field.onChange(value);
+                                updateFormData('coApplicant', 'landlordPhone', value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="applicantLandlordEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <EmailInput
+                              name="applicantLandlordEmail"
+                              label="Landlord Email Address (Optional)"
+                              placeholder="Enter landlord's email address"
+                              value={field.value || ''}
+                              onChange={(value) => {
+                                field.onChange(value);
+                                updateFormData('coApplicant', 'landlordEmail', value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <div>
                       <Label htmlFor="coApplicantCurrentRent" className="mb-0.5">Monthly Rent</Label>
                       <Input
@@ -1815,22 +2237,28 @@ export function ApplicationForm() {
                         className="input-field w-full mt-1"
                       />
                     </div>
-                    <div className="col-span-1 md:col-span-2">
-                      <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
-                      <Textarea
-                        placeholder="Please explain your reason for moving"
-                        value={formData.coApplicant?.reasonForMoving || ''}
-                        onChange={e => updateFormData('coApplicant', 'reasonForMoving', e.target.value)}
-                        className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
-                      />
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="applicantReasonForMoving"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Please explain your reason for moving" 
+                              {...field}
+                              className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
+                              onChange={(e) => {
+                                field.onChange(e);
+                                updateFormData('coApplicant', 'reasonForMoving', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                  <FinancialSection 
-                    title="Co-Applicant Financial Information"
-                    person="coApplicant"
-                    formData={formData}
-                    updateFormData={updateFormData}
-                  />
                 </CardContent>
               </Card>
             )}
@@ -1838,6 +2266,31 @@ export function ApplicationForm() {
         );
 
       case 6:
+        if (!hasCoApplicant) {
+          return (
+            <Card className="form-section">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <CalendarDays className="w-5 h-5 mr-2" />
+                  Co-Applicant Financial Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-gray-500 text-sm mb-4">Please add a Co-Applicant in the previous step to access financial information.</div>
+              </CardContent>
+            </Card>
+          );
+        }
+        return (
+          <FinancialSection 
+            title="Co-Applicant Financial Information"
+            person="coApplicant"
+            formData={formData}
+            updateFormData={updateFormData}
+          />
+        );
+
+      case 7:
         if (hasCoApplicant && !formData.coApplicant?.employmentType) {
           return (
             <Card className="form-section border-l-4 border-l-green-500">
@@ -1899,7 +2352,7 @@ export function ApplicationForm() {
           ) : null
         );
 
-      case 7:
+      case 8:
         return (
           <Card className="form-section border-l-4 border-l-blue-500">
             <CardHeader>
@@ -2057,7 +2510,7 @@ export function ApplicationForm() {
           </Card>
         );
 
-      case 8:
+      case 9:
         return (
           <div className="space-y-6">
             {/* Guarantor Section with Checkbox */}
@@ -2087,14 +2540,29 @@ export function ApplicationForm() {
                     {/* Guarantor Information Section - aligned like Primary/Co-Applicant */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                       <div className="col-span-1 md:col-span-2">
-                        <Label className="mb-0.5">Full Name *</Label>
-                        <Input 
-                          placeholder="Enter full name"
-                          className="input-field w-full mt-1"
-                          value={formData.guarantor?.name || ''}
-                          onChange={(e) => updateFormData('guarantor', 'name', e.target.value)}
+                        <FormField
+                          control={form.control}
+                          name="applicantName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="mb-0.5">Full Name</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter full name" 
+                                  {...field}
+                                  className="input-field w-full mt-1"
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    updateFormData('guarantor', 'name', e.target.value);
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
                         />
-                        <div>
+                      </div>
+                      <div className="col-span-1 md:col-span-2">
                         <Label className="mb-0.5">Relationship</Label>
                         <Select
                           value={formData.guarantor?.relationship || ''}
@@ -2112,38 +2580,45 @@ export function ApplicationForm() {
                           </SelectContent>
                         </Select>
                       </div>
-                      </div>
-                      
-                      <div>
-                        <Label className="mb-0.5">Date of Birth *</Label>
-                        {(() => {
+                      <FormField
+                        control={form.control}
+                        name="applicantDob"
+                        render={({ field }) => {
                           const dateVal = toValidDate(formData.guarantor?.dob);
                           const safeDate = (dateVal instanceof Date && !isNaN(dateVal.getTime())) ? dateVal : undefined;
                           return (
-                            <DatePicker
-                              value={safeDate as Date | undefined}
-                              onChange={(date) => {
-                                updateFormData('guarantor', 'dob', date);
-                                if (date) {
-                                  const today = new Date();
-                                  const birthDate = new Date(date);
-                                  let age = today.getFullYear() - birthDate.getFullYear();
-                                  const monthDiff = today.getMonth() - birthDate.getMonth();
-                                  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                                    age--;
-                                  }
-                                  updateFormData('guarantor', 'age', age);
-                                } else {
-                                  updateFormData('guarantor', 'age', '');
-                                }
-                              }}
-                              placeholder="Select date of birth"
-                              disabled={(date) => date > new Date()}
-                              className="w-full mt-1"
-                            />
+                            <FormItem>
+                              <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
+                              <FormControl>
+                                <DatePicker
+                                  value={safeDate as Date | undefined}
+                                  onChange={(date) => {
+                                    field.onChange(date);
+                                    updateFormData('guarantor', 'dob', date);
+                                    // Auto-calculate age
+                                    if (date) {
+                                      const today = new Date();
+                                      const birthDate = new Date(date);
+                                      let age = today.getFullYear() - birthDate.getFullYear();
+                                      const monthDiff = today.getMonth() - birthDate.getMonth();
+                                      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                                        age--;
+                                      }
+                                      updateFormData('guarantor', 'age', age);
+                                    } else {
+                                      updateFormData('guarantor', 'age', '');
+                                    }
+                                  }}
+                                  placeholder="Select date of birth"
+                                  disabled={(date) => date > new Date()}
+                                  className="w-full mt-1"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
                           );
-                        })()}
-                      </div>
+                        }}
+                      />
 
                       <div className="space-y-2">
                         <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
@@ -2198,7 +2673,7 @@ export function ApplicationForm() {
                         
                         <StateSelector
                           selectedState={formData.guarantor?.licenseState || ''}
-                          onStateChange={(state) => updateFormData('guarantor', '', state)}
+                          onStateChange={(state) => updateFormData('guarantor', 'licenseState', state)}
                           label="License State"
                           required={false}
                           className="w-full mt-1"
@@ -2206,34 +2681,43 @@ export function ApplicationForm() {
                       </div>
                       <h5>Current Address</h5>
                       <div className="space-y-2"></div>
-                      <div  className="space-y-2">
                       <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          Street Address
-                        </label>
-                        <input
-                          type="text"
-                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                          placeholder="Enter street address"
-                          value={formData.guarantor?.address || ''}
-                          onChange={e => updateFormData('guarantor', 'address', e.target.value)}
+                        <FormField
+                          control={form.control}
+                          name="applicantAddress"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="mb-0.5">Street Address</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter street address" 
+                                  {...field}
+                                  className="input-field w-full mt-1"
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    updateFormData('guarantor', 'address', e.target.value);
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          ZIP Code*
-                        </label>
-                        <input
-                          type="text"
-                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                          placeholder="ZIP code"
-                          value={formData.guarantor?.zip || ''}
-                          onChange={e => updateFormData('guarantor', 'zip', e.target.value)}
-                        />
-                        {formData.guarantor?.zip && !validateZIPCode(formData.guarantor.zip) && (
-                          <span className="text-red-500 text-xs">Please enter a valid ZIP code</span>
-                        )}
-                      </div>
+                        <div className="space-y-2">
+                          <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
+                            ZIP Code*
+                          </label>
+                          <input
+                            type="text"
+                            className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
+                            placeholder="ZIP code"
+                            value={formData.guarantor?.zip || ''}
+                            onChange={e => updateFormData('guarantor', 'zip', e.target.value)}
+                          />
+                          {formData.guarantor?.zip && !validateZIPCode(formData.guarantor.zip) && (
+                            <span className="text-red-500 text-xs">Please enter a valid ZIP code</span>
+                          )}
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <StateCitySelector
@@ -2276,15 +2760,176 @@ export function ApplicationForm() {
                           className="w-full mt-1"
                         />
                       </div>
-                      <div className="col-span-1 md:col-span-2">
-                        <FormLabel className="mb-0.5">Current Landlord's Name</FormLabel>
-                        <Input
-                          placeholder="Enter landlord's name"
-                          value={formData.guarantor?.landlordName || ''}
-                          onChange={e => updateFormData('guarantor', 'landlordName', e.target.value)}
-                          className="input-field w-full mt-1 border-gray-300 bg-white"
-                        />
-                      </div>
+                      <FormField
+                        control={form.control}
+                        name="applicantLandlordName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="mb-0.5">Landlord Name</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter landlord's name" 
+                                {...field}
+                                className="input-field w-full mt-1 border-gray-300 bg-white"
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  updateFormData('guarantor', 'landlordName', e.target.value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="applicantLandlordAddressLine1"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="mb-0.5">Landlord Street Address</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter landlord's street address" 
+                                {...field}
+                                className="input-field w-full mt-1 border-gray-300 bg-white"
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  updateFormData('guarantor', 'landlordAddressLine1', e.target.value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="applicantLandlordAddressLine2"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="mb-0.5">Landlord Address Line 2 (Optional)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Apartment, suite, etc." 
+                                {...field}
+                                className="input-field w-full mt-1 border-gray-300 bg-white"
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  updateFormData('guarantor', 'landlordAddressLine2', e.target.value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="applicantLandlordState"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <StateSelector
+                                selectedState={field.value || ''}
+                                onStateChange={(value) => {
+                                  field.onChange(value);
+                                  updateFormData('guarantor', 'landlordState', value);
+                                }}
+                                label="Landlord State"
+                                className="w-full mt-1"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="applicantLandlordCity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <CitySelector
+                                selectedState={formData.guarantor?.landlordState || ''}
+                                selectedCity={field.value || ''}
+                                onCityChange={(value) => {
+                                  field.onChange(value);
+                                  updateFormData('guarantor', 'landlordCity', value);
+                                }}
+                                label="Landlord City"
+                                className="w-full mt-1"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="applicantLandlordZipCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <ZIPInput
+                                name="applicantLandlordZipCode"
+                                label="Landlord ZIP Code"
+                                placeholder="Enter landlord's ZIP code"
+                                value={field.value || ''}
+                                onChange={(value) => {
+                                  field.onChange(value);
+                                  updateFormData('guarantor', 'landlordZipCode', value);
+                                }}
+                                className="w-full mt-1"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="applicantLandlordPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <PhoneInput
+                                name="applicantLandlordPhone"
+                                label="Landlord Phone Number"
+                                placeholder="Enter landlord's phone number"
+                                value={field.value || ''}
+                                onChange={(value) => {
+                                  field.onChange(value);
+                                  updateFormData('guarantor', 'landlordPhone', value);
+                                }}
+                                className="w-full mt-1"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="applicantLandlordEmail"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <EmailInput
+                                name="applicantLandlordEmail"
+                                label="Landlord Email Address (Optional)"
+                                placeholder="Enter landlord's email address"
+                                value={field.value || ''}
+                                onChange={(value) => {
+                                  field.onChange(value);
+                                  updateFormData('guarantor', 'landlordEmail', value);
+                                }}
+                                className="w-full mt-1"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <div>
                         <Label htmlFor="guarantorCurrentRent" className="mb-0.5">Monthly Rent</Label>
                         <Input
@@ -2299,22 +2944,28 @@ export function ApplicationForm() {
                           className="input-field w-full mt-1"
                         />
                       </div>
-                      <div className="col-span-1 md:col-span-2">
-                        <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
-                        <Textarea
-                          placeholder="Please explain your reason for moving"
-                          value={formData.guarantor?.reasonForMoving || ''}
-                          onChange={e => updateFormData('guarantor', 'reasonForMoving', e.target.value)}
-                          className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
-                        />
-                      </div>
+                      <FormField
+                        control={form.control}
+                        name="applicantReasonForMoving"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Please explain your reason for moving" 
+                                {...field}
+                                className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  updateFormData('guarantor', 'reasonForMoving', e.target.value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
-                    <FinancialSection 
-                      title="Guarantor Financial Information"
-                      person="guarantor"
-                      formData={formData}
-                      updateFormData={updateFormData}
-                    />
                   </>
                 )}
                 </CardContent>
@@ -2322,7 +2973,32 @@ export function ApplicationForm() {
                   </div>
         );
 
-      case 9:
+      case 10:
+        if (!hasGuarantor) {
+          return (
+            <Card className="form-section">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <CalendarDays className="w-5 h-5 mr-2" />
+                  Guarantor Financial Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-gray-500 text-sm mb-4">Please add a Guarantor in the previous step to access financial information.</div>
+              </CardContent>
+            </Card>
+          );
+        }
+        return (
+          <FinancialSection 
+            title="Guarantor Financial Information"
+            person="guarantor"
+            formData={formData}
+            updateFormData={updateFormData}
+          />
+        );
+
+      case 11:
         if (!formData.guarantor?.employmentType) {
           return (
             <Card className="form-section">
@@ -2378,7 +3054,7 @@ export function ApplicationForm() {
           />
         );
 
-      case 10:
+      case 12:
         return (
           <div className="space-y-8">
             <Card className="form-section">
