@@ -1,6 +1,8 @@
-# Rental Application Pro - Local Development
+# LPPM Rentals Application
 
-A rental application system built with React, TypeScript, Express, and PostgreSQL.
+<!-- Deployment trigger: Fixing Netlify GitHub connectivity issue -->
+
+A comprehensive rental application system built with React, TypeScript, and Netlify Functions.
 
 ## Prerequisites
 
