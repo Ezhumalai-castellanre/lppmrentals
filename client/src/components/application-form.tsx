@@ -2423,27 +2423,19 @@ export function ApplicationForm() {
                     {/* Guarantor Information Section - aligned like Primary/Co-Applicant */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                       <div className="col-span-1 md:col-span-2">
-                        <FormField
-                          control={form.control}
-                          name="applicantName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="mb-0.5">Full Name</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  placeholder="Enter full name" 
-                                  {...field}
-                                  className="input-field w-full mt-1"
-                                  onChange={(e) => {
-                                    field.onChange(e);
-                                    updateFormData('guarantor', 'name', e.target.value);
-                                  }}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Full Name</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter full name" 
+                              value={formData.guarantor?.name || ''}
+                              className="input-field w-full mt-1"
+                              onChange={(e) => {
+                                updateFormData('guarantor', 'name', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
                       </div>
                       <div className="col-span-1 md:col-span-2">
                         <Label className="mb-0.5">Relationship</Label>
@@ -2463,45 +2455,33 @@ export function ApplicationForm() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <FormField
-                        control={form.control}
-                        name="applicantDob"
-                        render={({ field }) => {
-                          const dateVal = toValidDate(formData.guarantor?.dob);
-                          const safeDate = (dateVal instanceof Date && !isNaN(dateVal.getTime())) ? dateVal : undefined;
-                          return (
-                            <FormItem>
-                              <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
-                              <FormControl>
-                                <DatePicker
-                                  value={safeDate as Date | undefined}
-                                  onChange={(date) => {
-                                    field.onChange(date);
-                                    updateFormData('guarantor', 'dob', date);
-                                    // Auto-calculate age
-                                    if (date) {
-                                      const today = new Date();
-                                      const birthDate = new Date(date);
-                                      let age = today.getFullYear() - birthDate.getFullYear();
-                                      const monthDiff = today.getMonth() - birthDate.getMonth();
-                                      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                                        age--;
-                                      }
-                                      updateFormData('guarantor', 'age', age);
-                                    } else {
-                                      updateFormData('guarantor', 'age', '');
-                                    }
-                                  }}
-                                  placeholder="Select date of birth"
-                                  disabled={(date) => date > new Date()}
-                                  className="w-full mt-1"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          );
-                        }}
-                      />
+                      <FormItem>
+                        <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
+                        <FormControl>
+                          <DatePicker
+                            value={toValidDate(formData.guarantor?.dob)}
+                            onChange={(date) => {
+                              updateFormData('guarantor', 'dob', date);
+                              // Auto-calculate age
+                              if (date) {
+                                const today = new Date();
+                                const birthDate = new Date(date);
+                                let age = today.getFullYear() - birthDate.getFullYear();
+                                const monthDiff = today.getMonth() - birthDate.getMonth();
+                                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                                  age--;
+                                }
+                                updateFormData('guarantor', 'age', age);
+                              } else {
+                                updateFormData('guarantor', 'age', '');
+                              }
+                            }}
+                            placeholder="Select date of birth"
+                            disabled={(date) => date > new Date()}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
 
                       <div className="space-y-2">
                         <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
@@ -2565,27 +2545,19 @@ export function ApplicationForm() {
                       <h5>Current Address</h5>
                       <div className="space-y-2"></div>
                       <div className="space-y-2">
-                        <FormField
-                          control={form.control}
-                          name="applicantAddress"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="mb-0.5">Street Address</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  placeholder="Enter street address" 
-                                  {...field}
-                                  className="input-field w-full mt-1"
-                                  onChange={(e) => {
-                                    field.onChange(e);
-                                    updateFormData('guarantor', 'address', e.target.value);
-                                  }}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Street Address</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter street address" 
+                              value={formData.guarantor?.address || ''}
+                              className="input-field w-full mt-1"
+                              onChange={(e) => {
+                                updateFormData('guarantor', 'address', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
                         <div className="space-y-2">
                           <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
                             ZIP Code*
@@ -2643,69 +2615,45 @@ export function ApplicationForm() {
                           className="w-full mt-1"
                         />
                       </div>
-                      <FormField
-                        control={form.control}
-                        name="applicantLandlordName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="mb-0.5">Landlord Name</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Enter landlord's name" 
-                                {...field}
-                                className="input-field w-full mt-1 border-gray-300 bg-white"
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  updateFormData('guarantor', 'landlordName', e.target.value);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="applicantLandlordAddressLine1"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="mb-0.5">Landlord Street Address</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Enter landlord's street address" 
-                                {...field}
-                                className="input-field w-full mt-1 border-gray-300 bg-white"
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  updateFormData('guarantor', 'landlordAddressLine1', e.target.value);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="applicantLandlordAddressLine2"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="mb-0.5">Landlord Address Line 2 (Optional)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Apartment, suite, etc." 
-                                {...field}
-                                className="input-field w-full mt-1 border-gray-300 bg-white"
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  updateFormData('guarantor', 'landlordAddressLine2', e.target.value);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <FormItem>
+                        <FormLabel className="mb-0.5">Landlord Name</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter landlord's name" 
+                            value={formData.guarantor?.landlordName || ''}
+                            className="input-field w-full mt-1 border-gray-300 bg-white"
+                            onChange={(e) => {
+                              updateFormData('guarantor', 'landlordName', e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel className="mb-0.5">Landlord Street Address</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter landlord's street address" 
+                            value={formData.guarantor?.landlordAddressLine1 || ''}
+                            className="input-field w-full mt-1 border-gray-300 bg-white"
+                            onChange={(e) => {
+                              updateFormData('guarantor', 'landlordAddressLine1', e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <FormItem>
+                        <FormLabel className="mb-0.5">Landlord Address Line 2 (Optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Apartment, suite, etc." 
+                            value={formData.guarantor?.landlordAddressLine2 || ''}
+                            className="input-field w-full mt-1 border-gray-300 bg-white"
+                            onChange={(e) => {
+                              updateFormData('guarantor', 'landlordAddressLine2', e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                      </FormItem>
                       <FormField
                         control={form.control}
                         name="applicantLandlordState"
