@@ -848,25 +848,181 @@ export function ApplicationForm() {
       // Note: Encrypted data and files are now sent separately via webhooks
       console.log('Application submitted successfully. Files and encrypted data sent via webhooks.');
 
-      // On form submit, send only form data, application_id, and uploadedDocuments to the webhook
+      // On form submit, send complete form data, application_id, and uploadedDocuments to the webhook
       try {
-        const webhookPayload = {
-          ...transformedData, // all form fields
+        // Create complete webhook payload with ALL data
+        const completeWebhookData = {
+          // Application Info
+          buildingAddress: data.buildingAddress,
+          apartmentNumber: data.apartmentNumber,
+          moveInDate: safeDateToISO(data.moveInDate || formData.application?.moveInDate),
+          monthlyRent: data.monthlyRent,
+          apartmentType: data.apartmentType,
+          howDidYouHear: data.howDidYouHear,
+          
+          // Primary Applicant - Complete data
+          applicantName: data.applicantName,
+          applicantDob: safeDateToISO(data.applicantDob || formData.applicant?.dob),
+          applicantSsn: formData.applicant?.ssn && formData.applicant.ssn.trim() !== '' ? formData.applicant.ssn : null,
+          applicantPhone: formatPhoneForPayload(formData.applicant?.phone),
+          applicantEmail: data.applicantEmail,
+          applicantLicense: formData.applicant?.license || data.applicantLicense,
+          applicantLicenseState: formData.applicant?.licenseState || data.applicantLicenseState,
+          applicantAddress: data.applicantAddress,
+          applicantCity: data.applicantCity,
+          applicantState: data.applicantState,
+          applicantZip: data.applicantZip,
+          applicantLengthAtAddressYears: formData.applicant?.lengthAtAddressYears,
+          applicantLengthAtAddressMonths: formData.applicant?.lengthAtAddressMonths,
+          applicantLandlordName: formData.applicant?.landlordName,
+          applicantLandlordAddressLine1: formData.applicant?.landlordAddressLine1,
+          applicantLandlordAddressLine2: formData.applicant?.landlordAddressLine2,
+          applicantLandlordCity: formData.applicant?.landlordCity,
+          applicantLandlordState: formData.applicant?.landlordState,
+          applicantLandlordZipCode: formData.applicant?.landlordZipCode,
+          applicantLandlordPhone: formData.applicant?.landlordPhone,
+          applicantLandlordEmail: formData.applicant?.landlordEmail,
+          applicantCurrentRent: formData.applicant?.currentRent,
+          applicantReasonForMoving: formData.applicant?.reasonForMoving,
+          
+          // Applicant Employment & Financial Info
+          applicantEmploymentType: formData.applicant?.employmentType,
+          applicantEmployerName: formData.applicant?.employerName,
+          applicantEmployerAddress: formData.applicant?.employerAddress,
+          applicantEmployerCity: formData.applicant?.employerCity,
+          applicantEmployerState: formData.applicant?.employerState,
+          applicantEmployerZip: formData.applicant?.employerZip,
+          applicantEmployerPhone: formData.applicant?.employerPhone,
+          applicantPosition: formData.applicant?.position,
+          applicantStartDate: safeDateToISO(formData.applicant?.startDate),
+          applicantSalary: formData.applicant?.salary,
+          applicantBankRecords: formData.applicant?.bankRecords || [],
+          
+          // Flags
+          hasCoApplicant: hasCoApplicant,
+          hasGuarantor: hasGuarantor,
+          
+          // Co-Applicant - Complete data (if exists)
+          ...(hasCoApplicant && formData.coApplicant ? {
+            coApplicantName: formData.coApplicant?.name,
+            coApplicantRelationship: formData.coApplicant?.relationship,
+            coApplicantDob: safeDateToISO(formData.coApplicant?.dob),
+            coApplicantSsn: formData.coApplicant?.ssn,
+            coApplicantPhone: formatPhoneForPayload(formData.coApplicant?.phone),
+            coApplicantEmail: formData.coApplicant?.email,
+            coApplicantLicense: formData.coApplicant?.license,
+            coApplicantLicenseState: formData.coApplicant?.licenseState,
+            coApplicantAddress: formData.coApplicant?.address,
+            coApplicantCity: formData.coApplicant?.city,
+            coApplicantState: formData.coApplicant?.state,
+            coApplicantZip: formData.coApplicant?.zip,
+            coApplicantLengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears,
+            coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths,
+            coApplicantLandlordName: formData.coApplicant?.landlordName,
+            coApplicantLandlordAddressLine1: formData.coApplicant?.landlordAddressLine1,
+            coApplicantLandlordAddressLine2: formData.coApplicant?.landlordAddressLine2,
+            coApplicantLandlordCity: formData.coApplicant?.landlordCity,
+            coApplicantLandlordState: formData.coApplicant?.landlordState,
+            coApplicantLandlordZipCode: formData.coApplicant?.landlordZipCode,
+            coApplicantLandlordPhone: formData.coApplicant?.landlordPhone,
+            coApplicantLandlordEmail: formData.coApplicant?.landlordEmail,
+            coApplicantCurrentRent: formData.coApplicant?.currentRent,
+            coApplicantReasonForMoving: formData.coApplicant?.reasonForMoving,
+            coApplicantEmploymentType: formData.coApplicant?.employmentType,
+            coApplicantEmployerName: formData.coApplicant?.employerName,
+            coApplicantEmployerAddress: formData.coApplicant?.employerAddress,
+            coApplicantEmployerCity: formData.coApplicant?.employerCity,
+            coApplicantEmployerState: formData.coApplicant?.employerState,
+            coApplicantEmployerZip: formData.coApplicant?.employerZip,
+            coApplicantEmployerPhone: formData.coApplicant?.employerPhone,
+            coApplicantPosition: formData.coApplicant?.position,
+            coApplicantStartDate: safeDateToISO(formData.coApplicant?.startDate),
+            coApplicantSalary: formData.coApplicant?.salary,
+            coApplicantBankRecords: formData.coApplicant?.bankRecords || [],
+          } : {}),
+          
+          // Guarantor - Complete data (if exists)
+          ...(hasGuarantor && formData.guarantor ? {
+            guarantorName: formData.guarantor?.name,
+            guarantorRelationship: formData.guarantor?.relationship,
+            guarantorDob: safeDateToISO(formData.guarantor?.dob),
+            guarantorSsn: formData.guarantor?.ssn,
+            guarantorPhone: formatPhoneForPayload(formData.guarantor?.phone),
+            guarantorEmail: formData.guarantor?.email,
+            guarantorAddress: formData.guarantor?.address,
+            guarantorCity: formData.guarantor?.city,
+            guarantorState: formData.guarantor?.state,
+            guarantorZip: formData.guarantor?.zip,
+            guarantorLengthAtAddressYears: formData.guarantor?.lengthAtAddressYears,
+            guarantorLengthAtAddressMonths: formData.guarantor?.lengthAtAddressMonths,
+            guarantorLandlordName: formData.guarantor?.landlordName,
+            guarantorLandlordAddressLine1: formData.guarantor?.landlordAddressLine1,
+            guarantorLandlordAddressLine2: formData.guarantor?.landlordAddressLine2,
+            guarantorLandlordCity: formData.guarantor?.landlordCity,
+            guarantorLandlordState: formData.guarantor?.landlordState,
+            guarantorLandlordZipCode: formData.guarantor?.landlordZipCode,
+            guarantorLandlordPhone: formData.guarantor?.landlordPhone,
+            guarantorLandlordEmail: formData.guarantor?.landlordEmail,
+            guarantorCurrentRent: formData.guarantor?.currentRent,
+            guarantorReasonForMoving: formData.guarantor?.reasonForMoving,
+            guarantorEmploymentType: formData.guarantor?.employmentType,
+            guarantorEmployerName: formData.guarantor?.employerName,
+            guarantorEmployerAddress: formData.guarantor?.employerAddress,
+            guarantorEmployerCity: formData.guarantor?.employerCity,
+            guarantorEmployerState: formData.guarantor?.employerState,
+            guarantorEmployerZip: formData.guarantor?.employerZip,
+            guarantorEmployerPhone: formData.guarantor?.employerPhone,
+            guarantorPosition: formData.guarantor?.position,
+            guarantorStartDate: safeDateToISO(formData.guarantor?.startDate),
+            guarantorSalary: formData.guarantor?.salary,
+            guarantorBankRecords: formData.guarantor?.bankRecords || [],
+          } : {}),
+          
+          // Other Occupants
+          otherOccupants: formData.occupants || [],
+          
+          // Legal Questions
+          landlordTenantLegalAction: formData.landlordTenantLegalAction,
+          landlordTenantLegalActionExplanation: formData.landlordTenantLegalActionExplanation,
+          brokenLease: formData.brokenLease,
+          brokenLeaseExplanation: formData.brokenLeaseExplanation,
+          
+          // Signatures
+          signatures: signatures,
+          signatureTimestamps: signatureTimestamps,
+          
+          // Documents and Encrypted Documents
+          documents: documents,
+          encryptedDocuments: encryptedDocuments,
+          
+          // Application IDs
           application_id: applicationId,
+          reference_id: referenceId,
+          
+          // Uploaded Documents
           uploaded_documents: uploadedDocuments.map(doc => ({
             reference_id: doc.reference_id,
             file_name: doc.file_name,
             section_name: doc.section_name,
-            documents: doc.documents // <-- Now included
+            documents: doc.documents
           }))
         };
 
+        const webhookPayload = completeWebhookData;
+
         console.log('=== WEBHOOK PAYLOAD DEBUG ===');
         console.log('Applicant SSN in webhook:', webhookPayload.applicantSsn);
-        console.log('Other Occupants:', transformedData.otherOccupants);
-        console.log('Bank Records - Applicant:', transformedData.applicantBankRecords);
-        console.log('Bank Records - Co-Applicant:', transformedData.coApplicantBankRecords);
-        console.log('Bank Records - Guarantor:', transformedData.guarantorBankRecords);
+        console.log('Other Occupants:', webhookPayload.otherOccupants);
+        console.log('Bank Records - Applicant:', webhookPayload.applicantBankRecords);
+        console.log('Bank Records - Co-Applicant:', webhookPayload.coApplicantBankRecords);
+        console.log('Bank Records - Guarantor:', webhookPayload.guarantorBankRecords);
+        console.log('Legal Questions:', {
+          landlordTenantLegalAction: webhookPayload.landlordTenantLegalAction,
+          brokenLease: webhookPayload.brokenLease
+        });
+        console.log('Signatures:', Object.keys(webhookPayload.signatures || {}));
+        console.log('Documents:', Object.keys(webhookPayload.documents || {}));
+        console.log('Encrypted Documents:', Object.keys(webhookPayload.encryptedDocuments || {}));
         console.log('Uploaded Documents Count:', uploadedDocuments.length);
         console.log('=== END WEBHOOK PAYLOAD DEBUG ===');
 
