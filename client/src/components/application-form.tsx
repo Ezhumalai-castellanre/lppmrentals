@@ -611,15 +611,170 @@ export function ApplicationForm() {
   };
 
   const onSubmit = async (data: ApplicationFormData) => {
-    console.log("=== FORM SUBMISSION DEBUG ===");
-    console.log("Form data received:", data);
-    console.log("Form data applicantDob:", data.applicantDob);
-    console.log("Form data moveInDate:", data.moveInDate);
-    console.log("Form data applicantName:", data.applicantName);
-    console.log("Form validation errors:", form.formState.errors);
-    console.log("Form is valid:", form.formState.isValid);
-    console.log("Form is dirty:", form.formState.isDirty);
-    console.log("=== END DEBUG ===");
+    console.log("🚀 === COMPLETE FORM SUBMISSION DATA ===");
+    console.log("📋 FORM DATA (React Hook Form):");
+    console.log(JSON.stringify(data, null, 2));
+    
+    console.log("📊 FORM STATE:");
+    console.log("- Is Valid:", form.formState.isValid);
+    console.log("- Is Dirty:", form.formState.isDirty);
+    console.log("- Is Submitting:", form.formState.isSubmitting);
+    console.log("- Validation Errors:", form.formState.errors);
+    
+    console.log("🗂️ FORM DATA STATE (Internal State):");
+    console.log(JSON.stringify(formData, null, 2));
+    
+    console.log("📝 SIGNATURES:");
+    console.log(JSON.stringify(signatures, null, 2));
+    
+    console.log("📁 UPLOADED DOCUMENTS:");
+    console.log(JSON.stringify(uploadedDocuments, null, 2));
+    
+    console.log("🔐 ENCRYPTED DOCUMENTS:");
+    console.log(JSON.stringify(encryptedDocuments, null, 2));
+    
+    console.log("📋 UPLOADED FILES METADATA:");
+    console.log(JSON.stringify(uploadedFilesMetadata, null, 2));
+    
+    console.log("🏦 BANK RECORDS:");
+    console.log("- Applicant Bank Records:", formData.applicant?.bankRecords);
+    console.log("- Co-Applicant Bank Records:", formData.coApplicant?.bankRecords);
+    console.log("- Guarantor Bank Records:", formData.guarantor?.bankRecords);
+    
+    console.log("👥 OTHER OCCUPANTS:");
+    console.log(JSON.stringify(formData.otherOccupants, null, 2));
+    
+    console.log("⚖️ LEGAL QUESTIONS:");
+    console.log("- Landlord Tenant Legal Action:", formData.legalQuestions?.landlordTenantLegalAction);
+    console.log("- Landlord Tenant Legal Action Explanation:", formData.legalQuestions?.landlordTenantLegalActionExplanation);
+    console.log("- Broken Lease:", formData.legalQuestions?.brokenLease);
+    console.log("- Broken Lease Explanation:", formData.legalQuestions?.brokenLeaseExplanation);
+    
+    console.log("📅 DATE FIELDS:");
+    console.log("- Move In Date (Form):", data.moveInDate);
+    console.log("- Move In Date (State):", formData.application?.moveInDate);
+    console.log("- Applicant DOB (Form):", data.applicantDob);
+    console.log("- Applicant DOB (State):", formData.applicant?.dob);
+    console.log("- Co-Applicant DOB (State):", formData.coApplicant?.dob);
+    console.log("- Guarantor DOB (State):", formData.guarantor?.dob);
+    
+    console.log("📞 PHONE NUMBERS:");
+    console.log("- Applicant Phone:", formData.applicant?.phone);
+    console.log("- Co-Applicant Phone:", formData.coApplicant?.phone);
+    console.log("- Guarantor Phone:", formData.guarantor?.phone);
+    
+    console.log("📧 EMAILS:");
+    console.log("- Applicant Email:", data.applicantEmail);
+    console.log("- Co-Applicant Email:", formData.coApplicant?.email);
+    console.log("- Guarantor Email:", formData.guarantor?.email);
+    
+    console.log("🏠 ADDRESSES:");
+    console.log("- Applicant Address:", {
+      address: data.applicantAddress,
+      city: data.applicantCity,
+      state: data.applicantState,
+      zip: data.applicantZip
+    });
+    console.log("- Co-Applicant Address:", {
+      address: formData.coApplicant?.address,
+      city: formData.coApplicant?.city,
+      state: formData.coApplicant?.state,
+      zip: formData.coApplicant?.zip
+    });
+    console.log("- Guarantor Address:", {
+      address: formData.guarantor?.address,
+      city: formData.guarantor?.city,
+      state: formData.guarantor?.state,
+      zip: formData.guarantor?.zip
+    });
+    
+    console.log("💼 EMPLOYMENT:");
+    console.log("- Applicant Employment:", {
+      type: formData.applicant?.employmentType,
+      employer: formData.applicant?.employerName,
+      address: formData.applicant?.employerAddress,
+      city: formData.applicant?.employerCity,
+      state: formData.applicant?.employerState,
+      zip: formData.applicant?.employerZip,
+      phone: formData.applicant?.employerPhone,
+      position: formData.applicant?.position,
+      startDate: formData.applicant?.startDate,
+      salary: formData.applicant?.salary
+    });
+    console.log("- Co-Applicant Employment:", {
+      type: formData.coApplicant?.employmentType,
+      employer: formData.coApplicant?.employerName,
+      address: formData.coApplicant?.employerAddress,
+      city: formData.coApplicant?.employerCity,
+      state: formData.coApplicant?.employerState,
+      zip: formData.coApplicant?.employerZip,
+      phone: formData.coApplicant?.employerPhone,
+      position: formData.coApplicant?.position,
+      startDate: formData.coApplicant?.startDate,
+      salary: formData.coApplicant?.salary
+    });
+    console.log("- Guarantor Employment:", {
+      type: formData.guarantor?.employmentType,
+      employer: formData.guarantor?.employerName,
+      address: formData.guarantor?.employerAddress,
+      city: formData.guarantor?.employerCity,
+      state: formData.guarantor?.employerState,
+      zip: formData.guarantor?.employerZip,
+      phone: formData.guarantor?.employerPhone,
+      position: formData.guarantor?.position,
+      startDate: formData.guarantor?.startDate,
+      salary: formData.guarantor?.salary
+    });
+    
+    console.log("🏠 LANDLORD INFO:");
+    console.log("- Applicant Landlord:", {
+      name: formData.applicant?.landlordName,
+      address1: formData.applicant?.landlordAddressLine1,
+      address2: formData.applicant?.landlordAddressLine2,
+      city: formData.applicant?.landlordCity,
+      state: formData.applicant?.landlordState,
+      zip: formData.applicant?.landlordZipCode,
+      phone: formData.applicant?.landlordPhone,
+      email: formData.applicant?.landlordEmail,
+      currentRent: formData.applicant?.currentRent,
+      reasonForMoving: formData.applicant?.reasonForMoving
+    });
+    console.log("- Co-Applicant Landlord:", {
+      name: formData.coApplicant?.landlordName,
+      address1: formData.coApplicant?.landlordAddressLine1,
+      address2: formData.coApplicant?.landlordAddressLine2,
+      city: formData.coApplicant?.landlordCity,
+      state: formData.coApplicant?.landlordState,
+      zip: formData.coApplicant?.landlordZipCode,
+      phone: formData.coApplicant?.landlordPhone,
+      email: formData.coApplicant?.landlordEmail,
+      currentRent: formData.coApplicant?.currentRent,
+      reasonForMoving: formData.coApplicant?.reasonForMoving
+    });
+    console.log("- Guarantor Landlord:", {
+      name: formData.guarantor?.landlordName,
+      address1: formData.guarantor?.landlordAddressLine1,
+      address2: formData.guarantor?.landlordAddressLine2,
+      city: formData.guarantor?.landlordCity,
+      state: formData.guarantor?.landlordState,
+      zip: formData.guarantor?.landlordZipCode,
+      phone: formData.guarantor?.landlordPhone,
+      email: formData.guarantor?.landlordEmail,
+      currentRent: formData.guarantor?.currentRent,
+      reasonForMoving: formData.guarantor?.reasonForMoving
+    });
+    
+    console.log("📊 DATA SUMMARY:");
+    console.log("- Application Info Fields:", Object.keys(data).filter(k => k.includes('building') || k.includes('apartment') || k.includes('moveIn') || k.includes('monthly') || k.includes('howDid')).length);
+    console.log("- Primary Applicant Fields:", Object.keys(data).filter(k => k.startsWith('applicant')).length);
+    console.log("- Co-Applicant Fields:", Object.keys(formData.coApplicant || {}).length);
+    console.log("- Guarantor Fields:", Object.keys(formData.guarantor || {}).length);
+    console.log("- Other Occupants Count:", formData.otherOccupants?.length || 0);
+    console.log("- Documents Count:", uploadedDocuments.length);
+    console.log("- Encrypted Documents Count:", Object.keys(encryptedDocuments).length);
+    console.log("- Signatures Count:", Object.keys(signatures).length);
+    
+    console.log("=== END COMPLETE FORM DATA ===");
     
     // ✅ FIX: Trigger form validation before checking validity
     console.log("🔍 Triggering form validation...");
@@ -843,7 +998,12 @@ export function ApplicationForm() {
       }
 
       const submissionResult = await submissionResponse.json();
-      console.log('Application submitted successfully:', submissionResult);
+      console.log('✅ === SERVER SUBMISSION RESULT ===');
+      console.log('📤 Data sent to server:', JSON.stringify(requestBody, null, 2));
+      console.log('📥 Server response:', JSON.stringify(submissionResult, null, 2));
+      console.log('🔗 Application ID:', submissionResult.application_id);
+      console.log('🔗 Reference ID:', submissionResult.reference_id);
+      console.log('=== END SERVER SUBMISSION ===');
 
       // Note: Encrypted data and files are now sent separately via webhooks
       console.log('Application submitted successfully. Files and encrypted data sent via webhooks.');
@@ -1225,12 +1385,21 @@ export function ApplicationForm() {
         console.log('- Uploaded Files:', Object.keys(testWebhookStructure.uploaded_files || {}).length, 'file categories');
         console.log('=== END WEBHOOK TEST ===');
         // Send the complete webhook data exactly as specified
+        console.log('🌐 === WEBHOOK SUBMISSION ===');
+        console.log('📤 Webhook payload being sent:', JSON.stringify(webhookPayload, null, 2));
+        console.log('📁 Uploaded files metadata:', JSON.stringify(uploadedFilesMetadata, null, 2));
+        console.log('🔗 Reference ID:', referenceId);
+        console.log('🔗 Application ID:', applicationId);
+        
         const webhookResult = await WebhookService.sendFormDataToWebhook(
           webhookPayload,
           referenceId,
           applicationId,
           uploadedFilesMetadata
         );
+        
+        console.log('📥 Webhook response:', JSON.stringify(webhookResult, null, 2));
+        console.log('=== END WEBHOOK SUBMISSION ===');
         
         if (webhookResult.success) {
           toast({
