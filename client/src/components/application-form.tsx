@@ -143,6 +143,8 @@ export function ApplicationForm() {
   const [encryptedDocuments, setEncryptedDocuments] = useState<any>({});
   const [hasCoApplicant, setHasCoApplicant] = useState(false);
   const [hasGuarantor, setHasGuarantor] = useState(false);
+
+  const [sameAddressGuarantor, setSameAddressGuarantor] = useState(false);
   const [showHowDidYouHearOther, setShowHowDidYouHearOther] = useState(false);
   const pdfContentRef = useRef<HTMLDivElement>(null);
   const [referenceId] = useState(() => `app_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
@@ -437,8 +439,10 @@ export function ApplicationForm() {
     localStorage.setItem('rentalApplicationDraft', JSON.stringify({
       formData,
       signatures,
-          hasCoApplicant,
-    hasGuarantor,
+      hasCoApplicant,
+      hasGuarantor,
+  
+      sameAddressGuarantor,
       currentStep,
     }));
 
@@ -918,7 +922,25 @@ export function ApplicationForm() {
     }
   }, [formData.applicant?.dob, form]);
 
-
+  const copyAddressToGuarantor = () => {
+    if (sameAddressGuarantor) {
+      const applicantAddress = formData.applicant;
+      updateFormData('guarantor', 'address', applicantAddress.address);
+      updateFormData('guarantor', 'city', applicantAddress.city);
+      updateFormData('guarantor', 'state', applicantAddress.state);
+      updateFormData('guarantor', 'zip', applicantAddress.zip);
+      updateFormData('guarantor', 'landlordName', applicantAddress.landlordName);
+      updateFormData('guarantor', 'landlordAddressLine1', applicantAddress.landlordAddressLine1);
+      updateFormData('guarantor', 'landlordAddressLine2', applicantAddress.landlordAddressLine2);
+      updateFormData('guarantor', 'landlordCity', applicantAddress.landlordCity);
+      updateFormData('guarantor', 'landlordState', applicantAddress.landlordState);
+      updateFormData('guarantor', 'landlordZipCode', applicantAddress.landlordZipCode);
+      updateFormData('guarantor', 'landlordPhone', applicantAddress.landlordPhone);
+      updateFormData('guarantor', 'landlordEmail', applicantAddress.landlordEmail);
+      updateFormData('guarantor', 'currentRent', applicantAddress.currentRent);
+      updateFormData('guarantor', 'lengthAtAddress', applicantAddress.lengthAtAddress);
+    }
+  };
 
   // Ensure applicantDob in formData and react-hook-form stay in sync for DatePicker display
   useEffect(() => {
