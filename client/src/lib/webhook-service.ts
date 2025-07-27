@@ -177,6 +177,9 @@ export interface PDFWebhookData {
 export class WebhookService {
   private static readonly FILE_WEBHOOK_URL = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
   private static readonly FORM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
+  
+  // Track ongoing submissions to prevent duplicates
+  private static ongoingSubmissions = new Set<string>();
 
   /**
    * Sends a file to the webhook immediately upon upload
@@ -316,6 +319,18 @@ export class WebhookService {
       other_occupants_identity?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
     }
   ): Promise<{ success: boolean; error?: string }> {
+    // Create a unique submission ID
+    const submissionId = `${referenceId}-${applicationId}-${Date.now()}`;
+    
+    // Check if this submission is already in progress
+    if (this.ongoingSubmissions.has(submissionId)) {
+      console.log('⚠️ Duplicate webhook submission detected, skipping:', submissionId);
+      return { success: false, error: 'Duplicate submission detected' };
+    }
+    
+    // Add to ongoing submissions
+    this.ongoingSubmissions.add(submissionId);
+    
     try {
       // Create a clean form data object without large file content
       const cleanFormData = { ...formData };
@@ -403,6 +418,10 @@ export class WebhookService {
         const responseTime = Date.now() - startTime;
         console.log(`✅ Form data sent to webhook successfully in ${responseTime}ms`);
         console.log(`📊 Webhook Performance: ${payloadSizeMB}MB payload, ${responseTime}ms response time`);
+        
+        // Remove from ongoing submissions
+        this.ongoingSubmissions.delete(submissionId);
+        
         return { success: true };
 
       } catch (fetchError) {
@@ -417,6 +436,10 @@ export class WebhookService {
         }
         
         console.error('Error sending form data to webhook:', fetchError);
+        
+        // Remove from ongoing submissions
+        this.ongoingSubmissions.delete(submissionId);
+        
         return {
           success: false,
           error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
@@ -425,6 +448,10 @@ export class WebhookService {
 
     } catch (error) {
       console.error('Error in sendFormDataToWebhook:', error);
+      
+      // Remove from ongoing submissions
+      this.ongoingSubmissions.delete(submissionId);
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

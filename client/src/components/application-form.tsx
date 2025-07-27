@@ -610,7 +610,16 @@ export function ApplicationForm() {
     setCurrentStep(step);
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const onSubmit = async (data: ApplicationFormData) => {
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      console.log('⚠️ Form submission already in progress, ignoring duplicate submission');
+      return;
+    }
+
+    setIsSubmitting(true);
     console.log("🚀 === COMPLETE FORM SUBMISSION DATA ===");
     console.log("📋 FORM DATA (React Hook Form):");
     console.log(JSON.stringify(data, null, 2));
@@ -1387,6 +1396,8 @@ export function ApplicationForm() {
         description: errorMessage,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -3598,12 +3609,21 @@ export function ApplicationForm() {
 
               {currentStep === STEPS.length - 1 ? (
                 <Button
-                  type="button"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold"
-                  onClick={() => onSubmit(form.getValues())}
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="hidden sm:inline">Submit Application</span>
-                  <span className="sm:hidden">Submit</span>
+                  {isSubmitting ? (
+                    <>
+                      <span className="hidden sm:inline">Submitting...</span>
+                      <span className="sm:hidden">Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="hidden sm:inline">Submit Application</span>
+                      <span className="sm:hidden">Submit</span>
+                    </>
+                  )}
                 </Button>
               ) : (
                 <Button
