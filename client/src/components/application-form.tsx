@@ -854,9 +854,9 @@ export function ApplicationForm() {
         }
       };
 
-      // Transform form data to match database schema - MINIMAL VERSION
-      const transformedData: any = {
-        // Application Info - Essential fields only
+      // Create COMPLETE form data structure for server submission (same as webhook)
+      const completeServerData = {
+        // Application Info
         buildingAddress: data.buildingAddress,
         apartmentNumber: data.apartmentNumber,
         moveInDate: safeDateToISO(data.moveInDate || formData.application?.moveInDate),
@@ -864,7 +864,7 @@ export function ApplicationForm() {
         apartmentType: data.apartmentType,
         howDidYouHear: data.howDidYouHear,
         
-        // Primary Applicant - Essential fields only
+        // Primary Applicant - Complete data
         applicantName: data.applicantName,
         applicantDob: safeDateToISO(data.applicantDob || formData.applicant?.dob),
         applicantSsn: formData.applicant?.ssn && formData.applicant.ssn.trim() !== '' ? formData.applicant.ssn : null,
@@ -876,51 +876,145 @@ export function ApplicationForm() {
         applicantCity: data.applicantCity,
         applicantState: data.applicantState,
         applicantZip: data.applicantZip,
+        applicantLengthAtAddressYears: formData.applicant?.lengthAtAddressYears,
+        applicantLengthAtAddressMonths: formData.applicant?.lengthAtAddressMonths,
+        applicantLandlordName: formData.applicant?.landlordName,
+        applicantLandlordAddressLine1: formData.applicant?.landlordAddressLine1,
+        applicantLandlordAddressLine2: formData.applicant?.landlordAddressLine2,
+        applicantLandlordCity: formData.applicant?.landlordCity,
+        applicantLandlordState: formData.applicant?.landlordState,
+        applicantLandlordZipCode: formData.applicant?.landlordZipCode,
+        applicantLandlordPhone: formData.applicant?.landlordPhone,
+        applicantLandlordEmail: formData.applicant?.landlordEmail,
+        applicantCurrentRent: formData.applicant?.currentRent,
+        applicantReasonForMoving: formData.applicant?.reasonForMoving,
         
-        // Flags only
+        // Applicant Employment & Financial Info
+        applicantEmploymentType: formData.applicant?.employmentType,
+        applicantEmployerName: formData.applicant?.employerName,
+        applicantEmployerAddress: formData.applicant?.employerAddress,
+        applicantEmployerCity: formData.applicant?.employerCity,
+        applicantEmployerState: formData.applicant?.employerState,
+        applicantEmployerZip: formData.applicant?.employerZip,
+        applicantEmployerPhone: formData.applicant?.employerPhone,
+        applicantPosition: formData.applicant?.position,
+        applicantStartDate: safeDateToISO(formData.applicant?.startDate),
+        applicantSalary: formData.applicant?.salary,
+        applicantBankRecords: formData.applicant?.bankRecords || [],
+        
+        // Flags
         hasCoApplicant: hasCoApplicant,
         hasGuarantor: hasGuarantor,
+        
+        // Co-Applicant - Complete data (if exists)
+        ...(hasCoApplicant && formData.coApplicant ? {
+          coApplicantName: formData.coApplicant?.name,
+          coApplicantRelationship: formData.coApplicant?.relationship,
+          coApplicantDob: safeDateToISO(formData.coApplicant?.dob),
+          coApplicantSsn: formData.coApplicant?.ssn,
+          coApplicantPhone: formatPhoneForPayload(formData.coApplicant?.phone),
+          coApplicantEmail: formData.coApplicant?.email,
+          coApplicantLicense: formData.coApplicant?.license,
+          coApplicantLicenseState: formData.coApplicant?.licenseState,
+          coApplicantAddress: formData.coApplicant?.address,
+          coApplicantCity: formData.coApplicant?.city,
+          coApplicantState: formData.coApplicant?.state,
+          coApplicantZip: formData.coApplicant?.zip,
+          coApplicantLengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears,
+          coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths,
+          coApplicantLandlordName: formData.coApplicant?.landlordName,
+          coApplicantLandlordAddressLine1: formData.coApplicant?.landlordAddressLine1,
+          coApplicantLandlordAddressLine2: formData.coApplicant?.landlordAddressLine2,
+          coApplicantLandlordCity: formData.coApplicant?.landlordCity,
+          coApplicantLandlordState: formData.coApplicant?.landlordState,
+          coApplicantLandlordZipCode: formData.coApplicant?.landlordZipCode,
+          coApplicantLandlordPhone: formData.coApplicant?.landlordPhone,
+          coApplicantLandlordEmail: formData.coApplicant?.landlordEmail,
+          coApplicantCurrentRent: formData.coApplicant?.currentRent,
+          coApplicantReasonForMoving: formData.coApplicant?.reasonForMoving,
+          coApplicantEmploymentType: formData.coApplicant?.employmentType,
+          coApplicantEmployerName: formData.coApplicant?.employerName,
+          coApplicantEmployerAddress: formData.coApplicant?.employerAddress,
+          coApplicantEmployerCity: formData.coApplicant?.employerCity,
+          coApplicantEmployerState: formData.coApplicant?.employerState,
+          coApplicantEmployerZip: formData.coApplicant?.employerZip,
+          coApplicantEmployerPhone: formData.coApplicant?.employerPhone,
+          coApplicantPosition: formData.coApplicant?.position,
+          coApplicantStartDate: safeDateToISO(formData.coApplicant?.startDate),
+          coApplicantSalary: formData.coApplicant?.salary,
+          coApplicantBankRecords: formData.coApplicant?.bankRecords || [],
+        } : {}),
+        
+        // Guarantor - Complete data (if exists)
+        ...(hasGuarantor && formData.guarantor ? {
+          guarantorName: formData.guarantor?.name,
+          guarantorRelationship: formData.guarantor?.relationship,
+          guarantorDob: safeDateToISO(formData.guarantor?.dob),
+          guarantorSsn: formData.guarantor?.ssn,
+          guarantorPhone: formatPhoneForPayload(formData.guarantor?.phone),
+          guarantorEmail: formData.guarantor?.email,
+          guarantorAddress: formData.guarantor?.address,
+          guarantorCity: formData.guarantor?.city,
+          guarantorState: formData.guarantor?.state,
+          guarantorZip: formData.guarantor?.zip,
+          guarantorLengthAtAddressYears: formData.guarantor?.lengthAtAddressYears,
+          guarantorLengthAtAddressMonths: formData.guarantor?.lengthAtAddressMonths,
+          guarantorLandlordName: formData.guarantor?.landlordName,
+          guarantorLandlordAddressLine1: formData.guarantor?.landlordAddressLine1,
+          guarantorLandlordAddressLine2: formData.guarantor?.landlordAddressLine2,
+          guarantorLandlordCity: formData.guarantor?.landlordCity,
+          guarantorLandlordState: formData.guarantor?.landlordState,
+          guarantorLandlordZipCode: formData.guarantor?.landlordZipCode,
+          guarantorLandlordPhone: formData.guarantor?.landlordPhone,
+          guarantorLandlordEmail: formData.guarantor?.landlordEmail,
+          guarantorCurrentRent: formData.guarantor?.currentRent,
+          guarantorReasonForMoving: formData.guarantor?.reasonForMoving,
+          guarantorEmploymentType: formData.guarantor?.employmentType,
+          guarantorEmployerName: formData.guarantor?.employerName,
+          guarantorEmployerAddress: formData.guarantor?.employerAddress,
+          guarantorEmployerCity: formData.guarantor?.employerCity,
+          guarantorEmployerState: formData.guarantor?.employerState,
+          guarantorEmployerZip: formData.guarantor?.employerZip,
+          guarantorEmployerPhone: formData.guarantor?.employerPhone,
+          guarantorPosition: formData.guarantor?.position,
+          guarantorStartDate: safeDateToISO(formData.guarantor?.startDate),
+          guarantorSalary: formData.guarantor?.salary,
+          guarantorBankRecords: formData.guarantor?.bankRecords || [],
+        } : {}),
+        
+        // Other Occupants - Complete data
+        otherOccupants: formData.otherOccupants || [],
+        
+        // Legal Questions
+        landlordTenantLegalAction: formData.legalQuestions?.landlordTenantLegalAction,
+        landlordTenantLegalActionExplanation: formData.legalQuestions?.landlordTenantLegalActionExplanation,
+        brokenLease: formData.legalQuestions?.brokenLease,
+        brokenLeaseExplanation: formData.legalQuestions?.brokenLeaseExplanation,
+        
+        // Signatures
+        signatures: signatures,
+        signatureTimestamps: {
+          applicant: signatures.applicant ? new Date().toISOString() : null,
+          coApplicant: signatures.coApplicant ? new Date().toISOString() : null,
+          guarantor: signatures.guarantor ? new Date().toISOString() : null,
+        },
+        
+        // Documents and Encrypted Documents
+        documents: documents,
+        encryptedDocuments: encryptedDocuments,
       };
 
-      // Only add co-applicant data if exists - MINIMAL
-      if (hasCoApplicant && formData.coApplicant) {
-        transformedData.coApplicantName = formData.coApplicant?.name;
-        transformedData.coApplicantDob = safeDateToISO(formData.coApplicant?.dob);
-        transformedData.coApplicantSsn = formData.coApplicant?.ssn;
-        transformedData.coApplicantPhone = formatPhoneForPayload(formData.coApplicant?.phone);
-        transformedData.coApplicantEmail = formData.coApplicant?.email;
-        transformedData.coApplicantAddress = formData.coApplicant?.address;
-        transformedData.coApplicantCity = formData.coApplicant?.city;
-        transformedData.coApplicantState = formData.coApplicant?.state;
-        transformedData.coApplicantZip = formData.coApplicant?.zip;
-      }
-
-      // Only add guarantor data if exists - MINIMAL
-      if (hasGuarantor && formData.guarantor) {
-        transformedData.guarantorName = formData.guarantor?.name;
-        transformedData.guarantorDob = safeDateToISO(formData.guarantor?.dob);
-        transformedData.guarantorSsn = formData.guarantor?.ssn;
-        transformedData.guarantorPhone = formatPhoneForPayload(formData.guarantor?.phone);
-        transformedData.guarantorEmail = formData.guarantor?.email;
-        transformedData.guarantorAddress = formData.guarantor?.address;
-        transformedData.guarantorCity = formData.guarantor?.city;
-        transformedData.guarantorState = formData.guarantor?.state;
-        transformedData.guarantorZip = formData.guarantor?.zip;
-      }
-
-      // Note: Signatures, otherOccupants, legal questions, and encrypted data will be sent via webhooks
-      // to keep the main payload minimal
-      console.log('Documents, signatures, and encrypted data will be sent via webhooks');
+      console.log('📊 Complete server data structure created (same as webhook)');
       
       // Log payload size for debugging
-      const payloadSize = JSON.stringify(transformedData).length;
-      console.log(`📊 Transformed data size: ${Math.round(payloadSize/1024)}KB`);
+      const payloadSize = JSON.stringify(completeServerData).length;
+      console.log(`📊 Complete server data size: ${Math.round(payloadSize/1024)}KB`);
       
       // Debug: Check what's making the payload large
       if (payloadSize > 100 * 1024) { // If larger than 100KB
         console.log('🔍 Large payload detected, analyzing...');
-        Object.keys(transformedData).forEach(key => {
-          const fieldSize = JSON.stringify(transformedData[key]).length;
+        Object.keys(completeServerData).forEach(key => {
+          const fieldSize = JSON.stringify((completeServerData as any)[key]).length;
           if (fieldSize > 1024) { // If field is larger than 1KB
             console.log(`⚠️ Large field: ${key} = ${Math.round(fieldSize/1024)}KB`);
           }
@@ -930,16 +1024,16 @@ export function ApplicationForm() {
       console.log('SSN Debug:');
       console.log('  - formData.applicant.ssn:', formData.applicant?.ssn);
       console.log('  - data.applicantSsn:', data.applicantSsn);
-      console.log('  - transformedData.applicantSsn:', transformedData.applicantSsn);
+      console.log('  - completeServerData.applicantSsn:', completeServerData.applicantSsn);
       console.log('Date fields debug:');
       console.log('  - applicantDob (raw):', data.applicantDob);
       console.log('  - applicantDob (raw type):', typeof data.applicantDob);
       console.log('  - applicantDob (raw instanceof Date):', data.applicantDob instanceof Date);
-      console.log('  - applicantDob (transformed):', transformedData.applicantDob);
+      console.log('  - applicantDob (complete):', completeServerData.applicantDob);
       console.log('  - moveInDate (raw):', data.moveInDate);
       console.log('  - moveInDate (raw type):', typeof data.moveInDate);
       console.log('  - moveInDate (raw instanceof Date):', data.moveInDate instanceof Date);
-      console.log('  - moveInDate (transformed):', transformedData.moveInDate);
+      console.log('  - moveInDate (complete):', completeServerData.moveInDate);
       console.log('Current window location:', window.location.href);
       
       // Use the regular API endpoint for local development
@@ -947,7 +1041,7 @@ export function ApplicationForm() {
       console.log('Making request to:', window.location.origin + apiEndpoint + '/submit-application');
       
       const requestBody = {
-        applicationData: transformedData,
+        applicationData: completeServerData,
         uploadedFilesMetadata: uploadedFilesMetadata
       };
       
@@ -957,13 +1051,13 @@ export function ApplicationForm() {
       console.log('Request body uploadedFilesMetadata:', requestBody.uploadedFilesMetadata);
       
       // Validate required fields before submission
-      if (!transformedData.applicantDob) {
+      if (!completeServerData.applicantDob) {
         throw new Error('Date of birth is required. Please select your date of birth.');
       }
-      if (!transformedData.moveInDate) {
+      if (!completeServerData.moveInDate) {
         throw new Error('Move-in date is required. Please select your move-in date.');
       }
-      if (!transformedData.applicantName || transformedData.applicantName.trim() === '') {
+      if (!completeServerData.applicantName || completeServerData.applicantName.trim() === '') {
         throw new Error('Full name is required. Please enter your full name.');
       }
       
@@ -998,15 +1092,15 @@ export function ApplicationForm() {
       }
 
       const submissionResult = await submissionResponse.json();
-      console.log('🧪 === WEBHOOK TESTING - FORM DATA SUBMISSION ===');
-      console.log('📤 Form data for webhook testing:', JSON.stringify(requestBody, null, 2));
+      console.log('✅ === SERVER SUBMISSION RESULT ===');
+      console.log('📤 Data sent to server:', JSON.stringify(requestBody, null, 2));
       console.log('📥 Server response:', JSON.stringify(submissionResult, null, 2));
       console.log('🔗 Application ID:', submissionResult.application_id);
       console.log('🔗 Reference ID:', submissionResult.reference_id);
-      console.log('=== END WEBHOOK TESTING ===');
+      console.log('=== END SERVER SUBMISSION ===');
 
-      // Note: Form data sent to server for webhook testing
-      console.log('Form data submitted successfully for webhook testing. Complete data will be sent via webhook.');
+      // Note: Encrypted data and files are now sent separately via webhooks
+      console.log('Application submitted successfully. Files and encrypted data sent via webhooks.');
 
       // On form submit, send complete form data, application_id, and uploadedDocuments to the webhook
       try {
@@ -1385,8 +1479,8 @@ export function ApplicationForm() {
         console.log('- Uploaded Files:', Object.keys(testWebhookStructure.uploaded_files || {}).length, 'file categories');
         console.log('=== END WEBHOOK TEST ===');
         // Send the complete webhook data exactly as specified
-        console.log('🌐 === MAIN WEBHOOK DATA SUBMISSION ===');
-        console.log('📤 Complete webhook payload being sent:', JSON.stringify(webhookPayload, null, 2));
+        console.log('🌐 === WEBHOOK SUBMISSION ===');
+        console.log('📤 Webhook payload being sent:', JSON.stringify(webhookPayload, null, 2));
         console.log('📁 Uploaded files metadata:', JSON.stringify(uploadedFilesMetadata, null, 2));
         console.log('🔗 Reference ID:', referenceId);
         console.log('🔗 Application ID:', applicationId);
@@ -1399,17 +1493,17 @@ export function ApplicationForm() {
         );
         
         console.log('📥 Webhook response:', JSON.stringify(webhookResult, null, 2));
-        console.log('=== END MAIN WEBHOOK DATA SUBMISSION ===');
+        console.log('=== END WEBHOOK SUBMISSION ===');
         
         if (webhookResult.success) {
           toast({
-            title: "Webhook Testing Complete",
-            description: "Form data has been submitted and sent to webhook successfully for testing.",
+            title: "Application Submitted & Sent",
+            description: "Your rental application has been submitted and sent to the webhook successfully.",
           });
           } else {
           toast({
-            title: "Webhook Testing Failed",
-            description: "Form data was submitted, but webhook delivery failed.",
+            title: "Application Submitted",
+            description: "Your rental application has been submitted, but webhook delivery failed.",
           });
         }
       } catch (webhookError) {
@@ -4149,14 +4243,14 @@ export function ApplicationForm() {
                     <span className="hidden sm:inline">🧪 Test Webhook</span>
                     <span className="sm:hidden">Test</span>
                   </Button>
-                  <Button
-                    type="button"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold"
-                    onClick={() => onSubmit(form.getValues())}
-                  >
-                    <span className="hidden sm:inline">Submit Application</span>
-                    <span className="sm:hidden">Submit</span>
-                  </Button>
+                <Button
+                  type="button"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold"
+                  onClick={() => onSubmit(form.getValues())}
+                >
+                  <span className="hidden sm:inline">Submit Application</span>
+                  <span className="sm:hidden">Submit</span>
+                </Button>
                 </div>
               ) : (
                 <Button
