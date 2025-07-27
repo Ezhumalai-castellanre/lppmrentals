@@ -437,9 +437,8 @@ export function ApplicationForm() {
     localStorage.setItem('rentalApplicationDraft', JSON.stringify({
       formData,
       signatures,
-      hasCoApplicant,
-      hasGuarantor,
-
+          hasCoApplicant,
+    hasGuarantor,
       currentStep,
     }));
 
@@ -651,7 +650,7 @@ export function ApplicationForm() {
         coApplicantSsn: formData.coApplicant?.ssn || null,
         coApplicantPhone: formatPhoneForPayload(formData.coApplicant?.phone),
         coApplicantEmail: formData.coApplicant?.email || null,
-  
+    
         coApplicantAddress: formData.coApplicant?.address || null,
         coApplicantCity: formData.coApplicant?.city || null,
         coApplicantState: formData.coApplicant?.state || null,
