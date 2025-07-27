@@ -2666,93 +2666,61 @@ export function ApplicationForm() {
                           />
                         </FormControl>
                       </FormItem>
-                      <FormField
-                        control={form.control}
-                        name="applicantLandlordCity"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormControl>
-                              <CitySelector
-                                selectedState={formData.guarantor?.landlordState || ''}
-                                selectedCity={field.value || ''}
-                                onCityChange={(value) => {
-                                  field.onChange(value);
-                                  updateFormData('guarantor', 'landlordCity', value);
-                                }}
-                                label="Landlord City"
-                                className="w-full mt-1"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="applicantLandlordZipCode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormControl>
-                              <ZIPInput
-                                name="applicantLandlordZipCode"
-                                label="Landlord ZIP Code"
-                                placeholder="Enter landlord's ZIP code"
-                                value={field.value || ''}
-                                onChange={(value) => {
-                                  field.onChange(value);
-                                  updateFormData('guarantor', 'landlordZipCode', value);
-                                }}
-                                className="w-full mt-1"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="applicantLandlordPhone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormControl>
-                              <PhoneInput
-                                name="applicantLandlordPhone"
-                                label="Landlord Phone Number"
-                                placeholder="Enter landlord's phone number"
-                                value={field.value || ''}
-                                onChange={(value) => {
-                                  field.onChange(value);
-                                  updateFormData('guarantor', 'landlordPhone', value);
-                                }}
-                                className="w-full mt-1"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="applicantLandlordEmail"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormControl>
-                              <EmailInput
-                                name="applicantLandlordEmail"
-                                label="Landlord Email Address (Optional)"
-                                placeholder="Enter landlord's email address"
-                                value={field.value || ''}
-                                onChange={(value) => {
-                                  field.onChange(value);
-                                  updateFormData('guarantor', 'landlordEmail', value);
-                                }}
-                                className="w-full mt-1"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <FormItem>
+                        <FormControl>
+                          <CitySelector
+                            selectedState={formData.guarantor?.landlordState || ''}
+                            selectedCity={formData.guarantor?.landlordCity || ''}
+                            onCityChange={(value) => {
+                              updateFormData('guarantor', 'landlordCity', value);
+                            }}
+                            label="Landlord City"
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <FormItem>
+                        <FormControl>
+                          <ZIPInput
+                            name="guarantorLandlordZipCode"
+                            label="Landlord ZIP Code"
+                            placeholder="Enter landlord's ZIP code"
+                            value={formData.guarantor?.landlordZipCode || ''}
+                            onChange={(value) => {
+                              updateFormData('guarantor', 'landlordZipCode', value);
+                            }}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <FormItem>
+                        <FormControl>
+                          <PhoneInput
+                            name="guarantorLandlordPhone"
+                            label="Landlord Phone Number"
+                            placeholder="Enter landlord's phone number"
+                            value={formData.guarantor?.landlordPhone || ''}
+                            onChange={(value) => {
+                              updateFormData('guarantor', 'landlordPhone', value);
+                            }}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <FormItem>
+                        <FormControl>
+                          <EmailInput
+                            name="guarantorLandlordEmail"
+                            label="Landlord Email Address (Optional)"
+                            placeholder="Enter landlord's email address"
+                            value={formData.guarantor?.landlordEmail || ''}
+                            onChange={(value) => {
+                              updateFormData('guarantor', 'landlordEmail', value);
+                            }}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
                       <div>
                         <Label htmlFor="guarantorCurrentRent" className="mb-0.5">Monthly Rent</Label>
                         <Input
@@ -2767,27 +2735,19 @@ export function ApplicationForm() {
                           className="input-field w-full mt-1"
                         />
                       </div>
-                      <FormField
-                        control={form.control}
-                        name="applicantReasonForMoving"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
-                            <FormControl>
-                              <Textarea 
-                                placeholder="Please explain your reason for moving" 
-                                {...field}
-                                className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  updateFormData('guarantor', 'reasonForMoving', e.target.value);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <FormItem>
+                        <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Please explain your reason for moving" 
+                            value={formData.guarantor?.reasonForMoving || ''}
+                            className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
+                            onChange={(e) => {
+                              updateFormData('guarantor', 'reasonForMoving', e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                      </FormItem>
                     </div>
                   </>
                 )}
