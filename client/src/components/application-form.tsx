@@ -1331,7 +1331,7 @@ export function ApplicationForm() {
                           name="applicantSsn"
                           label="Social Security Number"
                           placeholder="XXX-XX-XXXX"
-                          value={field.value || ''}
+                          value={formData.applicant?.ssn || field.value || ''}
                           onChange={(value) => {
                             field.onChange(value);
                             updateFormData('applicant', 'ssn', value);
@@ -1353,7 +1353,7 @@ export function ApplicationForm() {
                           name="applicantPhone"
                           label="Phone Number"
                           placeholder="(555) 555-5555"
-                          value={field.value || ''}
+                          value={formData.applicant?.phone || field.value || ''}
                           onChange={(value) => {
                             field.onChange(value);
                             updateFormData('applicant', 'phone', value);
@@ -1375,7 +1375,7 @@ export function ApplicationForm() {
                           name="applicantEmail"
                           label="Email Address"
                           placeholder="you@email.com"
-                          value={field.value || ''}
+                          value={formData.applicant?.email || field.value || ''}
                           onChange={(value) => {
                             field.onChange(value);
                             updateFormData('applicant', 'email', value);
@@ -1398,7 +1398,7 @@ export function ApplicationForm() {
                           name="applicantLicense"
                           label="Driver's License Number"
                           placeholder="Enter license number"
-                          value={field.value || ''}
+                          value={formData.applicant?.license || field.value || ''}
                           onChange={(value) => {
                             field.onChange(value);
                             updateFormData('applicant', 'license', value);
@@ -1414,7 +1414,10 @@ export function ApplicationForm() {
                   
                   <StateSelector
                     selectedState={formData.applicant?.licenseState || ''}
-                    onStateChange={(state) => updateFormData('applicant', '', state)}
+                    onStateChange={(state) => {
+                      updateFormData('applicant', 'licenseState', state);
+                      form.setValue('applicantLicenseState', state);
+                    }}
                     label="License State"
                     required={false}
                     className="w-full mt-1"
