@@ -699,7 +699,7 @@ export function ApplicationForm() {
         }
       };
 
-      // Transform form data to match database schema - OPTIMIZED VERSION
+      // Transform form data to match database schema - MINIMAL VERSION
       const transformedData: any = {
         // Application Info - Essential fields only
         buildingAddress: data.buildingAddress,
@@ -722,12 +722,12 @@ export function ApplicationForm() {
         applicantState: data.applicantState,
         applicantZip: data.applicantZip,
         
-        // Co-Applicant - Essential fields only
+        // Flags only
         hasCoApplicant: hasCoApplicant,
         hasGuarantor: hasGuarantor,
       };
 
-      // Only add co-applicant data if exists
+      // Only add co-applicant data if exists - MINIMAL
       if (hasCoApplicant && formData.coApplicant) {
         transformedData.coApplicantName = formData.coApplicant?.name;
         transformedData.coApplicantDob = safeDateToISO(formData.coApplicant?.dob);
@@ -740,7 +740,7 @@ export function ApplicationForm() {
         transformedData.coApplicantZip = formData.coApplicant?.zip;
       }
 
-      // Only add guarantor data if exists
+      // Only add guarantor data if exists - MINIMAL
       if (hasGuarantor && formData.guarantor) {
         transformedData.guarantorName = formData.guarantor?.name;
         transformedData.guarantorDob = safeDateToISO(formData.guarantor?.dob);
@@ -753,25 +753,24 @@ export function ApplicationForm() {
         transformedData.guarantorZip = formData.guarantor?.zip;
       }
 
-      // Add signatures for applicant and co-applicant
-      transformedData.applicantSignature = signatures.applicant || null;
-      transformedData.applicantSignatureDate = signatureTimestamps.applicant || null;
-      transformedData.coApplicantSignature = signatures.coApplicant || null;
-      transformedData.coApplicantSignatureDate = signatureTimestamps.coApplicant || null;
-      
-      // Other Occupants - send as a list
-      transformedData.otherOccupants = formData.occupants || [];
-      
-      // Legal Questions
-      transformedData.landlordTenantLegalAction = data.landlordTenantLegalAction;
-      transformedData.brokenLease = data.brokenLease;
-      
-      // Note: Documents and encrypted data are now sent via webhooks, not included in server submission
-      console.log('Documents and encrypted data will be sent via webhooks');
+      // Note: Signatures, otherOccupants, legal questions, and encrypted data will be sent via webhooks
+      // to keep the main payload minimal
+      console.log('Documents, signatures, and encrypted data will be sent via webhooks');
       
       // Log payload size for debugging
       const payloadSize = JSON.stringify(transformedData).length;
       console.log(`📊 Transformed data size: ${Math.round(payloadSize/1024)}KB`);
+      
+      // Debug: Check what's making the payload large
+      if (payloadSize > 100 * 1024) { // If larger than 100KB
+        console.log('🔍 Large payload detected, analyzing...');
+        Object.keys(transformedData).forEach(key => {
+          const fieldSize = JSON.stringify(transformedData[key]).length;
+          if (fieldSize > 1024) { // If field is larger than 1KB
+            console.log(`⚠️ Large field: ${key} = ${Math.round(fieldSize/1024)}KB`);
+          }
+        });
+      }
       
       console.log('SSN Debug:');
       console.log('  - formData.applicant.ssn:', formData.applicant?.ssn);
