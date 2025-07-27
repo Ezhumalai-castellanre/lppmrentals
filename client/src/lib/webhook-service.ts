@@ -224,6 +224,7 @@ export class WebhookService {
         console.warn('⚠️ Large file detected:', fileSizeMB, 'MB');
       }
 
+      const startTime = Date.now();
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for file uploads
       
@@ -248,7 +249,9 @@ export class WebhookService {
         };
       }
 
-      console.log(`File ${file.name} sent to webhook successfully`);
+      const responseTime = Date.now() - startTime;
+      console.log(`✅ File ${file.name} sent to webhook successfully in ${responseTime}ms`);
+      console.log(`📊 File Upload Performance: ${fileSizeMB}MB file, ${responseTime}ms response time`);
       return { success: true };
 
       } catch (fetchError) {
@@ -371,6 +374,8 @@ export class WebhookService {
         console.warn('⚠️ Webhook payload is large:', payloadSizeMB, 'MB');
       }
 
+      const startTime = Date.now();
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
@@ -395,7 +400,9 @@ export class WebhookService {
           };
         }
 
-        console.log(`Form data sent to webhook successfully`);
+        const responseTime = Date.now() - startTime;
+        console.log(`✅ Form data sent to webhook successfully in ${responseTime}ms`);
+        console.log(`📊 Webhook Performance: ${payloadSizeMB}MB payload, ${responseTime}ms response time`);
         return { success: true };
 
       } catch (fetchError) {
@@ -453,6 +460,7 @@ export class WebhookService {
         console.warn('⚠️ Large PDF detected:', pdfSizeMB, 'MB');
       }
 
+      const startTime = Date.now();
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for PDFs
       
@@ -477,7 +485,9 @@ export class WebhookService {
         };
       }
 
-      console.log(`PDF sent to webhook successfully`);
+      const responseTime = Date.now() - startTime;
+      console.log(`✅ PDF sent to webhook successfully in ${responseTime}ms`);
+      console.log(`📊 PDF Performance: ${pdfSizeMB}MB PDF, ${responseTime}ms response time`);
       return { success: true };
 
       } catch (fetchError) {
