@@ -29,7 +29,7 @@ import { WebhookService } from "@/lib/webhook-service";
 import { MondayApiService, type UnitItem } from "@/lib/monday-api";
 import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "@/components/ui/validated-input";
 import { StateCitySelector, StateSelector, CitySelector } from "@/components/ui/state-city-selector";
-import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail } from "@/lib/validation";
+import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail, validateDriverLicense } from "@/lib/validation";
 import { FileUpload } from "@/components/ui/file-upload";
 
 
@@ -61,7 +61,9 @@ const applicationSchema = z.object({
   applicantEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
     message: "Please enter a valid email address"
   }),
-  applicantLicense: z.string().optional(),
+  applicantLicense: z.string().optional().refine((val) => !val || validateDriverLicense(val), {
+    message: "Please enter a valid driver's license number"
+  }),
   applicantLicenseState: z.string().optional(),
   applicantAddress: z.string().optional(),
   applicantCity: z.string().optional(),
@@ -87,6 +89,58 @@ const applicationSchema = z.object({
   }),
   applicantCurrentRent: z.number().optional().or(z.undefined()),
   applicantReasonForMoving: z.string().optional(),
+
+  // Co-Applicant
+  coApplicantSsn: z.string().optional().refine((val) => !val || validateSSN(val), {
+    message: "Please enter a valid 9-digit Social Security Number"
+  }),
+  coApplicantPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+    message: "Please enter a valid US phone number"
+  }),
+  coApplicantEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+    message: "Please enter a valid email address"
+  }),
+  coApplicantLicense: z.string().optional().refine((val) => !val || validateDriverLicense(val), {
+    message: "Please enter a valid driver's license number"
+  }),
+  coApplicantZip: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+    message: "Please enter a valid ZIP code"
+  }),
+  coApplicantLandlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+    message: "Please enter a valid ZIP code"
+  }),
+  coApplicantLandlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+    message: "Please enter a valid US phone number"
+  }),
+  coApplicantLandlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+    message: "Please enter a valid email address"
+  }),
+
+  // Guarantor
+  guarantorSsn: z.string().optional().refine((val) => !val || validateSSN(val), {
+    message: "Please enter a valid 9-digit Social Security Number"
+  }),
+  guarantorPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+    message: "Please enter a valid US phone number"
+  }),
+  guarantorEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+    message: "Please enter a valid email address"
+  }),
+  guarantorLicense: z.string().optional().refine((val) => !val || validateDriverLicense(val), {
+    message: "Please enter a valid driver's license number"
+  }),
+  guarantorZip: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+    message: "Please enter a valid ZIP code"
+  }),
+  guarantorLandlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+    message: "Please enter a valid ZIP code"
+  }),
+  guarantorLandlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+    message: "Please enter a valid US phone number"
+  }),
+  guarantorLandlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+    message: "Please enter a valid email address"
+  }),
 
   // Conditional fields
   hasCoApplicant: z.boolean().default(false),
@@ -218,6 +272,26 @@ export function ApplicationForm() {
       applicantLandlordEmail: "",
       applicantCurrentRent: undefined,
       applicantReasonForMoving: "",
+
+      // Co-Applicant
+      coApplicantSsn: "",
+      coApplicantPhone: "",
+      coApplicantEmail: "",
+      coApplicantLicense: "",
+      coApplicantZip: "",
+      coApplicantLandlordZipCode: "",
+      coApplicantLandlordPhone: "",
+      coApplicantLandlordEmail: "",
+
+      // Guarantor
+      guarantorSsn: "",
+      guarantorPhone: "",
+      guarantorEmail: "",
+      guarantorLicense: "",
+      guarantorZip: "",
+      guarantorLandlordZipCode: "",
+      guarantorLandlordPhone: "",
+      guarantorLandlordEmail: "",
 
       // Conditional fields
       hasCoApplicant: false,
@@ -1247,79 +1321,95 @@ export function ApplicationForm() {
                   }}
                 />
 
-                <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    Social Security Number
-                  </label>
-                  <input
-                    type="text"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="XXX-XX-XXXX"
-                    value={formData.applicant?.ssn || ''}
-                    onChange={e => {
-                      updateFormData('applicant', 'ssn', e.target.value);
-                      form.setValue('applicantSsn', e.target.value);
-                    }}
-                  />
-                  {form.formState.errors.applicantSsn?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.applicantSsn.message}</span>
+                <FormField
+                  control={form.control}
+                  name="applicantSsn"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <SSNInput
+                          name="applicantSsn"
+                          label="Social Security Number"
+                          placeholder="XXX-XX-XXXX"
+                          value={field.value || ''}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'ssn', value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </div>
-                <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="(555) 555-5555"
-                    value={formData.applicant?.phone || ''}
-                    onChange={e => {
-                      updateFormData('applicant', 'phone', e.target.value);
-                      form.setValue('applicantPhone', e.target.value);
-                    }}
-                  />
-                  {form.formState.errors.applicantPhone?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.applicantPhone.message}</span>
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <PhoneInput
+                          name="applicantPhone"
+                          label="Phone Number"
+                          placeholder="(555) 555-5555"
+                          value={field.value || ''}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'phone', value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </div>
-                <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="you@email.com"
-                    value={formData.applicant?.email || ''}
-                    onChange={e => {
-                      updateFormData('applicant', 'email', e.target.value);
-                      form.setValue('applicantEmail', e.target.value);
-                    }}
-                    required
-                  />
-                  {form.formState.errors.applicantEmail?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.applicantEmail.message}</span>
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <EmailInput
+                          name="applicantEmail"
+                          label="Email Address"
+                          placeholder="you@email.com"
+                          value={field.value || ''}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'email', value);
+                          }}
+                          required={true}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </div>
-                <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    Driver's License Number
-                  </label>
-                  <input
-                    type="text"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="Enter license number"
-                    value={formData.applicant?.license || ''}
-                    onChange={e => {
-                      updateFormData('applicant', 'license', e.target.value);
-                      form.setValue('applicantLicense', e.target.value);
-                    }}
-                  />
-                  {form.formState.errors.applicantLicense?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.applicantLicense.message}</span>
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLicense"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <LicenseInput
+                          name="applicantLicense"
+                          label="Driver's License Number"
+                          placeholder="Enter license number"
+                          value={field.value || ''}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'license', value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </div>
+                />
                 <div className="space-y-2">
                   
                   <StateSelector
@@ -1355,24 +1445,29 @@ export function ApplicationForm() {
                       </FormItem>
                     )}
                   />
-                      <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    ZIP Code*
-                  </label>
-                  <input
-                    type="text"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="ZIP code"
-                    value={formData.applicant?.zip || ''}
-                    onChange={e => {
-                      updateFormData('applicant', 'zip', e.target.value);
-                      form.setValue('applicantZip', e.target.value);
-                    }}
-                  />
-                  {form.formState.errors.applicantZip?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.applicantZip.message}</span>
-                  )}
-                </div>
+                      <FormField
+                        control={form.control}
+                        name="applicantZip"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <ZIPInput
+                                name="applicantZip"
+                                label="ZIP Code*"
+                                placeholder="ZIP code"
+                                value={field.value || ''}
+                                onChange={(value) => {
+                                  field.onChange(value);
+                                  updateFormData('applicant', 'zip', value);
+                                }}
+                                required={true}
+                                className="w-full mt-1"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                 </div>
                 
                 <div className="space-y-2">
@@ -1865,55 +1960,79 @@ export function ApplicationForm() {
                   </FormControl>
                 </FormItem>
 
-                <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    Social Security Number
-                  </label>
-                  <input
-                    type="text"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="XXX-XX-XXXX"
-                    value={formData.coApplicant?.ssn || ''}
-                    onChange={e => updateFormData('coApplicant', 'ssn', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="(555) 555-5555"
-                    value={formData.coApplicant?.phone || ''}
-                    onChange={e => updateFormData('coApplicant', 'phone', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="you@email.com"
-                    value={formData.coApplicant?.email || ''}
-                    onChange={e => updateFormData('coApplicant', 'email', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    Driver's License Number
-                  </label>
-                  <input
-                    type="text"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="Enter license number"
-                    value={formData.coApplicant?.license || ''}
-                    onChange={e => updateFormData('coApplicant', 'license', e.target.value)}
-                  />
-                </div>
+                <FormItem>
+                  <FormControl>
+                    <SSNInput
+                      name="coApplicantSsn"
+                      label="Social Security Number"
+                      placeholder="XXX-XX-XXXX"
+                      value={formData.coApplicant?.ssn || ''}
+                      onChange={(value) => {
+                        updateFormData('coApplicant', 'ssn', value);
+                        form.setValue('coApplicantSsn', value);
+                      }}
+                      className="w-full mt-1"
+                    />
+                  </FormControl>
+                  {form.formState.errors.coApplicantSsn?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.coApplicantSsn.message}</span>
+                  )}
+                </FormItem>
+                <FormItem>
+                  <FormControl>
+                    <PhoneInput
+                      name="coApplicantPhone"
+                      label="Phone Number"
+                      placeholder="(555) 555-5555"
+                      value={formData.coApplicant?.phone || ''}
+                      onChange={(value) => {
+                        updateFormData('coApplicant', 'phone', value);
+                        form.setValue('coApplicantPhone', value);
+                      }}
+                      className="w-full mt-1"
+                    />
+                  </FormControl>
+                  {form.formState.errors.coApplicantPhone?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.coApplicantPhone.message}</span>
+                  )}
+                </FormItem>
+                <FormItem>
+                  <FormControl>
+                    <EmailInput
+                      name="coApplicantEmail"
+                      label="Email Address"
+                      placeholder="you@email.com"
+                      value={formData.coApplicant?.email || ''}
+                      onChange={(value) => {
+                        updateFormData('coApplicant', 'email', value);
+                        form.setValue('coApplicantEmail', value);
+                      }}
+                      required={true}
+                      className="w-full mt-1"
+                    />
+                  </FormControl>
+                  {form.formState.errors.coApplicantEmail?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.coApplicantEmail.message}</span>
+                  )}
+                </FormItem>
+                <FormItem>
+                  <FormControl>
+                    <LicenseInput
+                      name="coApplicantLicense"
+                      label="Driver's License Number"
+                      placeholder="Enter license number"
+                      value={formData.coApplicant?.license || ''}
+                      onChange={(value) => {
+                        updateFormData('coApplicant', 'license', value);
+                        form.setValue('coApplicantLicense', value);
+                      }}
+                      className="w-full mt-1"
+                    />
+                  </FormControl>
+                  {form.formState.errors.coApplicantLicense?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.coApplicantLicense.message}</span>
+                  )}
+                </FormItem>
                 <div className="space-y-2">
                   
                   <StateSelector
@@ -1949,21 +2068,25 @@ export function ApplicationForm() {
                       </FormItem>
                     )}
                   />
-                      <div className="space-y-2">
-                  <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                    ZIP Code*
-                  </label>
-                  <input
-                    type="text"
-                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                    placeholder="ZIP code"
-                    value={formData.coApplicant?.zip || ''}
-                    onChange={e => updateFormData('coApplicant', 'zip', e.target.value)}
-                  />
-                  {formData.coApplicant?.zip && !validateZIPCode(formData.coApplicant.zip) && (
-                    <span className="text-red-500 text-xs">Please enter a valid ZIP code</span>
-                  )}
-                </div>
+                      <FormItem>
+                        <FormControl>
+                          <ZIPInput
+                            name="coApplicantZip"
+                            label="ZIP Code*"
+                            placeholder="ZIP code"
+                            value={formData.coApplicant?.zip || ''}
+                            onChange={(value) => {
+                              updateFormData('coApplicant', 'zip', value);
+                              form.setValue('coApplicantZip', value);
+                            }}
+                            required={true}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                        {form.formState.errors.coApplicantZip?.message && (
+                          <span className="text-red-500 text-xs">{form.formState.errors.coApplicantZip.message}</span>
+                        )}
+                      </FormItem>
                 </div>
                 
                 <div className="space-y-2">
@@ -2483,55 +2606,79 @@ export function ApplicationForm() {
                         </FormControl>
                       </FormItem>
 
-                      <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          Social Security Number
-                        </label>
-                        <input
-                          type="text"
-                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                          placeholder="XXX-XX-XXXX"
-                          value={formData.guarantor?.ssn || ''}
-                          onChange={e => updateFormData('guarantor', 'ssn', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          Phone Number
-                        </label>
-                        <input
-                          type="tel"
-                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                          placeholder="(555) 555-5555"
-                          value={formData.guarantor?.phone || ''}
-                          onChange={e => updateFormData('guarantor', 'phone', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          Email Address
-                        </label>
-                        <input
-                          type="email"
-                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                          placeholder="you@email.com"
-                          value={formData.guarantor?.email || ''}
-                          onChange={e => updateFormData('guarantor', 'email', e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                          Driver's License Number
-                        </label>
-                        <input
-                          type="text"
-                          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                          placeholder="Enter license number"
-                          value={formData.guarantor?.license || ''}
-                          onChange={e => updateFormData('guarantor', 'license', e.target.value)}
-                        />
-                      </div>
+                      <FormItem>
+                        <FormControl>
+                          <SSNInput
+                            name="guarantorSsn"
+                            label="Social Security Number"
+                            placeholder="XXX-XX-XXXX"
+                            value={formData.guarantor?.ssn || ''}
+                            onChange={(value) => {
+                              updateFormData('guarantor', 'ssn', value);
+                              form.setValue('guarantorSsn', value);
+                            }}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                        {form.formState.errors.guarantorSsn?.message && (
+                          <span className="text-red-500 text-xs">{form.formState.errors.guarantorSsn.message}</span>
+                        )}
+                      </FormItem>
+                      <FormItem>
+                        <FormControl>
+                          <PhoneInput
+                            name="guarantorPhone"
+                            label="Phone Number"
+                            placeholder="(555) 555-5555"
+                            value={formData.guarantor?.phone || ''}
+                            onChange={(value) => {
+                              updateFormData('guarantor', 'phone', value);
+                              form.setValue('guarantorPhone', value);
+                            }}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                        {form.formState.errors.guarantorPhone?.message && (
+                          <span className="text-red-500 text-xs">{form.formState.errors.guarantorPhone.message}</span>
+                        )}
+                      </FormItem>
+                      <FormItem>
+                        <FormControl>
+                          <EmailInput
+                            name="guarantorEmail"
+                            label="Email Address"
+                            placeholder="you@email.com"
+                            value={formData.guarantor?.email || ''}
+                            onChange={(value) => {
+                              updateFormData('guarantor', 'email', value);
+                              form.setValue('guarantorEmail', value);
+                            }}
+                            required={true}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                        {form.formState.errors.guarantorEmail?.message && (
+                          <span className="text-red-500 text-xs">{form.formState.errors.guarantorEmail.message}</span>
+                        )}
+                      </FormItem>
+                      <FormItem>
+                        <FormControl>
+                          <LicenseInput
+                            name="guarantorLicense"
+                            label="Driver's License Number"
+                            placeholder="Enter license number"
+                            value={formData.guarantor?.license || ''}
+                            onChange={(value) => {
+                              updateFormData('guarantor', 'license', value);
+                              form.setValue('guarantorLicense', value);
+                            }}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                        {form.formState.errors.guarantorLicense?.message && (
+                          <span className="text-red-500 text-xs">{form.formState.errors.guarantorLicense.message}</span>
+                        )}
+                      </FormItem>
                       <div className="space-y-2">
                         
                         <StateSelector
@@ -2558,21 +2705,25 @@ export function ApplicationForm() {
                             />
                           </FormControl>
                         </FormItem>
-                        <div className="space-y-2">
-                          <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
-                            ZIP Code*
-                          </label>
-                          <input
-                            type="text"
-                            className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full mt-1"
-                            placeholder="ZIP code"
-                            value={formData.guarantor?.zip || ''}
-                            onChange={e => updateFormData('guarantor', 'zip', e.target.value)}
-                          />
-                          {formData.guarantor?.zip && !validateZIPCode(formData.guarantor.zip) && (
-                            <span className="text-red-500 text-xs">Please enter a valid ZIP code</span>
+                        <FormItem>
+                          <FormControl>
+                            <ZIPInput
+                              name="guarantorZip"
+                              label="ZIP Code*"
+                              placeholder="ZIP code"
+                              value={formData.guarantor?.zip || ''}
+                              onChange={(value) => {
+                                updateFormData('guarantor', 'zip', value);
+                                form.setValue('guarantorZip', value);
+                              }}
+                              required={true}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                          {form.formState.errors.guarantorZip?.message && (
+                            <span className="text-red-500 text-xs">{form.formState.errors.guarantorZip.message}</span>
                           )}
-                        </div>
+                        </FormItem>
                       </div>
                       <div className="space-y-2">
                         <StateCitySelector
