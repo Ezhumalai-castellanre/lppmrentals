@@ -49,7 +49,29 @@ export const validateSSN = (ssn: string | undefined | null): boolean => {
   const digits = ssn.replace(/\D/g, '');
   
   // Check if it's exactly 9 digits
-  return digits.length === 9;
+  if (digits.length !== 9) {
+    return false;
+  }
+  
+  // Check for invalid SSN patterns
+  const invalidPatterns = [
+    '000000000', // All zeros
+    '111111111', // All ones
+    '123456789', // Sequential
+    '987654321', // Reverse sequential
+  ];
+  
+  if (invalidPatterns.includes(digits)) {
+    return false;
+  }
+  
+  // Check for area numbers that are invalid (000, 666, 900-999)
+  const areaNumber = parseInt(digits.slice(0, 3));
+  if (areaNumber === 0 || areaNumber === 666 || areaNumber >= 900) {
+    return false;
+  }
+  
+  return true;
 };
 
 // Format SSN for display
