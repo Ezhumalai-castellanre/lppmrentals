@@ -14,11 +14,11 @@ export const handler = async (event, context) => {
     
     // Check request size
     const bodySize = event.body ? event.body.length : 0;
-    const bodySizeKB = Math.round(bodySize / 1024);
-    console.log(`Request body size: ${bodySizeKB}KB`);
+    const bodySizeMB = Math.round(bodySize / (1024 * 1024) * 100) / 100;
+    console.log(`Request body size: ${bodySizeMB}MB`);
     
-    if (bodySize > 6 * 1024 * 1024) { // 6MB limit
-      return createCorsResponse(413, { error: 'Request too large', message: 'Request body exceeds 6MB limit' });
+    if (bodySize > 10 * 1024 * 1024) { // 10MB limit
+      return createCorsResponse(413, { error: 'Request too large', message: 'Request body exceeds 10MB limit' });
     }
     
     let body;
@@ -35,7 +35,7 @@ export const handler = async (event, context) => {
       return createCorsResponse(400, { error: 'Missing application data' });
     }
 
-    // Log the received data for debugging
+    // Log basic info without the full data to avoid log overflow
     console.log('Received applicationData keys:', Object.keys(applicationData));
     console.log('Received uploadedFilesMetadata:', uploadedFilesMetadata ? 'Present' : 'Not present');
     
@@ -54,7 +54,6 @@ export const handler = async (event, context) => {
     // Create a simple mock result
     const mockResult = {
       id: Math.floor(Math.random() * 1000) + 1,
-      ...applicationData,
       applicationDate: new Date().toISOString(),
       status: 'submitted'
     };

@@ -37,4 +37,7 @@
   status = 200
 
 [functions]
-  node_bundler = "esbuild" 
+  node_bundler = "esbuild"
+  [functions."submit-application"]
+    timeout = 30
+    max_request_body_size = "10mb" 
