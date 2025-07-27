@@ -1291,6 +1291,16 @@ export function ApplicationForm() {
 
         const webhookPayload = completeWebhookData;
 
+        // Check payload size before sending
+        const payloadSize = JSON.stringify(webhookPayload).length;
+        const payloadSizeMB = Math.round(payloadSize / (1024 * 1024) * 100) / 100;
+        console.log(`📦 Raw webhook payload size: ${payloadSizeMB}MB`);
+        
+        if (payloadSize > 10 * 1024 * 1024) { // 10MB limit
+          console.warn('⚠️ Raw webhook payload is very large:', payloadSizeMB, 'MB');
+          console.warn('⚠️ Large data will be cleaned by webhook service');
+        }
+
         console.log('=== WEBHOOK PAYLOAD DEBUG ===');
         console.log('✅ Complete Webhook Structure:');
         console.log('  - reference_id:', webhookPayload.reference_id);

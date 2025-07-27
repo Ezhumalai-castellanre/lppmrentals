@@ -216,13 +216,28 @@ export class WebhookService {
         });
       }
 
-      const response = await fetch(this.FILE_WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(webhookData),
-      });
+      // Check file size before sending
+      const fileSizeMB = Math.round(file.size / (1024 * 1024) * 100) / 100;
+      console.log(`📦 File size: ${fileSizeMB}MB`);
+      
+      if (fileSizeMB > 10) {
+        console.warn('⚠️ Large file detected:', fileSizeMB, 'MB');
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for file uploads
+      
+      try {
+        const response = await fetch(this.FILE_WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(webhookData),
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -236,8 +251,26 @@ export class WebhookService {
       console.log(`File ${file.name} sent to webhook successfully`);
       return { success: true };
 
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          console.error('File webhook request timed out after 60 seconds');
+          return {
+            success: false,
+            error: 'File webhook request timed out'
+          };
+        }
+        
+        console.error('Error sending file to webhook:', fetchError);
+        return {
+          success: false,
+          error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
+        };
+      }
+
     } catch (error) {
-      console.error('Error sending file to webhook:', error);
+      console.error('Error in sendFileToWebhook:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -281,10 +314,22 @@ export class WebhookService {
     }
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      // Create a clean form data object without large file content
+      const cleanFormData = { ...formData };
+      
+      // Remove large data that could cause payload size issues
+      delete cleanFormData.documents;
+      delete cleanFormData.encryptedDocuments;
+      delete cleanFormData.uploaded_documents;
+      delete cleanFormData.applicantBankRecords;
+      delete cleanFormData.coApplicantBankRecords;
+      delete cleanFormData.guarantorBankRecords;
+      
+      // Keep only essential metadata for files
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: applicationId,
-        form_data: formData,
+        form_data: cleanFormData,
         uploaded_files: {
           supporting_w9_forms: uploadedFiles?.supporting_w9_forms || [],
           supporting_photo_id: uploadedFiles?.supporting_photo_id || [],
@@ -316,29 +361,63 @@ export class WebhookService {
       };
 
       console.log(`Sending form data to webhook for application ${applicationId}`);
+      
+      // Log payload size for debugging
+      const payloadSize = JSON.stringify(webhookData).length;
+      const payloadSizeMB = Math.round(payloadSize / (1024 * 1024) * 100) / 100;
+      console.log(`📦 Webhook payload size: ${payloadSizeMB}MB`);
+      
+      if (payloadSize > 5 * 1024 * 1024) { // 5MB limit
+        console.warn('⚠️ Webhook payload is large:', payloadSizeMB, 'MB');
+      }
 
-      const response = await fetch(this.FORM_WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(webhookData),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      try {
+        const response = await fetch(this.FORM_WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(webhookData),
+          signal: controller.signal,
+        });
+        
+                clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Webhook failed:', response.status, errorText);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Webhook failed:', response.status, errorText);
+          return {
+            success: false,
+            error: `Webhook failed: ${response.status} - ${errorText}`
+          };
+        }
+
+        console.log(`Form data sent to webhook successfully`);
+        return { success: true };
+
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          console.error('Webhook request timed out after 30 seconds');
+          return {
+            success: false,
+            error: 'Webhook request timed out'
+          };
+        }
+        
+        console.error('Error sending form data to webhook:', fetchError);
         return {
           success: false,
-          error: `Webhook failed: ${response.status} - ${errorText}`
+          error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
         };
       }
 
-      console.log(`Form data sent to webhook successfully`);
-      return { success: true };
-
     } catch (error) {
-      console.error('Error sending form data to webhook:', error);
+      console.error('Error in sendFormDataToWebhook:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -366,13 +445,28 @@ export class WebhookService {
 
       console.log(`Sending PDF to webhook for application ${applicationId}`);
 
-      const response = await fetch(this.FILE_WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(webhookData),
-      });
+      // Check PDF size before sending
+      const pdfSizeMB = Math.round(pdfBase64.length / (1024 * 1024) * 100) / 100;
+      console.log(`📦 PDF size: ${pdfSizeMB}MB`);
+      
+      if (pdfSizeMB > 10) {
+        console.warn('⚠️ Large PDF detected:', pdfSizeMB, 'MB');
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for PDFs
+      
+      try {
+        const response = await fetch(this.FILE_WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(webhookData),
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -386,8 +480,26 @@ export class WebhookService {
       console.log(`PDF sent to webhook successfully`);
       return { success: true };
 
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          console.error('PDF webhook request timed out after 45 seconds');
+          return {
+            success: false,
+            error: 'PDF webhook request timed out'
+          };
+        }
+        
+        console.error('Error sending PDF to webhook:', fetchError);
+        return {
+          success: false,
+          error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
+        };
+      }
+
     } catch (error) {
-      console.error('Error sending PDF to webhook:', error);
+      console.error('Error in sendPDFToWebhook:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
