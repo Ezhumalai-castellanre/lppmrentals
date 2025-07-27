@@ -51,9 +51,14 @@ export const handler = async (event, context) => {
       });
     }
 
-    // Log received data structure
+    // Log received data structure (but limit size to avoid log overflow)
     console.log('📋 Received applicationData keys:', Object.keys(applicationData));
     console.log('📋 Received uploadedFilesMetadata:', uploadedFilesMetadata ? 'Present' : 'Not present');
+    
+    // Log payload size breakdown
+    const applicationDataSize = JSON.stringify(applicationData).length;
+    const metadataSize = uploadedFilesMetadata ? JSON.stringify(uploadedFilesMetadata).length : 0;
+    console.log(`📊 Payload breakdown: applicationData=${Math.round(applicationDataSize/1024)}KB, metadata=${Math.round(metadataSize/1024)}KB`);
     
     // Validate critical required fields
     console.log('🔍 Validating critical fields...');

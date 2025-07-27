@@ -699,9 +699,9 @@ export function ApplicationForm() {
         }
       };
 
-      // Transform form data to match database schema
+      // Transform form data to match database schema - OPTIMIZED VERSION
       const transformedData: any = {
-        // Application Info
+        // Application Info - Essential fields only
         buildingAddress: data.buildingAddress,
         apartmentNumber: data.apartmentNumber,
         moveInDate: safeDateToISO(data.moveInDate || formData.application?.moveInDate),
@@ -709,7 +709,7 @@ export function ApplicationForm() {
         apartmentType: data.apartmentType,
         howDidYouHear: data.howDidYouHear,
         
-        // Primary Applicant
+        // Primary Applicant - Essential fields only
         applicantName: data.applicantName,
         applicantDob: safeDateToISO(data.applicantDob || formData.applicant?.dob),
         applicantSsn: formData.applicant?.ssn && formData.applicant.ssn.trim() !== '' ? formData.applicant.ssn : null,
@@ -721,114 +721,36 @@ export function ApplicationForm() {
         applicantCity: data.applicantCity,
         applicantState: data.applicantState,
         applicantZip: data.applicantZip,
-        applicantLengthAtAddressYears: data.applicantLengthAtAddressYears,
-        applicantLengthAtAddressMonths: data.applicantLengthAtAddressMonths,
-        applicantLandlordName: data.applicantLandlordName,
-        applicantLandlordAddressLine1: data.applicantLandlordAddressLine1,
-        applicantLandlordAddressLine2: data.applicantLandlordAddressLine2,
-        applicantLandlordCity: data.applicantLandlordCity,
-        applicantLandlordState: data.applicantLandlordState,
-        applicantLandlordZipCode: data.applicantLandlordZipCode,
-        applicantLandlordPhone: data.applicantLandlordPhone,
-        applicantLandlordEmail: data.applicantLandlordEmail,
-        applicantCurrentRent: formData.applicant?.currentRent || data.applicantCurrentRent,
-        applicantReasonForMoving: data.applicantReasonForMoving,
         
-        // Primary Applicant Financial (from formData)
-        applicantEmploymentType: formData.applicant?.employmentType || null,
-        applicantEmployer: formData.applicant?.employer || null,
-        applicantPosition: formData.applicant?.position || null,
-        applicantEmploymentStart: safeDateToISO(formData.applicant?.employmentStart),
-        applicantBusinessName: formData.applicant?.businessName || null,
-        applicantBusinessType: formData.applicant?.businessType || null,
-        applicantYearsInBusiness: formData.applicant?.yearsInBusiness || null,
-        applicantIncome: formData.applicant?.income ? parseFloat(formData.applicant.income) : null,
-        applicantOtherIncome: formData.applicant?.otherIncome ? parseFloat(formData.applicant.otherIncome) : null,
-        applicantOtherIncomeSource: formData.applicant?.otherIncomeSource || null,
-        applicantBankRecords: formData.applicant?.bankRecords || [],
-        
-        // Co-Applicant
+        // Co-Applicant - Essential fields only
         hasCoApplicant: hasCoApplicant,
-        coApplicantName: formData.coApplicant?.name || null,
-        coApplicantRelationship: formData.coApplicant?.relationship || null,
-        coApplicantDob: safeDateToISO(formData.coApplicant?.dob),
-        coApplicantSsn: formData.coApplicant?.ssn || null,
-        coApplicantPhone: formatPhoneForPayload(formData.coApplicant?.phone),
-        coApplicantEmail: formData.coApplicant?.email || null,
-    
-        coApplicantAddress: formData.coApplicant?.address || null,
-        coApplicantCity: formData.coApplicant?.city || null,
-        coApplicantState: formData.coApplicant?.state || null,
-        coApplicantZip: formData.coApplicant?.zip || null,
-        coApplicantLengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears ?? null,
-        coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths ?? null,
-        coApplicantLandlordName: formData.coApplicant?.landlordName || null,
-        coApplicantLandlordAddressLine1: formData.coApplicant?.landlordAddressLine1 || null,
-        coApplicantLandlordAddressLine2: formData.coApplicant?.landlordAddressLine2 || null,
-        coApplicantLandlordCity: formData.coApplicant?.landlordCity || null,
-        coApplicantLandlordState: formData.coApplicant?.landlordState || null,
-        coApplicantLandlordZipCode: formData.coApplicant?.landlordZipCode || null,
-        coApplicantLandlordPhone: formData.coApplicant?.landlordPhone || null,
-        coApplicantLandlordEmail: formData.coApplicant?.landlordEmail || null,
-        
-        // Co-Applicant Financial
-        coApplicantEmploymentType: formData.coApplicant?.employmentType || null,
-        coApplicantEmployer: formData.coApplicant?.employer || null,
-        coApplicantPosition: formData.coApplicant?.position || null,
-        coApplicantEmploymentStart: safeDateToISO(formData.coApplicant?.employmentStart),
-        coApplicantBusinessName: formData.coApplicant?.businessName || null,
-        coApplicantBusinessType: formData.coApplicant?.businessType || null,
-        coApplicantYearsInBusiness: formData.coApplicant?.yearsInBusiness || null,
-        coApplicantIncome: formData.coApplicant?.income ? parseFloat(formData.coApplicant.income) : null,
-        coApplicantOtherIncome: formData.coApplicant?.otherIncome ? parseFloat(formData.coApplicant.otherIncome) : null,
-        coApplicantOtherIncomeSource: formData.coApplicant?.otherIncomeSource || null,
-        coApplicantBankRecords: formData.coApplicant?.bankRecords || [],
-        
-        // Guarantor - only include if hasGuarantor is true
         hasGuarantor: hasGuarantor,
       };
 
-      // Only add guarantor fields if hasGuarantor is true
-      console.log('hasGuarantor value:', hasGuarantor);
-      if (hasGuarantor) {
-        console.log('Adding guarantor fields...');
-        transformedData.guarantorName = formData.guarantor?.name || null;
-        transformedData.guarantorRelationship = formData.guarantor?.relationship || null;
+      // Only add co-applicant data if exists
+      if (hasCoApplicant && formData.coApplicant) {
+        transformedData.coApplicantName = formData.coApplicant?.name;
+        transformedData.coApplicantDob = safeDateToISO(formData.coApplicant?.dob);
+        transformedData.coApplicantSsn = formData.coApplicant?.ssn;
+        transformedData.coApplicantPhone = formatPhoneForPayload(formData.coApplicant?.phone);
+        transformedData.coApplicantEmail = formData.coApplicant?.email;
+        transformedData.coApplicantAddress = formData.coApplicant?.address;
+        transformedData.coApplicantCity = formData.coApplicant?.city;
+        transformedData.coApplicantState = formData.coApplicant?.state;
+        transformedData.coApplicantZip = formData.coApplicant?.zip;
+      }
+
+      // Only add guarantor data if exists
+      if (hasGuarantor && formData.guarantor) {
+        transformedData.guarantorName = formData.guarantor?.name;
         transformedData.guarantorDob = safeDateToISO(formData.guarantor?.dob);
-        transformedData.guarantorSsn = formData.guarantor?.ssn || null;
+        transformedData.guarantorSsn = formData.guarantor?.ssn;
         transformedData.guarantorPhone = formatPhoneForPayload(formData.guarantor?.phone);
-        transformedData.guarantorEmail = formData.guarantor?.email || null;
-        transformedData.guarantorAddress = formData.guarantor?.address || null;
-        transformedData.guarantorCity = formData.guarantor?.city || null;
-        transformedData.guarantorState = formData.guarantor?.state || null;
-        transformedData.guarantorZip = formData.guarantor?.zip || null;
-        transformedData.guarantorLengthAtAddressYears = formData.guarantor?.lengthAtAddressYears ?? null;
-        transformedData.guarantorLengthAtAddressMonths = formData.guarantor?.lengthAtAddressMonths ?? null;
-        transformedData.guarantorLandlordName = formData.guarantor?.landlordName || null;
-        transformedData.guarantorLandlordAddressLine1 = formData.guarantor?.landlordAddressLine1 || null;
-        transformedData.guarantorLandlordAddressLine2 = formData.guarantor?.landlordAddressLine2 || null;
-        transformedData.guarantorLandlordCity = formData.guarantor?.landlordCity || null;
-        transformedData.guarantorLandlordState = formData.guarantor?.landlordState || null;
-        transformedData.guarantorLandlordZipCode = formData.guarantor?.landlordZipCode || null;
-        transformedData.guarantorLandlordPhone = formData.guarantor?.landlordPhone || null;
-        transformedData.guarantorLandlordEmail = formData.guarantor?.landlordEmail || null;
-        
-        // Guarantor Financial
-        transformedData.guarantorEmploymentType = formData.guarantor?.employmentType || null;
-        transformedData.guarantorEmployer = formData.guarantor?.employer || null;
-        transformedData.guarantorPosition = formData.guarantor?.position || null;
-        transformedData.guarantorEmploymentStart = safeDateToISO(formData.guarantor?.employmentStart);
-        transformedData.guarantorBusinessName = formData.guarantor?.businessName || null;
-        transformedData.guarantorBusinessType = formData.guarantor?.businessType || null;
-        transformedData.guarantorYearsInBusiness = formData.guarantor?.yearsInBusiness || null;
-        transformedData.guarantorIncome = formData.guarantor?.income ? parseFloat(formData.guarantor.income) : null;
-        transformedData.guarantorOtherIncome = formData.guarantor?.otherIncome ? parseFloat(formData.guarantor.otherIncome) : null;
-        transformedData.guarantorOtherIncomeSource = formData.guarantor?.otherIncomeSource || null;
-        transformedData.guarantorBankRecords = formData.guarantor?.bankRecords || [];
-        transformedData.guarantorSignature = signatures.guarantor || null;
-        transformedData.guarantorSignatureDate = signatureTimestamps.guarantor || null;
-      } else {
-        console.log('Skipping guarantor fields - hasGuarantor is false');
+        transformedData.guarantorEmail = formData.guarantor?.email;
+        transformedData.guarantorAddress = formData.guarantor?.address;
+        transformedData.guarantorCity = formData.guarantor?.city;
+        transformedData.guarantorState = formData.guarantor?.state;
+        transformedData.guarantorZip = formData.guarantor?.zip;
       }
 
       // Add signatures for applicant and co-applicant
@@ -847,7 +769,10 @@ export function ApplicationForm() {
       // Note: Documents and encrypted data are now sent via webhooks, not included in server submission
       console.log('Documents and encrypted data will be sent via webhooks');
       
-      console.log('Transformed application data:', JSON.stringify(transformedData, null, 2));
+      // Log payload size for debugging
+      const payloadSize = JSON.stringify(transformedData).length;
+      console.log(`📊 Transformed data size: ${Math.round(payloadSize/1024)}KB`);
+      
       console.log('SSN Debug:');
       console.log('  - formData.applicant.ssn:', formData.applicant?.ssn);
       console.log('  - data.applicantSsn:', data.applicantSsn);
@@ -872,7 +797,9 @@ export function ApplicationForm() {
         uploadedFilesMetadata: uploadedFilesMetadata
       };
       
-      console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
+      // Log request body size instead of full content
+      const requestBodySize = JSON.stringify(requestBody).length;
+      console.log(`📊 Request body size: ${Math.round(requestBodySize/1024)}KB`);
       console.log('Request body uploadedFilesMetadata:', requestBody.uploadedFilesMetadata);
       
       // Validate required fields before submission
