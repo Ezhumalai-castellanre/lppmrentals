@@ -1805,27 +1805,19 @@ export function ApplicationForm() {
                 <CardContent className="p-4 sm:p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                 <div className="col-span-1 md:col-span-2">
-                  <FormField
-                    control={form.control}
-                    name="applicantName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="mb-0.5">Full Name</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Enter full name" 
-                            {...field}
-                            className="input-field w-full mt-1"
-                            onChange={(e) => {
-                              field.onChange(e);
-                              updateFormData('coApplicant', 'name', e.target.value);
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <FormItem>
+                    <FormLabel className="mb-0.5">Full Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter full name" 
+                        value={formData.coApplicant?.name || ''}
+                        className="input-field w-full mt-1"
+                        onChange={(e) => {
+                          updateFormData('coApplicant', 'name', e.target.value);
+                        }}
+                      />
+                    </FormControl>
+                  </FormItem>
                 </div>
                 <div className="col-span-1 md:col-span-2">
                   <Label className="mb-0.5">Relationship</Label>
@@ -1845,45 +1837,33 @@ export function ApplicationForm() {
                     </SelectContent>
                   </Select>
                 </div>
-                <FormField
-                  control={form.control}
-                  name="applicantDob"
-                  render={({ field }) => {
-                    const dateVal = toValidDate(formData.coApplicant?.dob);
-                    const safeDate = (dateVal instanceof Date && !isNaN(dateVal.getTime())) ? dateVal : undefined;
-                    return (
-                      <FormItem>
-                        <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
-                        <FormControl>
-                          <DatePicker
-                            value={safeDate as Date | undefined}
-                            onChange={(date) => {
-                              field.onChange(date);
-                              updateFormData('coApplicant', 'dob', date);
-                              // Auto-calculate age
-                              if (date) {
-                                const today = new Date();
-                                const birthDate = new Date(date);
-                                let age = today.getFullYear() - birthDate.getFullYear();
-                                const monthDiff = today.getMonth() - birthDate.getMonth();
-                                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                                  age--;
-                                }
-                                updateFormData('coApplicant', 'age', age);
-                              } else {
-                                updateFormData('coApplicant', 'age', '');
-                              }
-                            }}
-                            placeholder="Select date of birth"
-                            disabled={(date) => date > new Date()}
-                            className="w-full mt-1"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
+                <FormItem>
+                  <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
+                  <FormControl>
+                    <DatePicker
+                      value={toValidDate(formData.coApplicant?.dob)}
+                      onChange={(date) => {
+                        updateFormData('coApplicant', 'dob', date);
+                        // Auto-calculate age
+                        if (date) {
+                          const today = new Date();
+                          const birthDate = new Date(date);
+                          let age = today.getFullYear() - birthDate.getFullYear();
+                          const monthDiff = today.getMonth() - birthDate.getMonth();
+                          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                            age--;
+                          }
+                          updateFormData('coApplicant', 'age', age);
+                        } else {
+                          updateFormData('coApplicant', 'age', '');
+                        }
+                      }}
+                      placeholder="Select date of birth"
+                      disabled={(date) => date > new Date()}
+                      className="w-full mt-1"
+                    />
+                  </FormControl>
+                </FormItem>
 
                 <div className="space-y-2">
                   <label className="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-sm font-medium">
