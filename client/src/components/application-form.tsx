@@ -1011,23 +1011,176 @@ export function ApplicationForm() {
         const webhookPayload = completeWebhookData;
 
         console.log('=== WEBHOOK PAYLOAD DEBUG ===');
-        console.log('Applicant SSN in webhook:', webhookPayload.applicantSsn);
-        console.log('Other Occupants:', webhookPayload.otherOccupants);
-        console.log('Bank Records - Applicant:', webhookPayload.applicantBankRecords);
-        console.log('Bank Records - Co-Applicant:', webhookPayload.coApplicantBankRecords);
-        console.log('Bank Records - Guarantor:', webhookPayload.guarantorBankRecords);
-        console.log('Legal Questions:', {
+        console.log('✅ Complete Webhook Structure:');
+        console.log('  - reference_id:', webhookPayload.reference_id);
+        console.log('  - application_id:', webhookPayload.application_id);
+        console.log('  - form_data: [Complete application data]');
+        console.log('  - uploaded_files: [Complete files metadata]');
+        console.log('  - submission_type: form_data');
+        console.log('');
+        console.log('📊 Data Verification:');
+        console.log('  - Applicant SSN:', webhookPayload.applicantSsn);
+        console.log('  - Other Occupants Count:', webhookPayload.otherOccupants?.length || 0);
+        console.log('  - Bank Records - Applicant:', webhookPayload.applicantBankRecords?.length || 0);
+        console.log('  - Bank Records - Co-Applicant:', webhookPayload.coApplicantBankRecords?.length || 0);
+        console.log('  - Bank Records - Guarantor:', webhookPayload.guarantorBankRecords?.length || 0);
+        console.log('  - Legal Questions:', {
           landlordTenantLegalAction: webhookPayload.landlordTenantLegalAction,
           brokenLease: webhookPayload.brokenLease
         });
-        console.log('Signatures:', Object.keys(webhookPayload.signatures || {}));
-        console.log('Documents:', Object.keys(webhookPayload.documents || {}));
-        console.log('Encrypted Documents:', Object.keys(webhookPayload.encryptedDocuments || {}));
-        console.log('Uploaded Documents Count:', uploadedDocuments.length);
+        console.log('  - Signatures:', Object.keys(webhookPayload.signatures || {}));
+        console.log('  - Documents:', Object.keys(webhookPayload.documents || {}));
+        console.log('  - Encrypted Documents:', Object.keys(webhookPayload.encryptedDocuments || {}));
+        console.log('  - Uploaded Documents Count:', uploadedDocuments.length);
+        console.log('  - Uploaded Files Metadata Keys:', Object.keys(uploadedFilesMetadata || {}));
         console.log('=== END WEBHOOK PAYLOAD DEBUG ===');
 
-        console.log('Form submission webhook payload:', JSON.stringify(webhookPayload, null, 2));
-        console.log('Uploaded documents array:', JSON.stringify(uploadedDocuments, null, 2));
+        console.log('🚀 FINAL WEBHOOK PAYLOAD STRUCTURE:');
+        console.log(JSON.stringify({
+          reference_id: webhookPayload.reference_id,
+          application_id: webhookPayload.application_id,
+          form_data: {
+            // Application Info
+            buildingAddress: webhookPayload.buildingAddress,
+            apartmentNumber: webhookPayload.apartmentNumber,
+            moveInDate: webhookPayload.moveInDate,
+            monthlyRent: webhookPayload.monthlyRent,
+            apartmentType: webhookPayload.apartmentType,
+            howDidYouHear: webhookPayload.howDidYouHear,
+            
+            // Primary Applicant
+            applicantName: webhookPayload.applicantName,
+            applicantDob: webhookPayload.applicantDob,
+            applicantSsn: webhookPayload.applicantSsn,
+            applicantPhone: webhookPayload.applicantPhone,
+            applicantEmail: webhookPayload.applicantEmail,
+            applicantLicense: webhookPayload.applicantLicense,
+            applicantLicenseState: webhookPayload.applicantLicenseState,
+            applicantAddress: webhookPayload.applicantAddress,
+            applicantCity: webhookPayload.applicantCity,
+            applicantState: webhookPayload.applicantState,
+            applicantZip: webhookPayload.applicantZip,
+            applicantLengthAtAddressYears: webhookPayload.applicantLengthAtAddressYears,
+            applicantLengthAtAddressMonths: webhookPayload.applicantLengthAtAddressMonths,
+            applicantLandlordName: webhookPayload.applicantLandlordName,
+            applicantLandlordAddressLine1: webhookPayload.applicantLandlordAddressLine1,
+            applicantLandlordAddressLine2: webhookPayload.applicantLandlordAddressLine2,
+            applicantLandlordCity: webhookPayload.applicantLandlordCity,
+            applicantLandlordState: webhookPayload.applicantLandlordState,
+            applicantLandlordZipCode: webhookPayload.applicantLandlordZipCode,
+            applicantLandlordPhone: webhookPayload.applicantLandlordPhone,
+            applicantLandlordEmail: webhookPayload.applicantLandlordEmail,
+            applicantCurrentRent: webhookPayload.applicantCurrentRent,
+            applicantReasonForMoving: webhookPayload.applicantReasonForMoving,
+            applicantEmploymentType: webhookPayload.applicantEmploymentType,
+            applicantEmployerName: webhookPayload.applicantEmployerName,
+            applicantEmployerAddress: webhookPayload.applicantEmployerAddress,
+            applicantEmployerCity: webhookPayload.applicantEmployerCity,
+            applicantEmployerState: webhookPayload.applicantEmployerState,
+            applicantEmployerZip: webhookPayload.applicantEmployerZip,
+            applicantEmployerPhone: webhookPayload.applicantEmployerPhone,
+            applicantPosition: webhookPayload.applicantPosition,
+            applicantStartDate: webhookPayload.applicantStartDate,
+            applicantSalary: webhookPayload.applicantSalary,
+            applicantBankRecords: webhookPayload.applicantBankRecords,
+            
+            // Co-Applicant (if exists)
+            coApplicantName: webhookPayload.coApplicantName,
+            coApplicantRelationship: webhookPayload.coApplicantRelationship,
+            coApplicantDob: webhookPayload.coApplicantDob,
+            coApplicantSsn: webhookPayload.coApplicantSsn,
+            coApplicantPhone: webhookPayload.coApplicantPhone,
+            coApplicantEmail: webhookPayload.coApplicantEmail,
+            coApplicantLicense: webhookPayload.coApplicantLicense,
+            coApplicantLicenseState: webhookPayload.coApplicantLicenseState,
+            coApplicantAddress: webhookPayload.coApplicantAddress,
+            coApplicantCity: webhookPayload.coApplicantCity,
+            coApplicantState: webhookPayload.coApplicantState,
+            coApplicantZip: webhookPayload.coApplicantZip,
+            coApplicantLengthAtAddressYears: webhookPayload.coApplicantLengthAtAddressYears,
+            coApplicantLengthAtAddressMonths: webhookPayload.coApplicantLengthAtAddressMonths,
+            coApplicantLandlordName: webhookPayload.coApplicantLandlordName,
+            coApplicantLandlordAddressLine1: webhookPayload.coApplicantLandlordAddressLine1,
+            coApplicantLandlordAddressLine2: webhookPayload.coApplicantLandlordAddressLine2,
+            coApplicantLandlordCity: webhookPayload.coApplicantLandlordCity,
+            coApplicantLandlordState: webhookPayload.coApplicantLandlordState,
+            coApplicantLandlordZipCode: webhookPayload.coApplicantLandlordZipCode,
+            coApplicantLandlordPhone: webhookPayload.coApplicantLandlordPhone,
+            coApplicantLandlordEmail: webhookPayload.coApplicantLandlordEmail,
+            coApplicantCurrentRent: webhookPayload.coApplicantCurrentRent,
+            coApplicantReasonForMoving: webhookPayload.coApplicantReasonForMoving,
+            coApplicantEmploymentType: webhookPayload.coApplicantEmploymentType,
+            coApplicantEmployerName: webhookPayload.coApplicantEmployerName,
+            coApplicantEmployerAddress: webhookPayload.coApplicantEmployerAddress,
+            coApplicantEmployerCity: webhookPayload.coApplicantEmployerCity,
+            coApplicantEmployerState: webhookPayload.coApplicantEmployerState,
+            coApplicantEmployerZip: webhookPayload.coApplicantEmployerZip,
+            coApplicantEmployerPhone: webhookPayload.coApplicantEmployerPhone,
+            coApplicantPosition: webhookPayload.coApplicantPosition,
+            coApplicantStartDate: webhookPayload.coApplicantStartDate,
+            coApplicantSalary: webhookPayload.coApplicantSalary,
+            coApplicantBankRecords: webhookPayload.coApplicantBankRecords,
+            
+            // Guarantor (if exists)
+            guarantorName: webhookPayload.guarantorName,
+            guarantorRelationship: webhookPayload.guarantorRelationship,
+            guarantorDob: webhookPayload.guarantorDob,
+            guarantorSsn: webhookPayload.guarantorSsn,
+            guarantorPhone: webhookPayload.guarantorPhone,
+            guarantorEmail: webhookPayload.guarantorEmail,
+            guarantorAddress: webhookPayload.guarantorAddress,
+            guarantorCity: webhookPayload.guarantorCity,
+            guarantorState: webhookPayload.guarantorState,
+            guarantorZip: webhookPayload.guarantorZip,
+            guarantorLengthAtAddressYears: webhookPayload.guarantorLengthAtAddressYears,
+            guarantorLengthAtAddressMonths: webhookPayload.guarantorLengthAtAddressMonths,
+            guarantorLandlordName: webhookPayload.guarantorLandlordName,
+            guarantorLandlordAddressLine1: webhookPayload.guarantorLandlordAddressLine1,
+            guarantorLandlordAddressLine2: webhookPayload.guarantorLandlordAddressLine2,
+            guarantorLandlordCity: webhookPayload.guarantorLandlordCity,
+            guarantorLandlordState: webhookPayload.guarantorLandlordState,
+            guarantorLandlordZipCode: webhookPayload.guarantorLandlordZipCode,
+            guarantorLandlordPhone: webhookPayload.guarantorLandlordPhone,
+            guarantorLandlordEmail: webhookPayload.guarantorLandlordEmail,
+            guarantorCurrentRent: webhookPayload.guarantorCurrentRent,
+            guarantorReasonForMoving: webhookPayload.guarantorReasonForMoving,
+            guarantorEmploymentType: webhookPayload.guarantorEmploymentType,
+            guarantorEmployerName: webhookPayload.guarantorEmployerName,
+            guarantorEmployerAddress: webhookPayload.guarantorEmployerAddress,
+            guarantorEmployerCity: webhookPayload.guarantorEmployerCity,
+            guarantorEmployerState: webhookPayload.guarantorEmployerState,
+            guarantorEmployerZip: webhookPayload.guarantorEmployerZip,
+            guarantorEmployerPhone: webhookPayload.guarantorEmployerPhone,
+            guarantorPosition: webhookPayload.guarantorPosition,
+            guarantorStartDate: webhookPayload.guarantorStartDate,
+            guarantorSalary: webhookPayload.guarantorSalary,
+            guarantorBankRecords: webhookPayload.guarantorBankRecords,
+            
+            // Other Occupants
+            otherOccupants: webhookPayload.otherOccupants,
+            
+            // Legal Questions
+            landlordTenantLegalAction: webhookPayload.landlordTenantLegalAction,
+            landlordTenantLegalActionExplanation: webhookPayload.landlordTenantLegalActionExplanation,
+            brokenLease: webhookPayload.brokenLease,
+            brokenLeaseExplanation: webhookPayload.brokenLeaseExplanation,
+            
+            // Signatures
+            signatures: webhookPayload.signatures,
+            signatureTimestamps: webhookPayload.signatureTimestamps,
+            
+            // Documents and Encrypted Documents
+            documents: webhookPayload.documents,
+            encryptedDocuments: webhookPayload.encryptedDocuments,
+            
+            // Flags
+            hasCoApplicant: webhookPayload.hasCoApplicant,
+            hasGuarantor: webhookPayload.hasGuarantor
+          },
+          uploaded_files: uploadedFilesMetadata,
+          submission_type: "form_data"
+        }, null, 2));
+        // Send the complete webhook data exactly as specified
         const webhookResult = await WebhookService.sendFormDataToWebhook(
           webhookPayload,
           referenceId,
