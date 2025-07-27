@@ -1006,17 +1006,44 @@ export function ApplicationForm() {
 
       console.log('📊 Complete server data structure created (same as webhook)');
       
+      // Create a server-optimized version without large binary data
+      const serverOptimizedData = {
+        ...completeServerData,
+        // Remove large binary data for server submission
+        signatures: {
+          applicant: signatures.applicant ? "SIGNED" : null,
+          coApplicant: signatures.coApplicant ? "SIGNED" : null,
+          guarantor: signatures.guarantor ? "SIGNED" : null,
+        },
+        // Remove encrypted documents (they're large base64 strings)
+        encryptedDocuments: {
+          applicant: {},
+          coApplicant: {},
+          guarantor: {}
+        }
+      };
+      
       // Log payload size for debugging
       const payloadSize = JSON.stringify(completeServerData).length;
-      console.log(`📊 Complete server data size: ${Math.round(payloadSize/1024)}KB`);
+      const optimizedPayloadSize = JSON.stringify(serverOptimizedData).length;
+      console.log(`📊 Original server data size: ${Math.round(payloadSize/1024)}KB`);
+      console.log(`📊 Optimized server data size: ${Math.round(optimizedPayloadSize/1024)}KB`);
+      console.log(`📊 Size reduction: ${Math.round((payloadSize - optimizedPayloadSize)/1024)}KB`);
       
       // Debug: Check what's making the payload large
       if (payloadSize > 100 * 1024) { // If larger than 100KB
         console.log('🔍 Large payload detected, analyzing...');
         Object.keys(completeServerData).forEach(key => {
-          const fieldSize = JSON.stringify((completeServerData as any)[key]).length;
-          if (fieldSize > 1024) { // If field is larger than 1KB
-            console.log(`⚠️ Large field: ${key} = ${Math.round(fieldSize/1024)}KB`);
+          try {
+            const fieldValue = (completeServerData as any)[key];
+            if (fieldValue !== undefined && fieldValue !== null) {
+              const fieldSize = JSON.stringify(fieldValue).length;
+              if (fieldSize > 1024) { // If field is larger than 1KB
+                console.log(`⚠️ Large field: ${key} = ${Math.round(fieldSize/1024)}KB`);
+              }
+            }
+          } catch (error) {
+            console.log(`⚠️ Error analyzing field ${key}:`, error);
           }
         });
       }
@@ -1024,16 +1051,16 @@ export function ApplicationForm() {
       console.log('SSN Debug:');
       console.log('  - formData.applicant.ssn:', formData.applicant?.ssn);
       console.log('  - data.applicantSsn:', data.applicantSsn);
-      console.log('  - completeServerData.applicantSsn:', completeServerData.applicantSsn);
+      console.log('  - serverOptimizedData.applicantSsn:', serverOptimizedData.applicantSsn);
       console.log('Date fields debug:');
       console.log('  - applicantDob (raw):', data.applicantDob);
       console.log('  - applicantDob (raw type):', typeof data.applicantDob);
       console.log('  - applicantDob (raw instanceof Date):', data.applicantDob instanceof Date);
-      console.log('  - applicantDob (complete):', completeServerData.applicantDob);
+      console.log('  - applicantDob (optimized):', serverOptimizedData.applicantDob);
       console.log('  - moveInDate (raw):', data.moveInDate);
       console.log('  - moveInDate (raw type):', typeof data.moveInDate);
       console.log('  - moveInDate (raw instanceof Date):', data.moveInDate instanceof Date);
-      console.log('  - moveInDate (complete):', completeServerData.moveInDate);
+      console.log('  - moveInDate (optimized):', serverOptimizedData.moveInDate);
       console.log('Current window location:', window.location.href);
       
       // Use the regular API endpoint for local development
@@ -1041,7 +1068,7 @@ export function ApplicationForm() {
       console.log('Making request to:', window.location.origin + apiEndpoint + '/submit-application');
       
       const requestBody = {
-        applicationData: completeServerData,
+        applicationData: serverOptimizedData,
         uploadedFilesMetadata: uploadedFilesMetadata
       };
       
@@ -1051,13 +1078,13 @@ export function ApplicationForm() {
       console.log('Request body uploadedFilesMetadata:', requestBody.uploadedFilesMetadata);
       
       // Validate required fields before submission
-      if (!completeServerData.applicantDob) {
+      if (!serverOptimizedData.applicantDob) {
         throw new Error('Date of birth is required. Please select your date of birth.');
       }
-      if (!completeServerData.moveInDate) {
+      if (!serverOptimizedData.moveInDate) {
         throw new Error('Move-in date is required. Please select your move-in date.');
       }
-      if (!completeServerData.applicantName || completeServerData.applicantName.trim() === '') {
+      if (!serverOptimizedData.applicantName || serverOptimizedData.applicantName.trim() === '') {
         throw new Error('Full name is required. Please enter your full name.');
       }
       
