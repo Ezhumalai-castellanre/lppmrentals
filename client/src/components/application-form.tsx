@@ -1045,7 +1045,10 @@ export function ApplicationForm() {
         encryptedDocuments: encryptedDocuments,
       };
 
-      console.log('📊 Complete server data structure created (same as webhook)');
+              console.log('📊 Complete server data structure created (same as webhook)');
+        console.log('🔍 Debug - uploadedDocuments type:', typeof uploadedDocuments);
+        console.log('🔍 Debug - uploadedDocuments is array:', Array.isArray(uploadedDocuments));
+        console.log('🔍 Debug - uploadedDocuments value:', uploadedDocuments);
       
       // Create a server-optimized version with only document metadata
       const serverOptimizedData = {
@@ -1346,12 +1349,22 @@ export function ApplicationForm() {
           reference_id: referenceId,
           
           // Uploaded Documents
-          uploaded_documents: uploadedDocuments.map(doc => ({
-            reference_id: doc.reference_id,
-            file_name: doc.file_name,
-            section_name: doc.section_name,
-            documents: doc.documents
-          }))
+          uploaded_documents: (() => {
+            try {
+              const docs = uploadedDocuments || [];
+              console.log('🔍 Debug - Processing uploadedDocuments:', docs);
+              return docs.map(doc => ({
+                reference_id: doc.reference_id,
+                file_name: doc.file_name,
+                section_name: doc.section_name,
+                documents: doc.documents
+              }));
+            } catch (error) {
+              console.error('❌ Error processing uploadedDocuments:', error);
+              console.error('❌ uploadedDocuments value:', uploadedDocuments);
+              return [];
+            }
+          })()
         };
 
         const webhookPayload = completeWebhookData;
@@ -1387,7 +1400,7 @@ export function ApplicationForm() {
         console.log('  - Signatures:', Object.keys(webhookPayload.signatures || {}));
         console.log('  - Documents:', Object.keys(webhookPayload.documents || {}));
         console.log('  - Encrypted Documents:', Object.keys(webhookPayload.encryptedDocuments || {}));
-        console.log('  - Uploaded Documents Count:', uploadedDocuments.length);
+        console.log('  - Uploaded Documents Count:', (uploadedDocuments || []).length);
         console.log('  - Uploaded Files Metadata Keys:', Object.keys(uploadedFilesMetadata || {}));
         console.log('=== END WEBHOOK PAYLOAD DEBUG ===');
 

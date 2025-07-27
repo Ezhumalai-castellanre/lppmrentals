@@ -32,46 +32,40 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
     {
       key: "id",
       label: "Photo ID / Driver's License",
-      description: "PNG, JPG, PDF up to 10MB - Encrypted",
       accept: ".pdf,.jpg,.jpeg,.png"
     },
     {
       key: "ssn",
       label: "Social Security Card",
-      description: "PNG, JPG, PDF up to 10MB - Encrypted",
       accept: ".pdf,.jpg,.jpeg,.png"
     },
     {
       key: "w9",
       label: "W9 Form",
-      description: "PDF up to 10MB - Encrypted",
+      accept: ".pdf"
+    },
+    {
+      key: "employmentLetter",
+      label: "Employment Letter",
       accept: ".pdf"
     },
     {
       key: "payStubs",
       label: "Pay Stubs (Last 2-4)",
-      description: "PDF up to 10MB each - Encrypted",
       accept: ".pdf",
       multiple: true
     },
     {
       key: "taxReturns",
       label: "Tax Returns (Previous Year)",
-      description: "PDF up to 10MB - Encrypted",
-      accept: ".pdf"
-    },
-    {
-      key: "bankStatements",
-      label: "Bank Statements",
-      description: "PDF up to 10MB each - Encrypted",
       accept: ".pdf",
       multiple: true
     },
     {
-      key: "employmentLetter",
-      label: "Employment Letter",
-      description: "PDF up to 10MB - Encrypted",
-      accept: ".pdf"
+      key: "bankStatements",
+      label: "Bank Statements",
+      accept: ".pdf",
+      multiple: true
     }
   ];
 
@@ -91,7 +85,6 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
             <div key={docType.key} className="form-field">
               <FileUpload
                 label={docType.label}
-                description={docType.description}
                 accept={docType.accept}
                 multiple={docType.multiple || false}
                 onFileChange={(files) => onDocumentChange(person, docType.key, files)}
