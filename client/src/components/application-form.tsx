@@ -609,6 +609,22 @@ export function ApplicationForm() {
     console.log("Form is dirty:", form.formState.isDirty);
     console.log("=== END DEBUG ===");
     
+    // ✅ FIX: Trigger form validation before checking validity
+    console.log("🔍 Triggering form validation...");
+    const isValid = await form.trigger();
+    console.log("✅ Form validation result:", isValid);
+    console.log("✅ Updated form errors:", form.formState.errors);
+    
+    if (!isValid) {
+      console.log("❌ Form validation failed");
+      toast({
+        title: 'Form validation failed',
+        description: 'Please check all required fields and try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     // Ensure all required fields are present and valid
     const requiredFields: (keyof ApplicationFormData)[] = [
       'buildingAddress',
