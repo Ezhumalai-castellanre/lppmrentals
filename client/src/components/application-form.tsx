@@ -625,49 +625,6 @@ export function ApplicationForm() {
       return;
     }
     
-    // Ensure all required fields are present and valid
-    const requiredFields: (keyof ApplicationFormData)[] = [
-      'buildingAddress',
-      'apartmentNumber',
-      'moveInDate',
-      'monthlyRent',
-      'apartmentType',
-      'applicantName',
-      'applicantDob',
-      'applicantEmail',
-      'applicantAddress',
-      'applicantCity',
-      'applicantState',
-      'applicantZip',
-    ];
-    let missingFields = [];
-    for (const field of requiredFields) {
-      if (
-        data[field] === undefined ||
-        data[field] === null ||
-        (typeof data[field] === 'string' && data[field].trim() === '') ||
-        (field === 'monthlyRent' && (!data[field] || isNaN(data[field] as any) || (data[field] as any) <= 0)) ||
-        (field === 'applicantDob' && !data[field]) ||
-        (field === 'moveInDate' && !data[field])
-      ) {
-        missingFields.push(field);
-      }
-    }
-    // Email format check
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.applicantEmail || '')) {
-      missingFields.push('applicantEmail');
-    }
-    if (missingFields.length > 0) {
-      toast({
-        title: 'Missing or invalid fields',
-        description: `Please fill out: ${missingFields.join(', ')}`,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    
     try {
       console.log("Submitting application:", { ...data, formData, signatures });
       console.log("Uploaded files metadata:", uploadedFilesMetadata);
