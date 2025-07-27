@@ -2654,26 +2654,18 @@ export function ApplicationForm() {
                           />
                         </FormControl>
                       </FormItem>
-                      <FormField
-                        control={form.control}
-                        name="applicantLandlordState"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormControl>
-                              <StateSelector
-                                selectedState={field.value || ''}
-                                onStateChange={(value) => {
-                                  field.onChange(value);
-                                  updateFormData('guarantor', 'landlordState', value);
-                                }}
-                                label="Landlord State"
-                                className="w-full mt-1"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <FormItem>
+                        <FormControl>
+                          <StateSelector
+                            selectedState={formData.guarantor?.landlordState || ''}
+                            onStateChange={(value) => {
+                              updateFormData('guarantor', 'landlordState', value);
+                            }}
+                            label="Landlord State"
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
                       <FormField
                         control={form.control}
                         name="applicantLandlordCity"
