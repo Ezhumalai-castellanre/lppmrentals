@@ -16,7 +16,7 @@ import {
 
 interface ValidatedInputProps {
   label: string;
-  value: string;
+  value: string | undefined | null;
   onChange: (value: string) => void;
   type: 'phone' | 'ssn' | 'zip' | 'email' | 'license' | 'income' | 'text' | 'number';
   placeholder?: string;
@@ -40,7 +40,12 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
   const [isValid, setIsValid] = useState<boolean | null>(null);
   const [validationMessage, setValidationMessage] = useState<string>('');
 
-  const validateField = (inputValue: string): { isValid: boolean; message: string } => {
+  const validateField = (inputValue: string | undefined | null): { isValid: boolean; message: string } => {
+    // Handle null/undefined cases
+    if (!inputValue || typeof inputValue !== 'string') {
+      return { isValid: required ? false : true, message: required ? `${label} is required` : '' };
+    }
+    
     if (!inputValue.trim()) {
       return { isValid: required ? false : true, message: required ? `${label} is required` : '' };
     }
@@ -140,7 +145,7 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
       case 'zip':
         return value ? formatZIPCode(value) : '';
       default:
-        return value;
+        return value || '';
     }
   };
 
@@ -231,7 +236,7 @@ export const IncomeInput: React.FC<Omit<ValidatedInputProps, 'type'> & { name: s
 interface IncomeWithFrequencyProps {
   name: string;
   label: string;
-  value: string;
+  value: string | undefined | null;
   frequency: string;
   onValueChange: (value: string) => void;
   onFrequencyChange: (frequency: string) => void;
@@ -266,7 +271,12 @@ export const IncomeWithFrequencyInput: React.FC<IncomeWithFrequencyProps> = ({
     { value: 'yearly', label: 'Yearly' }
   ];
 
-  const validateField = (inputValue: string): { isValid: boolean; message: string } => {
+  const validateField = (inputValue: string | undefined | null): { isValid: boolean; message: string } => {
+    // Handle null/undefined cases
+    if (!inputValue || typeof inputValue !== 'string') {
+      return { isValid: required ? false : true, message: required ? `${label} is required` : '' };
+    }
+    
     if (!inputValue.trim()) {
       return { isValid: required ? false : true, message: required ? `${label} is required` : '' };
     }
@@ -308,7 +318,7 @@ export const IncomeWithFrequencyInput: React.FC<IncomeWithFrequencyProps> = ({
         <div className="flex-1 min-w-0">
           <Input
             type="number"
-            value={value}
+            value={value || ''}
             onChange={handleChange}
             onBlur={handleBlur}
             placeholder={placeholder || '0.00'}

@@ -1,7 +1,12 @@
 // USA Format Validation Utilities
 
 // Phone number validation (USA format)
-export const validatePhoneNumber = (phone: string): boolean => {
+export const validatePhoneNumber = (phone: string | undefined | null): boolean => {
+  // Handle null/undefined cases
+  if (!phone || typeof phone !== 'string') {
+    return false;
+  }
+  
   // Remove all non-digit characters
   const digits = phone.replace(/\D/g, '');
   
@@ -16,7 +21,12 @@ export const validatePhoneNumber = (phone: string): boolean => {
 };
 
 // Format phone number for display
-export const formatPhoneNumber = (phone: string): string => {
+export const formatPhoneNumber = (phone: string | undefined | null): string => {
+  // Handle null/undefined cases
+  if (!phone || typeof phone !== 'string') {
+    return '';
+  }
+  
   const digits = phone.replace(/\D/g, '');
   
   if (digits.length === 10) {
@@ -29,7 +39,12 @@ export const formatPhoneNumber = (phone: string): string => {
 };
 
 // Social Security Number validation
-export const validateSSN = (ssn: string): boolean => {
+export const validateSSN = (ssn: string | undefined | null): boolean => {
+  // Handle null/undefined cases
+  if (!ssn || typeof ssn !== 'string') {
+    return false;
+  }
+  
   // Remove all non-digit characters
   const digits = ssn.replace(/\D/g, '');
   
@@ -60,7 +75,12 @@ export const validateSSN = (ssn: string): boolean => {
 };
 
 // Format SSN for display
-export const formatSSN = (ssn: string): string => {
+export const formatSSN = (ssn: string | undefined | null): string => {
+  // Handle null/undefined cases
+  if (!ssn || typeof ssn !== 'string') {
+    return '';
+  }
+  
   const digits = ssn.replace(/\D/g, '');
   
   if (digits.length >= 5) {
@@ -73,7 +93,12 @@ export const formatSSN = (ssn: string): string => {
 };
 
 // ZIP code validation (USA format)
-export const validateZIPCode = (zip: string): boolean => {
+export const validateZIPCode = (zip: string | undefined | null): boolean => {
+  // Handle null/undefined cases
+  if (!zip || typeof zip !== 'string') {
+    return false;
+  }
+  
   // Remove all non-digit characters
   const digits = zip.replace(/\D/g, '');
   
@@ -82,7 +107,12 @@ export const validateZIPCode = (zip: string): boolean => {
 };
 
 // Format ZIP code for display
-export const formatZIPCode = (zip: string): string => {
+export const formatZIPCode = (zip: string | undefined | null): string => {
+  // Handle null/undefined cases
+  if (!zip || typeof zip !== 'string') {
+    return '';
+  }
+  
   const digits = zip.replace(/\D/g, '');
   
   if (digits.length >= 6) {
@@ -93,13 +123,23 @@ export const formatZIPCode = (zip: string): string => {
 };
 
 // Email validation
-export const validateEmail = (email: string): boolean => {
+export const validateEmail = (email: string | undefined | null): boolean => {
+  // Handle null/undefined cases
+  if (!email || typeof email !== 'string') {
+    return false;
+  }
+  
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
 
 // Driver's license validation (basic)
-export const validateDriverLicense = (license: string): boolean => {
+export const validateDriverLicense = (license: string | undefined | null): boolean => {
+  // Handle null/undefined cases
+  if (!license || typeof license !== 'string') {
+    return false;
+  }
+  
   // Remove spaces and hyphens
   const cleanLicense = license.replace(/[\s-]/g, '');
   
@@ -109,24 +149,44 @@ export const validateDriverLicense = (license: string): boolean => {
 };
 
 // Income validation (positive number)
-export const validateIncome = (income: string | number): boolean => {
+export const validateIncome = (income: string | number | undefined | null): boolean => {
+  // Handle null/undefined cases
+  if (income === null || income === undefined) {
+    return false;
+  }
+  
   const num = typeof income === 'string' ? parseFloat(income) : income;
   return !isNaN(num) && num >= 0;
 };
 
 // Age validation (18+ for adults)
-export const validateAdultAge = (age: number): boolean => {
+export const validateAdultAge = (age: number | undefined | null): boolean => {
+  // Handle null/undefined cases
+  if (age === null || age === undefined || typeof age !== 'number') {
+    return false;
+  }
+  
   return age >= 18 && age <= 120;
 };
 
 // Date validation (not in future for birth dates)
-export const validateBirthDate = (date: Date): boolean => {
+export const validateBirthDate = (date: Date | undefined | null): boolean => {
+  // Handle null/undefined cases
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return false;
+  }
+  
   const today = new Date();
   return date <= today;
 };
 
 // Move-in date validation (not in past)
-export const validateMoveInDate = (date: Date): boolean => {
+export const validateMoveInDate = (date: Date | undefined | null): boolean => {
+  // Handle null/undefined cases
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return false;
+  }
+  
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Reset time to start of day
   return date >= today;
