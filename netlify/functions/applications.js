@@ -1,5 +1,5 @@
 import { storage } from './storage-mock.js';
-import { insertRentalApplicationSchema } from './schema-mock.js';
+import { insertRentalApplicationSchema } from './schema.js';
 import { z } from 'zod';
 import { createCorsResponse, handlePreflight } from './utils.js';
 

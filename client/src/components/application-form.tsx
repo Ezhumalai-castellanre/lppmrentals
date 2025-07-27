@@ -561,16 +561,34 @@ export function ApplicationForm() {
   }
 
   // --- Update nextStep and prevStep to use the helper ---
-  const nextStep = () => {
+  const nextStep = (e?: React.MouseEvent) => {
+    console.log('🔄 Next step clicked - Current step:', currentStep);
+    // Prevent form submission
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setCurrentStep((prev) => getNextAllowedStep(prev, 1));
   };
 
-  const prevStep = () => {
+  const prevStep = (e?: React.MouseEvent) => {
+    console.log('🔄 Previous step clicked - Current step:', currentStep);
+    // Prevent form submission
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setCurrentStep((prev) => getNextAllowedStep(prev, -1));
   };
 
   // --- Update goToStep to block manual access to co-applicant/guarantor docs if not allowed ---
-  const goToStep = (step: number) => {
+  const goToStep = (step: number, e?: React.MouseEvent) => {
+    // Prevent form submission
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     // Step 6 is Co-Applicant Financial Information
     if (step === 6 && !hasCoApplicant) {
       toast({
@@ -613,6 +631,20 @@ export function ApplicationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const onSubmit = async (data: ApplicationFormData) => {
+    console.log('🚀 FORM SUBMISSION TRIGGERED - Current Step:', currentStep);
+    
+    // Prevent form submission if not on the final step
+    if (currentStep !== STEPS.length - 1) {
+      console.log('⚠️ Form submission prevented - not on final step');
+      return;
+    }
+    
+    // Special check for Guarantor Documents step (step 11)
+    if (currentStep === 11) {
+      console.log('⚠️ Form submission prevented - on Guarantor Documents step');
+      return;
+    }
+    
     // Prevent multiple submissions
     if (isSubmitting) {
       console.log('⚠️ Form submission already in progress, ignoring duplicate submission');
@@ -1015,7 +1047,7 @@ export function ApplicationForm() {
 
       console.log('📊 Complete server data structure created (same as webhook)');
       
-      // Create a server-optimized version without large binary data
+      // Create a server-optimized version with only document metadata
       const serverOptimizedData = {
         ...completeServerData,
         // Remove large binary data for server submission
@@ -1024,12 +1056,22 @@ export function ApplicationForm() {
           coApplicant: signatures.coApplicant ? "SIGNED" : null,
           guarantor: signatures.guarantor ? "SIGNED" : null,
         },
-        // Remove encrypted documents (they're large base64 strings)
-        encryptedDocuments: {
-          applicant: {},
-          coApplicant: {},
-          guarantor: {}
-        }
+        // Replace encrypted documents with only metadata (reference_id, file_name, section_name)
+        encryptedDocuments: Object.keys(encryptedDocuments).reduce((acc: any, person: string) => {
+          acc[person] = Object.keys(encryptedDocuments[person] || {}).reduce((docAcc: any, docType: string) => {
+            const files = (encryptedDocuments[person] as any)[docType] || [];
+            docAcc[docType] = files.map((file: any) => ({
+              reference_id: file.reference_id || `ref_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              file_name: file.filename,
+              section_name: `${person}_${docType}`,
+              original_size: file.originalSize,
+              mime_type: file.mimeType,
+              upload_date: file.uploadDate
+            }));
+            return docAcc;
+          }, {});
+          return acc;
+        }, {} as any)
       };
       
       // Log payload size for debugging
@@ -1281,9 +1323,23 @@ export function ApplicationForm() {
           signatures: signatures,
           signatureTimestamps: signatureTimestamps,
           
-          // Documents and Encrypted Documents
+          // Documents and Encrypted Documents (only metadata)
           documents: documents,
-          encryptedDocuments: encryptedDocuments,
+          encryptedDocuments: Object.keys(encryptedDocuments).reduce((acc: any, person: string) => {
+            acc[person] = Object.keys(encryptedDocuments[person] || {}).reduce((docAcc: any, docType: string) => {
+              const files = (encryptedDocuments[person] as any)[docType] || [];
+              docAcc[docType] = files.map((file: any) => ({
+                reference_id: file.reference_id || `ref_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                file_name: file.filename,
+                section_name: `${person}_${docType}`,
+                original_size: file.originalSize,
+                mime_type: file.mimeType,
+                upload_date: file.uploadDate
+              }));
+              return docAcc;
+            }, {});
+            return acc;
+          }, {} as any),
           
           // Application IDs
           application_id: applicationId,
@@ -3553,7 +3609,8 @@ export function ApplicationForm() {
               return (
                 <div key={step.id} className="flex items-center">
                   <button
-                    onClick={() => goToStep(step.id)}
+                    type="button"
+                    onClick={(e) => goToStep(step.id, e)}
                     className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-colors flex-shrink-0 ${
                       isActive
                         ? 'bg-blue-600 border-blue-600 text-white'
@@ -3583,7 +3640,32 @@ export function ApplicationForm() {
         {/* Action Buttons - Removed */}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-8">
+          <form 
+            onSubmit={(e) => {
+              // Only allow form submission if we're on the final step and the submit button was clicked
+              if (currentStep !== STEPS.length - 1) {
+                e.preventDefault();
+                console.log('⚠️ Form submission prevented - not on final step');
+                return;
+              }
+              
+              // Special check for Guarantor Documents step (step 11)
+              if (currentStep === 11) {
+                e.preventDefault();
+                console.log('⚠️ Form submission prevented - on Guarantor Documents step');
+                return;
+              }
+              
+              form.handleSubmit(onSubmit)(e);
+            }} 
+            className="space-y-4 sm:space-y-8"
+            onKeyDown={(e) => {
+              // Prevent form submission on Enter key unless it's the submit button
+              if (e.key === 'Enter' && e.target !== e.currentTarget.querySelector('button[type="submit"]')) {
+                e.preventDefault();
+              }
+            }}
+          >
             {/* Current Step Content */}
             <div className="form-container">
               {renderStep()}
@@ -3594,7 +3676,7 @@ export function ApplicationForm() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={prevStep}
+                onClick={(e) => prevStep(e)}
                 disabled={currentStep === 0}
                 className="flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2"
               >
@@ -3628,7 +3710,7 @@ export function ApplicationForm() {
               ) : (
                 <Button
                   type="button"
-                  onClick={nextStep}
+                  onClick={(e) => nextStep(e)}
                   className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 sm:px-6 py-2"
                 >
                   <span className="hidden sm:inline">Next</span>

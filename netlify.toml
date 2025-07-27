@@ -27,6 +27,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/submit-application"
+  to = "/.netlify/functions/submit-application"
+  status = 200
+
+[[redirects]]
+  from = "/api/test-schema"
+  to = "/.netlify/functions/test-schema"
+  status = 200
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
