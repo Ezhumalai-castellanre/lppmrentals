@@ -121,26 +121,62 @@ export const handler = async (event, context) => {
       });
     }
 
-    // For now, skip complex validation and just return success
-    console.log('✅ Skipping complex validation for debugging...');
+    // Forward the data to Make.com webhook
+    console.log('🌐 Forwarding to Make.com webhook...');
     
-    // Create a simple mock result
-    const mockResult = {
-      id: Math.floor(Math.random() * 1000) + 1,
-      applicationDate: new Date().toISOString(),
-      status: 'submitted',
-      requestId: event.headers['x-request-id'] || context.awsRequestId || 'unknown'
-    };
+    const webhookUrl = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
+    
+    try {
+      const webhookResponse = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reference_id: applicationData.reference_id || 'unknown',
+          application_id: applicationData.application_id || 'unknown',
+          form_data: applicationData,
+          uploaded_files: uploadedFilesMetadata || {},
+          submission_type: 'form_data'
+        }),
+      });
 
-    console.log('✅ Mock application created with ID:', mockResult.id);
-    console.log('✅ Returning success response');
+      if (!webhookResponse.ok) {
+        const errorText = await webhookResponse.text();
+        console.error('❌ Webhook failed:', webhookResponse.status, errorText);
+        return createCorsResponse(webhookResponse.status, {
+          success: false,
+          error: `Webhook failed: ${webhookResponse.status}`,
+          message: errorText,
+          requestId: event.headers['x-request-id'] || context.awsRequestId || 'unknown'
+        });
+      }
 
-    return createCorsResponse(200, {
-      success: true,
-      applicationId: mockResult.id,
-      message: 'Application submitted successfully (mock)',
-      requestId: mockResult.requestId
-    });
+      console.log('✅ Webhook forwarded successfully');
+      
+      const result = {
+        id: Math.floor(Math.random() * 1000) + 1,
+        applicationDate: new Date().toISOString(),
+        status: 'submitted',
+        requestId: event.headers['x-request-id'] || context.awsRequestId || 'unknown'
+      };
+
+      return createCorsResponse(200, {
+        success: true,
+        applicationId: result.id,
+        message: 'Application submitted successfully',
+        requestId: result.requestId
+      });
+
+    } catch (webhookError) {
+      console.error('❌ Webhook forwarding error:', webhookError);
+      return createCorsResponse(500, {
+        success: false,
+        error: 'Webhook forwarding failed',
+        message: webhookError instanceof Error ? webhookError.message : 'Unknown error',
+        requestId: event.headers['x-request-id'] || context.awsRequestId || 'unknown'
+      });
+    }
 
   } catch (error) {
     // Comprehensive error logging
