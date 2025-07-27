@@ -41,7 +41,10 @@ const applicationSchema = z.object({
     required_error: "Move-in date is required",
     invalid_type_error: "Please select a valid move-in date",
   }),
-  monthlyRent: z.number().optional().or(z.undefined()),
+  monthlyRent: z.union([
+    z.number().optional(),
+    z.string().optional().transform((val) => val ? Number(val) : undefined)
+  ]).or(z.undefined()),
   apartmentType: z.string().optional(),
   howDidYouHear: z.string().optional(),
   howDidYouHearOther: z.string().optional(),
@@ -71,8 +74,14 @@ const applicationSchema = z.object({
   applicantZip: z.string().optional().refine((val) => !val || validateZIPCode(val), {
     message: "Please enter a valid ZIP code"
   }),
-  applicantLengthAtAddressYears: z.number().optional().or(z.undefined()),
-  applicantLengthAtAddressMonths: z.number().optional().or(z.undefined()),
+  applicantLengthAtAddressYears: z.union([
+    z.number().optional(),
+    z.string().optional().transform((val) => val ? Number(val) : undefined)
+  ]).or(z.undefined()),
+  applicantLengthAtAddressMonths: z.union([
+    z.number().optional(),
+    z.string().optional().transform((val) => val ? Number(val) : undefined)
+  ]).or(z.undefined()),
   applicantLandlordName: z.string().optional(),
   applicantLandlordAddressLine1: z.string().optional(),
   applicantLandlordAddressLine2: z.string().optional(),
@@ -87,7 +96,10 @@ const applicationSchema = z.object({
   applicantLandlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
     message: "Please enter a valid email address"
   }),
-  applicantCurrentRent: z.number().optional().or(z.undefined()),
+  applicantCurrentRent: z.union([
+    z.number().optional(),
+    z.string().optional().transform((val) => val ? Number(val) : undefined)
+  ]).or(z.undefined()),
   applicantReasonForMoving: z.string().optional(),
 
   // Co-Applicant
@@ -624,6 +636,48 @@ export function ApplicationForm() {
       });
       return;
     }
+    
+    // Ensure all required fields are present and valid
+    const requiredFields: (keyof ApplicationFormData)[] = [
+      'buildingAddress',
+      'apartmentNumber',
+      'moveInDate',
+      'monthlyRent',
+      'apartmentType',
+      'applicantName',
+      'applicantDob',
+      'applicantEmail',
+      'applicantAddress',
+      'applicantCity',
+      'applicantState',
+      'applicantZip',
+    ];
+    let missingFields = [];
+    for (const field of requiredFields) {
+      if (
+        data[field] === undefined ||
+        data[field] === null ||
+        (typeof data[field] === 'string' && data[field].trim() === '') ||
+        (field === 'applicantDob' && !data[field]) ||
+        (field === 'moveInDate' && !data[field])
+      ) {
+        missingFields.push(field);
+      }
+    }
+    // Email format check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.applicantEmail || '')) {
+      missingFields.push('applicantEmail');
+    }
+    if (missingFields.length > 0) {
+      toast({
+        title: 'Missing or invalid fields',
+        description: `Please fill out: ${missingFields.join(', ')}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     
     try {
       console.log("Submitting application:", { ...data, formData, signatures });
