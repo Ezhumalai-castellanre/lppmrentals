@@ -239,6 +239,9 @@ export function FileUpload({
         )}
         <p className="text-sm font-medium text-gray-700">{label}</p>
         {description && <p className="text-xs text-gray-500">{description}</p>}
+        <p className="text-xs text-gray-500 mt-1">
+          Max {maxFiles} file{maxFiles > 1 ? 's' : ''}, {maxSize}MB each • {accept.replace(/\./g, '').toUpperCase()}
+        </p>
         {enableEncryption && (
           <p className="text-xs text-green-600 mt-1">
             <Shield className="inline w-3 h-3 mr-1" />

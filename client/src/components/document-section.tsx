@@ -31,7 +31,7 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
   const documentTypes = [
     {
       key: "id",
-      label: "Photo ID / Driver's License",
+      label: "Driver's License (Photo ID)",
       accept: ".pdf,.jpg,.jpeg,.png"
     },
     {
@@ -78,6 +78,16 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
             <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
           </p>
         </div>
+        <div className="bg-blue-50 p-3 rounded-lg mt-2">
+          <p className="text-sm text-blue-800">
+            <span className="font-medium">📁 File Upload Limits:</span>
+          </p>
+          <div className="text-xs text-blue-700 mt-1 space-y-1">
+            <p>• <strong>Single file documents:</strong> Driver's License, Social Security Card, W9 Form, Employment Letter</p>
+            <p>• <strong>Multiple file documents:</strong> Pay Stubs, Tax Returns, Bank Statements (up to 5 files each)</p>
+            <p>• <strong>File size limit:</strong> 10MB per file • <strong>Accepted formats:</strong> JPG, PNG, PDF</p>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -87,6 +97,8 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
                 label={docType.label}
                 accept={docType.accept}
                 multiple={docType.multiple || false}
+                maxFiles={docType.multiple ? 5 : 1}
+                maxSize={10}
                 onFileChange={(files) => onDocumentChange(person, docType.key, files)}
                 onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(person, docType.key, encryptedFiles)}
                 enableEncryption={true}

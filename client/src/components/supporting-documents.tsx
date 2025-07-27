@@ -22,44 +22,20 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
       icon: <User className="h-4 w-4" />,
       documents: [
         {
-          id: "w9_forms",
-          name: "W9",
-          description: "W9 form",
-          required: true,
-          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
-        },
-        {
           id: "photo_id",
-          name: "Driver's License",
-          description: "Driver's license, state ID, or passport (all applicants 18+)",
+          name: "Driver's License (Photo ID)",
           required: true,
           acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         },
         {
           id: "social_security",
           name: "Social Security Card",
-          description: "Original or certified copy",
-          required: true,
-          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
-        }
-      ]
-    },
-    {
-      category: "Financial Documents",
-      icon: <DollarSign className="h-4 w-4" />,
-      documents: [
-        // W9 removed from here
-        {
-          id: "bank_statement",
-          name: "Bank Statement",
-          description: "Most recent bank statement (checking/savings)",
           required: true,
           acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         },
         {
-          id: "tax_returns",
-          name: "Tax Returns",
-          description: "Previous year tax returns (first page)",
+          id: "w9_forms",
+          name: "W9 Form",
           required: true,
           acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         }
@@ -72,16 +48,35 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
         {
           id: "employment_letter",
           name: "Employment Letter",
-          description: "Letter on company letterhead with salary, position, and employment length",
           required: true,
           acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         },
         {
           id: "pay_stubs",
-          name: "Pay Stubs",
-          description: "Last 4 pay stubs (weekly) or last 2 pay stubs (bi-weekly/semi-monthly)",
+          name: "Pay Stubs (Last 2-4)",
           required: true,
-          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf",
+          multiple: true
+        }
+      ]
+    },
+    {
+      category: "Financial Documents",
+      icon: <DollarSign className="h-4 w-4" />,
+      documents: [
+        {
+          id: "tax_returns",
+          name: "Tax Returns (Previous Year)",
+          required: true,
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf",
+          multiple: true
+        },
+        {
+          id: "bank_statement",
+          name: "Bank Statements",
+          required: true,
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf",
+          multiple: true
         }
       ]
     },
@@ -92,7 +87,6 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
         {
           id: "accountant_letter",
           name: "Accountant Letter",
-          description: "Notarized letter from accountant on company letterhead",
           required: false,
           acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         }
@@ -105,7 +99,6 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
         {
           id: "credit_report",
           name: "Credit Report",
-          description: "Recent credit report (optional but recommended)",
           required: true, // Now required
           acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         }
@@ -155,7 +148,6 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
         {
           id: `other_occupants_identity`,
           name: `Proof of Identity for Other Occupants`,
-          description: 'Driver\'s license, state ID, or passport for at least one other occupant',
           required: true,
           acceptedTypes: '.jpg,.jpeg,.png,.pdf'
         }
@@ -202,6 +194,16 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
             <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
           </p>
         </div>
+        <div className="bg-blue-50 p-3 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <span className="font-medium">📁 File Upload Limits:</span>
+          </p>
+          <div className="text-xs text-blue-700 mt-1 space-y-1">
+            <p>• <strong>Single file documents:</strong> Driver's License, Social Security Card, W9 Form, Employment Letter, Accountant Letter, Credit Report</p>
+            <p>• <strong>Multiple file documents:</strong> Pay Stubs, Tax Returns, Bank Statements (up to 5 files each)</p>
+            <p>• <strong>File size limit:</strong> 10MB per file • <strong>Accepted formats:</strong> JPG, PNG, PDF</p>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Only show co-applicant section if showOnlyCoApplicant is true */}
@@ -234,7 +236,6 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                                   <Badge variant="secondary" className="text-xs">Optional</Badge>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-600 mt-1">{document.description}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               {docStatus.status === "uploaded" ? (
@@ -254,11 +255,10 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                             onFileChange={(files) => onDocumentChange(document.id, files)}
                             onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
                             accept={document.acceptedTypes}
-                            multiple={true}
-                            maxFiles={5}
+                            multiple={document.multiple || false}
+                            maxFiles={document.multiple ? 5 : 1}
                             maxSize={10}
                             label={`Upload ${document.name}`}
-                            description="Max 5 files, 10MB each. Accepted: JPG, PNG, PDF - Encrypted"
                             className="mt-2"
                             enableEncryption={true}
                             referenceId={referenceId}
@@ -304,7 +304,6 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                                   <Badge variant="secondary" className="text-xs">Optional</Badge>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-600 mt-1">{document.description}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               {docStatus.status === "uploaded" ? (
@@ -324,11 +323,10 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                             onFileChange={(files) => onDocumentChange(document.id, files)}
                             onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
                             accept={document.acceptedTypes}
-                            multiple={true}
-                            maxFiles={5}
+                            multiple={document.multiple || false}
+                            maxFiles={document.multiple ? 5 : 1}
                             maxSize={10}
                             label={`Upload ${document.name}`}
-                            description="Max 5 files, 10MB each. Accepted: JPG, PNG, PDF - Encrypted"
                             className="mt-2"
                             enableEncryption={true}
                             referenceId={referenceId}
@@ -370,7 +368,6 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                                 <Badge variant="secondary" className="text-xs">Optional</Badge>
                               )}
                             </div>
-                            <p className="text-sm text-gray-600 mt-1">{document.description}</p>
                           </div>
                           <div className="flex items-center gap-2">
                             {docStatus.status === "uploaded" ? (
@@ -391,11 +388,10 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                           onFileChange={(files) => onDocumentChange(document.id, files)}
                           onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
                           accept={document.acceptedTypes}
-                          multiple={true}
-                          maxFiles={5}
+                          multiple={document.multiple || false}
+                          maxFiles={document.multiple ? 5 : 1}
                           maxSize={10}
                           label={`Upload ${document.name}`}
-                          description="Max 5 files, 10MB each. Accepted: JPG, PNG, PDF - Encrypted"
                           className="mt-2"
                           enableEncryption={true}
                           referenceId={referenceId}
@@ -449,7 +445,6 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                                     <Badge variant="secondary" className="text-xs">Optional</Badge>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-600 mt-1">{document.description}</p>
                               </div>
                               <div className="flex items-center gap-2">
                                 {docStatus.status === "uploaded" ? (
@@ -469,11 +464,10 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                               onFileChange={(files) => onDocumentChange(document.id, files)}
                               onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
                               accept={document.acceptedTypes}
-                              multiple={true}
-                              maxFiles={5}
+                              multiple={document.multiple || false}
+                              maxFiles={document.multiple ? 5 : 1}
                               maxSize={10}
                               label={`Upload ${document.name}`}
-                              description="Max 5 files, 10MB each. Accepted: JPG, PNG, PDF - Encrypted"
                               className="mt-2"
                               enableEncryption={true}
                               referenceId={referenceId}
