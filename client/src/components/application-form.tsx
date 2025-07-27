@@ -2008,176 +2008,112 @@ export function ApplicationForm() {
                         className="w-full mt-1"
                       />
                     </div>
-                    <FormField
-                      control={form.control}
-                      name="applicantLandlordName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="mb-0.5">Landlord Name</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Enter landlord's name" 
-                              {...field}
-                              className="input-field w-full mt-1 border-gray-300 bg-white"
-                              onChange={(e) => {
-                                field.onChange(e);
-                                updateFormData('coApplicant', 'landlordName', e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="applicantLandlordAddressLine1"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="mb-0.5">Landlord Street Address</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Enter landlord's street address" 
-                              {...field}
-                              className="input-field w-full mt-1 border-gray-300 bg-white"
-                              onChange={(e) => {
-                                field.onChange(e);
-                                updateFormData('coApplicant', 'landlordAddressLine1', e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="applicantLandlordAddressLine2"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="mb-0.5">Landlord Address Line 2 (Optional)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Apartment, suite, etc." 
-                              {...field}
-                              className="input-field w-full mt-1 border-gray-300 bg-white"
-                              onChange={(e) => {
-                                field.onChange(e);
-                                updateFormData('coApplicant', 'landlordAddressLine2', e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="applicantLandlordState"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <StateSelector
-                              selectedState={field.value || ''}
-                              onStateChange={(value) => {
-                                field.onChange(value);
-                                updateFormData('coApplicant', 'landlordState', value);
-                              }}
-                              label="Landlord State"
-                              className="w-full mt-1"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="applicantLandlordCity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <CitySelector
-                              selectedState={formData.coApplicant?.landlordState || ''}
-                              selectedCity={field.value || ''}
-                              onCityChange={(value) => {
-                                field.onChange(value);
-                                updateFormData('coApplicant', 'landlordCity', value);
-                              }}
-                              label="Landlord City"
-                              className="w-full mt-1"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="applicantLandlordZipCode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <ZIPInput
-                              name="applicantLandlordZipCode"
-                              label="Landlord ZIP Code"
-                              placeholder="Enter landlord's ZIP code"
-                              value={field.value || ''}
-                              onChange={(value) => {
-                                field.onChange(value);
-                                updateFormData('coApplicant', 'landlordZipCode', value);
-                              }}
-                              className="w-full mt-1"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="applicantLandlordPhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <PhoneInput
-                              name="applicantLandlordPhone"
-                              label="Landlord Phone Number"
-                              placeholder="Enter landlord's phone number"
-                              value={field.value || ''}
-                              onChange={(value) => {
-                                field.onChange(value);
-                                updateFormData('coApplicant', 'landlordPhone', value);
-                              }}
-                              className="w-full mt-1"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="applicantLandlordEmail"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <EmailInput
-                              name="applicantLandlordEmail"
-                              label="Landlord Email Address (Optional)"
-                              placeholder="Enter landlord's email address"
-                              value={field.value || ''}
-                              onChange={(value) => {
-                                field.onChange(value);
-                                updateFormData('coApplicant', 'landlordEmail', value);
-                              }}
-                              className="w-full mt-1"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Landlord Name</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter landlord's name" 
+                          value={formData.coApplicant?.landlordName || ''}
+                          className="input-field w-full mt-1 border-gray-300 bg-white"
+                          onChange={(e) => {
+                            updateFormData('coApplicant', 'landlordName', e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Landlord Street Address</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter landlord's street address" 
+                          value={formData.coApplicant?.landlordAddressLine1 || ''}
+                          className="input-field w-full mt-1 border-gray-300 bg-white"
+                          onChange={(e) => {
+                            updateFormData('coApplicant', 'landlordAddressLine1', e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Landlord Address Line 2 (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Apartment, suite, etc." 
+                          value={formData.coApplicant?.landlordAddressLine2 || ''}
+                          className="input-field w-full mt-1 border-gray-300 bg-white"
+                          onChange={(e) => {
+                            updateFormData('coApplicant', 'landlordAddressLine2', e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormControl>
+                        <StateSelector
+                          selectedState={formData.coApplicant?.landlordState || ''}
+                          onStateChange={(value) => {
+                            updateFormData('coApplicant', 'landlordState', value);
+                          }}
+                          label="Landlord State"
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormControl>
+                        <CitySelector
+                          selectedState={formData.coApplicant?.landlordState || ''}
+                          selectedCity={formData.coApplicant?.landlordCity || ''}
+                          onCityChange={(value) => {
+                            updateFormData('coApplicant', 'landlordCity', value);
+                          }}
+                          label="Landlord City"
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormControl>
+                        <ZIPInput
+                          name="coApplicantLandlordZipCode"
+                          label="Landlord ZIP Code"
+                          placeholder="Enter landlord's ZIP code"
+                          value={formData.coApplicant?.landlordZipCode || ''}
+                          onChange={(value) => {
+                            updateFormData('coApplicant', 'landlordZipCode', value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormControl>
+                        <PhoneInput
+                          name="coApplicantLandlordPhone"
+                          label="Landlord Phone Number"
+                          placeholder="Enter landlord's phone number"
+                          value={formData.coApplicant?.landlordPhone || ''}
+                          onChange={(value) => {
+                            updateFormData('coApplicant', 'landlordPhone', value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormControl>
+                        <EmailInput
+                          name="coApplicantLandlordEmail"
+                          label="Landlord Email Address (Optional)"
+                          placeholder="Enter landlord's email address"
+                          value={formData.coApplicant?.landlordEmail || ''}
+                          onChange={(value) => {
+                            updateFormData('coApplicant', 'landlordEmail', value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                    </FormItem>
                     <div>
                       <Label htmlFor="coApplicantCurrentRent" className="mb-0.5">Monthly Rent</Label>
                       <Input
@@ -2192,27 +2128,19 @@ export function ApplicationForm() {
                         className="input-field w-full mt-1"
                       />
                     </div>
-                    <FormField
-                      control={form.control}
-                      name="applicantReasonForMoving"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Please explain your reason for moving" 
-                              {...field}
-                              className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
-                              onChange={(e) => {
-                                field.onChange(e);
-                                updateFormData('coApplicant', 'reasonForMoving', e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Please explain your reason for moving" 
+                          value={formData.coApplicant?.reasonForMoving || ''}
+                          className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
+                          onChange={(e) => {
+                            updateFormData('coApplicant', 'reasonForMoving', e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                    </FormItem>
                   </div>
                 </CardContent>
               </Card>
