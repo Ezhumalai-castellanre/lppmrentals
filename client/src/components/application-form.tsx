@@ -998,15 +998,15 @@ export function ApplicationForm() {
       }
 
       const submissionResult = await submissionResponse.json();
-      console.log('✅ === SERVER SUBMISSION RESULT ===');
-      console.log('📤 Data sent to server:', JSON.stringify(requestBody, null, 2));
+      console.log('🧪 === WEBHOOK TESTING - FORM DATA SUBMISSION ===');
+      console.log('📤 Form data for webhook testing:', JSON.stringify(requestBody, null, 2));
       console.log('📥 Server response:', JSON.stringify(submissionResult, null, 2));
       console.log('🔗 Application ID:', submissionResult.application_id);
       console.log('🔗 Reference ID:', submissionResult.reference_id);
-      console.log('=== END SERVER SUBMISSION ===');
+      console.log('=== END WEBHOOK TESTING ===');
 
-      // Note: Encrypted data and files are now sent separately via webhooks
-      console.log('Application submitted successfully. Files and encrypted data sent via webhooks.');
+      // Note: Form data sent to server for webhook testing
+      console.log('Form data submitted successfully for webhook testing. Complete data will be sent via webhook.');
 
       // On form submit, send complete form data, application_id, and uploadedDocuments to the webhook
       try {
@@ -1385,8 +1385,8 @@ export function ApplicationForm() {
         console.log('- Uploaded Files:', Object.keys(testWebhookStructure.uploaded_files || {}).length, 'file categories');
         console.log('=== END WEBHOOK TEST ===');
         // Send the complete webhook data exactly as specified
-        console.log('🌐 === WEBHOOK SUBMISSION ===');
-        console.log('📤 Webhook payload being sent:', JSON.stringify(webhookPayload, null, 2));
+        console.log('🌐 === MAIN WEBHOOK DATA SUBMISSION ===');
+        console.log('📤 Complete webhook payload being sent:', JSON.stringify(webhookPayload, null, 2));
         console.log('📁 Uploaded files metadata:', JSON.stringify(uploadedFilesMetadata, null, 2));
         console.log('🔗 Reference ID:', referenceId);
         console.log('🔗 Application ID:', applicationId);
@@ -1399,17 +1399,17 @@ export function ApplicationForm() {
         );
         
         console.log('📥 Webhook response:', JSON.stringify(webhookResult, null, 2));
-        console.log('=== END WEBHOOK SUBMISSION ===');
+        console.log('=== END MAIN WEBHOOK DATA SUBMISSION ===');
         
         if (webhookResult.success) {
           toast({
-            title: "Application Submitted & Sent",
-            description: "Your rental application has been submitted and sent to the webhook successfully.",
+            title: "Webhook Testing Complete",
+            description: "Form data has been submitted and sent to webhook successfully for testing.",
           });
           } else {
           toast({
-            title: "Application Submitted",
-            description: "Your rental application has been submitted, but webhook delivery failed.",
+            title: "Webhook Testing Failed",
+            description: "Form data was submitted, but webhook delivery failed.",
           });
         }
       } catch (webhookError) {
