@@ -192,7 +192,7 @@ export class ResetPDFGenerator {
     this.addFieldRow("Monthly Rent", data.application?.monthlyRent ? `$${data.application.monthlyRent}` : undefined, true);
     this.addFieldRow("Apartment Type", data.application?.apartmentType);
     this.addFieldRow("How Did You Hear", data.application?.howDidYouHear);
-    if (data.application?.howDidYouHear === 'Other') {
+    if (data.application?.howDidYouHear === 'Other' && data.application?.howDidYouHearOther) {
       this.addFieldRow("Other Source", data.application?.howDidYouHearOther);
     }
   }
@@ -229,6 +229,21 @@ export class ResetPDFGenerator {
       this.addFieldRow("Current Monthly Rent", person.currentRent ? `$${person.currentRent}` : undefined);
       this.addFieldRow("Reason for Moving", person.reasonForMoving);
     }
+    
+    // Landlord Information section
+    if (person.landlordName || person.landlordAddressLine1 || person.landlordAddressLine2 || person.landlordCity || person.landlordState || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
+      this.yPosition += 4;
+      this.addText("Landlord Information:", 9, true);
+      this.yPosition += 4;
+      this.addFieldRow("Landlord Name", person.landlordName);
+      this.addFieldRow("Landlord Address Line 1", person.landlordAddressLine1);
+      this.addFieldRow("Landlord Address Line 2", person.landlordAddressLine2);
+      this.addFieldRow("Landlord City", person.landlordCity);
+      this.addFieldRow("Landlord State", person.landlordState);
+      this.addFieldRow("Landlord ZIP Code", person.landlordZipCode);
+      this.addFieldRow("Landlord Phone", person.landlordPhone);
+      this.addFieldRow("Landlord Email", person.landlordEmail);
+    }
   }
 
   private addFinancialInfo(title: string, person: any): void {
@@ -255,10 +270,23 @@ export class ResetPDFGenerator {
       this.yPosition += 4;
       
       person.bankRecords.forEach((bank: any, index: number) => {
-        this.addFieldRow(`Bank ${index + 1} Name`, bank.bankName);
-        this.addFieldRow(`Account Type`, bank.accountType);
-        this.addFieldRow(`Account Number`, bank.accountNumber ? '***' + bank.accountNumber.slice(-4) : undefined);
+        const prefix = person.bankRecords.length > 1 ? `Bank ${index + 1} - ` : '';
+        this.addFieldRow(`${prefix}Bank Name`, bank.bankName);
+        this.addFieldRow(`${prefix}Account Type`, bank.accountType);
+        this.addFieldRow(`${prefix}Account Number (Last 4)`, bank.accountNumber ? '***' + bank.accountNumber.slice(-4) : undefined);
+        this.addFieldRow(`${prefix}Routing Number`, bank.routingNumber);
+        this.addFieldRow(`${prefix}Balance`, bank.balance ? `$${bank.balance}` : undefined);
       });
+    } else if (person.bankName || person.accountType || person.accountNumber || person.routingNumber || person.balance) {
+      this.yPosition += 4;
+      this.addText("Bank Information:", 9, true);
+      this.yPosition += 4;
+      
+      this.addFieldRow("Bank Name", person.bankName);
+      this.addFieldRow("Account Type", person.accountType);
+      this.addFieldRow("Account Number (Last 4)", person.accountNumber ? '***' + person.accountNumber.slice(-4) : undefined);
+      this.addFieldRow("Routing Number", person.routingNumber);
+      this.addFieldRow("Balance", person.balance ? `$${person.balance}` : undefined);
     }
   }
 
@@ -266,8 +294,15 @@ export class ResetPDFGenerator {
     this.checkPageBreak();
     this.addSection("Legal Questions");
     
-    this.addFieldRow("Landlord/Tenant Legal Action", data.application?.landlordTenantLegalAction);
-    this.addFieldRow("Broken Lease", data.application?.brokenLease);
+    this.addFieldRow("Have you ever been in landlord/tenant legal action?", data.application?.landlordTenantLegalAction || "Not specified");
+    if (data.application?.landlordTenantLegalAction === 'yes' && data.application?.landlordTenantLegalActionExplanation) {
+      this.addFieldRow("Legal Action Details", data.application?.landlordTenantLegalActionExplanation);
+    }
+    
+    this.addFieldRow("Have you ever broken a lease?", data.application?.brokenLease || "Not specified");
+    if (data.application?.brokenLease === 'yes' && data.application?.brokenLeaseExplanation) {
+      this.addFieldRow("Broken Lease Details", data.application?.brokenLeaseExplanation);
+    }
   }
 
   private addOccupants(occupants: any[]): void {

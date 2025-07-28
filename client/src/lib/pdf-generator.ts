@@ -99,6 +99,9 @@ export class PDFGenerator {
     this.addField("Monthly Rent", `$${data.application.monthlyRent}`);
     this.addField("Apartment Type", data.application.apartmentType);
     this.addField("How did you hear about us", data.application.howDidYouHear);
+    if (data.application.howDidYouHear === 'Other' && data.application.howDidYouHearOther) {
+      this.addField("Other Source", data.application.howDidYouHearOther);
+    }
   }
 
   private addPersonalInfo(title: string, person: any): void {
@@ -125,6 +128,19 @@ export class PDFGenerator {
     this.addField("Current Landlord", person.landlordName);
     this.addField("Current Monthly Rent", person.currentRent ? `$${person.currentRent}` : undefined);
     this.addField("Reason for Moving", person.reasonForMoving);
+    
+    // Landlord Information
+    if (person.landlordName || person.landlordAddressLine1 || person.landlordAddressLine2 || person.landlordCity || person.landlordState || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
+      this.addText("Landlord Information:", 10, true);
+      this.addField("Landlord Name", person.landlordName);
+      this.addField("Landlord Address Line 1", person.landlordAddressLine1);
+      this.addField("Landlord Address Line 2", person.landlordAddressLine2);
+      this.addField("Landlord City", person.landlordCity);
+      this.addField("Landlord State", person.landlordState);
+      this.addField("Landlord ZIP Code", person.landlordZipCode);
+      this.addField("Landlord Phone", person.landlordPhone);
+      this.addField("Landlord Email", person.landlordEmail);
+    }
   }
 
   private addFinancialInfo(title: string, person: any): void {
@@ -137,8 +153,25 @@ export class PDFGenerator {
     this.addField("Annual Income", person.income ? `$${person.income}` : undefined);
     this.addField("Other Income", person.otherIncome ? `$${person.otherIncome}` : undefined);
     this.addField("Other Income Source", person.otherIncomeSource);
-    this.addField("Bank Name", person.bankName);
-    this.addField("Account Type", person.accountType);
+    
+    // Bank Information
+    if (person.bankRecords && person.bankRecords.length > 0) {
+      this.addText("Bank Information:", 10, true);
+      person.bankRecords.forEach((bankRecord: any, index: number) => {
+        const prefix = person.bankRecords.length > 1 ? `Bank ${index + 1} - ` : '';
+        this.addField(`${prefix}Bank Name`, bankRecord.bankName);
+        this.addField(`${prefix}Account Type`, bankRecord.accountType);
+        this.addField(`${prefix}Account Number (Last 4)`, bankRecord.accountNumber ? '***' + bankRecord.accountNumber.slice(-4) : undefined);
+        this.addField(`${prefix}Routing Number`, bankRecord.routingNumber);
+        this.addField(`${prefix}Balance`, bankRecord.balance ? `$${bankRecord.balance}` : undefined);
+      });
+    } else {
+      this.addField("Bank Name", person.bankName);
+      this.addField("Account Type", person.accountType);
+      this.addField("Account Number (Last 4)", person.accountNumber ? '***' + person.accountNumber.slice(-4) : undefined);
+      this.addField("Routing Number", person.routingNumber);
+      this.addField("Balance", person.balance ? `$${person.balance}` : undefined);
+    }
   }
 
   private addLegalQuestions(data: FormData): void {

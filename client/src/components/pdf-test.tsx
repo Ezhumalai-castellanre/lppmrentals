@@ -11,7 +11,12 @@ export function PDFTest() {
       moveInDate: "2024-02-01",
       monthlyRent: 3500,
       apartmentType: "1 Bedroom",
-      howDidYouHear: "Online Advertisement"
+      howDidYouHear: "Other",
+      howDidYouHearOther: "Social Media Advertisement",
+      landlordTenantLegalAction: "yes",
+      landlordTenantLegalActionExplanation: "Had a dispute with previous landlord over security deposit",
+      brokenLease: "no",
+      brokenLeaseExplanation: ""
     },
     applicant: {
       name: "John Smith",
@@ -29,14 +34,38 @@ export function PDFTest() {
       landlordName: "Jane Doe",
       currentRent: 2800,
       reasonForMoving: "Job relocation",
+      // Landlord Information
+      landlordAddressLine1: "456 Landlord Street",
+      landlordAddressLine2: "Apt 2B",
+      landlordCity: "New York",
+      landlordState: "NY",
+      landlordZipCode: "10002",
+      landlordPhone: "(555) 987-6543",
+      landlordEmail: "jane.doe@landlord.com",
+      // Employment & Financial
       employer: "Tech Corp",
       position: "Software Engineer",
       employmentStart: "2020-01-15",
       income: 85000,
       otherIncome: 5000,
       otherIncomeSource: "Freelance work",
-      bankName: "Chase Bank",
-      accountType: "Checking"
+      // Bank Records
+      bankRecords: [
+        {
+          bankName: "Chase Bank",
+          accountType: "Checking",
+          accountNumber: "1234567890",
+          routingNumber: "021000021",
+          balance: "5000.00"
+        },
+        {
+          bankName: "Bank of America",
+          accountType: "Savings",
+          accountNumber: "0987654321",
+          routingNumber: "026009593",
+          balance: "15000.00"
+        }
+      ]
     },
     coApplicant: {
       name: "Jane Smith",
@@ -54,14 +83,31 @@ export function PDFTest() {
       landlordName: "Jane Doe",
       currentRent: 2800,
       reasonForMoving: "Job relocation",
+      // Landlord Information
+      landlordAddressLine1: "456 Landlord Street",
+      landlordAddressLine2: "Apt 2B",
+      landlordCity: "New York",
+      landlordState: "NY",
+      landlordZipCode: "10002",
+      landlordPhone: "(555) 987-6543",
+      landlordEmail: "jane.doe@landlord.com",
+      // Employment & Financial
       employer: "Design Studio",
       position: "UX Designer",
       employmentStart: "2021-03-10",
       income: 75000,
       otherIncome: 0,
       otherIncomeSource: "",
-      bankName: "Bank of America",
-      accountType: "Savings"
+      // Bank Records
+      bankRecords: [
+        {
+          bankName: "Bank of America",
+          accountType: "Savings",
+          accountNumber: "0987654321",
+          routingNumber: "026009593",
+          balance: "8000.00"
+        }
+      ]
     },
     guarantor: {
       name: "Robert Johnson",
@@ -79,14 +125,31 @@ export function PDFTest() {
       landlordName: "Mike Wilson",
       currentRent: 0,
       reasonForMoving: "N/A",
+      // Landlord Information
+      landlordAddressLine1: "789 Oak Street",
+      landlordAddressLine2: "",
+      landlordCity: "Los Angeles",
+      landlordState: "CA",
+      landlordZipCode: "90211",
+      landlordPhone: "(555) 111-2222",
+      landlordEmail: "mike.wilson@landlord.com",
+      // Employment & Financial
       employer: "Johnson Enterprises",
       position: "CEO",
       employmentStart: "2000-01-01",
       income: 200000,
       otherIncome: 50000,
       otherIncomeSource: "Investment returns",
-      bankName: "Wells Fargo",
-      accountType: "Multiple"
+      // Bank Records
+      bankRecords: [
+        {
+          bankName: "Wells Fargo",
+          accountType: "Multiple",
+          accountNumber: "5556667777",
+          routingNumber: "121000248",
+          balance: "50000.00"
+        }
+      ]
     },
     signatures: {
       applicant: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
@@ -120,87 +183,56 @@ export function PDFTest() {
     }
   };
 
-  const previewEnhancedPDF = () => {
+  const previewPDF = () => {
     try {
       const pdfGenerator = new EnhancedPDFGenerator();
       const pdfData = pdfGenerator.generatePDF(sampleFormData);
       
-      // Open in new window for preview
+      // Open in new window
       const newWindow = window.open();
       if (newWindow) {
         newWindow.document.write(`
           <html>
-            <head>
-              <title>Enhanced PDF Preview</title>
-              <style>
-                body { margin: 0; padding: 20px; background: #f5f5f5; }
-                iframe { width: 100%; height: 90vh; border: 1px solid #ddd; border-radius: 8px; }
-                h1 { color: #0066cc; margin-bottom: 20px; }
-              </style>
-            </head>
-            <body>
-              <h1>Enhanced Rental Application PDF Preview</h1>
-              <iframe src="${pdfData}"></iframe>
+            <head><title>PDF Preview</title></head>
+            <body style="margin:0;padding:0;">
+              <embed src="${pdfData}" type="application/pdf" width="100%" height="100%">
             </body>
           </html>
         `);
       }
     } catch (error) {
-      console.error('Error previewing enhanced PDF:', error);
+      console.error('Error generating PDF preview:', error);
     }
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Enhanced PDF Generator Test</h1>
+    <div className="p-6 space-y-4">
+      <h2 className="text-2xl font-bold">PDF Generator Test</h2>
+      <p className="text-gray-600">
+        Test the enhanced PDF generator with sample data including all new fields.
+      </p>
+      
+      <div className="flex gap-4">
+        <Button onClick={generateEnhancedPDF} className="flex items-center gap-2">
+          <Download className="w-4 h-4" />
+          Download Enhanced PDF
+        </Button>
         
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Features Demonstrated:</h2>
-          <ul className="list-disc list-inside space-y-2 text-gray-600">
-            <li>Professional color scheme with blue, gold, and gray</li>
-            <li>Enhanced typography with clear hierarchy</li>
-            <li>Table-like data organization</li>
-            <li>Highlighted important fields (income, rent)</li>
-            <li>Styled signature boxes</li>
-            <li>Professional header with branding</li>
-            <li>Page numbers and headers</li>
-            <li>Better spacing and layout</li>
-            <li>Step 1 Instructions included</li>
-            <li>Fixed "Current Landlord's Name" field</li>
-            <li>Improved section headers with proper underlines</li>
-            <li>Only 2 Legal Questions shown</li>
-            <li>Supporting Documents section removed</li>
-          </ul>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Button 
-            onClick={generateEnhancedPDF}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-          >
-            <Download className="w-4 h-4" />
-            Download Enhanced PDF
-          </Button>
-          
-          <Button 
-            onClick={previewEnhancedPDF}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <Eye className="w-4 h-4" />
-            Preview Enhanced PDF
-          </Button>
-        </div>
-
-        <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-          <h3 className="font-semibold text-blue-900 mb-2">Sample Data Used:</h3>
-          <p className="text-blue-800 text-sm">
-            This test uses sample data including a primary applicant, co-applicant, guarantor, 
-            and one occupant. The PDF will demonstrate all the enhanced UI features including 
-            professional styling, better layout, and improved readability.
-          </p>
-        </div>
+        <Button onClick={previewPDF} variant="outline" className="flex items-center gap-2">
+          <Eye className="w-4 h-4" />
+          Preview PDF
+        </Button>
+      </div>
+      
+      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+        <h3 className="font-semibold mb-2">Test Data Includes:</h3>
+        <ul className="text-sm space-y-1">
+          <li>• Application info with "Other" source and explanation</li>
+          <li>• Complete landlord information for all parties</li>
+          <li>• Multiple bank records with account numbers and balances</li>
+          <li>• Legal questions with explanations</li>
+          <li>• All personal and financial information</li>
+        </ul>
       </div>
     </div>
   );

@@ -278,31 +278,25 @@ export class EnhancedPDFGenerator {
     this.checkPageBreak();
     this.addSection("Application Information");
     
-    // Helper function to format date
     const formatDate = (dateValue: any): string => {
       if (!dateValue) return 'Not provided';
-      if (dateValue instanceof Date) {
-        return dateValue.toLocaleDateString();
+      try {
+        const date = new Date(dateValue);
+        return date.toLocaleDateString();
+      } catch {
+        return 'Invalid date';
       }
-      if (typeof dateValue === 'string') {
-        try {
-          return new Date(dateValue).toLocaleDateString();
-        } catch {
-          return dateValue;
-        }
-      }
-      return String(dateValue);
     };
     
-    // Create a table-like layout with proper data handling
     this.addTableRow("Building Address", data.application?.buildingAddress, true);
     this.addTableRow("Apartment Number", data.application?.apartmentNumber);
     this.addTableRow("Move-in Date", formatDate(data.application?.moveInDate));
     this.addTableRow("Monthly Rent", data.application?.monthlyRent ? `$${data.application.monthlyRent}` : undefined, true);
     this.addTableRow("Apartment Type", data.application?.apartmentType);
     this.addTableRow("How did you hear about us", data.application?.howDidYouHear);
-    
-    this.yPosition += 4; // Reduced spacing
+    if (data.application?.howDidYouHear === 'Other' && data.application?.howDidYouHearOther) {
+      this.addTableRow("Other Source", data.application?.howDidYouHearOther);
+    }
   }
 
   private addPersonalInfo(title: string, person: any): void {
@@ -342,12 +336,37 @@ export class EnhancedPDFGenerator {
       this.addTableRow("Reason for Moving", person.reasonForMoving);
     }
     
+    // Landlord Information subsection
+    if (person.landlordName || person.landlordAddressLine1 || person.landlordCity || person.landlordState || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
+      this.yPosition += 8; // Reduced spacing
+      this.doc.setFontSize(11); // Reduced font size
+      this.doc.setFont('helvetica', 'bold');
+      this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
+      this.doc.text("Current Landlord Information", this.marginLeft, this.yPosition);
+      this.yPosition += 10; // Reduced spacing
+      
+      this.addTableRow("Landlord Name", person.landlordName);
+      this.addTableRow("Landlord Address Line 1", person.landlordAddressLine1);
+      this.addTableRow("Landlord Address Line 2", person.landlordAddressLine2);
+      this.addTableRow("Landlord City", person.landlordCity);
+      this.addTableRow("Landlord State", person.landlordState);
+      this.addTableRow("Landlord ZIP Code", person.landlordZipCode);
+      this.addTableRow("Landlord Phone", person.landlordPhone);
+      this.addTableRow("Landlord Email", person.landlordEmail);
+    }
+    
     this.yPosition += 6; // Reduced spacing
   }
 
   private addFinancialInfo(title: string, person: any): void {
     this.checkPageBreak();
-    this.addSection(`${title} - Employment & Financial Information`);
+    this.addSection(`${title} Financial Information`);
+    
+    if (!person) {
+      this.addText("No financial information provided", 9, false, [150, 150, 150]);
+      this.yPosition += 8;
+      return;
+    }
     
     // Employment Information subsection
     this.doc.setFontSize(11); // Reduced font size
@@ -359,47 +378,43 @@ export class EnhancedPDFGenerator {
     this.addTableRow("Current Employer", person.employer, true);
     this.addTableRow("Position/Title", person.position);
     this.addTableRow("Employment Start Date", person.employmentStart);
-    
-    this.yPosition += 8; // Reduced spacing
-    
-    // Financial Information subsection
-    this.doc.setFontSize(11); // Reduced font size
-    this.doc.setFont('helvetica', 'bold');
-    this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
-    this.doc.text("Financial Information", this.marginLeft, this.yPosition);
-    this.yPosition += 10; // Reduced spacing
-    
     this.addTableRow("Annual Income", person.income ? `$${person.income.toLocaleString()}` : undefined, true);
     this.addTableRow("Other Income", person.otherIncome ? `$${person.otherIncome.toLocaleString()}` : undefined);
     this.addTableRow("Other Income Source", person.otherIncomeSource);
     
-    this.yPosition += 8; // Reduced spacing
-    
     // Bank Information subsection
-    this.doc.setFontSize(11); // Reduced font size
-    this.doc.setFont('helvetica', 'bold');
-    this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
-    this.doc.text("Bank Information", this.marginLeft, this.yPosition);
-    this.yPosition += 10; // Reduced spacing
-    
-    // Check if bankRecords array exists and has data
     if (person.bankRecords && person.bankRecords.length > 0) {
+      this.yPosition += 8; // Reduced spacing
+      this.doc.setFontSize(11); // Reduced font size
+      this.doc.setFont('helvetica', 'bold');
+      this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
+      this.doc.text("Bank Information", this.marginLeft, this.yPosition);
+      this.yPosition += 10; // Reduced spacing
+      
       person.bankRecords.forEach((bankRecord: any, index: number) => {
-        const prefix = person.bankRecords.length > 1 ? `Account ${index + 1}: ` : '';
+        const prefix = person.bankRecords.length > 1 ? `Bank ${index + 1} - ` : '';
         this.addTableRow(`${prefix}Bank Name`, bankRecord.bankName);
         this.addTableRow(`${prefix}Account Type`, bankRecord.accountType);
-        this.addTableRow(`${prefix}Account Number (Last 4)`, bankRecord.accountNumber);
+        this.addTableRow(`${prefix}Account Number (Last 4)`, bankRecord.accountNumber ? '***' + bankRecord.accountNumber.slice(-4) : undefined);
+        this.addTableRow(`${prefix}Routing Number`, bankRecord.routingNumber);
+        this.addTableRow(`${prefix}Balance`, bankRecord.balance ? `$${parseFloat(bankRecord.balance).toLocaleString()}` : undefined);
         
-        // Add spacing between multiple accounts
         if (index < person.bankRecords.length - 1) {
-          this.yPosition += 4; // Reduced spacing
+          this.yPosition += 4; // Add spacing between multiple bank records
         }
       });
-    } else {
-      // Fallback to individual bank fields if bankRecords doesn't exist
+    } else if (person.bankName || person.accountType || person.accountNumber || person.routingNumber || person.balance) {
+      // Fallback to single bank record format
+      this.yPosition += 8; // Reduced spacing
+      this.doc.setFontSize(11); // Reduced font size
+      this.doc.setFont('helvetica', 'bold');
+      this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
+      this.doc.text("Bank Information", this.marginLeft, this.yPosition);
+      this.yPosition += 10; // Reduced spacing
+      
       this.addTableRow("Bank Name", person.bankName);
       this.addTableRow("Account Type", person.accountType);
-      this.addTableRow("Account Number", person.accountNumber);
+      this.addTableRow("Account Number (Last 4)", person.accountNumber ? '***' + person.accountNumber.slice(-4) : undefined);
       this.addTableRow("Routing Number", person.routingNumber);
       this.addTableRow("Balance", person.balance ? `$${parseFloat(person.balance).toLocaleString()}` : undefined);
     }
@@ -411,32 +426,24 @@ export class EnhancedPDFGenerator {
     this.checkPageBreak();
     this.addSection("Legal Questions");
     
-    // Show the two legal questions with explanations
-    const questions = [
-      { 
-        label: "Have you ever been in landlord/tenant legal action?", 
-        value: data.application.landlordTenantLegalAction || "Not specified", 
-        details: data.application.landlordTenantLegalAction === 'yes' ? data.application.landlordTenantLegalActionExplanation : null 
-      },
-      { 
-        label: "Have you ever broken a lease?", 
-        value: data.application.brokenLease || "Not specified", 
-        details: data.application.brokenLease === 'yes' ? data.application.brokenLeaseExplanation : null 
-      }
-    ];
+    // Legal Questions subsection
+    this.doc.setFontSize(11); // Reduced font size
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
+    this.doc.text("Legal History", this.marginLeft, this.yPosition);
+    this.yPosition += 10; // Reduced spacing
     
-    questions.forEach(q => {
-      this.addTableRow(q.label, q.value);
-      if (q.details) {
-        this.doc.setFontSize(8);
-        this.doc.setFont('helvetica', 'italic');
-        this.doc.setTextColor(128, 128, 128);
-        this.doc.text(`  Details: ${q.details}`, this.marginLeft + 10, this.yPosition);
-        this.yPosition += 4; // Reduced spacing
-      }
-    });
+    this.addTableRow("Have you ever been in landlord/tenant legal action?", data.application?.landlordTenantLegalAction || "Not specified");
+    if (data.application?.landlordTenantLegalAction === 'yes' && data.application?.landlordTenantLegalActionExplanation) {
+      this.addTableRow("Legal Action Details", data.application?.landlordTenantLegalActionExplanation);
+    }
     
-    this.yPosition += 4; // Reduced spacing
+    this.addTableRow("Have you ever broken a lease?", data.application?.brokenLease || "Not specified");
+    if (data.application?.brokenLease === 'yes' && data.application?.brokenLeaseExplanation) {
+      this.addTableRow("Broken Lease Details", data.application?.brokenLeaseExplanation);
+    }
+    
+    this.yPosition += 6; // Reduced spacing
   }
 
   private addLegalDisclaimer(): void {

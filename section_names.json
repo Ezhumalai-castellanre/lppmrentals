@@ -1,0 +1,127 @@
+{
+  "section_names": {
+    "main_document_sections": {
+      "applicant": {
+        "applicant_id": "Driver's License (Photo ID)",
+        "applicant_ssn": "Social Security Card",
+        "applicant_w9": "W9 Form",
+        "applicant_employmentLetter": "Employment Letter",
+        "applicant_payStubs": "Pay Stubs (Last 2-4)",
+        "applicant_taxReturns": "Tax Returns (Previous Year)",
+        "applicant_bankStatements": "Bank Statements"
+      },
+      "coApplicant": {
+        "coApplicant_id": "Driver's License (Photo ID)",
+        "coApplicant_ssn": "Social Security Card",
+        "coApplicant_w9": "W9 Form",
+        "coApplicant_employmentLetter": "Employment Letter",
+        "coApplicant_payStubs": "Pay Stubs (Last 2-4)",
+        "coApplicant_taxReturns": "Tax Returns (Previous Year)",
+        "coApplicant_bankStatements": "Bank Statements"
+      },
+      "guarantor": {
+        "guarantor_id": "Driver's License (Photo ID)",
+        "guarantor_ssn": "Social Security Card",
+        "guarantor_w9": "W9 Form",
+        "guarantor_employmentLetter": "Employment Letter",
+        "guarantor_payStubs": "Pay Stubs (Last 2-4)",
+        "guarantor_taxReturns": "Tax Returns (Previous Year)",
+        "guarantor_bankStatements": "Bank Statements"
+      }
+    },
+    "supporting_documents": {
+      "coapplicant": {
+        "coapplicant_photo_id": "Driver's License (Photo ID)",
+        "coapplicant_social_security": "Social Security Card",
+        "coapplicant_w9_forms": "W9 Form",
+        "coapplicant_employment_letter": "Employment Letter",
+        "coapplicant_pay_stubs": "Pay Stubs (Last 2-4)",
+        "coapplicant_tax_returns": "Tax Returns (Previous Year)",
+        "coapplicant_bank_statement": "Bank Statements",
+        "coapplicant_accountant_letter": "Accountant Letter",
+        "coapplicant_credit_report": "Credit Report"
+      },
+      "guarantor": {
+        "guarantor_photo_id": "Driver's License (Photo ID)",
+        "guarantor_social_security": "Social Security Card",
+        "guarantor_w9_forms": "W9 Form",
+        "guarantor_employment_letter": "Employment Letter",
+        "guarantor_pay_stubs": "Pay Stubs (Last 2-4)",
+        "guarantor_tax_returns": "Tax Returns (Previous Year)",
+        "guarantor_bank_statement": "Bank Statements",
+        "guarantor_accountant_letter": "Accountant Letter",
+        "guarantor_credit_report": "Credit Report"
+      },
+      "supporting": {
+        "supporting_photo_id": "Driver's License (Photo ID)",
+        "supporting_social_security": "Social Security Card",
+        "supporting_w9_forms": "W9 Form",
+        "supporting_employment_letter": "Employment Letter",
+        "supporting_pay_stubs": "Pay Stubs (Last 2-4)",
+        "supporting_tax_returns": "Tax Returns (Previous Year)",
+        "supporting_bank_statement": "Bank Statements",
+        "supporting_accountant_letter": "Accountant Letter",
+        "supporting_credit_report": "Credit Report",
+        "supporting_other_occupants_identity": "Proof of Identity for Other Occupants"
+      }
+    },
+    "other_sections": {
+      "other_occupants": {
+        "pattern": "occupant_{idx}_ssn",
+        "description": "Social Security Number for other occupants (where {idx} is the occupant index)"
+      },
+      "missing_documents": {
+        "Applicant": "Direct applicant type name for missing documents page",
+        "Co-Applicant": "Direct co-applicant type name for missing documents page",
+        "Guarantor": "Direct guarantor type name for missing documents page"
+      }
+    }
+  },
+  "document_categories": {
+    "identity_documents": [
+      "photo_id",
+      "social_security",
+      "w9_forms"
+    ],
+    "employment_verification": [
+      "employment_letter",
+      "pay_stubs"
+    ],
+    "financial_documents": [
+      "tax_returns",
+      "bank_statement"
+    ],
+    "self_employed_documents": [
+      "accountant_letter"
+    ],
+    "additional_documents": [
+      "credit_report"
+    ],
+    "other_occupant_documents": [
+      "other_occupants_identity"
+    ]
+  },
+  "person_types": [
+    "applicant",
+    "coApplicant", 
+    "guarantor"
+  ],
+  "file_upload_settings": {
+    "single_file_documents": [
+      "Driver's License",
+      "Social Security Card", 
+      "W9 Form",
+      "Employment Letter"
+    ],
+    "multiple_file_documents": [
+      "Pay Stubs",
+      "Tax Returns",
+      "Bank Statements"
+    ],
+    "file_limits": {
+      "max_size_mb": 10,
+      "max_files_per_document": 5,
+      "accepted_formats": [".pdf", ".jpg", ".jpeg", ".png"]
+    }
+  }
+} 
