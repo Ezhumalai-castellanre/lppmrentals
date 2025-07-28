@@ -1069,11 +1069,16 @@ export function ApplicationForm() {
         // Signatures
         signatures: signatures,
         
-        // Documents
         documents: uploadedDocuments,
       };
 
       console.log("🔍 COMPLETE SERVER DATA BEING SENT:");
+      console.log("📋 CompleteServerData Keys:", Object.keys(completeServerData));
+      console.log("📋 Documents in completeServerData:", completeServerData.documents);
+      console.log("📋 OtherOccupants in completeServerData:", completeServerData.otherOccupants);
+      console.log("📋 ApplicantSsn in completeServerData:", completeServerData.applicantSsn);
+      console.log("📋 ApplicantDob in completeServerData:", completeServerData.applicantDob);
+      console.log("📋 MoveInDate in completeServerData:", completeServerData.moveInDate);
       console.log(JSON.stringify(completeServerData, null, 2));
       
       console.log('📊 Complete server data structure created (same as webhook)');
@@ -1141,8 +1146,13 @@ export function ApplicationForm() {
       
       // Additional debugging for the optimized data
       console.log('🔍 Optimized data analysis:');
+      console.log('📋 ServerOptimizedData Keys:', Object.keys(serverOptimizedData));
       console.log('  - documents:', serverOptimizedData.documents);
       console.log('  - signatures:', serverOptimizedData.signatures);
+      console.log('  - otherOccupants:', serverOptimizedData.otherOccupants);
+      console.log('  - applicantSsn:', serverOptimizedData.applicantSsn);
+      console.log('  - applicantDob:', serverOptimizedData.applicantDob);
+      console.log('  - moveInDate:', serverOptimizedData.moveInDate);
       console.log('  - uploadedFilesMetadata: REMOVED (sent via webhook)');
       
       console.log('SSN Debug:');
@@ -1240,7 +1250,7 @@ export function ApplicationForm() {
           // Primary Applicant - Complete data
           applicantName: data.applicantName,
           applicantDob: safeDateToISO(data.applicantDob || formData.applicant?.dob),
-          applicantSsn: formData.applicant?.ssn && formData.applicant.ssn.trim() !== '' ? formData.applicant.ssn : null,
+          applicantSsn: formData.applicant?.ssn || data.applicantSsn,
           applicantPhone: formatPhoneForPayload(formData.applicant?.phone),
           applicantEmail: data.applicantEmail,
           applicantLicense: formData.applicant?.license || data.applicantLicense,
