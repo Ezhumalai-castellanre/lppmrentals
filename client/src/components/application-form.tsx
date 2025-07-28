@@ -2335,13 +2335,18 @@ export function ApplicationForm() {
                     [documentType]: encryptedFiles,
                   }));
 
+                  // Check if this is a guarantor document by checking if formData has a guarantor
+                  // and if the documentType matches guarantor document IDs
+                  const guarantorDocumentIds = ['photo_id', 'social_security', 'w9_forms', 'employment_letter', 'pay_stubs', 'tax_returns', 'bank_statement', 'accountant_letter', 'credit_report'];
+                  const isGuarantorDocument = formData?.guarantor && guarantorDocumentIds.includes(documentType);
+                  
                   // Track uploadedDocuments for webhook
-                  const sectionKey = `supporting_${documentType}`;
+                  const sectionKey = isGuarantorDocument ? `guarantor_${documentType}` : `supporting_${documentType}`;
                   const docs = encryptedFiles.map(file => ({
                     reference_id: file.uploadDate + '-' + file.filename,
                     file_name: file.filename,
                     section_name: sectionKey,
-                    documents: documentType // <-- Now included
+                    documents: documentType
                   }));
                   setUploadedDocuments(prev => {
                     const filtered = prev.filter(doc => doc.section_name !== sectionKey);

@@ -170,20 +170,12 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
     if (formData.guarantor.employmentType) {
       const guarAllowedCategories = allowedCategoriesForType(formData.guarantor.employmentType);
       guarantorDocuments = requiredDocuments.filter((category) => guarAllowedCategories.has(category.category));
-      console.log('🔍 Guarantor documents found:', {
-        guarantor: formData.guarantor,
-        employmentType: formData.guarantor.employmentType,
-        allowedCategories: Array.from(guarAllowedCategories),
-        guarantorDocuments: guarantorDocuments.map(cat => ({ category: cat.category, documents: cat.documents.length }))
-      });
     } else {
       // Show all documents if guarantor exists but no employment type (for main supporting documents)
       guarantorDocuments = requiredDocuments;
-      console.log('🔍 Guarantor exists but no employment type, showing all documents');
     }
   } else {
     guarantorDocuments = []; // No guarantor at all
-    console.log('🔍 No guarantor, showing no documents');
   }
 
   const getDocumentStatus = (documentId: string) => {
@@ -499,26 +491,12 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                 ))}
               </div>
             )}
-            {/* Guarantor Documents Section */}
-            {(() => {
-              const shouldShow = guarantorDocuments.length > 0 && !showOnlyCoApplicant && !showOnlyGuarantor;
-              console.log('🔍 Rendering guarantor section:', {
-                guarantorDocumentsLength: guarantorDocuments.length,
-                showOnlyCoApplicant,
-                showOnlyGuarantor,
-                shouldShow,
-                guarantor: formData?.guarantor,
-                employmentType: formData?.guarantor?.employmentType,
-                hasGuarantor: !!formData?.guarantor,
-                guarantorDocuments: guarantorDocuments.map(cat => ({ category: cat.category, documents: cat.documents.length }))
-              });
-              return shouldShow;
-                        })() && (
+                        {/* Guarantor Documents Section */}
+            {guarantorDocuments.length > 0 && !showOnlyCoApplicant && !showOnlyGuarantor && (
               <div className="space-y-6 mt-8">
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <Shield className="h-4 w-4" />
                   <h3 className="font-medium text-gray-800">Guarantor Documents</h3>
-                  <span className="text-xs text-gray-500">(Debug: {guarantorDocuments.length} categories)</span>
                 </div>
                 {guarantorDocuments.map((category) => (
                   <div key={category.category} className="space-y-4">
