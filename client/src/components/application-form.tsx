@@ -1061,9 +1061,8 @@ export function ApplicationForm() {
           guarantor: signatures.guarantor ? new Date().toISOString() : null,
         },
         
-        // Documents and Encrypted Documents
+        // Documents
         documents: documents,
-        encryptedDocuments: encryptedDocuments,
       };
 
               console.log('📊 Complete server data structure created (same as webhook)');
@@ -1083,8 +1082,10 @@ export function ApplicationForm() {
         // Replace encrypted documents with only metadata (reference_id, file_name, section_name)
         encryptedDocuments: Object.keys(encryptedDocuments).reduce((acc: any, person: string) => {
           acc[person] = Object.keys(encryptedDocuments[person] || {}).reduce((docAcc: any, docType: string) => {
-            const files = (encryptedDocuments[person] as any)[docType] || [];
-            docAcc[docType] = files.map((file: any) => ({
+            const files = (encryptedDocuments[person] as any)[docType];
+            // Ensure files is always an array before calling .map()
+            const filesArray = Array.isArray(files) ? files : [];
+            docAcc[docType] = filesArray.map((file: any) => ({
               reference_id: file.reference_id || `ref_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
               file_name: file.filename,
               section_name: `${person}_${docType}`,
