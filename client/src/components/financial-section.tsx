@@ -188,28 +188,28 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                   Add First Bank Account
                 </Button>
               )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const bankRecords = formData[person]?.bankRecords || [];
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const bankRecords = formData[person]?.bankRecords || [];
                   console.log(`Adding bank record for ${person}:`, {
                     currentBankRecords: bankRecords,
                     currentLength: bankRecords.length
                   });
-                  const newRecord = { bankName: '', accountType: '', accountNumber: '' };
+                const newRecord = { bankName: '', accountType: '', accountNumber: '' };
                   const updatedRecords = [...bankRecords, newRecord];
                   console.log(`Updated bank records for ${person}:`, {
                     updatedRecords,
                     newLength: updatedRecords.length
                   });
                   updateFormData(person, 'bankRecords', updatedRecords);
-                }}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Bank Account
-              </Button>
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Bank Account
+            </Button>
             </div>
           </div>
 
