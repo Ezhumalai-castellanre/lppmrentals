@@ -16,6 +16,13 @@ interface SupportingDocumentsProps {
 }
 
 export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDocumentChange, referenceId, enableWebhook, applicationId, showOnlyCoApplicant = false, showOnlyGuarantor = false }: SupportingDocumentsProps) {
+  console.log('🔍 SupportingDocuments rendered:', {
+    showOnlyGuarantor,
+    showOnlyCoApplicant,
+    guarantorEmploymentType: formData?.guarantor?.employmentType,
+    guarantorDocuments: formData?.encryptedDocuments?.guarantor,
+    coApplicantDocuments: formData?.encryptedDocuments?.coApplicant
+  });
   const requiredDocuments = [
     {
       category: "Identity Documents",
@@ -174,10 +181,23 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
   }
 
   const getDocumentStatus = (documentId: string) => {
+    // Check for regular documents
     const files = formData.documents?.[documentId];
     if (files && files.length > 0) {
       return { status: "uploaded", count: files.length };
     }
+    
+    // Check for encrypted documents (for guarantor, co-applicant, etc.)
+    if (showOnlyGuarantor && formData.encryptedDocuments?.guarantor?.[documentId]) {
+      const encryptedFiles = formData.encryptedDocuments.guarantor[documentId];
+      return { status: "uploaded", count: encryptedFiles.length };
+    }
+    
+    if (showOnlyCoApplicant && formData.encryptedDocuments?.coApplicant?.[documentId]) {
+      const encryptedFiles = formData.encryptedDocuments.coApplicant[documentId];
+      return { status: "uploaded", count: encryptedFiles.length };
+    }
+    
     return { status: "pending", count: 0 };
   };
 

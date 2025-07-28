@@ -694,6 +694,9 @@ export function ApplicationForm() {
     
     console.log("🔐 ENCRYPTED DOCUMENTS: (Removed from server request)");
     console.log("Count:", Object.keys(encryptedDocuments).length);
+    console.log("Guarantor documents:", encryptedDocuments.guarantor);
+    console.log("Applicant documents:", encryptedDocuments.applicant);
+    console.log("Co-applicant documents:", encryptedDocuments.coApplicant);
     
     console.log("📋 UPLOADED FILES METADATA:");
     console.log(JSON.stringify(uploadedFilesMetadata, null, 2));
@@ -3537,10 +3540,17 @@ export function ApplicationForm() {
               }));
             }}
             onEncryptedDocumentChange={(documentType, encryptedFiles) => {
-              console.log('Guarantor encrypted document change:', documentType, encryptedFiles);
+              console.log('🚀 GUARANTOR ENCRYPTED DOCUMENT CHANGE:', {
+                documentType,
+                encryptedFilesCount: encryptedFiles.length,
+                encryptedFiles: encryptedFiles.map(f => ({ filename: f.filename, size: f.encryptedData.length }))
+              });
               setEncryptedDocuments((prev: any) => ({
                 ...prev,
-                [documentType]: encryptedFiles,
+                guarantor: {
+                  ...prev.guarantor,
+                  [documentType]: encryptedFiles,
+                },
               }));
 
               // Track uploadedDocuments for webhook
