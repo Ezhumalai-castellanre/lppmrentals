@@ -124,38 +124,7 @@
     "brokenLease": "no",
     "brokenLeaseExplanation": ""
   },
-  "documents": {
-    "applicant_id": ["drivers_license.pdf"],
-    "applicant_ssn": ["social_security_card.jpg"],
-    "applicant_w9": ["w9_form.pdf"],
-    "applicant_employmentLetter": ["employment_letter.pdf"],
-    "applicant_payStubs": ["pay_stub_jan.pdf", "pay_stub_feb.pdf"],
-    "applicant_taxReturns": ["tax_return_2023.pdf"],
-    "applicant_bankStatements": ["bank_statement_jan.pdf", "bank_statement_feb.pdf"],
-    "coApplicant_id": ["co_applicant_license.pdf"],
-    "coApplicant_ssn": ["co_applicant_ssn.jpg"],
-    "coApplicant_w9": ["co_applicant_w9.pdf"],
-    "coApplicant_employmentLetter": ["co_applicant_employment.pdf"],
-    "coApplicant_payStubs": ["co_applicant_pay_stub.pdf"],
-    "coApplicant_taxReturns": ["co_applicant_tax_return.pdf"],
-    "coApplicant_bankStatements": ["co_applicant_bank_statement.pdf"],
-    "guarantor_id": ["guarantor_license.pdf"],
-    "guarantor_ssn": ["guarantor_ssn.jpg"],
-    "guarantor_w9": ["guarantor_w9.pdf"],
-    "guarantor_employmentLetter": ["guarantor_employment.pdf"],
-    "guarantor_payStubs": ["guarantor_pay_stub.pdf"],
-    "guarantor_taxReturns": ["guarantor_tax_return.pdf"],
-    "guarantor_bankStatements": ["guarantor_bank_statement.pdf"],
-    "supporting_photo_id": ["supporting_license.pdf"],
-    "supporting_social_security": ["supporting_ssn.jpg"],
-    "supporting_w9_forms": ["supporting_w9.pdf"],
-    "supporting_employment_letter": ["supporting_employment.pdf"],
-    "supporting_pay_stubs": ["supporting_pay_stub_1.pdf", "supporting_pay_stub_2.pdf"],
-    "supporting_tax_returns": ["supporting_tax_return.pdf"],
-    "supporting_bank_statement": ["supporting_bank_statement.pdf"],
-    "supporting_accountant_letter": ["supporting_accountant_letter.pdf"],
-    "supporting_credit_report": ["supporting_credit_report.pdf"]
-  },
+
       "bankInformation": {
       "applicant": {
         "bankRecords": [

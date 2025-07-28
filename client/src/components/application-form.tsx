@@ -1328,8 +1328,7 @@ export function ApplicationForm() {
           signatures: signatures,
           signatureTimestamps: signatureTimestamps,
           
-          // Documents (only metadata)
-          documents: documents,
+
           
           // Bank Information List
           bankInformation: {
@@ -1442,7 +1441,6 @@ export function ApplicationForm() {
           brokenLease: webhookPayload.brokenLease
         });
         console.log('  - Signatures:', Object.keys(webhookPayload.signatures || {}));
-        console.log('  - Documents:', Object.keys(webhookPayload.documents || {}));
         console.log('  - Bank Information:', {
           applicantBankRecords: webhookPayload.bankInformation?.applicant?.totalBankRecords || 0,
           coApplicantBankRecords: webhookPayload.bankInformation?.coApplicant?.totalBankRecords || 0,
