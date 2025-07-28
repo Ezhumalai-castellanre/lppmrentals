@@ -156,102 +156,53 @@
     "supporting_accountant_letter": ["supporting_accountant_letter.pdf"],
     "supporting_credit_report": ["supporting_credit_report.pdf"]
   },
-  "bankInformation": {
-    "applicant": {
-      "bankRecords": [
-        {
-          "bankName": "Chase Bank",
-          "accountType": "checking",
-          "accountNumber": "****1234",
-          "routingNumber": "021000021",
-          "balance": 15000,
-          "accountHolderName": "John Smith",
-          "accountOpenDate": "2018-03-15T00:00:00.000Z",
-          "monthlyDeposits": 5000,
-          "monthlyWithdrawals": 3000
-        },
-        {
-          "bankName": "Bank of America",
-          "accountType": "savings",
-          "accountNumber": "****5678",
-          "routingNumber": "026009593",
-          "balance": 25000,
-          "accountHolderName": "John Smith",
-          "accountOpenDate": "2019-06-20T00:00:00.000Z",
-          "monthlyDeposits": 2000,
-          "monthlyWithdrawals": 500
-        }
-      ],
-      "totalBankRecords": 2,
-      "hasBankRecords": true
-    },
-    "coApplicant": {
-      "bankRecords": [
-        {
-          "bankName": "Wells Fargo",
-          "accountType": "checking",
-          "accountNumber": "****9012",
-          "routingNumber": "121000248",
-          "balance": 8000,
-          "accountHolderName": "Sarah Smith",
-          "accountOpenDate": "2020-01-10T00:00:00.000Z",
-          "monthlyDeposits": 4000,
-          "monthlyWithdrawals": 2500
-        },
-        {
-          "bankName": "Citibank",
-          "accountType": "savings",
-          "accountNumber": "****3456",
-          "routingNumber": "021000089",
-          "balance": 15000,
-          "accountHolderName": "Sarah Smith",
-          "accountOpenDate": "2021-08-15T00:00:00.000Z",
-          "monthlyDeposits": 1500,
-          "monthlyWithdrawals": 300
-        }
-      ],
-      "totalBankRecords": 2,
-      "hasBankRecords": true
-    },
-    "guarantor": {
-      "bankRecords": [
-        {
-          "bankName": "Goldman Sachs",
-          "accountType": "checking",
-          "accountNumber": "****7890",
-          "routingNumber": "021000021",
-          "balance": 75000,
-          "accountHolderName": "Robert Smith",
-          "accountOpenDate": "2015-02-28T00:00:00.000Z",
-          "monthlyDeposits": 12000,
-          "monthlyWithdrawals": 8000
-        },
-        {
-          "bankName": "Morgan Stanley",
-          "accountType": "savings",
-          "accountNumber": "****2345",
-          "routingNumber": "021000021",
-          "balance": 125000,
-          "accountHolderName": "Robert Smith",
-          "accountOpenDate": "2016-11-12T00:00:00.000Z",
-          "monthlyDeposits": 8000,
-          "monthlyWithdrawals": 2000
-        },
-        {
-          "bankName": "JP Morgan Chase",
-          "accountType": "investment",
-          "accountNumber": "****6789",
-          "routingNumber": "021000021",
-          "balance": 200000,
-          "accountHolderName": "Robert Smith",
-          "accountOpenDate": "2017-04-05T00:00:00.000Z",
-          "monthlyDeposits": 15000,
-          "monthlyWithdrawals": 5000
-        }
-      ],
-      "totalBankRecords": 3,
-      "hasBankRecords": true
-    },
+      "bankInformation": {
+      "applicant": {
+        "bankRecords": [
+          {
+            "bankName": "Chase Bank",
+            "accountType": "checking"
+          },
+          {
+            "bankName": "Bank of America",
+            "accountType": "savings"
+          }
+        ],
+        "totalBankRecords": 2,
+        "hasBankRecords": true
+      },
+      "coApplicant": {
+        "bankRecords": [
+          {
+            "bankName": "Wells Fargo",
+            "accountType": "checking"
+          },
+          {
+            "bankName": "Citibank",
+            "accountType": "savings"
+          }
+        ],
+        "totalBankRecords": 2,
+        "hasBankRecords": true
+      },
+      "guarantor": {
+        "bankRecords": [
+          {
+            "bankName": "Goldman Sachs",
+            "accountType": "checking"
+          },
+          {
+            "bankName": "Morgan Stanley",
+            "accountType": "savings"
+          },
+          {
+            "bankName": "JP Morgan Chase",
+            "accountType": "investment"
+          }
+        ],
+        "totalBankRecords": 3,
+        "hasBankRecords": true
+      },
     "summary": {
       "totalPeople": 3,
       "totalBankRecords": 7,

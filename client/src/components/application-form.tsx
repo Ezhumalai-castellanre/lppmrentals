@@ -1334,17 +1334,26 @@ export function ApplicationForm() {
           // Bank Information List
           bankInformation: {
             applicant: {
-              bankRecords: formData.applicant?.bankRecords || [],
+              bankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
+                bankName: record.bankName,
+                accountType: record.accountType
+              })),
               totalBankRecords: formData.applicant?.bankRecords?.length || 0,
               hasBankRecords: !!(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0)
             },
             coApplicant: hasCoApplicant ? {
-              bankRecords: formData.coApplicant?.bankRecords || [],
+              bankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
+                bankName: record.bankName,
+                accountType: record.accountType
+              })),
               totalBankRecords: formData.coApplicant?.bankRecords?.length || 0,
               hasBankRecords: !!(formData.coApplicant?.bankRecords && formData.coApplicant.bankRecords.length > 0)
             } : null,
             guarantor: hasGuarantor ? {
-              bankRecords: formData.guarantor?.bankRecords || [],
+              bankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
+                bankName: record.bankName,
+                accountType: record.accountType
+              })),
               totalBankRecords: formData.guarantor?.bankRecords?.length || 0,
               hasBankRecords: !!(formData.guarantor?.bankRecords && formData.guarantor.bankRecords.length > 0)
             } : null,
