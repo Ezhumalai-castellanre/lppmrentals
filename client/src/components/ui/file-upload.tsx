@@ -142,13 +142,19 @@ export function FileUpload({
             const result = await WebhookService.sendFileToWebhook(file, referenceId, sectionName, documentName || 'Unknown Document', applicationId);
             if (result.success) {
               setUploadStatus(prev => ({ ...prev, [fileKey]: 'success' }));
+              console.log(`✅ Webhook upload successful for ${file.name}`);
             } else {
               setUploadStatus(prev => ({ ...prev, [fileKey]: 'error' }));
-              console.error(`Webhook upload failed for ${file.name}:`, result.error);
+              console.error(`❌ Webhook upload failed for ${file.name}:`, result.error);
+              
+              // Don't retry if it's a duplicate or previously failed upload
+              if (result.error?.includes('already in progress') || result.error?.includes('previously failed')) {
+                console.log(`⏭️ Skipping retry for ${file.name}: ${result.error}`);
+              }
             }
           } catch (webhookError) {
             setUploadStatus(prev => ({ ...prev, [fileKey]: 'error' }));
-            console.error(`Webhook upload error for ${file.name}:`, webhookError);
+            console.error(`❌ Webhook upload error for ${file.name}:`, webhookError);
           }
         }
       }

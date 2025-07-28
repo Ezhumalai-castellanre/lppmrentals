@@ -180,6 +180,12 @@ export class WebhookService {
   
   // Track ongoing submissions to prevent duplicates
   private static ongoingSubmissions = new Set<string>();
+  
+  // Track individual file uploads to prevent duplicates
+  private static ongoingFileUploads = new Set<string>();
+  
+  // Track failed uploads to prevent retries
+  private static failedUploads = new Set<string>();
 
   /**
    * Sends a file to the webhook immediately upon upload
@@ -191,6 +197,24 @@ export class WebhookService {
     documentName: string,
     applicationId?: string
   ): Promise<{ success: boolean; error?: string }> {
+    // Create a unique key for this file upload
+    const fileUploadKey = `${referenceId}-${sectionName}-${file.name}-${file.size}`;
+    
+    // Check if this exact file upload is already in progress
+    if (this.ongoingFileUploads.has(fileUploadKey)) {
+      console.log(`⚠️ File upload already in progress, skipping: ${file.name}`);
+      return { success: false, error: 'File upload already in progress' };
+    }
+    
+    // Check if this file upload previously failed
+    if (this.failedUploads.has(fileUploadKey)) {
+      console.log(`⚠️ File upload previously failed, skipping: ${file.name}`);
+      return { success: false, error: 'File upload previously failed' };
+    }
+    
+    // Add to ongoing uploads
+    this.ongoingFileUploads.add(fileUploadKey);
+    
     try {
       // Convert file to base64
       const base64 = await this.fileToBase64(file);
@@ -205,7 +229,6 @@ export class WebhookService {
       };
 
       console.log(`Sending file ${file.name} to webhook for section ${sectionName} (Document: ${documentName})`);
-      console.log('Webhook payload:', JSON.stringify(webhookData, null, 2));
       
       // Special logging for Guarantor documents
       if (sectionName.startsWith('guarantor_')) {
@@ -243,25 +266,34 @@ export class WebhookService {
         
         clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Webhook failed:', response.status, errorText);
-        return {
-          success: false,
-          error: `Webhook failed: ${response.status} - ${errorText}`
-        };
-      }
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Webhook failed:', response.status, errorText);
+          
+          // Add to failed uploads to prevent retries
+          this.failedUploads.add(fileUploadKey);
+          
+          return {
+            success: false,
+            error: `Webhook failed: ${response.status} - ${errorText}`
+          };
+        }
 
-      const responseTime = Date.now() - startTime;
-      console.log(`✅ File ${file.name} sent to webhook successfully in ${responseTime}ms`);
-      console.log(`📊 File Upload Performance: ${fileSizeMB}MB file, ${responseTime}ms response time`);
-      return { success: true };
+        const responseTime = Date.now() - startTime;
+        console.log(`✅ File ${file.name} sent to webhook successfully in ${responseTime}ms`);
+        console.log(`📊 File Upload Performance: ${fileSizeMB}MB file, ${responseTime}ms response time`);
+        
+        // Remove from ongoing uploads on success
+        this.ongoingFileUploads.delete(fileUploadKey);
+        
+        return { success: true };
 
       } catch (fetchError) {
         clearTimeout(timeoutId);
         
         if (fetchError instanceof Error && fetchError.name === 'AbortError') {
           console.error('File webhook request timed out after 60 seconds');
+          this.failedUploads.add(fileUploadKey);
           return {
             success: false,
             error: 'File webhook request timed out'
@@ -269,6 +301,8 @@ export class WebhookService {
         }
         
         console.error('Error sending file to webhook:', fetchError);
+        this.failedUploads.add(fileUploadKey);
+        
         return {
           success: false,
           error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
@@ -277,10 +311,15 @@ export class WebhookService {
 
     } catch (error) {
       console.error('Error in sendFileToWebhook:', error);
+      this.failedUploads.add(fileUploadKey);
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
+    } finally {
+      // Remove from ongoing uploads
+      this.ongoingFileUploads.delete(fileUploadKey);
     }
   }
 
@@ -534,5 +573,92 @@ export class WebhookService {
       reader.onerror = () => reject(new Error('Failed to read file'));
       reader.readAsDataURL(file);
     });
+  }
+
+  /**
+   * Clears the failed uploads cache
+   */
+  static clearFailedUploads(): void {
+    this.failedUploads.clear();
+    console.log('🧹 Cleared failed uploads cache');
+  }
+
+  /**
+   * Gets the current status of ongoing and failed uploads
+   */
+  static getUploadStatus(): { ongoing: number; failed: number } {
+    return {
+      ongoing: this.ongoingFileUploads.size,
+      failed: this.failedUploads.size
+    };
+  }
+
+  /**
+   * Debug method to log current webhook state
+   */
+  static debugWebhookState(): void {
+    console.log('🔍 Webhook Service Debug Info:');
+    console.log('📊 Ongoing uploads:', this.ongoingFileUploads.size);
+    console.log('📊 Failed uploads:', this.failedUploads.size);
+    console.log('📊 Ongoing submissions:', this.ongoingSubmissions.size);
+    
+    if (this.ongoingFileUploads.size > 0) {
+      console.log('🔄 Ongoing file uploads:', Array.from(this.ongoingFileUploads));
+    }
+    
+    if (this.failedUploads.size > 0) {
+      console.log('❌ Failed uploads:', Array.from(this.failedUploads));
+    }
+  }
+
+  /**
+   * Reset all webhook state (use with caution)
+   */
+  static resetWebhookState(): void {
+    this.ongoingFileUploads.clear();
+    this.failedUploads.clear();
+    this.ongoingSubmissions.clear();
+    console.log('🔄 Reset all webhook state');
+  }
+
+  /**
+   * Test webhook connectivity
+   */
+  static async testWebhookConnectivity(): Promise<{ success: boolean; error?: string }> {
+    try {
+      const testData = {
+        test: true,
+        timestamp: new Date().toISOString(),
+        message: 'Webhook connectivity test'
+      };
+
+      console.log('🧪 Testing webhook connectivity...');
+      
+      const response = await fetch(this.FILE_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testData),
+      });
+
+      if (response.ok) {
+        console.log('✅ Webhook connectivity test successful');
+        return { success: true };
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Webhook connectivity test failed:', response.status, errorText);
+        return {
+          success: false,
+          error: `Test failed: ${response.status} - ${errorText}`
+        };
+      }
+    } catch (error) {
+      console.error('❌ Webhook connectivity test error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 } 

@@ -529,7 +529,6 @@ export function ApplicationForm() {
       signatures,
       hasCoApplicant,
       hasGuarantor,
-  
       sameAddressGuarantor,
       currentStep,
     }));
@@ -539,6 +538,26 @@ export function ApplicationForm() {
       description: "Your application has been saved as a draft.",
     });
   };
+
+  // Clear webhook cache when starting fresh
+  const clearWebhookCache = () => {
+    WebhookService.clearFailedUploads();
+    console.log('🧹 Cleared webhook cache for new application');
+  };
+
+  // Check webhook status
+  const getWebhookStatus = () => {
+    const status = WebhookService.getUploadStatus();
+    console.log('📊 Webhook Status:', status);
+    return status;
+  };
+
+  // Clear cache when component mounts or when referenceId changes
+  useEffect(() => {
+    if (referenceId) {
+      clearWebhookCache();
+    }
+  }, [referenceId]);
 
   // --- Add this helper to get the next allowed step index ---
   function getNextAllowedStep(current: number, direction: 1 | -1) {
