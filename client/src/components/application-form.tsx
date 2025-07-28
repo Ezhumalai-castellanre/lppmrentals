@@ -692,8 +692,8 @@ export function ApplicationForm() {
     console.log("📁 UPLOADED DOCUMENTS:");
     console.log(JSON.stringify(uploadedDocuments, null, 2));
     
-    console.log("🔐 ENCRYPTED DOCUMENTS:");
-    console.log(JSON.stringify(encryptedDocuments, null, 2));
+    console.log("🔐 ENCRYPTED DOCUMENTS: (Removed from server request)");
+    console.log("Count:", Object.keys(encryptedDocuments).length);
     
     console.log("📋 UPLOADED FILES METADATA:");
     console.log(JSON.stringify(uploadedFilesMetadata, null, 2));
@@ -833,7 +833,7 @@ export function ApplicationForm() {
     console.log("- Guarantor Fields:", Object.keys(formData.guarantor || {}).length);
     console.log("- Other Occupants Count:", formData.otherOccupants?.length || 0);
     console.log("- Documents Count:", (uploadedDocuments || []).length);
-    console.log("- Encrypted Documents Count:", Object.keys(encryptedDocuments).length);
+    console.log("- Encrypted Documents Count:", Object.keys(encryptedDocuments).length, "(Not sent to server)");
     console.log("- Signatures Count:", Object.keys(signatures).length);
     
     console.log("=== END COMPLETE FORM DATA ===");
@@ -1061,8 +1061,6 @@ export function ApplicationForm() {
         
         // Documents
         documents: uploadedDocuments,
-        encryptedDocuments: encryptedDocuments,
-        uploadedFilesMetadata: uploadedFilesMetadata,
       };
 
       console.log("🔍 COMPLETE SERVER DATA BEING SENT:");
@@ -1141,7 +1139,6 @@ export function ApplicationForm() {
       
       // Additional debugging for the optimized data
       console.log('🔍 Optimized data analysis:');
-      console.log('  - encryptedDocuments:', serverOptimizedData.encryptedDocuments);
       console.log('  - documents:', serverOptimizedData.documents);
       console.log('  - signatures:', serverOptimizedData.signatures);
       console.log('  - uploadedFilesMetadata keys:', Object.keys(serverOptimizedData.uploadedFilesMetadata || {}));
