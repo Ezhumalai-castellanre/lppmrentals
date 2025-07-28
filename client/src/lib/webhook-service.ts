@@ -176,7 +176,7 @@ export interface PDFWebhookData {
 
 export class WebhookService {
   private static readonly FILE_WEBHOOK_URL = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
-  private static readonly FORM_WEBHOOK_URL = '/api/submit-application'; // Use local Netlify function
+  private static readonly FORM_WEBHOOK_URL = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3'; // Use external webhook for form data
   
   // Track ongoing submissions to prevent duplicates
   private static ongoingSubmissions = new Set<string>();
@@ -382,25 +382,50 @@ export class WebhookService {
       delete cleanFormData.coApplicantBankRecords;
       delete cleanFormData.guarantorBankRecords;
       
-      // Format data for Netlify function
-      const netlifyData = {
-        applicationData: {
-          ...cleanFormData,
-          reference_id: referenceId,
-          application_id: applicationId
+      // Format data for external webhook
+      const webhookData: FormDataWebhookData = {
+        reference_id: referenceId,
+        application_id: applicationId,
+        form_data: cleanFormData,
+        uploaded_files: {
+          supporting_w9_forms: uploadedFiles?.supporting_w9_forms || [],
+          supporting_photo_id: uploadedFiles?.supporting_photo_id || [],
+          supporting_social_security: uploadedFiles?.supporting_social_security || [],
+          supporting_bank_statement: uploadedFiles?.supporting_bank_statement || [],
+          supporting_tax_returns: uploadedFiles?.supporting_tax_returns || [],
+          supporting_employment_letter: uploadedFiles?.supporting_employment_letter || [],
+          supporting_pay_stubs: uploadedFiles?.supporting_pay_stubs || [],
+          supporting_credit_report: uploadedFiles?.supporting_credit_report || [],
+          coApplicant_w9_forms: uploadedFiles?.coApplicant_w9_forms || [],
+          coApplicant_photo_id: uploadedFiles?.coApplicant_photo_id || [],
+          coApplicant_social_security: uploadedFiles?.coApplicant_social_security || [],
+          coApplicant_bank_statement: uploadedFiles?.coApplicant_bank_statement || [],
+          coApplicant_tax_returns: uploadedFiles?.coApplicant_tax_returns || [],
+          coApplicant_employment_letter: uploadedFiles?.coApplicant_employment_letter || [],
+          coApplicant_pay_stubs: uploadedFiles?.coApplicant_pay_stubs || [],
+          coApplicant_credit_report: uploadedFiles?.coApplicant_credit_report || [],
+          guarantor_w9_forms: uploadedFiles?.guarantor_w9_forms || [],
+          guarantor_photo_id: uploadedFiles?.guarantor_photo_id || [],
+          guarantor_social_security: uploadedFiles?.guarantor_social_security || [],
+          guarantor_bank_statement: uploadedFiles?.guarantor_bank_statement || [],
+          guarantor_tax_returns: uploadedFiles?.guarantor_tax_returns || [],
+          guarantor_employment_letter: uploadedFiles?.guarantor_employment_letter || [],
+          guarantor_pay_stubs: uploadedFiles?.guarantor_pay_stubs || [],
+          guarantor_credit_report: uploadedFiles?.guarantor_credit_report || [],
+          other_occupants_identity: uploadedFiles?.other_occupants_identity || []
         },
-        uploadedFilesMetadata: uploadedFiles || {}
+        submission_type: 'form_data'
       };
 
-      console.log(`Sending form data to Netlify function for application ${applicationId}`);
+      console.log(`Sending form data to external webhook for application ${applicationId}`);
       
       // Log payload size for debugging
-      const payloadSize = JSON.stringify(netlifyData).length;
+      const payloadSize = JSON.stringify(webhookData).length;
       const payloadSizeMB = Math.round(payloadSize / (1024 * 1024) * 100) / 100;
-      console.log(`📦 Netlify payload size: ${payloadSizeMB}MB`);
+      console.log(`📦 Webhook payload size: ${payloadSizeMB}MB`);
       
       if (payloadSize > 5 * 1024 * 1024) { // 5MB limit
-        console.warn('⚠️ Netlify payload is large:', payloadSizeMB, 'MB');
+        console.warn('⚠️ Webhook payload is large:', payloadSizeMB, 'MB');
       }
 
       const startTime = Date.now();
@@ -414,7 +439,7 @@ export class WebhookService {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(netlifyData),
+          body: JSON.stringify(webhookData),
           signal: controller.signal,
         });
         
@@ -422,10 +447,10 @@ export class WebhookService {
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('Netlify function failed:', response.status, errorText);
+          console.error('Webhook failed:', response.status, errorText);
           return {
             success: false,
-            error: `Netlify function failed: ${response.status} - ${errorText}`
+            error: `Webhook failed: ${response.status} - ${errorText}`
           };
         }
 
