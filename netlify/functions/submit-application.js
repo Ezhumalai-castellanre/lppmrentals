@@ -1,4 +1,7 @@
 export const handler = async (event, context) => {
+  console.log('=== MINIMAL SUBMIT-APPLICATION FUNCTION CALLED ===');
+  console.log('📥 Request ID:', event.headers['x-request-id'] || context.awsRequestId || 'unknown');
+  
   // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -25,9 +28,6 @@ export const handler = async (event, context) => {
   }
 
   try {
-    console.log('=== SUBMIT-APPLICATION FUNCTION CALLED ===');
-    console.log('📥 Request ID:', event.headers['x-request-id'] || context.awsRequestId || 'unknown');
-    
     // Check request size
     const bodySize = event.body ? event.body.length : 0;
     const bodySizeMB = Math.round(bodySize / (1024 * 1024) * 100) / 100;
@@ -54,6 +54,7 @@ export const handler = async (event, context) => {
     try {
       body = JSON.parse(event.body);
       console.log('✅ JSON parsed successfully');
+      console.log('📋 Received body keys:', Object.keys(body));
     } catch (jsonErr) {
       console.error('❌ JSON parse error:', jsonErr);
       return {
@@ -91,37 +92,6 @@ export const handler = async (event, context) => {
     // Log received data
     console.log('📋 Received applicationData keys:', Object.keys(applicationData));
     console.log('📋 Received uploadedFilesMetadata:', uploadedFilesMetadata ? 'Present' : 'Not present');
-    
-    // Log specific field values for debugging
-    console.log('🔍 Detailed field inspection:');
-    console.log('  - buildingAddress:', applicationData.buildingAddress);
-    console.log('  - apartmentNumber:', applicationData.apartmentNumber);
-    console.log('  - moveInDate:', applicationData.moveInDate);
-    console.log('  - monthlyRent:', applicationData.monthlyRent, 'type:', typeof applicationData.monthlyRent);
-    console.log('  - apartmentType:', applicationData.apartmentType);
-    console.log('  - applicantName:', applicationData.applicantName);
-    console.log('  - applicantDob:', applicationData.applicantDob);
-    console.log('  - applicantEmail:', applicationData.applicantEmail);
-    console.log('  - applicantAddress:', applicationData.applicantAddress);
-    console.log('  - applicantCity:', applicationData.applicantCity);
-    console.log('  - applicantState:', applicationData.applicantState);
-    console.log('  - applicantZip:', applicationData.applicantZip);
-    
-    // Check for large fields that might cause issues
-    console.log('🔍 Checking for large fields:');
-    Object.keys(applicationData).forEach(key => {
-      try {
-        const value = applicationData[key];
-        if (value !== undefined && value !== null) {
-          const valueSize = JSON.stringify(value).length;
-          if (valueSize > 1024) { // If field is larger than 1KB
-            console.log(`⚠️ Large field detected: ${key} = ${Math.round(valueSize/1024)}KB`);
-          }
-        }
-      } catch (error) {
-        console.log(`⚠️ Error checking field ${key}:`, error);
-      }
-    });
     
     // Return success response
     console.log('✅ Function executed successfully (minimal version)');
