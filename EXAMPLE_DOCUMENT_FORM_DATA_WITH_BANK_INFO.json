@@ -1,0 +1,472 @@
+{
+  "application_id": "app_1703123456789_abc123def",
+  "reference_id": "app_1703123456789_xyz789ghi",
+  "form_data": {
+    "buildingAddress": "123 Main Street",
+    "apartmentNumber": "Apt 4B",
+    "moveInDate": "2024-02-01T00:00:00.000Z",
+    "monthlyRent": 2500,
+    "apartmentType": "1 Bedroom",
+    "howDidYouHear": "Broker",
+    "applicantName": "John Smith",
+    "applicantDob": "1990-05-15T00:00:00.000Z",
+    "applicantSsn": "123-45-6789",
+    "applicantPhone": "(555) 123-4567",
+    "applicantEmail": "john.smith@email.com",
+    "applicantLicense": "DL123456789",
+    "applicantLicenseState": "NY",
+    "applicantAddress": "456 Oak Avenue",
+    "applicantCity": "New York",
+    "applicantState": "NY",
+    "applicantZip": "10001",
+    "applicantLengthAtAddressYears": 3,
+    "applicantLengthAtAddressMonths": 6,
+    "applicantLandlordName": "Jane Doe",
+    "applicantLandlordAddressLine1": "456 Oak Avenue",
+    "applicantLandlordAddressLine2": "Apt 2C",
+    "applicantLandlordCity": "New York",
+    "applicantLandlordState": "NY",
+    "applicantLandlordZipCode": "10001",
+    "applicantLandlordPhone": "(555) 987-6543",
+    "applicantLandlordEmail": "jane.doe@email.com",
+    "applicantCurrentRent": 2200,
+    "applicantReasonForMoving": "Job relocation",
+    "applicantEmploymentType": "salaried",
+    "applicantEmployerName": "Tech Corp",
+    "applicantEmployerAddress": "789 Business Blvd",
+    "applicantEmployerCity": "New York",
+    "applicantEmployerState": "NY",
+    "applicantEmployerZip": "10002",
+    "applicantEmployerPhone": "(555) 456-7890",
+    "applicantPosition": "Software Engineer",
+    "applicantStartDate": "2020-03-15T00:00:00.000Z",
+    "applicantSalary": 85000,
+    "applicantIncomeFrequency": "yearly",
+    "hasCoApplicant": true,
+    "coApplicantName": "Sarah Smith",
+    "coApplicantDob": "1992-08-20T00:00:00.000Z",
+    "coApplicantSsn": "987-65-4321",
+    "coApplicantPhone": "(555) 234-5678",
+    "coApplicantEmail": "sarah.smith@email.com",
+    "coApplicantLicense": "DL987654321",
+    "coApplicantLicenseState": "NY",
+    "coApplicantAddress": "456 Oak Avenue",
+    "coApplicantCity": "New York",
+    "coApplicantState": "NY",
+    "coApplicantZip": "10001",
+    "coApplicantLengthAtAddressYears": 3,
+    "coApplicantLengthAtAddressMonths": 6,
+    "coApplicantLandlordName": "Jane Doe",
+    "coApplicantLandlordAddressLine1": "456 Oak Avenue",
+    "coApplicantLandlordAddressLine2": "Apt 2C",
+    "coApplicantLandlordCity": "New York",
+    "coApplicantLandlordState": "NY",
+    "coApplicantLandlordZipCode": "10001",
+    "coApplicantLandlordPhone": "(555) 987-6543",
+    "coApplicantLandlordEmail": "jane.doe@email.com",
+    "coApplicantCurrentRent": 2200,
+    "coApplicantReasonForMoving": "Job relocation",
+    "coApplicantEmploymentType": "salaried",
+    "coApplicantEmployerName": "Design Studio",
+    "coApplicantEmployerAddress": "321 Creative Lane",
+    "coApplicantEmployerCity": "New York",
+    "coApplicantEmployerState": "NY",
+    "coApplicantEmployerZip": "10003",
+    "coApplicantEmployerPhone": "(555) 789-0123",
+    "coApplicantPosition": "Graphic Designer",
+    "coApplicantStartDate": "2021-06-10T00:00:00.000Z",
+    "coApplicantSalary": 65000,
+    "coApplicantIncomeFrequency": "yearly",
+    "hasGuarantor": true,
+    "guarantorName": "Robert Smith",
+    "guarantorDob": "1965-12-10T00:00:00.000Z",
+    "guarantorSsn": "456-78-9012",
+    "guarantorPhone": "(555) 345-6789",
+    "guarantorEmail": "robert.smith@email.com",
+    "guarantorLicense": "DL456789012",
+    "guarantorLicenseState": "NY",
+    "guarantorAddress": "789 Pine Street",
+    "guarantorCity": "New York",
+    "guarantorState": "NY",
+    "guarantorZip": "10004",
+    "guarantorLengthAtAddressYears": 15,
+    "guarantorLengthAtAddressMonths": 0,
+    "guarantorLandlordName": "Mike Johnson",
+    "guarantorLandlordAddressLine1": "789 Pine Street",
+    "guarantorLandlordAddressLine2": "Apt 1A",
+    "guarantorLandlordCity": "New York",
+    "guarantorLandlordState": "NY",
+    "guarantorLandlordZipCode": "10004",
+    "guarantorLandlordPhone": "(555) 654-3210",
+    "guarantorLandlordEmail": "mike.johnson@email.com",
+    "guarantorCurrentRent": 3000,
+    "guarantorReasonForMoving": "N/A",
+    "guarantorEmploymentType": "salaried",
+    "guarantorEmployerName": "Finance Corp",
+    "guarantorEmployerAddress": "555 Wall Street",
+    "guarantorEmployerCity": "New York",
+    "guarantorEmployerState": "NY",
+    "guarantorEmployerZip": "10005",
+    "guarantorEmployerPhone": "(555) 123-7890",
+    "guarantorPosition": "Financial Manager",
+    "guarantorStartDate": "2010-01-15T00:00:00.000Z",
+    "guarantorSalary": 120000,
+    "guarantorIncomeFrequency": "yearly",
+    "otherOccupants": [
+      {
+        "name": "Emma Smith",
+        "dob": "2015-03-25T00:00:00.000Z",
+        "relationship": "child"
+      }
+    ],
+    "landlordTenantLegalAction": "no",
+    "landlordTenantLegalActionExplanation": "",
+    "brokenLease": "no",
+    "brokenLeaseExplanation": ""
+  },
+  "documents": {
+    "applicant_id": ["drivers_license.pdf"],
+    "applicant_ssn": ["social_security_card.jpg"],
+    "applicant_w9": ["w9_form.pdf"],
+    "applicant_employmentLetter": ["employment_letter.pdf"],
+    "applicant_payStubs": ["pay_stub_jan.pdf", "pay_stub_feb.pdf"],
+    "applicant_taxReturns": ["tax_return_2023.pdf"],
+    "applicant_bankStatements": ["bank_statement_jan.pdf", "bank_statement_feb.pdf"],
+    "coApplicant_id": ["co_applicant_license.pdf"],
+    "coApplicant_ssn": ["co_applicant_ssn.jpg"],
+    "coApplicant_w9": ["co_applicant_w9.pdf"],
+    "coApplicant_employmentLetter": ["co_applicant_employment.pdf"],
+    "coApplicant_payStubs": ["co_applicant_pay_stub.pdf"],
+    "coApplicant_taxReturns": ["co_applicant_tax_return.pdf"],
+    "coApplicant_bankStatements": ["co_applicant_bank_statement.pdf"],
+    "guarantor_id": ["guarantor_license.pdf"],
+    "guarantor_ssn": ["guarantor_ssn.jpg"],
+    "guarantor_w9": ["guarantor_w9.pdf"],
+    "guarantor_employmentLetter": ["guarantor_employment.pdf"],
+    "guarantor_payStubs": ["guarantor_pay_stub.pdf"],
+    "guarantor_taxReturns": ["guarantor_tax_return.pdf"],
+    "guarantor_bankStatements": ["guarantor_bank_statement.pdf"],
+    "supporting_photo_id": ["supporting_license.pdf"],
+    "supporting_social_security": ["supporting_ssn.jpg"],
+    "supporting_w9_forms": ["supporting_w9.pdf"],
+    "supporting_employment_letter": ["supporting_employment.pdf"],
+    "supporting_pay_stubs": ["supporting_pay_stub_1.pdf", "supporting_pay_stub_2.pdf"],
+    "supporting_tax_returns": ["supporting_tax_return.pdf"],
+    "supporting_bank_statement": ["supporting_bank_statement.pdf"],
+    "supporting_accountant_letter": ["supporting_accountant_letter.pdf"],
+    "supporting_credit_report": ["supporting_credit_report.pdf"]
+  },
+  "bankInformation": {
+    "applicant": {
+      "bankRecords": [
+        {
+          "bankName": "Chase Bank",
+          "accountType": "checking",
+          "accountNumber": "****1234",
+          "routingNumber": "021000021",
+          "balance": 15000,
+          "accountHolderName": "John Smith",
+          "accountOpenDate": "2018-03-15T00:00:00.000Z",
+          "monthlyDeposits": 5000,
+          "monthlyWithdrawals": 3000
+        },
+        {
+          "bankName": "Bank of America",
+          "accountType": "savings",
+          "accountNumber": "****5678",
+          "routingNumber": "026009593",
+          "balance": 25000,
+          "accountHolderName": "John Smith",
+          "accountOpenDate": "2019-06-20T00:00:00.000Z",
+          "monthlyDeposits": 2000,
+          "monthlyWithdrawals": 500
+        }
+      ],
+      "totalBankRecords": 2,
+      "hasBankRecords": true
+    },
+    "coApplicant": {
+      "bankRecords": [
+        {
+          "bankName": "Wells Fargo",
+          "accountType": "checking",
+          "accountNumber": "****9012",
+          "routingNumber": "121000248",
+          "balance": 8000,
+          "accountHolderName": "Sarah Smith",
+          "accountOpenDate": "2020-01-10T00:00:00.000Z",
+          "monthlyDeposits": 4000,
+          "monthlyWithdrawals": 2500
+        },
+        {
+          "bankName": "Citibank",
+          "accountType": "savings",
+          "accountNumber": "****3456",
+          "routingNumber": "021000089",
+          "balance": 15000,
+          "accountHolderName": "Sarah Smith",
+          "accountOpenDate": "2021-08-15T00:00:00.000Z",
+          "monthlyDeposits": 1500,
+          "monthlyWithdrawals": 300
+        }
+      ],
+      "totalBankRecords": 2,
+      "hasBankRecords": true
+    },
+    "guarantor": {
+      "bankRecords": [
+        {
+          "bankName": "Goldman Sachs",
+          "accountType": "checking",
+          "accountNumber": "****7890",
+          "routingNumber": "021000021",
+          "balance": 75000,
+          "accountHolderName": "Robert Smith",
+          "accountOpenDate": "2015-02-28T00:00:00.000Z",
+          "monthlyDeposits": 12000,
+          "monthlyWithdrawals": 8000
+        },
+        {
+          "bankName": "Morgan Stanley",
+          "accountType": "savings",
+          "accountNumber": "****2345",
+          "routingNumber": "021000021",
+          "balance": 125000,
+          "accountHolderName": "Robert Smith",
+          "accountOpenDate": "2016-11-12T00:00:00.000Z",
+          "monthlyDeposits": 8000,
+          "monthlyWithdrawals": 2000
+        },
+        {
+          "bankName": "JP Morgan Chase",
+          "accountType": "investment",
+          "accountNumber": "****6789",
+          "routingNumber": "021000021",
+          "balance": 200000,
+          "accountHolderName": "Robert Smith",
+          "accountOpenDate": "2017-04-05T00:00:00.000Z",
+          "monthlyDeposits": 15000,
+          "monthlyWithdrawals": 5000
+        }
+      ],
+      "totalBankRecords": 3,
+      "hasBankRecords": true
+    },
+    "summary": {
+      "totalPeople": 3,
+      "totalBankRecords": 7,
+      "peopleWithBankRecords": ["applicant", "coApplicant", "guarantor"]
+    }
+  },
+  "uploaded_documents": [
+    {
+      "reference_id": "1703123456789-drivers_license.pdf",
+      "file_name": "drivers_license.pdf",
+      "section_name": "applicant_id",
+      "documents": "id"
+    },
+    {
+      "reference_id": "1703123456790-social_security_card.jpg",
+      "file_name": "social_security_card.jpg",
+      "section_name": "applicant_ssn",
+      "documents": "ssn"
+    },
+    {
+      "reference_id": "1703123456791-w9_form.pdf",
+      "file_name": "w9_form.pdf",
+      "section_name": "applicant_w9",
+      "documents": "w9"
+    },
+    {
+      "reference_id": "1703123456792-employment_letter.pdf",
+      "file_name": "employment_letter.pdf",
+      "section_name": "applicant_employmentLetter",
+      "documents": "employmentLetter"
+    },
+    {
+      "reference_id": "1703123456793-pay_stub_jan.pdf",
+      "file_name": "pay_stub_jan.pdf",
+      "section_name": "applicant_payStubs",
+      "documents": "payStubs"
+    },
+    {
+      "reference_id": "1703123456794-pay_stub_feb.pdf",
+      "file_name": "pay_stub_feb.pdf",
+      "section_name": "applicant_payStubs",
+      "documents": "payStubs"
+    },
+    {
+      "reference_id": "1703123456795-tax_return_2023.pdf",
+      "file_name": "tax_return_2023.pdf",
+      "section_name": "applicant_taxReturns",
+      "documents": "taxReturns"
+    },
+    {
+      "reference_id": "1703123456796-bank_statement_jan.pdf",
+      "file_name": "bank_statement_jan.pdf",
+      "section_name": "applicant_bankStatements",
+      "documents": "bankStatements"
+    },
+    {
+      "reference_id": "1703123456797-bank_statement_feb.pdf",
+      "file_name": "bank_statement_feb.pdf",
+      "section_name": "applicant_bankStatements",
+      "documents": "bankStatements"
+    },
+    {
+      "reference_id": "1703123456798-co_applicant_license.pdf",
+      "file_name": "co_applicant_license.pdf",
+      "section_name": "coApplicant_id",
+      "documents": "id"
+    },
+    {
+      "reference_id": "1703123456799-co_applicant_ssn.jpg",
+      "file_name": "co_applicant_ssn.jpg",
+      "section_name": "coApplicant_ssn",
+      "documents": "ssn"
+    },
+    {
+      "reference_id": "1703123456800-co_applicant_w9.pdf",
+      "file_name": "co_applicant_w9.pdf",
+      "section_name": "coApplicant_w9",
+      "documents": "w9"
+    },
+    {
+      "reference_id": "1703123456801-co_applicant_employment.pdf",
+      "file_name": "co_applicant_employment.pdf",
+      "section_name": "coApplicant_employmentLetter",
+      "documents": "employmentLetter"
+    },
+    {
+      "reference_id": "1703123456802-co_applicant_pay_stub.pdf",
+      "file_name": "co_applicant_pay_stub.pdf",
+      "section_name": "coApplicant_payStubs",
+      "documents": "payStubs"
+    },
+    {
+      "reference_id": "1703123456803-co_applicant_tax_return.pdf",
+      "file_name": "co_applicant_tax_return.pdf",
+      "section_name": "coApplicant_taxReturns",
+      "documents": "taxReturns"
+    },
+    {
+      "reference_id": "1703123456804-co_applicant_bank_statement.pdf",
+      "file_name": "co_applicant_bank_statement.pdf",
+      "section_name": "coApplicant_bankStatements",
+      "documents": "bankStatements"
+    },
+    {
+      "reference_id": "1703123456805-guarantor_license.pdf",
+      "file_name": "guarantor_license.pdf",
+      "section_name": "guarantor_id",
+      "documents": "id"
+    },
+    {
+      "reference_id": "1703123456806-guarantor_ssn.jpg",
+      "file_name": "guarantor_ssn.jpg",
+      "section_name": "guarantor_ssn",
+      "documents": "ssn"
+    },
+    {
+      "reference_id": "1703123456807-guarantor_w9.pdf",
+      "file_name": "guarantor_w9.pdf",
+      "section_name": "guarantor_w9",
+      "documents": "w9"
+    },
+    {
+      "reference_id": "1703123456808-guarantor_employment.pdf",
+      "file_name": "guarantor_employment.pdf",
+      "section_name": "guarantor_employmentLetter",
+      "documents": "employmentLetter"
+    },
+    {
+      "reference_id": "1703123456809-guarantor_pay_stub.pdf",
+      "file_name": "guarantor_pay_stub.pdf",
+      "section_name": "guarantor_payStubs",
+      "documents": "payStubs"
+    },
+    {
+      "reference_id": "1703123456810-guarantor_tax_return.pdf",
+      "file_name": "guarantor_tax_return.pdf",
+      "section_name": "guarantor_taxReturns",
+      "documents": "taxReturns"
+    },
+    {
+      "reference_id": "1703123456811-guarantor_bank_statement.pdf",
+      "file_name": "guarantor_bank_statement.pdf",
+      "section_name": "guarantor_bankStatements",
+      "documents": "bankStatements"
+    },
+    {
+      "reference_id": "1703123456812-supporting_license.pdf",
+      "file_name": "supporting_license.pdf",
+      "section_name": "supporting_photo_id",
+      "documents": "photo_id"
+    },
+    {
+      "reference_id": "1703123456813-supporting_ssn.jpg",
+      "file_name": "supporting_ssn.jpg",
+      "section_name": "supporting_social_security",
+      "documents": "social_security"
+    },
+    {
+      "reference_id": "1703123456814-supporting_w9.pdf",
+      "file_name": "supporting_w9.pdf",
+      "section_name": "supporting_w9_forms",
+      "documents": "w9_forms"
+    },
+    {
+      "reference_id": "1703123456815-supporting_employment.pdf",
+      "file_name": "supporting_employment.pdf",
+      "section_name": "supporting_employment_letter",
+      "documents": "employment_letter"
+    },
+    {
+      "reference_id": "1703123456816-supporting_pay_stub_1.pdf",
+      "file_name": "supporting_pay_stub_1.pdf",
+      "section_name": "supporting_pay_stubs",
+      "documents": "pay_stubs"
+    },
+    {
+      "reference_id": "1703123456817-supporting_pay_stub_2.pdf",
+      "file_name": "supporting_pay_stub_2.pdf",
+      "section_name": "supporting_pay_stubs",
+      "documents": "pay_stubs"
+    },
+    {
+      "reference_id": "1703123456818-supporting_tax_return.pdf",
+      "file_name": "supporting_tax_return.pdf",
+      "section_name": "supporting_tax_returns",
+      "documents": "tax_returns"
+    },
+    {
+      "reference_id": "1703123456819-supporting_bank_statement.pdf",
+      "file_name": "supporting_bank_statement.pdf",
+      "section_name": "supporting_bank_statement",
+      "documents": "bank_statement"
+    },
+    {
+      "reference_id": "1703123456820-supporting_accountant_letter.pdf",
+      "file_name": "supporting_accountant_letter.pdf",
+      "section_name": "supporting_accountant_letter",
+      "documents": "accountant_letter"
+    },
+    {
+      "reference_id": "1703123456821-supporting_credit_report.pdf",
+      "file_name": "supporting_credit_report.pdf",
+      "section_name": "supporting_credit_report",
+      "documents": "credit_report"
+    }
+  ],
+  "signatures": {
+    "applicant": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "coApplicant": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "guarantor": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+  },
+  "signatureTimestamps": {
+    "applicant": "2023-12-21T10:52:20.123Z",
+    "coApplicant": "2023-12-21T10:52:45.456Z",
+    "guarantor": "2023-12-21T10:53:10.789Z"
+  },
+  "submission_type": "form_data"
+} 

@@ -1328,23 +1328,38 @@ export function ApplicationForm() {
           signatures: signatures,
           signatureTimestamps: signatureTimestamps,
           
-          // Documents and Encrypted Documents (only metadata)
+          // Documents (only metadata)
           documents: documents,
-          encryptedDocuments: Object.keys(encryptedDocuments).reduce((acc: any, person: string) => {
-            acc[person] = Object.keys(encryptedDocuments[person] || {}).reduce((docAcc: any, docType: string) => {
-              const files = (encryptedDocuments[person] as any)[docType] || [];
-              docAcc[docType] = files.map((file: any) => ({
-                reference_id: file.reference_id || `ref_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                file_name: file.filename,
-                section_name: `${person}_${docType}`,
-                original_size: file.originalSize,
-                mime_type: file.mimeType,
-                upload_date: file.uploadDate
-              }));
-              return docAcc;
-            }, {});
-            return acc;
-          }, {} as any),
+          
+          // Bank Information List
+          bankInformation: {
+            applicant: {
+              bankRecords: formData.applicant?.bankRecords || [],
+              totalBankRecords: formData.applicant?.bankRecords?.length || 0,
+              hasBankRecords: !!(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0)
+            },
+            coApplicant: hasCoApplicant ? {
+              bankRecords: formData.coApplicant?.bankRecords || [],
+              totalBankRecords: formData.coApplicant?.bankRecords?.length || 0,
+              hasBankRecords: !!(formData.coApplicant?.bankRecords && formData.coApplicant.bankRecords.length > 0)
+            } : null,
+            guarantor: hasGuarantor ? {
+              bankRecords: formData.guarantor?.bankRecords || [],
+              totalBankRecords: formData.guarantor?.bankRecords?.length || 0,
+              hasBankRecords: !!(formData.guarantor?.bankRecords && formData.guarantor.bankRecords.length > 0)
+            } : null,
+            summary: {
+              totalPeople: 1 + (hasCoApplicant ? 1 : 0) + (hasGuarantor ? 1 : 0),
+              totalBankRecords: (formData.applicant?.bankRecords?.length || 0) + 
+                               (hasCoApplicant ? (formData.coApplicant?.bankRecords?.length || 0) : 0) + 
+                               (hasGuarantor ? (formData.guarantor?.bankRecords?.length || 0) : 0),
+              peopleWithBankRecords: [
+                ...(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0 ? ['applicant'] : []),
+                ...(hasCoApplicant && formData.coApplicant?.bankRecords && formData.coApplicant.bankRecords.length > 0 ? ['coApplicant'] : []),
+                ...(hasGuarantor && formData.guarantor?.bankRecords && formData.guarantor.bankRecords.length > 0 ? ['guarantor'] : [])
+              ]
+            }
+          },
           
           // Application IDs
           application_id: applicationId,
@@ -1419,24 +1434,26 @@ export function ApplicationForm() {
         });
         console.log('  - Signatures:', Object.keys(webhookPayload.signatures || {}));
         console.log('  - Documents:', Object.keys(webhookPayload.documents || {}));
-        console.log('  - Encrypted Documents:', Object.keys(webhookPayload.encryptedDocuments || {}));
+        console.log('  - Bank Information:', {
+          applicantBankRecords: webhookPayload.bankInformation?.applicant?.totalBankRecords || 0,
+          coApplicantBankRecords: webhookPayload.bankInformation?.coApplicant?.totalBankRecords || 0,
+          guarantorBankRecords: webhookPayload.bankInformation?.guarantor?.totalBankRecords || 0,
+          totalBankRecords: webhookPayload.bankInformation?.summary?.totalBankRecords || 0
+        });
         console.log('  - Uploaded Documents Count:', (uploadedDocuments || []).length);
-        console.log('  - Uploaded Files Metadata Keys:', Object.keys(uploadedFilesMetadata || {}));
         console.log('=== END WEBHOOK PAYLOAD DEBUG ===');
 
 
         // Send the complete webhook data exactly as specified
         console.log('🌐 === WEBHOOK SUBMISSION ===');
         console.log('📤 Webhook payload being sent:', JSON.stringify(webhookPayload, null, 2));
-        console.log('📁 Uploaded files metadata:', JSON.stringify(uploadedFilesMetadata, null, 2));
         console.log('🔗 Reference ID:', referenceId);
         console.log('🔗 Application ID:', applicationId);
         
         const webhookResult = await WebhookService.sendFormDataToWebhook(
           webhookPayload,
           referenceId,
-          applicationId,
-          uploadedFilesMetadata
+          applicationId
         );
         
         console.log('📥 Webhook response:', JSON.stringify(webhookResult, null, 2));
