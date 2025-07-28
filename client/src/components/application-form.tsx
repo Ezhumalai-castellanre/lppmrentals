@@ -3830,23 +3830,7 @@ export function ApplicationForm() {
 
         <Form {...form}>
           <form 
-            onSubmit={(e) => {
-              // Only allow form submission if we're on the final step and the submit button was clicked
-              if (currentStep !== STEPS.length - 1) {
-                e.preventDefault();
-                console.log('⚠️ Form submission prevented - not on final step');
-                return;
-              }
-              
-              // Special check for Guarantor Documents step (step 11)
-              if (currentStep === 11) {
-                e.preventDefault();
-                console.log('⚠️ Form submission prevented - on Guarantor Documents step');
-                return;
-              }
-              
-              form.handleSubmit(onSubmit)(e);
-            }} 
+            onSubmit={form.handleSubmit(onSubmit)} 
             className="space-y-4 sm:space-y-8"
             onKeyDown={(e) => {
               // Prevent form submission on Enter key unless it's the submit button
