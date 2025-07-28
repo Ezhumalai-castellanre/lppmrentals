@@ -259,7 +259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               items {
                 id
                 name
-                column_values(ids: ["text_mksxyax3"]) {
+                column_values(ids: ["text_mksxyax3", "text_mksxn3da", "text_mksxdc76"]) {
                   id
                   text
                 }
@@ -327,6 +327,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const parentItemId = item.id;
         const parentItemName = item.name;
         
+        // Extract Co-Applicant and Guarantor names
+        const coApplicantName = item.column_values.find((cv: any) => cv.id === "text_mksxn3da")?.text || null;
+        const guarantorName = item.column_values.find((cv: any) => cv.id === "text_mksxdc76")?.text || null;
+        
+        console.log(`👥 Applicant: ${parentItemName}, Co-Applicant: ${coApplicantName}, Guarantor: ${guarantorName}`);
+        
         const subitems = item.subitems || [];
 
         for (const sub of subitems) {
@@ -334,14 +340,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const status = statusValue?.label || statusValue?.text;
           const applicantType = sub.column_values.find((cv: any) => cv.id === "color_mksyqx5h")?.text || "Unknown";
           
-          if (status === "Missing") {
+          if (["Missing", "Received", "Rejected"].includes(status)) {
             results.push({
               id: sub.id,
               name: sub.name,
               status,
               parentItemId,
               parentItemName,
-              applicantType
+              applicantType,
+              coApplicantName,
+              guarantorName
             });
           }
         }

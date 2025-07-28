@@ -63,7 +63,7 @@ export const handler = async (event, context) => {
             items {
               id
               name
-              column_values(ids: ["text_mksxyax3"]) {
+              column_values(ids: ["text_mksxyax3", "text_mksxn3da", "text_mksxdc76"]) {
                 id
                 text
               }
@@ -145,6 +145,12 @@ export const handler = async (event, context) => {
       const parentItemId = item.id;
       const parentItemName = item.name;
       
+      // Extract Co-Applicant and Guarantor names
+      const coApplicantName = item.column_values.find(cv => cv.id === "text_mksxn3da")?.text || null;
+      const guarantorName = item.column_values.find(cv => cv.id === "text_mksxdc76")?.text || null;
+      
+      console.log(`👥 Applicant: ${parentItemName}, Co-Applicant: ${coApplicantName}, Guarantor: ${guarantorName}`);
+      
       const subitems = item.subitems || [];
       console.log(`📄 Found ${subitems.length} subitems for this parent`);
 
@@ -165,6 +171,8 @@ export const handler = async (event, context) => {
             parentItemId,
             parentItemName,
             applicantType,
+            coApplicantName,
+            guarantorName,
             ...(status === "Received" && publicUrl ? { publicUrl } : { action: "Upload Required" }),
             ...(status === "Received" && previewText ? { previewText } : {})
           });

@@ -19,6 +19,8 @@ interface MissingSubitem {
   parentItemId: string;
   parentItemName: string;
   applicantType: string;
+  coApplicantName?: string;
+  guarantorName?: string;
   publicUrl?: string;
   previewText?: string;
   action?: string;
@@ -419,7 +421,15 @@ export default function MissingDocumentsPage() {
                                   {item.name}
                                 </h4>
                                 <p className="text-sm text-gray-500">
-                                  Applicant: {item.parentItemName}
+                                  {item.applicantType === "Applicant" && (
+                                    <span>Applicant: {item.parentItemName}</span>
+                                  )}
+                                  {item.applicantType === "Co-Applicant" && item.coApplicantName && (
+                                    <span className="text-blue-600">Co-Applicant: {item.coApplicantName}</span>
+                                  )}
+                                  {item.applicantType === "Guarantor" && item.guarantorName && (
+                                    <span className="text-green-600">Guarantor: {item.guarantorName}</span>
+                                  )}
                                 </p>
                               </div>
                             </div>
@@ -619,7 +629,15 @@ export default function MissingDocumentsPage() {
                                   {item.name}
                                 </h4>
                                 <p className="text-sm text-gray-500">
-                                  Applicant: {item.parentItemName}
+                                  {item.applicantType === "Applicant" && (
+                                    <span>Applicant: {item.parentItemName}</span>
+                                  )}
+                                  {item.applicantType === "Co-Applicant" && item.coApplicantName && (
+                                    <span className="text-blue-600">Co-Applicant: {item.coApplicantName}</span>
+                                  )}
+                                  {item.applicantType === "Guarantor" && item.guarantorName && (
+                                    <span className="text-green-600">Guarantor: {item.guarantorName}</span>
+                                  )}
                                 </p>
                               </div>
                             </div>
