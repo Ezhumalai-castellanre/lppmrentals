@@ -1334,14 +1334,14 @@ export function ApplicationForm() {
             guarantorBankRecords: formData.guarantor?.bankRecords || [],
           } : {}),
           
-          // Other Occupants
-          otherOccupants: formData.occupants || [],
+          // Other Occupants - Complete data
+          otherOccupants: formData.otherOccupants || [],
           
           // Legal Questions
-          landlordTenantLegalAction: formData.landlordTenantLegalAction,
-          landlordTenantLegalActionExplanation: formData.landlordTenantLegalActionExplanation,
-          brokenLease: formData.brokenLease,
-          brokenLeaseExplanation: formData.brokenLeaseExplanation,
+          landlordTenantLegalAction: formData.legalQuestions?.landlordTenantLegalAction,
+          landlordTenantLegalActionExplanation: formData.legalQuestions?.landlordTenantLegalActionExplanation,
+          brokenLease: formData.legalQuestions?.brokenLease,
+          brokenLeaseExplanation: formData.legalQuestions?.brokenLeaseExplanation,
           
           // Signatures
           signatures: signatures,
@@ -1397,19 +1397,15 @@ export function ApplicationForm() {
             try {
               console.log('🔍 Debug - uploadedDocuments type:', typeof uploadedDocuments);
               console.log('🔍 Debug - uploadedDocuments value:', uploadedDocuments);
-              
-              if (!uploadedDocuments) {
-                console.log('🔍 Debug - uploadedDocuments is null/undefined, returning empty array');
-                return [];
-              }
-              
-              if (!Array.isArray(uploadedDocuments)) {
-                console.error('❌ uploadedDocuments is not an array:', typeof uploadedDocuments, uploadedDocuments);
-                return [];
-              }
-              
-              console.log('🔍 Debug - Processing uploadedDocuments array:', uploadedDocuments);
-              return uploadedDocuments.map(doc => {
+              // Always treat as array for mapping
+              let docsArray: any[] = [];
+              if (Array.isArray(uploadedDocuments)) {
+                docsArray = uploadedDocuments;
+              } else if (uploadedDocuments && typeof uploadedDocuments === 'object') {
+                docsArray = Object.values(uploadedDocuments);
+              } // else leave as []
+              console.log('🔍 Debug - Processing uploadedDocuments array:', docsArray);
+              return docsArray.map(doc => {
                 if (!doc || typeof doc !== 'object') {
                   console.error('❌ Invalid document object:', doc);
                   return null;
@@ -1426,7 +1422,7 @@ export function ApplicationForm() {
               console.error('❌ uploadedDocuments value:', uploadedDocuments);
               return [];
             }
-          })()
+          })(),
         };
 
         const webhookPayload = completeWebhookData;
