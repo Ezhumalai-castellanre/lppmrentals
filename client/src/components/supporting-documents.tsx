@@ -502,14 +502,17 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                 showOnlyGuarantor,
                 shouldShow,
                 guarantor: formData?.guarantor,
-                employmentType: formData?.guarantor?.employmentType
+                employmentType: formData?.guarantor?.employmentType,
+                hasGuarantor: !!formData?.guarantor,
+                guarantorDocuments: guarantorDocuments.map(cat => ({ category: cat.category, documents: cat.documents.length }))
               });
               return shouldShow;
-            })() && (
+                        })() && (
               <div className="space-y-6 mt-8">
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <Shield className="h-4 w-4" />
                   <h3 className="font-medium text-gray-800">Guarantor Documents</h3>
+                  <span className="text-xs text-gray-500">(Debug: {guarantorDocuments.length} categories)</span>
                 </div>
                 {guarantorDocuments.map((category) => (
                   <div key={category.category} className="space-y-4">
