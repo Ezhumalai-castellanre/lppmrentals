@@ -973,7 +973,10 @@ export function ApplicationForm() {
         applicantPosition: formData.applicant?.position,
         applicantStartDate: safeDateToISO(formData.applicant?.startDate),
         applicantSalary: formData.applicant?.salary,
-        applicantBankRecords: formData.applicant?.bankRecords || [],
+        applicantBankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
+          bankName: record.bankName,
+          accountType: record.accountType
+        })),
         
         // Flags
         hasCoApplicant: hasCoApplicant,
@@ -1015,7 +1018,10 @@ export function ApplicationForm() {
           coApplicantPosition: formData.coApplicant?.position,
           coApplicantStartDate: safeDateToISO(formData.coApplicant?.startDate),
           coApplicantSalary: formData.coApplicant?.salary,
-          coApplicantBankRecords: formData.coApplicant?.bankRecords || [],
+          coApplicantBankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
+            bankName: record.bankName,
+            accountType: record.accountType
+          })),
         } : {}),
         
         // Guarantor - Complete data (if exists)
@@ -1054,11 +1060,24 @@ export function ApplicationForm() {
           guarantorPosition: formData.guarantor?.position,
           guarantorStartDate: safeDateToISO(formData.guarantor?.startDate),
           guarantorSalary: formData.guarantor?.salary,
-          guarantorBankRecords: formData.guarantor?.bankRecords || [],
+          guarantorBankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
+            bankName: record.bankName,
+            accountType: record.accountType
+          })),
         } : {}),
         
-        // Other Occupants
-        otherOccupants: formData.occupants || formData.otherOccupants || [],
+        // Other Occupants (optimized to exclude large document data)
+        otherOccupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any) => ({
+          name: occupant.name,
+          relationship: occupant.relationship,
+          dob: occupant.dob,
+          ssn: occupant.ssn,
+          license: occupant.license,
+          age: occupant.age,
+          // Remove large document data - will be sent via webhook
+          ssnDocument: occupant.ssnDocument ? "UPLOADED" : null,
+          ssnEncryptedDocument: occupant.ssnEncryptedDocument ? "UPLOADED" : null
+        })),
         
         // Legal Questions
         landlordTenantLegalAction: formData.legalQuestions?.landlordTenantLegalAction,
@@ -1066,10 +1085,19 @@ export function ApplicationForm() {
         brokenLease: formData.legalQuestions?.brokenLease,
         brokenLeaseExplanation: formData.legalQuestions?.brokenLeaseExplanation,
         
-        // Signatures
-        signatures: signatures,
+        // Signatures (optimized to avoid large base64 data)
+        signatures: {
+          applicant: signatures.applicant ? "SIGNED" : null,
+          coApplicant: signatures.coApplicant ? "SIGNED" : null,
+          guarantor: signatures.guarantor ? "SIGNED" : null,
+        },
         
-        documents: uploadedDocuments,
+        documents: uploadedDocuments.map(doc => ({
+          reference_id: doc.reference_id,
+          file_name: doc.file_name,
+          section_name: doc.section_name,
+          documents: doc.documents // This should just be the document type, not the encrypted data
+        })),
       };
 
       console.log("🔍 COMPLETE SERVER DATA BEING SENT:");
@@ -1083,16 +1111,8 @@ export function ApplicationForm() {
       // Create a server-optimized version with only document metadata
       const serverOptimizedData = {
         ...completeServerData,
-        // Remove large binary data for server submission
-        signatures: {
-          applicant: signatures.applicant ? "SIGNED" : null,
-          coApplicant: signatures.coApplicant ? "SIGNED" : null,
-          guarantor: signatures.guarantor ? "SIGNED" : null,
-        },
         // Completely remove encrypted documents from server request - they will be sent via webhook
         encryptedDocuments: undefined,
-        // Include documents metadata in server request (not the actual files)
-        documents: uploadedDocuments,
         // Remove uploadedFilesMetadata from server request - files are sent via webhook
         uploadedFilesMetadata: undefined
       };
@@ -1103,17 +1123,29 @@ export function ApplicationForm() {
       console.log(`📊 Original server data size: ${Math.round(payloadSize/1024)}KB`);
       console.log(`📊 Optimized server data size: ${Math.round(optimizedPayloadSize/1024)}KB`);
       console.log(`📊 Size reduction: ${Math.round((payloadSize - optimizedPayloadSize)/1024)}KB`);
+      console.log(`📊 Size reduction percentage: ${Math.round(((payloadSize - optimizedPayloadSize) / payloadSize) * 100)}%`);
       
       // Debug: Check what's making the payload large
       if (payloadSize > 100 * 1024) { // If larger than 100KB
         console.log('🔍 Large payload detected, analyzing...');
+        console.log(`📊 Total payload size: ${Math.round(payloadSize/1024)}KB`);
+        
+        // Sort fields by size to identify the largest contributors
+        const fieldSizes: { key: string; size: number; sizeKB: number }[] = [];
+        
         Object.keys(completeServerData).forEach(key => {
           try {
             const fieldValue = (completeServerData as any)[key];
             if (fieldValue !== undefined && fieldValue !== null) {
               const fieldSize = JSON.stringify(fieldValue).length;
               if (fieldSize > 1024) { // If field is larger than 1KB
+                fieldSizes.push({
+                  key,
+                  size: fieldSize,
+                  sizeKB: Math.round(fieldSize/1024)
+                });
                 console.log(`⚠️ Large field: ${key} = ${Math.round(fieldSize/1024)}KB`);
+                
                 // If it's an object, check its properties
                 if (typeof fieldValue === 'object' && fieldValue !== null) {
                   Object.keys(fieldValue).forEach(subKey => {
@@ -1123,6 +1155,13 @@ export function ApplicationForm() {
                         const subSize = JSON.stringify(subValue).length;
                         if (subSize > 100) { // If sub-field is larger than 100 bytes
                           console.log(`  ⚠️ Large sub-field: ${key}.${subKey} = ${Math.round(subSize/1024)}KB`);
+                          // If it's a string and looks like base64, log its length
+                          if (typeof subValue === 'string' && subValue.length > 1000) {
+                            console.log(`    📝 Large string detected: ${subKey} length = ${subValue.length} characters`);
+                            if (subValue.startsWith('data:')) {
+                              console.log(`    📝 This appears to be a data URL (base64 encoded)`);
+                            }
+                          }
                         }
                       }
                     } catch (subError) {
@@ -1135,6 +1174,13 @@ export function ApplicationForm() {
           } catch (error) {
             console.log(`⚠️ Error analyzing field ${key}:`, error);
           }
+        });
+        
+        // Sort and display the largest fields
+        fieldSizes.sort((a, b) => b.size - a.size);
+        console.log('📊 Top 5 largest fields:');
+        fieldSizes.slice(0, 5).forEach((field, index) => {
+          console.log(`  ${index + 1}. ${field.key}: ${field.sizeKB}KB`);
         });
       }
       
@@ -1170,6 +1216,7 @@ export function ApplicationForm() {
       // Log request body size instead of full content
       const requestBodySize = JSON.stringify(requestBody).length;
       console.log(`📊 Request body size: ${Math.round(requestBodySize/1024)}KB`);
+      console.log(`📊 Request body size in MB: ${Math.round(requestBodySize/(1024*1024)*100)/100}MB`);
       console.log('Request body structure:', Object.keys(requestBody));
       
       // Validate required fields before submission
@@ -1272,7 +1319,10 @@ export function ApplicationForm() {
           applicantPosition: formData.applicant?.position,
           applicantStartDate: safeDateToISO(formData.applicant?.startDate),
           applicantSalary: formData.applicant?.salary,
-          applicantBankRecords: formData.applicant?.bankRecords || [],
+          applicantBankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
+            bankName: record.bankName,
+            accountType: record.accountType
+          })),
           
           // Flags
           hasCoApplicant: hasCoApplicant,
@@ -1314,7 +1364,10 @@ export function ApplicationForm() {
             coApplicantPosition: formData.coApplicant?.position,
             coApplicantStartDate: safeDateToISO(formData.coApplicant?.startDate),
             coApplicantSalary: formData.coApplicant?.salary,
-            coApplicantBankRecords: formData.coApplicant?.bankRecords || [],
+            coApplicantBankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
+              bankName: record.bankName,
+              accountType: record.accountType
+            })),
           } : {}),
           
           // Guarantor - Complete data (if exists)
@@ -1353,11 +1406,24 @@ export function ApplicationForm() {
             guarantorPosition: formData.guarantor?.position,
             guarantorStartDate: safeDateToISO(formData.guarantor?.startDate),
             guarantorSalary: formData.guarantor?.salary,
-            guarantorBankRecords: formData.guarantor?.bankRecords || [],
+            guarantorBankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
+              bankName: record.bankName,
+              accountType: record.accountType
+            })),
           } : {}),
           
-          // Other Occupants - Complete data
-          otherOccupants: formData.occupants || formData.otherOccupants || [],
+          // Other Occupants - Complete data (optimized to exclude large document data)
+          otherOccupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any) => ({
+            name: occupant.name,
+            relationship: occupant.relationship,
+            dob: occupant.dob,
+            ssn: occupant.ssn,
+            license: occupant.license,
+            age: occupant.age,
+            // Remove large document data - will be sent via webhook
+            ssnDocument: occupant.ssnDocument ? "UPLOADED" : null,
+            ssnEncryptedDocument: occupant.ssnEncryptedDocument ? "UPLOADED" : null
+          })),
           
           // Legal Questions
           landlordTenantLegalAction: formData.legalQuestions?.landlordTenantLegalAction,
@@ -1365,8 +1431,12 @@ export function ApplicationForm() {
           brokenLease: formData.legalQuestions?.brokenLease,
           brokenLeaseExplanation: formData.legalQuestions?.brokenLeaseExplanation,
           
-          // Signatures
-          signatures: signatures,
+          // Signatures (optimized to avoid large base64 data)
+          signatures: {
+            applicant: signatures.applicant ? "SIGNED" : null,
+            coApplicant: signatures.coApplicant ? "SIGNED" : null,
+            guarantor: signatures.guarantor ? "SIGNED" : null,
+          },
           signatureTimestamps: signatureTimestamps,
           
 
