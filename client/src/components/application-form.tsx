@@ -707,7 +707,14 @@ export function ApplicationForm() {
     console.log("- Guarantor Bank Records:", formData.guarantor?.bankRecords);
     
     console.log("👥 OTHER OCCUPANTS:");
-    console.log(JSON.stringify(formData.otherOccupants, null, 2));
+    console.log("formData.occupants:", formData.occupants);
+    console.log("formData.otherOccupants:", formData.otherOccupants);
+    console.log("Final otherOccupants:", formData.occupants || formData.otherOccupants || []);
+    console.log("Occupants with SSN documents:", formData.occupants?.map((occ: any) => ({
+      name: occ.name,
+      ssnDocument: occ.ssnDocument ? 'UPLOADED' : 'NULL',
+      ssnEncryptedDocument: occ.ssnEncryptedDocument ? 'UPLOADED' : 'NULL'
+    })));
     
     console.log("⚖️ LEGAL QUESTIONS:");
     console.log("- Landlord Tenant Legal Action:", formData.legalQuestions?.landlordTenantLegalAction);
@@ -1051,7 +1058,7 @@ export function ApplicationForm() {
         } : {}),
         
         // Other Occupants
-        otherOccupants: formData.occupants || [],
+        otherOccupants: formData.occupants || formData.otherOccupants || [],
         
         // Legal Questions
         landlordTenantLegalAction: formData.legalQuestions?.landlordTenantLegalAction,
@@ -1360,7 +1367,7 @@ export function ApplicationForm() {
           } : {}),
           
           // Other Occupants - Complete data
-          otherOccupants: formData.otherOccupants || [],
+          otherOccupants: formData.occupants || formData.otherOccupants || [],
           
           // Legal Questions
           landlordTenantLegalAction: formData.legalQuestions?.landlordTenantLegalAction,
@@ -3028,11 +3035,23 @@ export function ApplicationForm() {
                       maxSize={10}
                       enableEncryption={true}
                       onFileChange={files => {
+                        console.log('🚀 OCCUPANT SSN DOCUMENT UPLOAD:', {
+                          occupantIndex: idx,
+                          occupantName: occupant.name,
+                          filesCount: files.length,
+                          fileName: files[0]?.name
+                        });
                         const updated = [...formData.occupants];
                         updated[idx] = { ...updated[idx], ssnDocument: files[0] };
                         setFormData((prev: any) => ({ ...prev, occupants: updated }));
                       }}
                       onEncryptedFilesChange={encryptedFiles => {
+                        console.log('🚀 OCCUPANT SSN ENCRYPTED DOCUMENT UPLOAD:', {
+                          occupantIndex: idx,
+                          occupantName: occupant.name,
+                          encryptedFilesCount: encryptedFiles.length,
+                          fileName: encryptedFiles[0]?.filename
+                        });
                         const updated = [...formData.occupants];
                         updated[idx] = { ...updated[idx], ssnEncryptedDocument: encryptedFiles[0] };
                         setFormData((prev: any) => ({ ...prev, occupants: updated }));
