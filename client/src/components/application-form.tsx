@@ -1082,24 +1082,20 @@ export function ApplicationForm() {
           coApplicant: signatures.coApplicant ? "SIGNED" : null,
           guarantor: signatures.guarantor ? "SIGNED" : null,
         },
-        // Replace encrypted documents with only metadata (reference_id, file_name, section_name)
-        encryptedDocuments: Object.keys(encryptedDocuments).reduce((acc: any, person: string) => {
-          acc[person] = Object.keys(encryptedDocuments[person] || {}).reduce((docAcc: any, docType: string) => {
-            const files = (encryptedDocuments[person] as any)[docType];
-            // Ensure files is always an array before calling .map()
-            const filesArray = Array.isArray(files) ? files : [];
-            docAcc[docType] = filesArray.map((file: any) => ({
-              reference_id: file.reference_id || `ref_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              file_name: file.filename,
-              section_name: `${person}_${docType}`,
-              original_size: file.originalSize,
-              mime_type: file.mimeType,
-              upload_date: file.uploadDate
-            }));
-            return docAcc;
-          }, {});
+        // Completely remove encrypted documents from server request - they will be sent via webhook
+        encryptedDocuments: undefined,
+        // Remove documents array from server request - they will be sent via webhook
+        documents: undefined,
+        // Keep only metadata for uploaded files
+        uploadedFilesMetadata: Object.keys(uploadedFilesMetadata).reduce((acc: any, section: string) => {
+          acc[section] = uploadedFilesMetadata[section].map((file: any) => ({
+            file_name: file.file_name,
+            file_size: file.file_size,
+            mime_type: file.mime_type,
+            upload_date: file.upload_date
+          }));
           return acc;
-        }, {} as any)
+        }, {})
       };
       
       // Log payload size for debugging
@@ -1119,6 +1115,22 @@ export function ApplicationForm() {
               const fieldSize = JSON.stringify(fieldValue).length;
               if (fieldSize > 1024) { // If field is larger than 1KB
                 console.log(`⚠️ Large field: ${key} = ${Math.round(fieldSize/1024)}KB`);
+                // If it's an object, check its properties
+                if (typeof fieldValue === 'object' && fieldValue !== null) {
+                  Object.keys(fieldValue).forEach(subKey => {
+                    try {
+                      const subValue = fieldValue[subKey];
+                      if (subValue !== undefined && subValue !== null) {
+                        const subSize = JSON.stringify(subValue).length;
+                        if (subSize > 100) { // If sub-field is larger than 100 bytes
+                          console.log(`  ⚠️ Large sub-field: ${key}.${subKey} = ${Math.round(subSize/1024)}KB`);
+                        }
+                      }
+                    } catch (subError) {
+                      console.log(`  ⚠️ Error analyzing sub-field ${key}.${subKey}:`, subError);
+                    }
+                  });
+                }
               }
             }
           } catch (error) {
@@ -1126,6 +1138,13 @@ export function ApplicationForm() {
           }
         });
       }
+      
+      // Additional debugging for the optimized data
+      console.log('🔍 Optimized data analysis:');
+      console.log('  - encryptedDocuments:', serverOptimizedData.encryptedDocuments);
+      console.log('  - documents:', serverOptimizedData.documents);
+      console.log('  - signatures:', serverOptimizedData.signatures);
+      console.log('  - uploadedFilesMetadata keys:', Object.keys(serverOptimizedData.uploadedFilesMetadata || {}));
       
       console.log('SSN Debug:');
       console.log('  - formData.applicant.ssn:', formData.applicant?.ssn);
@@ -1267,15 +1286,15 @@ export function ApplicationForm() {
             coApplicantName: formData.coApplicant?.name,
             coApplicantRelationship: formData.coApplicant?.relationship,
             coApplicantDob: safeDateToISO(formData.coApplicant?.dob),
-            coApplicantSsn: formData.coApplicant?.ssn,
-            coApplicantPhone: formatPhoneForPayload(formData.coApplicant?.phone),
-            coApplicantEmail: formData.coApplicant?.email,
-            coApplicantLicense: formData.coApplicant?.license,
+            coApplicantSsn: formData.coApplicant?.ssn || data.coApplicantSsn,
+            coApplicantPhone: formatPhoneForPayload(formData.coApplicant?.phone || data.coApplicantPhone),
+            coApplicantEmail: formData.coApplicant?.email || data.coApplicantEmail,
+            coApplicantLicense: formData.coApplicant?.license || data.coApplicantLicense,
             coApplicantLicenseState: formData.coApplicant?.licenseState,
             coApplicantAddress: formData.coApplicant?.address,
             coApplicantCity: formData.coApplicant?.city,
             coApplicantState: formData.coApplicant?.state,
-            coApplicantZip: formData.coApplicant?.zip,
+            coApplicantZip: formData.coApplicant?.zip || data.coApplicantZip,
             coApplicantLengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears,
             coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths,
             coApplicantLandlordName: formData.coApplicant?.landlordName,
@@ -1283,9 +1302,9 @@ export function ApplicationForm() {
             coApplicantLandlordAddressLine2: formData.coApplicant?.landlordAddressLine2,
             coApplicantLandlordCity: formData.coApplicant?.landlordCity,
             coApplicantLandlordState: formData.coApplicant?.landlordState,
-            coApplicantLandlordZipCode: formData.coApplicant?.landlordZipCode,
-            coApplicantLandlordPhone: formData.coApplicant?.landlordPhone,
-            coApplicantLandlordEmail: formData.coApplicant?.landlordEmail,
+            coApplicantLandlordZipCode: formData.coApplicant?.landlordZipCode || data.coApplicantLandlordZipCode,
+            coApplicantLandlordPhone: formData.coApplicant?.landlordPhone || data.coApplicantLandlordPhone,
+            coApplicantLandlordEmail: formData.coApplicant?.landlordEmail || data.coApplicantLandlordEmail,
             coApplicantCurrentRent: formData.coApplicant?.currentRent,
             coApplicantReasonForMoving: formData.coApplicant?.reasonForMoving,
             coApplicantEmploymentType: formData.coApplicant?.employmentType,
@@ -1306,13 +1325,15 @@ export function ApplicationForm() {
             guarantorName: formData.guarantor?.name,
             guarantorRelationship: formData.guarantor?.relationship,
             guarantorDob: safeDateToISO(formData.guarantor?.dob),
-            guarantorSsn: formData.guarantor?.ssn,
-            guarantorPhone: formatPhoneForPayload(formData.guarantor?.phone),
-            guarantorEmail: formData.guarantor?.email,
+            guarantorSsn: formData.guarantor?.ssn || data.guarantorSsn,
+            guarantorPhone: formatPhoneForPayload(formData.guarantor?.phone || data.guarantorPhone),
+            guarantorEmail: formData.guarantor?.email || data.guarantorEmail,
+            guarantorLicense: formData.guarantor?.license || data.guarantorLicense,
+            guarantorLicenseState: formData.guarantor?.licenseState,
             guarantorAddress: formData.guarantor?.address,
             guarantorCity: formData.guarantor?.city,
             guarantorState: formData.guarantor?.state,
-            guarantorZip: formData.guarantor?.zip,
+            guarantorZip: formData.guarantor?.zip || data.guarantorZip,
             guarantorLengthAtAddressYears: formData.guarantor?.lengthAtAddressYears,
             guarantorLengthAtAddressMonths: formData.guarantor?.lengthAtAddressMonths,
             guarantorLandlordName: formData.guarantor?.landlordName,
@@ -1320,9 +1341,9 @@ export function ApplicationForm() {
             guarantorLandlordAddressLine2: formData.guarantor?.landlordAddressLine2,
             guarantorLandlordCity: formData.guarantor?.landlordCity,
             guarantorLandlordState: formData.guarantor?.landlordState,
-            guarantorLandlordZipCode: formData.guarantor?.landlordZipCode,
-            guarantorLandlordPhone: formData.guarantor?.landlordPhone,
-            guarantorLandlordEmail: formData.guarantor?.landlordEmail,
+            guarantorLandlordZipCode: formData.guarantor?.landlordZipCode || data.guarantorLandlordZipCode,
+            guarantorLandlordPhone: formData.guarantor?.landlordPhone || data.guarantorLandlordPhone,
+            guarantorLandlordEmail: formData.guarantor?.landlordEmail || data.guarantorLandlordEmail,
             guarantorCurrentRent: formData.guarantor?.currentRent,
             guarantorReasonForMoving: formData.guarantor?.reasonForMoving,
             guarantorEmploymentType: formData.guarantor?.employmentType,

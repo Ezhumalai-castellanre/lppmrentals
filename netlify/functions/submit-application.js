@@ -107,6 +107,22 @@ export const handler = async (event, context) => {
     console.log('  - applicantState:', applicationData.applicantState);
     console.log('  - applicantZip:', applicationData.applicantZip);
     
+    // Check for large fields that might cause issues
+    console.log('🔍 Checking for large fields:');
+    Object.keys(applicationData).forEach(key => {
+      try {
+        const value = applicationData[key];
+        if (value !== undefined && value !== null) {
+          const valueSize = JSON.stringify(value).length;
+          if (valueSize > 1024) { // If field is larger than 1KB
+            console.log(`⚠️ Large field detected: ${key} = ${Math.round(valueSize/1024)}KB`);
+          }
+        }
+      } catch (error) {
+        console.log(`⚠️ Error checking field ${key}:`, error);
+      }
+    });
+    
     // Return success response
     console.log('✅ Function executed successfully (minimal version)');
     
@@ -139,6 +155,11 @@ export const handler = async (event, context) => {
     console.error('❌ Error message:', error instanceof Error ? error.message : 'No message');
     console.error('❌ Error name:', error instanceof Error ? error.name : 'No name');
     console.error('❌ Request ID:', event.headers['x-request-id'] || context.awsRequestId || 'unknown');
+    
+    // Log additional context
+    console.error('❌ Request method:', event.httpMethod);
+    console.error('❌ Request headers:', JSON.stringify(event.headers, null, 2));
+    console.error('❌ Request body size:', event.body ? event.body.length : 0);
     
     return {
       statusCode: 500,
