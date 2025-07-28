@@ -403,8 +403,10 @@ export function ApplicationForm() {
       documents: documentType // <-- Now included
     }));
     setUploadedDocuments(prev => {
+      // Ensure prev is always an array
+      const safePrev = Array.isArray(prev) ? prev : [];
       // Remove any previous docs for this section
-      const filtered = prev.filter(doc => doc.section_name !== sectionKey);
+      const filtered = safePrev.filter(doc => doc.section_name !== sectionKey);
       return [...filtered, ...docs];
     });
 
@@ -1351,18 +1353,32 @@ export function ApplicationForm() {
           // Uploaded Documents
           uploaded_documents: (() => {
             try {
-              const docs = uploadedDocuments || [];
-              console.log('🔍 Debug - Processing uploadedDocuments:', docs);
-              if (!Array.isArray(docs)) {
-                console.error('❌ uploadedDocuments is not an array:', typeof docs, docs);
+              console.log('🔍 Debug - uploadedDocuments type:', typeof uploadedDocuments);
+              console.log('🔍 Debug - uploadedDocuments value:', uploadedDocuments);
+              
+              if (!uploadedDocuments) {
+                console.log('🔍 Debug - uploadedDocuments is null/undefined, returning empty array');
                 return [];
               }
-              return docs.map(doc => ({
-                reference_id: doc.reference_id,
-                file_name: doc.file_name,
-                section_name: doc.section_name,
-                documents: doc.documents
-              }));
+              
+              if (!Array.isArray(uploadedDocuments)) {
+                console.error('❌ uploadedDocuments is not an array:', typeof uploadedDocuments, uploadedDocuments);
+                return [];
+              }
+              
+              console.log('🔍 Debug - Processing uploadedDocuments array:', uploadedDocuments);
+              return uploadedDocuments.map(doc => {
+                if (!doc || typeof doc !== 'object') {
+                  console.error('❌ Invalid document object:', doc);
+                  return null;
+                }
+                return {
+                  reference_id: doc.reference_id || '',
+                  file_name: doc.file_name || '',
+                  section_name: doc.section_name || '',
+                  documents: doc.documents || ''
+                };
+              }).filter(doc => doc !== null);
             } catch (error) {
               console.error('❌ Error processing uploadedDocuments:', error);
               console.error('❌ uploadedDocuments value:', uploadedDocuments);
@@ -2349,7 +2365,9 @@ export function ApplicationForm() {
                     documents: documentType
                   }));
                   setUploadedDocuments(prev => {
-                    const filtered = prev.filter(doc => doc.section_name !== sectionKey);
+                    // Ensure prev is always an array
+                    const safePrev = Array.isArray(prev) ? prev : [];
+                    const filtered = safePrev.filter(doc => doc.section_name !== sectionKey);
                     return [...filtered, ...docs];
                   });
 
@@ -3503,7 +3521,9 @@ export function ApplicationForm() {
                 documents: documentType
               }));
               setUploadedDocuments(prev => {
-                const filtered = prev.filter(doc => doc.section_name !== sectionKey);
+                // Ensure prev is always an array
+                const safePrev = Array.isArray(prev) ? prev : [];
+                const filtered = safePrev.filter(doc => doc.section_name !== sectionKey);
                 return [...filtered, ...docs];
               });
 
