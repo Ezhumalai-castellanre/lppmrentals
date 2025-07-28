@@ -72,7 +72,7 @@ export const handler = async (event, context) => {
     }
     
     // Extract data
-    const { applicationData, uploadedFilesMetadata } = body;
+    const { applicationData } = body;
 
     if (!applicationData) {
       console.error('❌ Missing application data');
@@ -91,7 +91,6 @@ export const handler = async (event, context) => {
 
     // Log received data
     console.log('📋 Received applicationData keys:', Object.keys(applicationData));
-    console.log('📋 Received uploadedFilesMetadata:', uploadedFilesMetadata ? 'Present' : 'Not present');
     
     // Return success response
     console.log('✅ Function executed successfully (minimal version)');

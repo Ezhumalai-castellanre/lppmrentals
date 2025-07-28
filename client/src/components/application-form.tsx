@@ -1094,16 +1094,8 @@ export function ApplicationForm() {
         encryptedDocuments: undefined,
         // Remove documents array from server request - they will be sent via webhook
         documents: undefined,
-        // Keep only metadata for uploaded files
-        uploadedFilesMetadata: Object.keys(uploadedFilesMetadata).reduce((acc: any, section: string) => {
-          acc[section] = uploadedFilesMetadata[section].map((file: any) => ({
-            file_name: file.file_name,
-            file_size: file.file_size,
-            mime_type: file.mime_type,
-            upload_date: file.upload_date
-          }));
-          return acc;
-        }, {})
+        // Remove uploadedFilesMetadata from server request - files are sent via webhook
+        uploadedFilesMetadata: undefined
       };
       
       // Log payload size for debugging
@@ -1151,7 +1143,7 @@ export function ApplicationForm() {
       console.log('🔍 Optimized data analysis:');
       console.log('  - documents:', serverOptimizedData.documents);
       console.log('  - signatures:', serverOptimizedData.signatures);
-      console.log('  - uploadedFilesMetadata keys:', Object.keys(serverOptimizedData.uploadedFilesMetadata || {}));
+      console.log('  - uploadedFilesMetadata: REMOVED (sent via webhook)');
       
       console.log('SSN Debug:');
       console.log('  - formData.applicant.ssn:', formData.applicant?.ssn);
@@ -1173,14 +1165,13 @@ export function ApplicationForm() {
       console.log('Making request to:', window.location.origin + apiEndpoint + '/submit-application');
       
       const requestBody = {
-        applicationData: serverOptimizedData,
-        uploadedFilesMetadata: uploadedFilesMetadata
+        applicationData: serverOptimizedData
       };
       
       // Log request body size instead of full content
       const requestBodySize = JSON.stringify(requestBody).length;
       console.log(`📊 Request body size: ${Math.round(requestBodySize/1024)}KB`);
-      console.log('Request body uploadedFilesMetadata:', requestBody.uploadedFilesMetadata);
+      console.log('Request body structure:', Object.keys(requestBody));
       
       // Validate required fields before submission
       if (!serverOptimizedData.applicantDob) {
