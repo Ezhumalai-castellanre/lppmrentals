@@ -155,8 +155,7 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
     });
   }
 
-  // Note: Guarantor Documents are only shown in Step 12 (Guarantor Documents step)
-  // They are not included in the main supporting documents list
+  // Note: Guarantor documents are shown in a separate section below, not mixed in with main documents
 
   // Co-Applicant Documents logic
   let coApplicantDocuments: any[] = [];
@@ -170,8 +169,15 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
   if (formData?.guarantor && formData.guarantor.employmentType) {
     const guarAllowedCategories = allowedCategoriesForType(formData.guarantor.employmentType);
     guarantorDocuments = requiredDocuments.filter((category) => guarAllowedCategories.has(category.category));
+    console.log('🔍 Guarantor documents found:', {
+      guarantor: formData.guarantor,
+      employmentType: formData.guarantor.employmentType,
+      allowedCategories: Array.from(guarAllowedCategories),
+      guarantorDocuments: guarantorDocuments.map(cat => ({ category: cat.category, documents: cat.documents.length }))
+    });
   } else {
-    guarantorDocuments = requiredDocuments;
+    guarantorDocuments = []; // Don't show any documents if no employment type
+    console.log('🔍 No guarantor employment type, showing no documents');
   }
 
   const getDocumentStatus = (documentId: string) => {
@@ -487,7 +493,85 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                 ))}
               </div>
             )}
-
+            {/* Guarantor Documents Section */}
+            {(() => {
+              const shouldShow = guarantorDocuments.length > 0 && !showOnlyCoApplicant && !showOnlyGuarantor;
+              console.log('🔍 Rendering guarantor section:', {
+                guarantorDocumentsLength: guarantorDocuments.length,
+                showOnlyCoApplicant,
+                showOnlyGuarantor,
+                shouldShow,
+                guarantor: formData?.guarantor,
+                employmentType: formData?.guarantor?.employmentType
+              });
+              return shouldShow;
+            })() && (
+              <div className="space-y-6 mt-8">
+                <div className="flex items-center gap-2 pb-2 border-b">
+                  <Shield className="h-4 w-4" />
+                  <h3 className="font-medium text-gray-800">Guarantor Documents</h3>
+                </div>
+                {guarantorDocuments.map((category) => (
+                  <div key={category.category} className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b">
+                      {category.icon}
+                      <h4 className="font-medium text-gray-800">{category.category}</h4>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4">
+                      {category.documents.map((document: any) => {
+                        const docStatus = getDocumentStatus(document.id);
+                        return (
+                          <div key={document.id} className="border rounded-lg p-4 space-y-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium text-gray-900">{document.name}</h4>
+                                  {document.required && (
+                                    <Badge variant="destructive" className="text-xs">Required</Badge>
+                                  )}
+                                  {!document.required && (
+                                    <Badge variant="secondary" className="text-xs">Optional</Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {docStatus.status === "uploaded" ? (
+                                  <div className="flex items-center gap-1 text-green-600">
+                                    <CheckCircle className="h-4 w-4" />
+                                    <span className="text-xs">{docStatus.count} file(s)</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 text-orange-600">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <span className="text-xs">Pending</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <FileUpload
+                              onFileChange={(files) => onDocumentChange(document.id, files)}
+                              onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
+                              accept={document.acceptedTypes}
+                              multiple={document.multiple || false}
+                              maxFiles={document.multiple ? 5 : 1}
+                              maxSize={10}
+                              label={`Upload ${document.name}`}
+                              className="mt-2"
+                              enableEncryption={true}
+                              referenceId={referenceId}
+                              sectionName={`guarantor_${document.id}`}
+                              documentName={document.name}
+                              enableWebhook={enableWebhook}
+                              applicationId={applicationId}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
         <div className="bg-yellow-50 p-4 rounded-lg">

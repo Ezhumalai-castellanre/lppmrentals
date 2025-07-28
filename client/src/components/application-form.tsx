@@ -177,8 +177,8 @@ const STEPS = [
   { id: 8, title: "Other Occupants", icon: Users },
   { id: 9, title: "Guarantor", icon: Shield },
   { id: 10, title: "Guarantor Financial", icon: CalendarDays },
-  { id: 11, title: "Digital Signatures", icon: Check },
-  { id: 12, title: "Guarantor Documents", icon: FolderOpen },
+  { id: 11, title: "Guarantor Documents", icon: FolderOpen },
+  { id: 12, title: "Digital Signatures", icon: Check },
 ];
 
 // 1. Add phone formatting helper
@@ -616,8 +616,8 @@ export function ApplicationForm() {
       });
       return;
     }
-    // Step 12 is Guarantor Documents
-    if (step === 12 && !hasGuarantor) {
+    // Step 11 is Guarantor Documents
+    if (step === 11 && !hasGuarantor) {
       toast({
         title: 'Guarantor Documents Unavailable',
         description: 'Please check "Add Guarantor" to upload documents.',
@@ -639,8 +639,8 @@ export function ApplicationForm() {
       return;
     }
     
-    // Special check for Guarantor Documents step (step 12)
-    if (currentStep === 12) {
+    // Special check for Guarantor Documents step (step 11)
+    if (currentStep === 11) {
       console.log('⚠️ Form submission prevented - on Guarantor Documents step');
       return;
     }
@@ -3440,52 +3440,6 @@ export function ApplicationForm() {
         );
 
       case 11:
-        return (
-          <div className="space-y-8">
-            <Card className="form-section">
-              <CardHeader>
-                <CardTitle>Digital Signatures</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="mb-6">
-                  <h3 className="font-bold uppercase text-sm mb-2">PLEASE READ CAREFULLY BEFORE SIGNING</h3>
-                  <p className="text-xs text-gray-700 whitespace-pre-line">
-                    The Landlord will in no event be bound, nor will possession be given, unless and until a lease executed by the Landlord has been delivered to the Tenant. The applicant and his/her references must be satisfactory to the Landlord. Please be advised that the date on page one of the lease is not your move-in date. Your move-in date will be arranged with you after you have been approved. No representations or agreements by agents, brokers or others are binding on the Landlord or Agent unless included in the written lease proposed to be executed. I hereby warrant that all my representations set forth herein are true. I recognize the truth of the information contained herein is essential. I further represent that I am not renting a room or an apartment under any other name, nor have I ever been dispossessed from any apartment, nor am I now being dispossessed. I represent that I am over 18 years of age. I have been advised that I have the right, under section 8068 of the Fair Credit Reporting Act, to make a written request, directed to the appropriate credit reporting agency, within reasonable time, for a complete and accurate disclosure of the nature and scope of any credit investigation. I understand that upon submission, this application and all related documents become the property of the Landlord, and will not be returned to me under any circumstances. I authorize the Landlord, Agent and credit reporting agency to obtain a consumer credit report on me and to verify any information on this application with regard to my employment history, current and prior tenancies, bank accounts, and all other information that the Landlord deems pertinent to my obtaining residency. I understand that I shall not be permitted to receive or review my application file or my credit consumer report. I authorize banks, financial institutions, landlords, business associates, credit bureaus, attorneys, accountants and other persons or institutions with whom I am acquainted to furnish any and all information regarding myself. This authorization also applies to any update reports which may be ordered as needed. A photocopy or fax of this authorization shall be accepted with the same authority as this original. I will present any other information required by the Landlord or Agent in connection with the lease contemplated herein. I understand that the application fee is non-refundable. The Civil Rights Act of 1968, as amended by the Fair Housing Amendments Act of 1988, prohibits discrimination in the rental of housing based on race, color, religion, gender, handicap, familial status or national origin. The Federal Agency, which administers compliance with this law, is the U.S. Department of Housing and Urban Development.
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-base font-medium">Primary Applicant Signature *</Label>
-                  <SignaturePad 
-                    onSignatureChange={(signature) => handleSignatureChange('applicant', signature)}
-                    className="mt-2"
-                  />
-                </div>
-
-                {hasCoApplicant && (
-                  <div>
-                    <Label className="text-base font-medium">Co-Applicant Signature *</Label>
-                    <SignaturePad 
-                      onSignatureChange={(signature) => handleSignatureChange('coApplicant', signature)}
-                      className="mt-2"
-                    />
-                  </div>
-                )}
-
-                {hasGuarantor && (
-                  <div>
-                    <Label className="text-base font-medium">Guarantor Signature *</Label>
-                    <SignaturePad 
-                      onSignatureChange={(signature) => handleSignatureChange('guarantor', signature)}
-                      className="mt-2"
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case 12:
         if (!formData.guarantor?.employmentType) {
           return (
             <Card className="form-section">
@@ -3566,6 +3520,52 @@ export function ApplicationForm() {
             applicationId={applicationId}
             showOnlyGuarantor={true}
           />
+        );
+
+      case 12:
+        return (
+          <div className="space-y-8">
+            <Card className="form-section">
+              <CardHeader>
+                <CardTitle>Digital Signatures</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="mb-6">
+                  <h3 className="font-bold uppercase text-sm mb-2">PLEASE READ CAREFULLY BEFORE SIGNING</h3>
+                  <p className="text-xs text-gray-700 whitespace-pre-line">
+                    The Landlord will in no event be bound, nor will possession be given, unless and until a lease executed by the Landlord has been delivered to the Tenant. The applicant and his/her references must be satisfactory to the Landlord. Please be advised that the date on page one of the lease is not your move-in date. Your move-in date will be arranged with you after you have been approved. No representations or agreements by agents, brokers or others are binding on the Landlord or Agent unless included in the written lease proposed to be executed. I hereby warrant that all my representations set forth herein are true. I recognize the truth of the information contained herein is essential. I further represent that I am not renting a room or an apartment under any other name, nor have I ever been dispossessed from any apartment, nor am I now being dispossessed. I represent that I am over 18 years of age. I have been advised that I have the right, under section 8068 of the Fair Credit Reporting Act, to make a written request, directed to the appropriate credit reporting agency, within reasonable time, for a complete and accurate disclosure of the nature and scope of any credit investigation. I understand that upon submission, this application and all related documents become the property of the Landlord, and will not be returned to me under any circumstances. I authorize the Landlord, Agent and credit reporting agency to obtain a consumer credit report on me and to verify any information on this application with regard to my employment history, current and prior tenancies, bank accounts, and all other information that the Landlord deems pertinent to my obtaining residency. I understand that I shall not be permitted to receive or review my application file or my credit consumer report. I authorize banks, financial institutions, landlords, business associates, credit bureaus, attorneys, accountants and other persons or institutions with whom I am acquainted to furnish any and all information regarding myself. This authorization also applies to any update reports which may be ordered as needed. A photocopy or fax of this authorization shall be accepted with the same authority as this original. I will present any other information required by the Landlord or Agent in connection with the lease contemplated herein. I understand that the application fee is non-refundable. The Civil Rights Act of 1968, as amended by the Fair Housing Amendments Act of 1988, prohibits discrimination in the rental of housing based on race, color, religion, gender, handicap, familial status or national origin. The Federal Agency, which administers compliance with this law, is the U.S. Department of Housing and Urban Development.
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-base font-medium">Primary Applicant Signature *</Label>
+                  <SignaturePad 
+                    onSignatureChange={(signature) => handleSignatureChange('applicant', signature)}
+                    className="mt-2"
+                  />
+                </div>
+
+                {hasCoApplicant && (
+                  <div>
+                    <Label className="text-base font-medium">Co-Applicant Signature *</Label>
+                    <SignaturePad 
+                      onSignatureChange={(signature) => handleSignatureChange('coApplicant', signature)}
+                      className="mt-2"
+                    />
+                  </div>
+                )}
+
+                {hasGuarantor && (
+                  <div>
+                    <Label className="text-base font-medium">Guarantor Signature *</Label>
+                    <SignaturePad 
+                      onSignatureChange={(signature) => handleSignatureChange('guarantor', signature)}
+                      className="mt-2"
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         );
 
       default:
@@ -3693,8 +3693,8 @@ export function ApplicationForm() {
                 return;
               }
               
-              // Special check for Guarantor Documents step (step 12)
-              if (currentStep === 12) {
+              // Special check for Guarantor Documents step (step 11)
+              if (currentStep === 11) {
                 e.preventDefault();
                 console.log('⚠️ Form submission prevented - on Guarantor Documents step');
                 return;
