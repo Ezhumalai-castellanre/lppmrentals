@@ -173,33 +173,66 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label className="text-base font-medium">Bank Information</Label>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const bankRecords = formData[person]?.bankRecords || [];
-                const newRecord = { bankName: '', accountType: '', accountNumber: '' };
-                updateFormData(person, 'bankRecords', [...bankRecords, newRecord]);
-              }}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Bank Account
-            </Button>
+            <div className="flex gap-2">
+              {(!formData[person]?.bankRecords || formData[person]?.bankRecords.length === 0) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    console.log(`Initializing bank records for ${person}`);
+                    const initialRecord = { bankName: '', accountType: '', accountNumber: '' };
+                    updateFormData(person, 'bankRecords', [initialRecord]);
+                  }}
+                >
+                  Add First Bank Account
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const bankRecords = formData[person]?.bankRecords || [];
+                  console.log(`Adding bank record for ${person}:`, {
+                    currentBankRecords: bankRecords,
+                    currentLength: bankRecords.length
+                  });
+                  const newRecord = { bankName: '', accountType: '', accountNumber: '' };
+                  const updatedRecords = [...bankRecords, newRecord];
+                  console.log(`Updated bank records for ${person}:`, {
+                    updatedRecords,
+                    newLength: updatedRecords.length
+                  });
+                  updateFormData(person, 'bankRecords', updatedRecords);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Bank Account
+              </Button>
+            </div>
           </div>
 
-          {(formData[person]?.bankRecords || [{ bankName: '', accountType: '', accountNumber: '' }]).map((record: any, index: number) => (
+          {(formData[person]?.bankRecords || []).map((record: any, index: number) => (
             <div key={index} className="border rounded-lg p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium">Bank Account {index + 1}</h4>
-                {index > 0 && (
+                {(formData[person]?.bankRecords || []).length > 1 && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => {
                       const bankRecords = formData[person]?.bankRecords || [];
+                      console.log(`Removing bank record ${index} for ${person}:`, {
+                        currentBankRecords: bankRecords,
+                        currentLength: bankRecords.length
+                      });
                       const updated = bankRecords.filter((_: any, i: number) => i !== index);
+                      console.log(`Updated bank records after removal for ${person}:`, {
+                        updatedRecords: updated,
+                        newLength: updated.length
+                      });
                       updateFormData(person, 'bankRecords', updated);
                     }}
                   >
@@ -218,6 +251,10 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                     onChange={(e) => {
                       const bankRecords = [...(formData[person]?.bankRecords || [])];
                       bankRecords[index] = { ...bankRecords[index], bankName: e.target.value };
+                      console.log(`Updating bank name for ${person} record ${index}:`, {
+                        newValue: e.target.value,
+                        updatedRecord: bankRecords[index]
+                      });
                       updateFormData(person, 'bankRecords', bankRecords);
                     }}
                   />
@@ -229,6 +266,10 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                     onValueChange={(value) => {
                       const bankRecords = [...(formData[person]?.bankRecords || [])];
                       bankRecords[index] = { ...bankRecords[index], accountType: value };
+                      console.log(`Updating account type for ${person} record ${index}:`, {
+                        newValue: value,
+                        updatedRecord: bankRecords[index]
+                      });
                       updateFormData(person, 'bankRecords', bankRecords);
                     }}
                   >
@@ -246,6 +287,20 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
               </div>
             </div>
           ))}
+          
+          {/* Show current bank records count for debugging */}
+          <div className="text-sm text-gray-500">
+            Current bank records for {person}: {formData[person]?.bankRecords?.length || 0}
+            {formData[person]?.bankRecords && (
+              <div className="mt-1">
+                {formData[person].bankRecords.map((record: any, index: number) => (
+                  <div key={index} className="text-xs">
+                    Record {index + 1}: {record.bankName || 'No name'} - {record.accountType || 'No type'}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
