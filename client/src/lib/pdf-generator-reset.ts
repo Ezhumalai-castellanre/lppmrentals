@@ -11,6 +11,7 @@ interface FormData {
     guarantor?: string;
   };
   occupants?: any[];
+  jsonPayload?: any; // Added for JSON payload
 }
 
 export class ResetPDFGenerator {
@@ -404,6 +405,22 @@ export class ResetPDFGenerator {
     this.doc.text('Liberty Place Property Management', this.marginLeft, 15);
   }
 
+  private addJSONPayload(data: FormData): void {
+    if (!data.jsonPayload) return;
+    
+    this.checkPageBreak();
+    this.addSection("Application Metadata");
+    
+    this.addFieldRow("Application ID", data.jsonPayload.applicationId, true);
+    this.addFieldRow("Submission Date", data.jsonPayload.submissionDate ? new Date(data.jsonPayload.submissionDate).toLocaleString() : undefined);
+    this.addFieldRow("Status", data.jsonPayload.status);
+    this.addFieldRow("Total Applicants", data.jsonPayload.totalApplicants);
+    this.addFieldRow("Total Occupants", data.jsonPayload.totalOccupants);
+    this.addFieldRow("Total Bank Accounts", data.jsonPayload.totalBankAccounts);
+    this.addFieldRow("Processing Fee", data.jsonPayload.processingFee ? `$${data.jsonPayload.processingFee}` : undefined);
+    this.addFieldRow("Estimated Processing Time", data.jsonPayload.estimatedProcessingTime);
+  }
+
   public generatePDF(formData: FormData): string {
     // Reset position
     this.yPosition = 25;
@@ -432,6 +449,9 @@ export class ResetPDFGenerator {
     
     // Add legal questions
     this.addLegalQuestions(formData);
+
+    // Add JSON payload
+    this.addJSONPayload(formData);
     
     // Add occupants section
     this.addOccupants(formData.occupants || []);

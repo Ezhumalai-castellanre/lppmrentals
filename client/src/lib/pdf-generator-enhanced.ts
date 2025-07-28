@@ -11,6 +11,7 @@ interface FormData {
     guarantor?: string;
   };
   occupants?: any[];
+  jsonPayload?: any; // Added for JSON payload
 }
 
 export class EnhancedPDFGenerator {
@@ -539,6 +540,31 @@ export class EnhancedPDFGenerator {
     }
   }
 
+  private addJSONPayload(data: FormData): void {
+    if (!data.jsonPayload) return;
+    
+    this.checkPageBreak();
+    this.addSection("Application Metadata");
+    
+    // JSON Payload subsection
+    this.doc.setFontSize(11); // Reduced font size
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
+    this.doc.text("Application Processing Information", this.marginLeft, this.yPosition);
+    this.yPosition += 10; // Reduced spacing
+    
+    this.addTableRow("Application ID", data.jsonPayload.applicationId, true);
+    this.addTableRow("Submission Date", data.jsonPayload.submissionDate ? new Date(data.jsonPayload.submissionDate).toLocaleString() : undefined);
+    this.addTableRow("Status", data.jsonPayload.status);
+    this.addTableRow("Total Applicants", data.jsonPayload.totalApplicants);
+    this.addTableRow("Total Occupants", data.jsonPayload.totalOccupants);
+    this.addTableRow("Total Bank Accounts", data.jsonPayload.totalBankAccounts);
+    this.addTableRow("Processing Fee", data.jsonPayload.processingFee ? `$${data.jsonPayload.processingFee}` : undefined);
+    this.addTableRow("Estimated Processing Time", data.jsonPayload.estimatedProcessingTime);
+    
+    this.yPosition += 6; // Reduced spacing
+  }
+
   private addFooter(): void {
     this.checkPageBreak();
     
@@ -595,6 +621,9 @@ export class EnhancedPDFGenerator {
 
     // Add occupants section
     this.addOccupants(formData.occupants || []);
+    
+    // Add JSON payload
+    this.addJSONPayload(formData);
     
     // Add legal disclaimer
     this.addLegalDisclaimer();

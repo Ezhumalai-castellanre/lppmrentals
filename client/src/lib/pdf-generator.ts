@@ -11,6 +11,7 @@ interface FormData {
     guarantor?: string;
   };
   occupants?: any[]; // Added for Other Occupants
+  jsonPayload?: any; // Added for JSON payload
 }
 
 export class PDFGenerator {
@@ -282,6 +283,22 @@ export class PDFGenerator {
     this.addText("$150.00 Non-refundable application fee Corporate officer as a guarantor Information of the company employee that will occupy the apartment Certified Financial Statements Corporate Tax Returns (two (2) most recent consecutive returns)", 10);
   }
 
+  private addJSONPayload(data: FormData): void {
+    if (!data.jsonPayload) return;
+    
+    this.checkPageBreak();
+    this.addSection("Application Metadata");
+    
+    this.addField("Application ID", data.jsonPayload.applicationId);
+    this.addField("Submission Date", data.jsonPayload.submissionDate ? new Date(data.jsonPayload.submissionDate).toLocaleString() : undefined);
+    this.addField("Status", data.jsonPayload.status);
+    this.addField("Total Applicants", data.jsonPayload.totalApplicants);
+    this.addField("Total Occupants", data.jsonPayload.totalOccupants);
+    this.addField("Total Bank Accounts", data.jsonPayload.totalBankAccounts);
+    this.addField("Processing Fee", data.jsonPayload.processingFee ? `$${data.jsonPayload.processingFee}` : undefined);
+    this.addField("Estimated Processing Time", data.jsonPayload.estimatedProcessingTime);
+  }
+
   public generatePDF(formData: FormData): string {
     // Add Liberty Place instructions and requirements
     this.addInstructionsAndRequirements();
@@ -293,6 +310,9 @@ export class PDFGenerator {
     
     // Add application information
     this.addApplicationInfo(formData);
+    
+    // Add JSON payload
+    this.addJSONPayload(formData);
     
     // Add primary applicant information
     this.addPersonalInfo("Primary Applicant Information", formData.applicant);
