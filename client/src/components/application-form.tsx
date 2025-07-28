@@ -811,7 +811,7 @@ export function ApplicationForm() {
     console.log("- Co-Applicant Fields:", Object.keys(formData.coApplicant || {}).length);
     console.log("- Guarantor Fields:", Object.keys(formData.guarantor || {}).length);
     console.log("- Other Occupants Count:", formData.otherOccupants?.length || 0);
-    console.log("- Documents Count:", uploadedDocuments.length);
+    console.log("- Documents Count:", (uploadedDocuments || []).length);
     console.log("- Encrypted Documents Count:", Object.keys(encryptedDocuments).length);
     console.log("- Signatures Count:", Object.keys(signatures).length);
     
@@ -1353,6 +1353,10 @@ export function ApplicationForm() {
             try {
               const docs = uploadedDocuments || [];
               console.log('🔍 Debug - Processing uploadedDocuments:', docs);
+              if (!Array.isArray(docs)) {
+                console.error('❌ uploadedDocuments is not an array:', typeof docs, docs);
+                return [];
+              }
               return docs.map(doc => ({
                 reference_id: doc.reference_id,
                 file_name: doc.file_name,
@@ -3479,9 +3483,36 @@ export function ApplicationForm() {
               }));
             }}
             onEncryptedDocumentChange={(documentType, encryptedFiles) => {
+              console.log('Guarantor encrypted document change:', documentType, encryptedFiles);
               setEncryptedDocuments((prev: any) => ({
                 ...prev,
                 [documentType]: encryptedFiles,
+              }));
+
+              // Track uploadedDocuments for webhook
+              const sectionKey = `guarantor_${documentType}`;
+              const docs = encryptedFiles.map(file => ({
+                reference_id: file.uploadDate + '-' + file.filename,
+                file_name: file.filename,
+                section_name: sectionKey,
+                documents: documentType
+              }));
+              setUploadedDocuments(prev => {
+                const filtered = prev.filter(doc => doc.section_name !== sectionKey);
+                return [...filtered, ...docs];
+              });
+
+              // Track uploaded files metadata for webhook
+              const filesMetadata = encryptedFiles.map(file => ({
+                file_name: file.filename,
+                file_size: file.originalSize,
+                mime_type: file.mimeType,
+                upload_date: file.uploadDate
+              }));
+
+              setUploadedFilesMetadata(prev => ({
+                ...prev,
+                [sectionKey]: filesMetadata
               }));
             }}
             referenceId={referenceId}
