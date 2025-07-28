@@ -176,7 +176,7 @@ export interface PDFWebhookData {
 
 export class WebhookService {
   private static readonly FILE_WEBHOOK_URL = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
-  private static readonly FORM_WEBHOOK_URL = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3'; // Use external webhook for form data
+  private static readonly FORM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk'; // Use external webhook for form data
   
   // Track ongoing submissions to prevent duplicates
   private static ongoingSubmissions = new Set<string>();
