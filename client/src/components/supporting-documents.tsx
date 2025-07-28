@@ -166,18 +166,24 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
 
   // Guarantor Documents logic
   let guarantorDocuments: any[] = [];
-  if (formData?.guarantor && formData.guarantor.employmentType) {
-    const guarAllowedCategories = allowedCategoriesForType(formData.guarantor.employmentType);
-    guarantorDocuments = requiredDocuments.filter((category) => guarAllowedCategories.has(category.category));
-    console.log('🔍 Guarantor documents found:', {
-      guarantor: formData.guarantor,
-      employmentType: formData.guarantor.employmentType,
-      allowedCategories: Array.from(guarAllowedCategories),
-      guarantorDocuments: guarantorDocuments.map(cat => ({ category: cat.category, documents: cat.documents.length }))
-    });
+  if (formData?.guarantor) {
+    if (formData.guarantor.employmentType) {
+      const guarAllowedCategories = allowedCategoriesForType(formData.guarantor.employmentType);
+      guarantorDocuments = requiredDocuments.filter((category) => guarAllowedCategories.has(category.category));
+      console.log('🔍 Guarantor documents found:', {
+        guarantor: formData.guarantor,
+        employmentType: formData.guarantor.employmentType,
+        allowedCategories: Array.from(guarAllowedCategories),
+        guarantorDocuments: guarantorDocuments.map(cat => ({ category: cat.category, documents: cat.documents.length }))
+      });
+    } else {
+      // Show all documents if guarantor exists but no employment type (for main supporting documents)
+      guarantorDocuments = requiredDocuments;
+      console.log('🔍 Guarantor exists but no employment type, showing all documents');
+    }
   } else {
-    guarantorDocuments = []; // Don't show any documents if no employment type
-    console.log('🔍 No guarantor employment type, showing no documents');
+    guarantorDocuments = []; // No guarantor at all
+    console.log('🔍 No guarantor, showing no documents');
   }
 
   const getDocumentStatus = (documentId: string) => {
