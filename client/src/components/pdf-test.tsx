@@ -54,16 +54,12 @@ export function PDFTest() {
         {
           bankName: "Chase Bank",
           accountType: "Checking",
-          accountNumber: "1234567890",
-          routingNumber: "021000021",
-          balance: "5000.00"
+          routingNumber: "021000021"
         },
         {
           bankName: "Bank of America",
           accountType: "Savings",
-          accountNumber: "0987654321",
-          routingNumber: "026009593",
-          balance: "15000.00"
+          routingNumber: "026009593"
         }
       ]
     },
@@ -103,16 +99,12 @@ export function PDFTest() {
         {
           bankName: "Bank of America",
           accountType: "Savings",
-          accountNumber: "0987654321",
-          routingNumber: "026009593",
-          balance: "8000.00"
+          routingNumber: "026009593"
         },
         {
           bankName: "Citibank",
           accountType: "Checking",
-          accountNumber: "1122334455",
-          routingNumber: "021000089",
-          balance: "3000.00"
+          routingNumber: "021000089"
         }
       ]
     },
@@ -152,16 +144,12 @@ export function PDFTest() {
         {
           bankName: "Wells Fargo",
           accountType: "Multiple",
-          accountNumber: "5556667777",
-          routingNumber: "121000248",
-          balance: "50000.00"
+          routingNumber: "121000248"
         },
         {
           bankName: "Chase Private Client",
           accountType: "Investment",
-          accountNumber: "9998887777",
-          routingNumber: "021000021",
-          balance: "100000.00"
+          routingNumber: "021000021"
         }
       ]
     },
@@ -290,10 +278,11 @@ export function PDFTest() {
         <h3 className="font-semibold mb-2 text-blue-900">Data Summary:</h3>
         <div className="text-sm text-blue-800 space-y-1">
           <p>• <strong>Total Bank Accounts:</strong> 6 (2 per person)</p>
+          <p>• <strong>Bank Information:</strong> Names, types, and routing numbers only</p>
           <p>• <strong>Total Occupants:</strong> 2 (1 child, 1 pet)</p>
           <p>• <strong>Complete Landlord Info:</strong> For all 3 parties</p>
           <p>• <strong>Legal Explanations:</strong> Detailed responses included</p>
-          <p>• <strong>Security:</strong> Account numbers masked (last 4 digits only)</p>
+          <p>• <strong>Security:</strong> Sensitive financial data excluded</p>
         </div>
       </div>
     </div>

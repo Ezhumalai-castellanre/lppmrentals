@@ -74,28 +74,23 @@ export class ResetPDFGenerator {
     this.yPosition += fontSize * 0.6;
   }
 
-  private addSection(title: string, withBorder: boolean = true): void {
-    this.yPosition += 8;
+  private addSection(title: string): void {
+    this.checkPageBreak();
+    this.yPosition += 6; // Consistent spacing before sections
     
-    if (withBorder) {
-      // Add subtle border
-      this.doc.setDrawColor(this.borderColor[0], this.borderColor[1], this.borderColor[2]);
-      this.doc.setLineWidth(0.5);
-      this.doc.line(this.marginLeft, this.yPosition - 2, this.pageWidth - this.marginRight, this.yPosition - 2);
-    }
-    
-    // Section title
-    this.doc.setFontSize(12);
+    this.doc.setFontSize(11);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
     this.doc.text(title, this.marginLeft, this.yPosition);
-    this.yPosition += 8;
+    
+    this.yPosition += 6; // Consistent spacing after section titles
   }
 
   private addFieldRow(label: string, value: any, highlight: boolean = false): void {
     const displayValue = (value !== undefined && value !== null && value !== '') ? String(value) : 'Not provided';
-    const labelWidth = 70;
-    const valueWidth = this.contentWidth - labelWidth - 10;
+    const labelWidth = 75; // Adjusted label width for better alignment
+    const valueStartX = this.marginLeft + labelWidth + 8; // 8px gap between label and value
+    const valueWidth = this.contentWidth - labelWidth - 8; // Available width for value
     
     // Label
     this.doc.setFontSize(9);
@@ -114,15 +109,15 @@ export class ResetPDFGenerator {
     }
     
     // Handle long values with text wrapping
-    if (displayValue.length > 30) {
+    if (displayValue.length > 35) {
       const lines = this.doc.splitTextToSize(displayValue, valueWidth);
-      this.doc.text(lines, this.marginLeft + labelWidth + 10, this.yPosition);
+      this.doc.text(lines, valueStartX, this.yPosition);
       this.yPosition += (lines.length - 1) * 4;
     } else {
-      this.doc.text(displayValue, this.marginLeft + labelWidth + 10, this.yPosition);
+      this.doc.text(displayValue, valueStartX, this.yPosition);
     }
     
-    this.yPosition += 6;
+    this.yPosition += 6; // Consistent row spacing
   }
 
   private addHeader(): void {
@@ -274,20 +269,16 @@ export class ResetPDFGenerator {
         const prefix = person.bankRecords.length > 1 ? `Bank ${index + 1} - ` : '';
         this.addFieldRow(`${prefix}Bank Name`, bank.bankName);
         this.addFieldRow(`${prefix}Account Type`, bank.accountType);
-        this.addFieldRow(`${prefix}Account Number (Last 4)`, bank.accountNumber ? '***' + bank.accountNumber.slice(-4) : undefined);
         this.addFieldRow(`${prefix}Routing Number`, bank.routingNumber);
-        this.addFieldRow(`${prefix}Balance`, bank.balance ? `$${bank.balance}` : undefined);
       });
-    } else if (person.bankName || person.accountType || person.accountNumber || person.routingNumber || person.balance) {
+    } else if (person.bankName || person.accountType || person.routingNumber) {
       this.yPosition += 4;
       this.addText("Bank Information:", 9, true);
       this.yPosition += 4;
       
       this.addFieldRow("Bank Name", person.bankName);
       this.addFieldRow("Account Type", person.accountType);
-      this.addFieldRow("Account Number (Last 4)", person.accountNumber ? '***' + person.accountNumber.slice(-4) : undefined);
       this.addFieldRow("Routing Number", person.routingNumber);
-      this.addFieldRow("Balance", person.balance ? `$${person.balance}` : undefined);
     }
   }
 

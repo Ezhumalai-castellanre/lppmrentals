@@ -66,20 +66,25 @@ export class EnhancedPDFGenerator {
   }
 
   private addSection(title: string, withBackground: boolean = false): void {
-    this.yPosition += 12; // Reduced spacing before section
+    this.checkPageBreak();
     
     if (withBackground) {
-      // Add background rectangle with proper alignment
+      // Add background highlight for important sections
       this.doc.setFillColor(this.lightGray[0], this.lightGray[1], this.lightGray[2]);
-      this.doc.rect(this.marginLeft - 5, this.yPosition - 8, this.contentWidth + 10, 12, 'F');
+      this.doc.rect(this.marginLeft - 3, this.yPosition - 3, this.contentWidth + 6, 12, 'F');
     }
     
-    // Add section title with proper alignment
-    this.doc.setFontSize(14); // Slightly smaller for better fit
+    // Add section title with accent line
+    this.doc.setFontSize(12);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
     this.doc.text(title, this.marginLeft, this.yPosition);
-    this.yPosition += 10; // Reduced spacing after title
+    
+    // Add accent line under title
+    this.doc.setFillColor(this.accentColor[0], this.accentColor[1], this.accentColor[2]);
+    this.doc.rect(this.marginLeft, this.yPosition + 1, 40, 1, 'F');
+    
+    this.yPosition += 12; // Consistent spacing after section titles
   }
 
   private addField(label: string, value: string | number | undefined, highlight: boolean = false): void {
@@ -100,8 +105,9 @@ export class EnhancedPDFGenerator {
   private addTableRow(label: string, value: string | number | undefined, highlight: boolean = false): void {
     // Show all fields, even if empty
     const displayValue = (value !== undefined && value !== null && value !== '') ? String(value) : 'Not provided';
-    const labelWidth = 80; // Increased label width for better alignment
-    const valueWidth = this.contentWidth - labelWidth - 15; // 15px gap between label and value
+    const labelWidth = 85; // Increased label width for better alignment
+    const valueStartX = this.marginLeft + labelWidth + 10; // 10px gap between label and value
+    const valueWidth = this.contentWidth - labelWidth - 10; // Available width for value
     
     // Add label with proper alignment
     this.doc.setFontSize(10);
@@ -120,15 +126,15 @@ export class EnhancedPDFGenerator {
     }
     
     // Handle long values with text wrapping
-    if (displayValue.length > 25) {
+    if (displayValue.length > 30) {
       const lines = this.doc.splitTextToSize(displayValue, valueWidth);
-      this.doc.text(lines, this.marginLeft + labelWidth + 15, this.yPosition);
-      this.yPosition += (lines.length - 1) * 6; // Increased line spacing
+      this.doc.text(lines, valueStartX, this.yPosition);
+      this.yPosition += (lines.length - 1) * 5; // Adjusted line spacing
     } else {
-      this.doc.text(displayValue, this.marginLeft + labelWidth + 15, this.yPosition);
+      this.doc.text(displayValue, valueStartX, this.yPosition);
     }
     
-    this.yPosition += 8; // Reduced row spacing for more content
+    this.yPosition += 7; // Adjusted row spacing for better readability
   }
 
   private checkPageBreak(): void {
@@ -305,11 +311,11 @@ export class EnhancedPDFGenerator {
     this.addSection(title);
     
     // Personal Information subsection
-    this.doc.setFontSize(11); // Reduced font size
+    this.doc.setFontSize(11);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
     this.doc.text("Personal Information", this.marginLeft, this.yPosition);
-    this.yPosition += 10; // Reduced spacing
+    this.yPosition += 8;
     
     this.addTableRow("Full Name", person.name, true);
     this.addTableRow("Date of Birth", person.dob);
@@ -320,12 +326,12 @@ export class EnhancedPDFGenerator {
     this.addTableRow("License State", person.licenseState);
     
     if (person.address || person.city || person.state || person.zip) {
-      this.yPosition += 8; // Reduced spacing
-      this.doc.setFontSize(11); // Reduced font size
+      this.yPosition += 6;
+      this.doc.setFontSize(11);
       this.doc.setFont('helvetica', 'bold');
       this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
       this.doc.text("Current Address", this.marginLeft, this.yPosition);
-      this.yPosition += 10; // Reduced spacing
+      this.yPosition += 8;
       
       this.addTableRow("Street Address", person.address);
       this.addTableRow("City", person.city);
@@ -339,12 +345,12 @@ export class EnhancedPDFGenerator {
     
     // Landlord Information subsection
     if (person.landlordName || person.landlordAddressLine1 || person.landlordCity || person.landlordState || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
-      this.yPosition += 8; // Reduced spacing
-      this.doc.setFontSize(11); // Reduced font size
+      this.yPosition += 6;
+      this.doc.setFontSize(11);
       this.doc.setFont('helvetica', 'bold');
       this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
       this.doc.text("Current Landlord Information", this.marginLeft, this.yPosition);
-      this.yPosition += 10; // Reduced spacing
+      this.yPosition += 8;
       
       this.addTableRow("Landlord Name", person.landlordName);
       this.addTableRow("Landlord Address Line 1", person.landlordAddressLine1);
@@ -356,7 +362,7 @@ export class EnhancedPDFGenerator {
       this.addTableRow("Landlord Email", person.landlordEmail);
     }
     
-    this.yPosition += 6; // Reduced spacing
+    this.yPosition += 4;
   }
 
   private addFinancialInfo(title: string, person: any): void {
@@ -370,11 +376,11 @@ export class EnhancedPDFGenerator {
     }
     
     // Employment Information subsection
-    this.doc.setFontSize(11); // Reduced font size
+    this.doc.setFontSize(11);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
     this.doc.text("Employment Information", this.marginLeft, this.yPosition);
-    this.yPosition += 10; // Reduced spacing
+    this.yPosition += 8;
     
     this.addTableRow("Current Employer", person.employer, true);
     this.addTableRow("Position/Title", person.position);
@@ -385,42 +391,37 @@ export class EnhancedPDFGenerator {
     
     // Bank Information subsection
     if (person.bankRecords && person.bankRecords.length > 0) {
-      this.yPosition += 8; // Reduced spacing
-      this.doc.setFontSize(11); // Reduced font size
+      this.yPosition += 6;
+      this.doc.setFontSize(11);
       this.doc.setFont('helvetica', 'bold');
       this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
       this.doc.text("Bank Information", this.marginLeft, this.yPosition);
-      this.yPosition += 10; // Reduced spacing
+      this.yPosition += 8;
       
       person.bankRecords.forEach((bankRecord: any, index: number) => {
         const prefix = person.bankRecords.length > 1 ? `Bank ${index + 1} - ` : '';
         this.addTableRow(`${prefix}Bank Name`, bankRecord.bankName);
         this.addTableRow(`${prefix}Account Type`, bankRecord.accountType);
-        this.addTableRow(`${prefix}Account Number (Last 4)`, bankRecord.accountNumber ? '***' + bankRecord.accountNumber.slice(-4) : undefined);
         this.addTableRow(`${prefix}Routing Number`, bankRecord.routingNumber);
-        this.addTableRow(`${prefix}Balance`, bankRecord.balance ? `$${parseFloat(bankRecord.balance).toLocaleString()}` : undefined);
         
         if (index < person.bankRecords.length - 1) {
           this.yPosition += 4; // Add spacing between multiple bank records
         }
       });
-    } else if (person.bankName || person.accountType || person.accountNumber || person.routingNumber || person.balance) {
-      // Fallback to single bank record format
-      this.yPosition += 8; // Reduced spacing
-      this.doc.setFontSize(11); // Reduced font size
+    } else if (person.bankName || person.accountType || person.routingNumber) {
+      this.yPosition += 6;
+      this.doc.setFontSize(11);
       this.doc.setFont('helvetica', 'bold');
       this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
       this.doc.text("Bank Information", this.marginLeft, this.yPosition);
-      this.yPosition += 10; // Reduced spacing
+      this.yPosition += 8;
       
       this.addTableRow("Bank Name", person.bankName);
       this.addTableRow("Account Type", person.accountType);
-      this.addTableRow("Account Number (Last 4)", person.accountNumber ? '***' + person.accountNumber.slice(-4) : undefined);
       this.addTableRow("Routing Number", person.routingNumber);
-      this.addTableRow("Balance", person.balance ? `$${parseFloat(person.balance).toLocaleString()}` : undefined);
     }
     
-    this.yPosition += 6; // Reduced spacing
+    this.yPosition += 4;
   }
 
   private addLegalQuestions(data: FormData): void {

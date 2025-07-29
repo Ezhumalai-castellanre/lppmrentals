@@ -55,11 +55,9 @@ This document describes the comprehensive single application PDF that includes a
 - **Account 1 Details**:
   - Bank Name
   - Account Type (Checking/Savings/Investment)
-  - Account Number (masked - last 4 digits only)
   - Routing Number
-  - Balance
 - **Account 2 Details**: Same structure as Account 1
-- **Security**: All account numbers masked for privacy
+- **Security**: Sensitive financial information excluded for privacy
 
 ### 5. Co-Applicant Information
 **Same structure as Primary Applicant**:
@@ -159,9 +157,7 @@ interface FormData {
     bankRecords: Array<{
       bankName: string;
       accountType: string;
-      accountNumber: string;
       routingNumber: string;
-      balance: string;
     }>;
   };
   
@@ -203,10 +199,11 @@ interface FormData {
 
 ## Security Features
 
-### Account Number Masking
-- All account numbers display only last 4 digits
-- Format: `***1234` instead of full account number
-- Protects sensitive financial information
+### Sensitive Information Exclusion
+- **Account numbers excluded**: No account numbers displayed in PDF
+- **Bank balances excluded**: No balance information displayed
+- **Routing numbers included**: Only non-sensitive bank information shown
+- **Privacy protection**: Sensitive financial data completely removed from output
 
 ### Conditional Display
 - Fields only shown when data exists
@@ -244,6 +241,7 @@ interface FormData {
 ### Test Component (`pdf-test.tsx`)
 The test component includes comprehensive sample data:
 - **6 Bank Accounts**: 2 per person (applicant, co-applicant, guarantor)
+- **Bank Information**: Bank names, account types, and routing numbers only
 - **2 Occupants**: 1 child, 1 pet
 - **Complete Landlord Info**: For all 3 parties
 - **Legal Explanations**: Detailed responses
@@ -262,7 +260,7 @@ The test component includes comprehensive sample data:
 2. **Multiple Bank Accounts**: Support for complex financial situations
 3. **Occupant Information**: Complete household details
 4. **Metadata Tracking**: Application processing information
-5. **Security**: Sensitive data properly masked
+5. **Enhanced Security**: Sensitive financial data excluded
 6. **Professional Appearance**: Clean, organized layout
 7. **Flexibility**: Supports various data structures
 8. **Comprehensive Testing**: Complete test data for verification

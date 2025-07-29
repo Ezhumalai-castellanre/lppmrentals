@@ -29,13 +29,14 @@ export class PDFGenerator {
     this.doc.setFontSize(fontSize);
     this.doc.setFont('helvetica', isBold ? 'bold' : 'normal');
     this.doc.text(text, this.marginLeft, this.yPosition);
-    this.yPosition += fontSize * 0.6;
+    this.yPosition += fontSize * 0.7; // Improved line spacing
   }
 
   private addSection(title: string): void {
-    this.yPosition += 10;
-    this.addText(title, 14, true);
-    this.yPosition += 5;
+    this.checkPageBreak();
+    this.yPosition += 8; // Consistent spacing before sections
+    this.addText(title, 12, true);
+    this.yPosition += 4; // Reduced spacing after section titles
   }
 
   private addField(label: string, value: string | number | undefined): void {
@@ -162,16 +163,12 @@ export class PDFGenerator {
         const prefix = person.bankRecords.length > 1 ? `Bank ${index + 1} - ` : '';
         this.addField(`${prefix}Bank Name`, bankRecord.bankName);
         this.addField(`${prefix}Account Type`, bankRecord.accountType);
-        this.addField(`${prefix}Account Number (Last 4)`, bankRecord.accountNumber ? '***' + bankRecord.accountNumber.slice(-4) : undefined);
         this.addField(`${prefix}Routing Number`, bankRecord.routingNumber);
-        this.addField(`${prefix}Balance`, bankRecord.balance ? `$${bankRecord.balance}` : undefined);
       });
     } else {
       this.addField("Bank Name", person.bankName);
       this.addField("Account Type", person.accountType);
-      this.addField("Account Number (Last 4)", person.accountNumber ? '***' + person.accountNumber.slice(-4) : undefined);
       this.addField("Routing Number", person.routingNumber);
-      this.addField("Balance", person.balance ? `$${person.balance}` : undefined);
     }
   }
 
