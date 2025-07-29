@@ -12,11 +12,7 @@ export function PDFTest() {
       monthlyRent: 3500,
       apartmentType: "1 Bedroom",
       howDidYouHear: "Other",
-      howDidYouHearOther: "Social Media Advertisement",
-      landlordTenantLegalAction: "yes",
-      landlordTenantLegalActionExplanation: "Had a dispute with previous landlord over security deposit in 2022. Case was resolved amicably.",
-      brokenLease: "no",
-      brokenLeaseExplanation: ""
+      howDidYouHearOther: "Social Media Advertisement"
     },
     applicant: {
       name: "John Michael Smith",
@@ -53,13 +49,11 @@ export function PDFTest() {
       bankRecords: [
         {
           bankName: "Chase Bank",
-          accountType: "Checking",
-          routingNumber: "021000021"
+          accountType: "Checking"
         },
         {
           bankName: "Bank of America",
-          accountType: "Savings",
-          routingNumber: "026009593"
+          accountType: "Savings"
         }
       ]
     },
@@ -98,13 +92,11 @@ export function PDFTest() {
       bankRecords: [
         {
           bankName: "Bank of America",
-          accountType: "Savings",
-          routingNumber: "026009593"
+          accountType: "Savings"
         },
         {
           bankName: "Citibank",
-          accountType: "Checking",
-          routingNumber: "021000089"
+          accountType: "Checking"
         }
       ]
     },
@@ -143,13 +135,11 @@ export function PDFTest() {
       bankRecords: [
         {
           bankName: "Wells Fargo",
-          accountType: "Multiple",
-          routingNumber: "121000248"
+          accountType: "Multiple"
         },
         {
           bankName: "Chase Private Client",
-          accountType: "Investment",
-          routingNumber: "021000021"
+          accountType: "Investment"
         }
       ]
     },
@@ -162,18 +152,12 @@ export function PDFTest() {
       {
         name: "Baby Emma Smith",
         relationship: "Child",
-        dob: "2022-03-15",
-        ssn: "",
-        age: "2",
-        sex: "Female"
+        dob: "2022-03-15"
       },
       {
         name: "Max Smith",
         relationship: "Pet",
-        dob: "2020-06-10",
-        ssn: "",
-        age: "4",
-        sex: "Male"
+        dob: "2020-06-10"
       }
     ],
     // JSON Payload for reference
@@ -264,11 +248,11 @@ export function PDFTest() {
       <div className="mt-6 p-4 bg-gray-50 rounded-lg">
         <h3 className="font-semibold mb-2">Complete Test Data Includes:</h3>
         <ul className="text-sm space-y-1">
-          <li>• <strong>Application Info:</strong> All fields including "Other" source and legal explanations</li>
+          <li>• <strong>Application Info:</strong> All fields including "Other" source</li>
           <li>• <strong>Primary Applicant:</strong> Complete personal, landlord, employment, and 2 bank accounts</li>
           <li>• <strong>Co-Applicant:</strong> Complete personal, landlord, employment, and 2 bank accounts</li>
           <li>• <strong>Guarantor:</strong> Complete personal, landlord, employment, and 2 bank accounts</li>
-          <li>• <strong>Occupants:</strong> Child and pet information</li>
+          <li>• <strong>Occupants:</strong> Name, relationship, and date of birth only</li>
           <li>• <strong>Digital Signatures:</strong> For all three parties</li>
           <li>• <strong>JSON Payload:</strong> Application metadata and processing information</li>
         </ul>
@@ -278,11 +262,11 @@ export function PDFTest() {
         <h3 className="font-semibold mb-2 text-blue-900">Data Summary:</h3>
         <div className="text-sm text-blue-800 space-y-1">
           <p>• <strong>Total Bank Accounts:</strong> 6 (2 per person)</p>
-          <p>• <strong>Bank Information:</strong> Names, types, and routing numbers only</p>
+          <p>• <strong>Bank Information:</strong> Names and account types only</p>
           <p>• <strong>Total Occupants:</strong> 2 (1 child, 1 pet)</p>
           <p>• <strong>Complete Landlord Info:</strong> For all 3 parties</p>
-          <p>• <strong>Legal Explanations:</strong> Detailed responses included</p>
-          <p>• <strong>Security:</strong> Sensitive financial data excluded</p>
+          <p>• <strong>Privacy Focused:</strong> Sensitive data excluded</p>
+          <p>• <strong>Clean Layout:</strong> Simplified and focused information</p>
         </div>
       </div>
     </div>

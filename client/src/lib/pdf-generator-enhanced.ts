@@ -389,7 +389,7 @@ export class EnhancedPDFGenerator {
     this.addTableRow("Other Income", person.otherIncome ? `$${person.otherIncome.toLocaleString()}` : undefined);
     this.addTableRow("Other Income Source", person.otherIncomeSource);
     
-    // Bank Information subsection
+    // Bank Information subsection (simplified)
     if (person.bankRecords && person.bankRecords.length > 0) {
       this.yPosition += 6;
       this.doc.setFontSize(11);
@@ -402,13 +402,12 @@ export class EnhancedPDFGenerator {
         const prefix = person.bankRecords.length > 1 ? `Bank ${index + 1} - ` : '';
         this.addTableRow(`${prefix}Bank Name`, bankRecord.bankName);
         this.addTableRow(`${prefix}Account Type`, bankRecord.accountType);
-        this.addTableRow(`${prefix}Routing Number`, bankRecord.routingNumber);
         
         if (index < person.bankRecords.length - 1) {
           this.yPosition += 4; // Add spacing between multiple bank records
         }
       });
-    } else if (person.bankName || person.accountType || person.routingNumber) {
+    } else if (person.bankName || person.accountType) {
       this.yPosition += 6;
       this.doc.setFontSize(11);
       this.doc.setFont('helvetica', 'bold');
@@ -418,34 +417,9 @@ export class EnhancedPDFGenerator {
       
       this.addTableRow("Bank Name", person.bankName);
       this.addTableRow("Account Type", person.accountType);
-      this.addTableRow("Routing Number", person.routingNumber);
     }
     
     this.yPosition += 4;
-  }
-
-  private addLegalQuestions(data: FormData): void {
-    this.checkPageBreak();
-    this.addSection("Legal Questions");
-    
-    // Legal Questions subsection
-    this.doc.setFontSize(11); // Reduced font size
-    this.doc.setFont('helvetica', 'bold');
-    this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
-    this.doc.text("Legal History", this.marginLeft, this.yPosition);
-    this.yPosition += 10; // Reduced spacing
-    
-    this.addTableRow("Have you ever been in landlord/tenant legal action?", data.application?.landlordTenantLegalAction || "Not specified");
-    if (data.application?.landlordTenantLegalAction === 'yes' && data.application?.landlordTenantLegalActionExplanation) {
-      this.addTableRow("Legal Action Details", data.application?.landlordTenantLegalActionExplanation);
-    }
-    
-    this.addTableRow("Have you ever broken a lease?", data.application?.brokenLease || "Not specified");
-    if (data.application?.brokenLease === 'yes' && data.application?.brokenLeaseExplanation) {
-      this.addTableRow("Broken Lease Details", data.application?.brokenLeaseExplanation);
-    }
-    
-    this.yPosition += 6; // Reduced spacing
   }
 
   private addLegalDisclaimer(): void {
@@ -519,26 +493,28 @@ export class EnhancedPDFGenerator {
   }
 
   private addOccupants(occupants: any[]): void {
-    if (occupants && occupants.length > 0) {
-      this.checkPageBreak();
-      this.addSection("Other Occupants (Not Applicants)");
+    if (!occupants || occupants.length === 0) return;
+    
+    this.checkPageBreak();
+    this.addSection("Other Occupants");
+    
+    this.doc.setFontSize(10);
+    this.doc.setFont('helvetica', 'normal');
+    this.doc.setTextColor(this.secondaryColor[0], this.secondaryColor[1], this.secondaryColor[2]);
+    this.doc.text("Additional occupants who will be living in the apartment:", this.marginLeft, this.yPosition);
+    this.yPosition += 8;
+    
+    occupants.forEach((occupant, index) => {
+      this.addTableRow("Name", occupant.name);
+      this.addTableRow("Relationship", occupant.relationship);
+      this.addTableRow("Date of Birth", occupant.dob);
       
-      this.doc.setFontSize(8);
-      this.doc.setFont('helvetica', 'italic');
-      this.doc.setTextColor(this.secondaryColor[0], this.secondaryColor[1], this.secondaryColor[2]);
-      this.doc.text("List any other people who will be living in the apartment", this.marginLeft, this.yPosition);
-      this.yPosition += 6; // Reduced spacing
-      
-      occupants.forEach((occ, idx) => {
-        this.doc.setFontSize(8);
-        this.doc.setFont('helvetica', 'normal');
-        this.doc.setTextColor(0, 0, 0);
-        this.doc.text(`${idx + 1}. Name: ${occ.name || 'Not provided'} | Relationship: ${occ.relationship || 'Not provided'} | Date of Birth: ${occ.dob ? (occ.dob instanceof Date ? occ.dob.toLocaleDateString() : occ.dob) : 'Not provided'} | Social Security #: ${occ.ssn || 'Not provided'} | Driver's License #: ${occ.driverLicense || 'Not provided'} | Age: ${occ.age || 'Not provided'} | Sex: ${occ.sex || 'Not provided'}`, this.marginLeft, this.yPosition);
-        this.yPosition += 4; // Reduced spacing
-      });
-      
-      this.yPosition += 4; // Reduced spacing
-    }
+      if (index < occupants.length - 1) {
+        this.yPosition += 4; // Add spacing between occupants
+      }
+    });
+    
+    this.yPosition += 4;
   }
 
   private addJSONPayload(data: FormData): void {
@@ -615,9 +591,6 @@ export class EnhancedPDFGenerator {
       this.addFinancialInfo("Guarantor", formData.guarantor);
     }
     
-    // Add legal questions (only two as requested)
-    this.addLegalQuestions(formData);
-
     // Supporting Documents section removed as requested
 
     // Add occupants section

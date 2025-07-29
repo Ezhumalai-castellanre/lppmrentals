@@ -55,9 +55,8 @@ This document describes the comprehensive single application PDF that includes a
 - **Account 1 Details**:
   - Bank Name
   - Account Type (Checking/Savings/Investment)
-  - Routing Number
 - **Account 2 Details**: Same structure as Account 1
-- **Security**: Sensitive financial information excluded for privacy
+- **Privacy**: Only essential bank information included
 
 ### 5. Co-Applicant Information
 **Same structure as Primary Applicant**:
@@ -73,17 +72,13 @@ This document describes the comprehensive single application PDF that includes a
 - Employment and financial details
 - Multiple bank accounts (2 accounts minimum)
 
-### 7. Legal Questions
-- **Landlord/Tenant Legal Action**: Yes/No with detailed explanation
-- **Broken Lease History**: Yes/No with detailed explanation
-- **Conditional Explanations**: Detailed responses when "Yes" is selected
+### 7. Occupants Information
+- **Name**: Full name of occupant
+- **Relationship**: Relationship to primary applicant
+- **Date of Birth**: Birth date for identification
+- **Privacy**: Only essential occupant information included
 
-### 8. Occupants Information
-- **Child Occupants**: Name, relationship, DOB, age, sex
-- **Pet Occupants**: Name, relationship, DOB, age, sex
-- **Additional Details**: Any special requirements or notes
-
-### 9. Application Metadata (JSON Payload)
+### 8. Application Metadata (JSON Payload)
 - **Application ID**: Unique identifier
 - **Submission Date**: Timestamp of submission
 - **Status**: Current application status
@@ -93,13 +88,13 @@ This document describes the comprehensive single application PDF that includes a
 - **Processing Fee**: Application fee amount
 - **Estimated Processing Time**: Expected timeline
 
-### 10. Digital Signatures
+### 9. Digital Signatures
 - **Primary Applicant Signature**: Digital signature
 - **Co-Applicant Signature**: Digital signature
 - **Guarantor Signature**: Digital signature
 - **Date Stamps**: Automatic date stamps
 
-### 11. Footer
+### 10. Footer
 - **Submission Information**: Electronic submission details
 - **Company Information**: Liberty Place Property Management
 

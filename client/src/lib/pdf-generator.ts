@@ -156,35 +156,23 @@ export class PDFGenerator {
     this.addField("Other Income", person.otherIncome ? `$${person.otherIncome}` : undefined);
     this.addField("Other Income Source", person.otherIncomeSource);
     
-    // Bank Information
+    // Bank Information (simplified)
     if (person.bankRecords && person.bankRecords.length > 0) {
       this.addText("Bank Information:", 10, true);
       person.bankRecords.forEach((bankRecord: any, index: number) => {
         const prefix = person.bankRecords.length > 1 ? `Bank ${index + 1} - ` : '';
         this.addField(`${prefix}Bank Name`, bankRecord.bankName);
         this.addField(`${prefix}Account Type`, bankRecord.accountType);
-        this.addField(`${prefix}Routing Number`, bankRecord.routingNumber);
       });
     } else {
       this.addField("Bank Name", person.bankName);
       this.addField("Account Type", person.accountType);
-      this.addField("Routing Number", person.routingNumber);
     }
   }
 
   private addLegalQuestions(data: FormData): void {
-    this.checkPageBreak();
-    this.addSection("Legal Questions");
-    
-    this.addField("Have you ever been in landlord/tenant legal action?", data.application.landlordTenantLegalAction || "Not specified");
-    if (data.application.landlordTenantLegalAction === 'yes' && data.application.landlordTenantLegalActionExplanation) {
-      this.addField("Legal Action Details", data.application.landlordTenantLegalActionExplanation);
-    }
-    
-    this.addField("Have you ever broken a lease?", data.application.brokenLease || "Not specified");
-    if (data.application.brokenLease === 'yes' && data.application.brokenLeaseExplanation) {
-      this.addField("Broken Lease Details", data.application.brokenLeaseExplanation);
-    }
+    // Legal questions removed for privacy and simplification
+    return;
   }
 
   private addSupportingDocuments(data: FormData): void {
@@ -232,17 +220,25 @@ export class PDFGenerator {
   }
 
   private addOccupants(occupants: any[]): void {
-    if (occupants && occupants.length > 0) {
-      this.checkPageBreak();
-      this.addSection("Other Occupants (Not Applicants)");
-      this.addText("List any other people who will be living in the apartment", 9);
-      occupants.forEach((occ, idx) => {
-        this.addText(
-          `${idx + 1}. Name: ${occ.name || ''} | Relationship: ${occ.relationship || ''} | Date of Birth: ${occ.dob ? (occ.dob instanceof Date ? occ.dob.toLocaleDateString() : occ.dob) : ''} | Social Security #: ${occ.ssn || ''} | Driver's License #: ${occ.driverLicense || ''} | Age: ${occ.age || ''} | Sex: ${occ.sex || ''}`,
-          9
-        );
-      });
-    }
+    if (!occupants || occupants.length === 0) return;
+    
+    this.checkPageBreak();
+    this.addSection("Other Occupants");
+    
+    this.addText("Additional occupants who will be living in the apartment:", 10);
+    this.yPosition += 4;
+    
+    occupants.forEach((occupant, index) => {
+      this.addField("Name", occupant.name);
+      this.addField("Relationship", occupant.relationship);
+      this.addField("Date of Birth", occupant.dob);
+      
+      if (index < occupants.length - 1) {
+        this.yPosition += 4; // Add spacing between occupants
+      }
+    });
+    
+    this.yPosition += 4;
   }
 
   private addTermsAndConditions(): void {

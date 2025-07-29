@@ -259,7 +259,7 @@ export class ResetPDFGenerator {
     this.addFieldRow("Other Income", person.otherIncome ? `$${person.otherIncome}` : undefined);
     this.addFieldRow("Other Income Source", person.otherIncomeSource);
     
-    // Bank information
+    // Bank information (simplified)
     if (person.bankRecords && person.bankRecords.length > 0) {
       this.yPosition += 4;
       this.addText("Bank Information:", 9, true);
@@ -269,32 +269,20 @@ export class ResetPDFGenerator {
         const prefix = person.bankRecords.length > 1 ? `Bank ${index + 1} - ` : '';
         this.addFieldRow(`${prefix}Bank Name`, bank.bankName);
         this.addFieldRow(`${prefix}Account Type`, bank.accountType);
-        this.addFieldRow(`${prefix}Routing Number`, bank.routingNumber);
       });
-    } else if (person.bankName || person.accountType || person.routingNumber) {
+    } else if (person.bankName || person.accountType) {
       this.yPosition += 4;
       this.addText("Bank Information:", 9, true);
       this.yPosition += 4;
       
       this.addFieldRow("Bank Name", person.bankName);
       this.addFieldRow("Account Type", person.accountType);
-      this.addFieldRow("Routing Number", person.routingNumber);
     }
   }
 
   private addLegalQuestions(data: FormData): void {
-    this.checkPageBreak();
-    this.addSection("Legal Questions");
-    
-    this.addFieldRow("Have you ever been in landlord/tenant legal action?", data.application?.landlordTenantLegalAction || "Not specified");
-    if (data.application?.landlordTenantLegalAction === 'yes' && data.application?.landlordTenantLegalActionExplanation) {
-      this.addFieldRow("Legal Action Details", data.application?.landlordTenantLegalActionExplanation);
-    }
-    
-    this.addFieldRow("Have you ever broken a lease?", data.application?.brokenLease || "Not specified");
-    if (data.application?.brokenLease === 'yes' && data.application?.brokenLeaseExplanation) {
-      this.addFieldRow("Broken Lease Details", data.application?.brokenLeaseExplanation);
-    }
+    // Legal questions removed for privacy and simplification
+    return;
   }
 
   private addOccupants(occupants: any[]): void {
@@ -303,20 +291,23 @@ export class ResetPDFGenerator {
     this.checkPageBreak();
     this.addSection("Other Occupants");
     
+    this.doc.setFontSize(9);
+    this.doc.setFont('helvetica', 'normal');
+    this.doc.setTextColor(this.secondaryColor[0], this.secondaryColor[1], this.secondaryColor[2]);
+    this.doc.text("Additional occupants who will be living in the apartment:", this.marginLeft, this.yPosition);
+    this.yPosition += 6;
+    
     occupants.forEach((occupant, index) => {
-      if (occupant.name) {
-        this.addText(`Occupant ${index + 1}:`, 9, true);
-        this.yPosition += 4;
-        this.addFieldRow("Name", occupant.name);
-        this.addFieldRow("Relationship", occupant.relationship);
-        this.addFieldRow("Date of Birth", occupant.dob ? new Date(occupant.dob).toLocaleDateString() : undefined);
-        this.addFieldRow("Social Security Number", occupant.ssn);
-        this.addFieldRow("Driver's License", occupant.driverLicense);
-        this.addFieldRow("Age", occupant.age);
-        this.addFieldRow("Sex", occupant.sex);
-        this.yPosition += 4;
+      this.addFieldRow("Name", occupant.name);
+      this.addFieldRow("Relationship", occupant.relationship);
+      this.addFieldRow("Date of Birth", occupant.dob);
+      
+      if (index < occupants.length - 1) {
+        this.yPosition += 4; // Add spacing between occupants
       }
     });
+    
+    this.yPosition += 4;
   }
 
   private addSignature(title: string, signature: string): void {
