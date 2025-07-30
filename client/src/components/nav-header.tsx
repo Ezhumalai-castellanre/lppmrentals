@@ -4,11 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { User, LogOut, Settings, Home } from 'lucide-react';
+import { User, LogOut, Settings, Home, Lock } from 'lucide-react';
 import LogoutButton from './logout-button';
+import { useLocation } from 'wouter';
 
 const NavHeader: React.FC = () => {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   if (!user) {
@@ -66,6 +68,10 @@ const NavHeader: React.FC = () => {
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setLocation('/change-password')}>
+                <Lock className="mr-2 h-4 w-4" />
+                <span>Change Password</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>

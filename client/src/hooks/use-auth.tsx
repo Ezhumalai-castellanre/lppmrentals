@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { signIn, signUp, confirmSignUp, signOut, resetPassword, confirmResetPassword, resendSignUpCode, getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth';
+import { signIn, signUp, confirmSignUp, signOut, resetPassword, confirmResetPassword, resendSignUpCode, getCurrentUser, fetchUserAttributes, updatePassword } from 'aws-amplify/auth';
 
 interface User {
   id: string;
@@ -19,6 +19,7 @@ interface AuthContextType {
   forgotPassword: (username: string) => Promise<void>;
   confirmForgotPassword: (username: string, code: string, newPassword: string) => Promise<void>;
   resendConfirmationCode: (username: string) => Promise<void>;
+  changePassword: (oldPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -202,6 +203,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const handleChangePassword = async (oldPassword: string, newPassword: string) => {
+    try {
+      await updatePassword({ oldPassword, newPassword });
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -214,6 +224,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     forgotPassword: handleForgotPassword,
     confirmForgotPassword: handleConfirmForgotPassword,
     resendConfirmationCode: handleResendConfirmationCode,
+    changePassword: handleChangePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
