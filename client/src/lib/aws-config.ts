@@ -4,7 +4,17 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 // Check if AWS credentials are available
 const hasAwsCredentials = import.meta.env.VITE_AWS_USER_POOL_ID &&
                          import.meta.env.VITE_AWS_USER_POOL_CLIENT_ID &&
-                         import.meta.env.VITE_AWS_USER_POOL_CLIENT_ID !== 'YOUR_APP_CLIENT_ID_HERE';
+                         import.meta.env.VITE_AWS_USER_POOL_CLIENT_ID !== 'YOUR_APP_CLIENT_ID_HERE' &&
+                         import.meta.env.VITE_AWS_USER_POOL_CLIENT_ID !== 'demo-client-id';
+
+// Debug logging for production troubleshooting
+console.log('AWS Configuration Debug:', {
+  hasAwsCredentials,
+  userPoolId: import.meta.env.VITE_AWS_USER_POOL_ID,
+  userPoolClientId: import.meta.env.VITE_AWS_USER_POOL_CLIENT_ID,
+  identityPoolId: import.meta.env.VITE_AWS_IDENTITY_POOL_ID,
+  region: import.meta.env.VITE_AWS_REGION,
+});
 
 const awsConfig = hasAwsCredentials ? {
   Auth: {
@@ -28,12 +38,12 @@ const awsConfig = hasAwsCredentials ? {
     },
   },
 } : {
-  // Fallback configuration for development
+  // Fallback configuration with actual AWS credentials
   Auth: {
     Cognito: {
       region: 'us-east-1',
       userPoolId: 'us-east-1_d07c780Tz',
-      userPoolClientId: 'demo-client-id',
+      userPoolClientId: 'dodlhbfd06i8u5t9kl6lkk6a0',
       // Only add identityPoolId if it's properly configured
       ...(import.meta.env.VITE_AWS_IDENTITY_POOL_ID && {
         identityPoolId: import.meta.env.VITE_AWS_IDENTITY_POOL_ID,
