@@ -12,9 +12,10 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   signIn: (username: string, password: string) => Promise<void>;
-  signUp: (username: string, email: string, password: string) => Promise<void>;
+  signUp: (username: string, email: string, password: string, phoneNumber?: string) => Promise<void>;
   confirmSignUp: (username: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
+  clearAuthState: () => Promise<void>;
   forgotPassword: (username: string) => Promise<void>;
   confirmForgotPassword: (username: string, code: string, newPassword: string) => Promise<void>;
   resendConfirmationCode: (username: string) => Promise<void>;
@@ -34,196 +35,168 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
-// Dummy authentication for testing
-const DUMMY_MODE = true; // Set to false to use real AWS Cognito
-const DUMMY_USERS = [
-  { username: 'admin', email: 'admin@example.com', password: 'admin123' },
-  { username: 'user', email: 'user@example.com', password: 'user123' },
-  { username: 'test', email: 'test@example.com', password: 'test123' },
-];
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [dummyUsers, setDummyUsers] = useState(DUMMY_USERS);
 
   useEffect(() => {
-    if (DUMMY_MODE) {
-      // Check for existing dummy user in localStorage
-      const savedUser = localStorage.getItem('dummyUser');
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-      }
-      setIsLoading(false);
-    } else {
-      checkAuthState();
-    }
+    checkAuthState();
   }, []);
 
   const checkAuthState = async () => {
     try {
       const currentUser = await getCurrentUser();
       if (currentUser) {
-        const userAttributes = await fetchUserAttributes();
-        setUser({
-          id: currentUser.username,
-          email: userAttributes.email || '',
-          username: currentUser.username,
-        });
+        try {
+          const userAttributes = await fetchUserAttributes();
+          setUser({
+            id: currentUser.username,
+            email: userAttributes.email || '',
+            username: currentUser.username,
+          });
+        } catch (identityError) {
+          // If Identity Pool fails, still set the user from current user
+          console.log('Identity Pool error during auth check (non-critical):', identityError);
+          setUser({
+            id: currentUser.username,
+            email: '',
+            username: currentUser.username,
+          });
+        }
       }
     } catch (error) {
-      console.log('No authenticated user');
+      console.log('No authenticated user or AWS not configured');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSignIn = async (username: string, password: string) => {
-    if (DUMMY_MODE) {
-      // Dummy authentication
-      const dummyUser = dummyUsers.find(u => u.username === username && u.password === password);
-      if (dummyUser) {
-        const user = {
-          id: dummyUser.username,
-          email: dummyUser.email,
-          username: dummyUser.username,
-        };
-        setUser(user);
-        localStorage.setItem('dummyUser', JSON.stringify(user));
-        return;
-      } else {
-        throw new Error('Invalid username or password');
-      }
-    }
-
     try {
+      // First, check if there's already a signed-in user and sign them out
+      try {
+        const currentUser = await getCurrentUser();
+        if (currentUser) {
+          console.log('Found existing user, signing out first...');
+          await signOut();
+          setUser(null);
+        }
+      } catch (error) {
+        // No current user, proceed with sign in
+        console.log('No existing user found, proceeding with sign in');
+      }
+
+      // Now sign in
       await signIn({ username, password });
-      const currentUser = await getCurrentUser();
-      const userAttributes = await fetchUserAttributes();
-      setUser({
-        id: currentUser.username,
-        email: userAttributes.email || '',
-        username: currentUser.username,
-      });
-    } catch (error) {
+      
+      // Try to get current user and attributes
+      try {
+        const currentUser = await getCurrentUser();
+        const userAttributes = await fetchUserAttributes();
+        setUser({
+          id: currentUser.username,
+          email: userAttributes.email || '',
+          username: currentUser.username,
+        });
+      } catch (identityError) {
+        // If Identity Pool fails, still set the user from sign-in
+        console.log('Identity Pool error (non-critical):', identityError);
+        // Set user with basic info from sign-in
+        setUser({
+          id: username,
+          email: '',
+          username: username,
+        });
+      }
+    } catch (error: any) {
       console.error('Error signing in:', error);
       throw error;
     }
   };
 
-  const handleSignUp = async (username: string, email: string, password: string) => {
-    if (DUMMY_MODE) {
-      // Check if user already exists
-      const existingUser = dummyUsers.find(u => u.username === username);
-      if (existingUser) {
-        throw new Error('Username already exists');
-      }
-      
-      // Add new dummy user
-      const newUser = { username, email, password };
-      setDummyUsers([...dummyUsers, newUser]);
-      return;
-    }
-
+  const handleSignUp = async (username: string, email: string, password: string, userAttributes?: any) => {
     try {
+      const attributes = userAttributes || {
+        email,
+      };
+
       await signUp({
         username,
         password,
         options: {
-          userAttributes: {
-            email,
-          },
+          userAttributes: attributes,
         },
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error signing up:', error);
       throw error;
     }
   };
 
   const handleConfirmSignUp = async (username: string, code: string) => {
-    if (DUMMY_MODE) {
-      // Dummy confirmation - accept any 6-digit code
-      if (code.length === 6 && /^\d{6}$/.test(code)) {
-        return;
-      } else {
-        throw new Error('Invalid verification code');
-      }
-    }
-
     try {
       await confirmSignUp({ username, confirmationCode: code });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error confirming sign up:', error);
       throw error;
     }
   };
 
   const handleSignOut = async () => {
-    if (DUMMY_MODE) {
-      setUser(null);
-      localStorage.removeItem('dummyUser');
-      return;
-    }
-
     try {
       await signOut();
       setUser(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error signing out:', error);
+      // Even if signOut fails, clear the local state
+      setUser(null);
       throw error;
     }
   };
 
-  const handleForgotPassword = async (username: string) => {
-    if (DUMMY_MODE) {
-      // Check if user exists
-      const existingUser = dummyUsers.find(u => u.username === username);
-      if (!existingUser) {
-        throw new Error('User not found');
+  const clearAuthState = async () => {
+    try {
+      // Try to sign out if there's a current user
+      try {
+        const currentUser = await getCurrentUser();
+        if (currentUser) {
+          await signOut();
+        }
+      } catch (error) {
+        // No current user, that's fine
       }
-      return;
+      
+      // Clear local state
+      setUser(null);
+    } catch (error: any) {
+      console.error('Error clearing auth state:', error);
+      // Clear local state anyway
+      setUser(null);
     }
+  };
 
+  const handleForgotPassword = async (username: string) => {
     try {
       await resetPassword({ username });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error requesting password reset:', error);
       throw error;
     }
   };
 
   const handleConfirmForgotPassword = async (username: string, code: string, newPassword: string) => {
-    if (DUMMY_MODE) {
-      // Dummy password reset - accept any 6-digit code
-      if (code.length === 6 && /^\d{6}$/.test(code)) {
-        // Update user password in dummy users
-        setDummyUsers(prev => prev.map(u => 
-          u.username === username ? { ...u, password: newPassword } : u
-        ));
-        return;
-      } else {
-        throw new Error('Invalid reset code');
-      }
-    }
-
     try {
       await confirmResetPassword({ username, confirmationCode: code, newPassword });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error confirming password reset:', error);
       throw error;
     }
   };
 
   const handleResendConfirmationCode = async (username: string) => {
-    if (DUMMY_MODE) {
-      // Dummy resend - just return success
-      return;
-    }
-
     try {
       await resendSignUpCode({ username });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error resending confirmation code:', error);
       throw error;
     }
@@ -237,6 +210,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signUp: handleSignUp,
     confirmSignUp: handleConfirmSignUp,
     signOut: handleSignOut,
+    clearAuthState: clearAuthState,
     forgotPassword: handleForgotPassword,
     confirmForgotPassword: handleConfirmForgotPassword,
     resendConfirmationCode: handleResendConfirmationCode,

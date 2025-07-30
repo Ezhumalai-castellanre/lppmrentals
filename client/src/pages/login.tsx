@@ -1,28 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, CheckCircle, User as UserIcon } from 'lucide-react';
 
 type AuthMode = 'signin' | 'signup' | 'confirm' | 'forgot' | 'reset';
 
 const LoginPage: React.FC = () => {
-  const { signIn, signUp, confirmSignUp, forgotPassword, confirmForgotPassword, resendConfirmationCode } = useAuth();
+  const { signIn, signUp, confirmSignUp, forgotPassword, confirmForgotPassword, resendConfirmationCode, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   
   const [mode, setMode] = useState<AuthMode>('signin');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isFormLoading, setIsFormLoading] = useState(false);
   const [error, setError] = useState<string>('');
   
   // Form states
   const [username, setUsername] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -30,10 +35,19 @@ const LoginPage: React.FC = () => {
   const [otpCode, setOtpCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [markEmailVerified, setMarkEmailVerified] = useState(false);
+  const [markPhoneVerified, setMarkPhoneVerified] = useState(false);
+
+  // Redirect to home page if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      setLocation('/');
+    }
+  }, [isAuthenticated, isLoading, setLocation]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsFormLoading(true);
     setError('');
 
     try {
@@ -50,23 +64,62 @@ const LoginPage: React.FC = () => {
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setIsFormLoading(false);
     }
+  };
+
+  const formatPhoneNumber = (phone: string) => {
+    // Remove all non-digit characters
+    const cleaned = phone.replace(/\D/g, '');
+    
+    // If it starts with 1 and has 11 digits, it's a US number
+    if (cleaned.length === 11 && cleaned.startsWith('1')) {
+      return `+${cleaned}`;
+    }
+    
+    // If it has 10 digits, assume it's a US number and add +1
+    if (cleaned.length === 10) {
+      return `+1${cleaned}`;
+    }
+    
+    // If it already starts with +, return as is
+    if (phone.startsWith('+')) {
+      return phone;
+    }
+    
+    // Otherwise, add + prefix
+    return `+${cleaned}`;
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsFormLoading(true);
     setError('');
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
-      setIsLoading(false);
+      setIsFormLoading(false);
       return;
     }
 
     try {
-      await signUp(username, email, password);
+      const userAttributes: any = {
+        email,
+        name: `${firstName} ${lastName}`.trim(),
+        given_name: firstName,
+        family_name: lastName,
+      };
+
+      // Add phone number if provided (with proper formatting)
+      if (phoneNumber.trim()) {
+        const formattedPhone = formatPhoneNumber(phoneNumber);
+        // Only add if formatting was successful
+        if (formattedPhone && formattedPhone.length > 1) {
+          userAttributes.phone_number = formattedPhone;
+        }
+      }
+
+      await signUp(username, email, password, userAttributes);
       setMode('confirm');
       toast({
         title: 'Success',
@@ -80,13 +133,13 @@ const LoginPage: React.FC = () => {
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setIsFormLoading(false);
     }
   };
 
   const handleConfirmSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsFormLoading(true);
     setError('');
 
     try {
@@ -105,13 +158,13 @@ const LoginPage: React.FC = () => {
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setIsFormLoading(false);
     }
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsFormLoading(true);
     setError('');
 
     try {
@@ -129,13 +182,13 @@ const LoginPage: React.FC = () => {
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setIsFormLoading(false);
     }
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsFormLoading(true);
     setError('');
 
     try {
@@ -155,12 +208,12 @@ const LoginPage: React.FC = () => {
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setIsFormLoading(false);
     }
   };
 
   const handleResendCode = async () => {
-    setIsLoading(true);
+    setIsFormLoading(true);
     setError('');
 
     try {
@@ -177,13 +230,16 @@ const LoginPage: React.FC = () => {
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setIsFormLoading(false);
     }
   };
 
   const resetForm = () => {
     setUsername('');
+    setFirstName('');
+    setLastName('');
     setEmail('');
+    setPhoneNumber('');
     setPassword('');
     setConfirmPassword('');
     setOtpCode('');
@@ -192,7 +248,30 @@ const LoginPage: React.FC = () => {
     setShowPassword(false);
     setShowConfirmPassword(false);
     setShowNewPassword(false);
+    setMarkEmailVerified(false);
+    setMarkPhoneVerified(false);
   };
+
+  // Show loading spinner while checking authentication status
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f2f8fe' }}>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Don't show login form if already authenticated (redirect will happen via useEffect)
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f2f8fe' }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting to application...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ backgroundColor: '#f2f8fe' }}>
@@ -294,8 +373,8 @@ const LoginPage: React.FC = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
-                {isLoading ? 'Signing In...' : 'Sign In'}
+              <Button type="submit" className="w-full h-12 text-base" disabled={isFormLoading}>
+                {isFormLoading ? 'Signing In...' : 'Sign In'}
               </Button>
 
               <div className="text-center space-y-3">
@@ -328,7 +407,9 @@ const LoginPage: React.FC = () => {
           {mode === 'signup' && (
             <form onSubmit={handleSignUp} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="signup-username" className="text-sm font-medium">Username</Label>
+                <Label htmlFor="signup-username" className="text-sm font-medium">
+                  Username <span className="text-red-500">*</span>
+                </Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
@@ -336,15 +417,58 @@ const LoginPage: React.FC = () => {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Choose a username"
+                    placeholder="Enter username (required)"
                     className="pl-10 h-12 text-base"
                     required
                   />
                 </div>
+                <p className="text-xs text-gray-500">
+                  Username is a required attribute based on your user pool configuration.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName" className="text-sm font-medium">
+                    First Name <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="firstName"
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="First name"
+                      className="pl-10 h-12 text-base"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="text-sm font-medium">
+                    Last Name <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="lastName"
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Last name"
+                      className="pl-10 h-12 text-base"
+                      required
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email Address <span className="text-red-500">*</span>
+                </Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
@@ -352,15 +476,40 @@ const LoginPage: React.FC = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    placeholder="Enter email address"
                     className="pl-10 h-12 text-base"
                     required
                   />
                 </div>
+                <p className="text-xs text-gray-500">
+                  Email can be used for sign-in, account recovery, and confirmation.
+                </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="signup-password" className="text-sm font-medium">Password</Label>
+                <Label htmlFor="phone" className="text-sm font-medium">
+                  Phone Number <span className="text-gray-400">(optional)</span>
+                </Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="+1 (555) 123-4567"
+                    className="pl-10 h-12 text-base"
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Include country code (e.g., +1 for US). Phone number is optional.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signup-password" className="text-sm font-medium">
+                  Password <span className="text-red-500">*</span>
+                </Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
@@ -385,7 +534,9 @@ const LoginPage: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirm-password" className="text-sm font-medium">Confirm Password</Label>
+                <Label htmlFor="confirm-password" className="text-sm font-medium">
+                  Confirm Password <span className="text-red-500">*</span>
+                </Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
@@ -409,8 +560,8 @@ const LoginPage: React.FC = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
-                {isLoading ? 'Creating Account...' : 'Create Account'}
+              <Button type="submit" className="w-full h-12 text-base" disabled={isFormLoading}>
+                {isFormLoading ? 'Creating Account...' : 'Create Account'}
               </Button>
 
               <div className="text-center">
@@ -434,28 +585,21 @@ const LoginPage: React.FC = () => {
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Verification Code</Label>
                 <div className="flex justify-center">
-                  <InputOTP
+                  <Input
+                    type="text"
                     value={otpCode}
-                    onChange={setOtpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    placeholder="Enter 6-digit code"
+                    className="text-center text-lg font-mono tracking-widest h-12"
                     maxLength={6}
-                    render={({ slots }) => (
-                      <InputOTPGroup className="gap-2 md:gap-3">
-                        {slots.map((slot, index) => (
-                          <InputOTPSlot 
-                            key={index} 
-                            {...slot} 
-                            index={index}
-                            className="w-10 h-12 md:w-12 md:h-14 text-lg"
-                          />
-                        ))}
-                      </InputOTPGroup>
-                    )}
+                    pattern="[0-9]*"
+                    inputMode="numeric"
                   />
                 </div>
               </div>
 
               <Button type="submit" className="w-full h-12 text-base" disabled={isLoading || otpCode.length !== 6}>
-                {isLoading ? 'Verifying...' : 'Verify Email'}
+                {isFormLoading ? 'Verifying...' : 'Verify Email'}
               </Button>
 
               <div className="text-center space-y-3">
@@ -464,7 +608,7 @@ const LoginPage: React.FC = () => {
                   variant="link"
                   className="text-sm"
                   onClick={handleResendCode}
-                  disabled={isLoading}
+                  disabled={isFormLoading}
                 >
                   Resend Code
                 </Button>
@@ -501,8 +645,8 @@ const LoginPage: React.FC = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
-                {isLoading ? 'Sending Reset Code...' : 'Send Reset Code'}
+              <Button type="submit" className="w-full h-12 text-base" disabled={isFormLoading}>
+                {isFormLoading ? 'Sending Reset Code...' : 'Send Reset Code'}
               </Button>
 
               <div className="text-center">
@@ -526,22 +670,15 @@ const LoginPage: React.FC = () => {
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Reset Code</Label>
                 <div className="flex justify-center">
-                  <InputOTP
+                  <Input
+                    type="text"
                     value={otpCode}
-                    onChange={setOtpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    placeholder="Enter 6-digit code"
+                    className="text-center text-lg font-mono tracking-widest h-12"
                     maxLength={6}
-                    render={({ slots }) => (
-                      <InputOTPGroup className="gap-2 md:gap-3">
-                        {slots.map((slot, index) => (
-                          <InputOTPSlot 
-                            key={index} 
-                            {...slot} 
-                            index={index}
-                            className="w-10 h-12 md:w-12 md:h-14 text-lg"
-                          />
-                        ))}
-                      </InputOTPGroup>
-                    )}
+                    pattern="[0-9]*"
+                    inputMode="numeric"
                   />
                 </div>
               </div>
@@ -572,7 +709,7 @@ const LoginPage: React.FC = () => {
               </div>
 
               <Button type="submit" className="w-full h-12 text-base" disabled={isLoading || otpCode.length !== 6}>
-                {isLoading ? 'Resetting Password...' : 'Reset Password'}
+                {isFormLoading ? 'Resetting Password...' : 'Reset Password'}
               </Button>
 
               <div className="text-center">
