@@ -24,18 +24,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User registration endpoint
   app.post("/api/register-user", async (req, res) => {
     try {
+      console.log('🔧 User registration request received:', req.body);
       const { cognitoUsername, email, firstName, lastName, phoneNumber } = req.body;
       
       // Validate required fields
       if (!cognitoUsername || !email) {
+        console.log('❌ Missing required fields:', { cognitoUsername, email });
         return res.status(400).json({ 
           error: "Missing required fields: cognitoUsername and email are required" 
         });
       }
 
       // Check if user already exists
+      console.log('🔍 Checking if user already exists:', cognitoUsername);
       const existingUser = await storage.getUserByCognitoUsername(cognitoUsername);
       if (existingUser) {
+        console.log('✅ User already exists with applicantId:', existingUser.applicantId);
         return res.status(409).json({ 
           error: "User already exists with this Cognito username",
           applicantId: existingUser.applicantId
@@ -43,6 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create user with UUID-based Applicant ID
+      console.log('🔧 Creating new user...');
       const user = await storage.createUser({
         cognitoUsername,
         email,
@@ -51,6 +56,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phoneNumber,
       });
 
+      console.log('✅ User created successfully with applicantId:', user.applicantId);
       res.status(201).json({ 
         message: "User registered successfully", 
         user: {
@@ -61,7 +67,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error('User registration error:', error);
+      console.error('❌ User registration error:', error);
       res.status(500).json({ error: "Failed to register user" });
     }
   });

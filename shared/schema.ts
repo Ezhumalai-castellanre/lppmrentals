@@ -1,35 +1,35 @@
-import { pgTable, text, serial, integer, boolean, timestamp, real, uuid } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer, real, blob } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  applicantId: uuid("applicant_id").notNull().unique(),
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  applicantId: text("applicant_id").notNull().unique(),
   cognitoUsername: text("cognito_username").notNull().unique(),
   email: text("email").notNull(),
   firstName: text("first_name"),
   lastName: text("last_name"),
   phoneNumber: text("phone_number"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: integer("created_at", { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
 
-export const rentalApplications = pgTable("rental_applications", {
-  id: serial("id").primaryKey(),
+export const rentalApplications = sqliteTable("rental_applications", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   // User reference
-  applicantId: uuid("applicant_id").notNull().references(() => users.applicantId),
+  applicantId: text("applicant_id").notNull().references(() => users.applicantId),
   // Application Info
-  applicationDate: timestamp("application_date").defaultNow(),
+  applicationDate: integer("application_date", { mode: 'timestamp' }).$defaultFn(() => new Date()),
   buildingAddress: text("building_address").notNull(),
   apartmentNumber: text("apartment_number").notNull(),
-  moveInDate: timestamp("move_in_date").notNull(),
+  moveInDate: integer("move_in_date", { mode: 'timestamp' }).notNull(),
   monthlyRent: real("monthly_rent").notNull(),
   apartmentType: text("apartment_type").notNull(),
   howDidYouHear: text("how_did_you_hear"),
   
   // Primary Applicant
   applicantName: text("applicant_name").notNull(),
-  applicantDob: timestamp("applicant_dob").notNull(),
+  applicantDob: integer("applicant_dob", { mode: 'timestamp' }).notNull(),
   applicantSsn: text("applicant_ssn"),
   applicantPhone: text("applicant_phone"),
   applicantEmail: text("applicant_email").notNull(),
@@ -47,7 +47,7 @@ export const rentalApplications = pgTable("rental_applications", {
   // Primary Applicant Financial
   applicantEmployer: text("applicant_employer"),
   applicantPosition: text("applicant_position"),
-  applicantEmploymentStart: timestamp("applicant_employment_start"),
+  applicantEmploymentStart: integer("applicant_employment_start", { mode: 'timestamp' }),
   applicantIncome: real("applicant_income"),
   applicantOtherIncome: real("applicant_other_income"),
   applicantOtherIncomeSource: text("applicant_other_income_source"),
@@ -55,14 +55,14 @@ export const rentalApplications = pgTable("rental_applications", {
   applicantAccountType: text("applicant_account_type"),
   
   // Co-Applicant
-  hasCoApplicant: boolean("has_co_applicant").default(false),
+  hasCoApplicant: integer("has_co_applicant", { mode: 'boolean' }).default(false),
   coApplicantName: text("co_applicant_name"),
   coApplicantRelationship: text("co_applicant_relationship"),
-  coApplicantDob: timestamp("co_applicant_dob"),
+  coApplicantDob: integer("co_applicant_dob", { mode: 'timestamp' }),
   coApplicantSsn: text("co_applicant_ssn"),
   coApplicantPhone: text("co_applicant_phone"),
   coApplicantEmail: text("co_applicant_email"),
-  coApplicantSameAddress: boolean("co_applicant_same_address").default(false),
+  coApplicantSameAddress: integer("co_applicant_same_address", { mode: 'boolean' }).default(false),
   coApplicantAddress: text("co_applicant_address"),
   coApplicantCity: text("co_applicant_city"),
   coApplicantState: text("co_applicant_state"),
@@ -72,17 +72,17 @@ export const rentalApplications = pgTable("rental_applications", {
   // Co-Applicant Financial
   coApplicantEmployer: text("co_applicant_employer"),
   coApplicantPosition: text("co_applicant_position"),
-  coApplicantEmploymentStart: timestamp("co_applicant_employment_start"),
+  coApplicantEmploymentStart: integer("co_applicant_employment_start", { mode: 'timestamp' }),
   coApplicantIncome: real("co_applicant_income"),
   coApplicantOtherIncome: real("co_applicant_other_income"),
   coApplicantBankName: text("co_applicant_bank_name"),
   coApplicantAccountType: text("co_applicant_account_type"),
   
   // Guarantor
-  hasGuarantor: boolean("has_guarantor").default(false),
+  hasGuarantor: integer("has_guarantor", { mode: 'boolean' }).default(false),
   guarantorName: text("guarantor_name"),
   guarantorRelationship: text("guarantor_relationship"),
-  guarantorDob: timestamp("guarantor_dob"),
+  guarantorDob: integer("guarantor_dob", { mode: 'timestamp' }),
   guarantorSsn: text("guarantor_ssn"),
   guarantorPhone: text("guarantor_phone"),
   guarantorEmail: text("guarantor_email"),
@@ -95,7 +95,7 @@ export const rentalApplications = pgTable("rental_applications", {
   // Guarantor Financial
   guarantorEmployer: text("guarantor_employer"),
   guarantorPosition: text("guarantor_position"),
-  guarantorEmploymentStart: timestamp("guarantor_employment_start"),
+  guarantorEmploymentStart: integer("guarantor_employment_start", { mode: 'timestamp' }),
   guarantorIncome: real("guarantor_income"),
   guarantorOtherIncome: real("guarantor_other_income"),
   guarantorBankName: text("guarantor_bank_name"),
@@ -107,13 +107,13 @@ export const rentalApplications = pgTable("rental_applications", {
   guarantorSignature: text("guarantor_signature"),
   
   // Legal Questions
-  hasBankruptcy: boolean("has_bankruptcy").default(false),
+  hasBankruptcy: integer("has_bankruptcy", { mode: 'boolean' }).default(false),
   bankruptcyDetails: text("bankruptcy_details"),
-  hasEviction: boolean("has_eviction").default(false),
+  hasEviction: integer("has_eviction", { mode: 'boolean' }).default(false),
   evictionDetails: text("eviction_details"),
-  hasCriminalHistory: boolean("has_criminal_history").default(false),
+  hasCriminalHistory: integer("has_criminal_history", { mode: 'boolean' }).default(false),
   criminalHistoryDetails: text("criminal_history_details"),
-  hasPets: boolean("has_pets").default(false),
+  hasPets: integer("has_pets", { mode: 'boolean' }).default(false),
   petDetails: text("pet_details"),
   smokingStatus: text("smoking_status"), // "non-smoker", "smoker", "occasional"
   
@@ -125,7 +125,7 @@ export const rentalApplications = pgTable("rental_applications", {
   
   // Status
   status: text("status").default("draft"),
-  submittedAt: timestamp("submitted_at"),
+  submittedAt: integer("submitted_at", { mode: 'timestamp' }),
 });
 
 // Helper function to convert string dates to Date objects
@@ -155,7 +155,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
 
 export const insertRentalApplicationSchema = baseSchema.extend({
   // Required fields (from database schema)
-  applicantId: z.string().uuid("Applicant ID must be a valid UUID"),
+  applicantId: z.string().min(1, "Applicant ID is required"),
   buildingAddress: z.string().min(1, "Building address is required"),
   apartmentNumber: z.string().min(1, "Apartment number is required"),
   moveInDate: dateStringToDate.refine((val) => val !== null, "Move-in date is required"),

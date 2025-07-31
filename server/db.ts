@@ -1,5 +1,5 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import Database from 'better-sqlite3';
 import { rentalApplications, users } from '@shared/schema';
 import dotenv from 'dotenv';
 
@@ -7,13 +7,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Create the connection
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error('DATABASE_URL environment variable is required');
-}
+const databasePath = process.env.DATABASE_URL?.replace('file:', '') || './dev.db';
+console.log('🔧 Connecting to SQLite database:', databasePath);
 
-const client = postgres(connectionString);
-export const db = drizzle(client);
+const sqlite = new Database(databasePath);
+export const db = drizzle(sqlite);
 
 // Export the tables for use in storage
 export { rentalApplications, users }; 

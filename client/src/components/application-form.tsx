@@ -28,7 +28,7 @@ import { useLocation } from "wouter";
 import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "@/lib/file-encryption";
 import { WebhookService } from "@/lib/webhook-service";
 import { MondayApiService, type UnitItem } from "@/lib/monday-api";
-import { DebugUserState } from "@/components/debug-user-state";
+
 import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "@/components/ui/validated-input";
 import { StateCitySelector, StateSelector, CitySelector } from "@/components/ui/state-city-selector";
 import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail, validateDriverLicense } from "@/lib/validation";
@@ -3860,7 +3860,7 @@ export function ApplicationForm() {
           </div>
           
           {/* Debug component - remove in production */}
-          <DebugUserState />
+
           
           {/* Progress Steps */}
           <div className="flex items-center justify-between mb-2 sm:mb-4 overflow-x-auto">

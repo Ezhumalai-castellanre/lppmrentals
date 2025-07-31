@@ -50,17 +50,36 @@ function generateTimezoneBasedUUID(): string {
 export const storage = {
   // User management functions
   async createUser(userData: Omit<InsertUser, 'applicantId'>): Promise<User> {
+    console.log('🔧 Creating user with data:', userData);
     const applicantId = generateLppmNumber();
-    const result = await db.insert(users).values({
-      ...userData,
-      applicantId,
-    }).returning();
-    return result[0];
+    console.log('🔧 Generated applicantId for new user:', applicantId);
+    
+    try {
+      const result = await db.insert(users).values({
+        ...userData,
+        applicantId,
+      }).returning();
+      console.log('✅ User created successfully:', result[0]);
+      return result[0];
+    } catch (error) {
+      console.error('❌ Error creating user:', error);
+      throw error;
+    }
   },
 
   async getUserByCognitoUsername(cognitoUsername: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.cognitoUsername, cognitoUsername));
-    return result[0];
+    console.log('🔍 Looking up user by Cognito username:', cognitoUsername);
+    try {
+      const result = await db.select().from(users).where(eq(users.cognitoUsername, cognitoUsername));
+      console.log('🔍 User lookup result:', result[0] ? 'Found' : 'Not found');
+      if (result[0]) {
+        console.log('✅ Found user with applicantId:', result[0].applicantId);
+      }
+      return result[0];
+    } catch (error) {
+      console.error('❌ Error looking up user:', error);
+      throw error;
+    }
   },
 
   async getUserByApplicantId(applicantId: string): Promise<User | undefined> {

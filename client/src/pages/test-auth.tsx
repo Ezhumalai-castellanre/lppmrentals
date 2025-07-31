@@ -4,6 +4,7 @@ import { generateLppmNumber, isValidLppmNumber } from '@/lib/utils';
 import { triggerAwsDebug } from '@/lib/aws-config';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DebugUserState } from '@/components/debug-user-state';
 
 export default function TestAuthPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -23,6 +24,8 @@ export default function TestAuthPage() {
         applicantId: user?.applicantId,
         email: user?.email,
         username: user?.username,
+        zoneinfo: user?.zoneinfo,
+        fullUserObject: user,
       },
       awsDebug: null as any,
     };
@@ -39,6 +42,12 @@ export default function TestAuthPage() {
     console.log('✅ Test results:', results);
   };
 
+  const forceAuthCheck = async () => {
+    console.log('🔄 Forcing authentication check...');
+    // This will trigger a re-check of the auth state
+    window.location.reload();
+  };
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
@@ -53,6 +62,13 @@ export default function TestAuthPage() {
           <Button onClick={runTests} className="w-full">
             🧪 Run All Tests
           </Button>
+          
+          <Button onClick={forceAuthCheck} variant="outline" className="w-full">
+            🔄 Force Auth Check
+          </Button>
+
+          {/* Debug component */}
+          <DebugUserState />
 
           {testResults && (
             <div className="space-y-4">
@@ -98,10 +114,30 @@ export default function TestAuthPage() {
           <div className="mt-8">
             <h3 className="text-lg font-semibold mb-4">Current Status:</h3>
             <div className="space-y-2">
-              <div>Authentication: {isAuthenticated ? '✅ Authenticated' : '❌ Not authenticated'}</div>
-              <div>User: {user ? '✅ User exists' : '❌ No user'}</div>
-              <div>ApplicantId: {user?.applicantId || '❌ No applicantId'}</div>
-              <div>Email: {user?.email || '❌ No email'}</div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Authentication Status:</span>
+                <span className={isAuthenticated ? "text-green-600" : "text-red-600"}>
+                  {isAuthenticated ? "✅ Authenticated" : "❌ Not Authenticated"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">User Object:</span>
+                <span className={user ? "text-green-600" : "text-red-600"}>
+                  {user ? "✅ Present" : "❌ Missing"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Applicant ID:</span>
+                <span className={user?.applicantId ? "text-green-600" : "text-red-600"}>
+                  {user?.applicantId || "❌ Missing"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Zoneinfo:</span>
+                <span className={user?.zoneinfo ? "text-blue-600" : "text-gray-600"}>
+                  {user?.zoneinfo || "None"}
+                </span>
+              </div>
             </div>
           </div>
         </CardContent>

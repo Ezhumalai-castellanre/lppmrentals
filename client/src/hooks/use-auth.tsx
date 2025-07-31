@@ -54,32 +54,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthState = async () => {
     try {
+      console.log('🔍 Checking authentication state...');
+      setIsLoading(true);
+      
       const currentUser = await getCurrentUser();
+      console.log('✅ Current user found:', currentUser?.username);
+      
       if (currentUser) {
-        try {
-          const userAttributes = await fetchUserAttributes();
-          setUser({
-            id: currentUser.username,
-            email: userAttributes.email || '',
-            username: currentUser.username,
-            zoneinfo: userAttributes.zoneinfo || userAttributes['custom:zoneinfo'],
-            name: userAttributes.name,
-            given_name: userAttributes.given_name,
-            family_name: userAttributes.family_name,
-            phone_number: userAttributes.phone_number,
-          });
-        } catch (identityError) {
-          // If Identity Pool fails, still set the user from current user
-          console.log('Identity Pool error during auth check (non-critical):', identityError);
-          setUser({
-            id: currentUser.username,
-            email: '',
-            username: currentUser.username,
-          });
+        const userAttributes = await fetchUserAttributes();
+        console.log('✅ User attributes fetched:', Object.keys(userAttributes));
+        
+        // Get applicantId from database
+        const applicantId = await registerUserInDatabase(
+          currentUser.username,
+          userAttributes.email || '',
+          userAttributes.given_name,
+          userAttributes.family_name,
+          userAttributes.phone_number
+        );
+        console.log('✅ Database applicantId:', applicantId);
+        
+        // Check zoneinfo for temporary applicantId
+        const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
+        console.log('🔍 Zoneinfo value:', zoneinfoValue);
+        
+        // Determine the actual applicantId
+        let actualApplicantId = applicantId; // Default to database applicantId
+        if (zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_'))) {
+          actualApplicantId = zoneinfoValue; // Use zoneinfo as applicantId if it's a temporary format
+          console.log('🔧 Using zoneinfo as applicantId:', actualApplicantId);
+        } else if (!applicantId) {
+          // If no applicantId from database, generate a new one
+          actualApplicantId = generateLppmNumber();
+          console.log('🔧 Generated new applicantId because none found in database:', actualApplicantId);
         }
+        
+        console.log('✅ Final applicantId determined:', actualApplicantId);
+        
+        setUser({
+          id: currentUser.username,
+          email: userAttributes.email || '',
+          username: currentUser.username,
+          applicantId: actualApplicantId,
+          zoneinfo: zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')) ? undefined : zoneinfoValue,
+          name: userAttributes.name,
+          given_name: userAttributes.given_name,
+          family_name: userAttributes.family_name,
+          phone_number: userAttributes.phone_number,
+        });
+        
+        console.log('✅ User state set successfully with applicantId:', actualApplicantId);
+      } else {
+        console.log('❌ No current user found');
+        setUser(null);
       }
     } catch (error) {
-      console.log('No authenticated user or AWS not configured');
+      console.error('❌ Error checking auth state:', error);
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
