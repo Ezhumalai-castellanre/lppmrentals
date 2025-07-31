@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
+import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ interface MissingSubitem {
 
 export default function MissingDocumentsPage() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const [applicantId, setApplicantId] = useState('');
   const [missingItems, setMissingItems] = useState<MissingSubitem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -66,15 +68,19 @@ export default function MissingDocumentsPage() {
       setLoadedFromUrl(true);
       // Automatically search for the applicant if ID is provided in URL
       fetchMissingSubitems(applicantIdFromUrl);
+    } else if (user?.zoneinfo) {
+      // Use the authenticated user's zoneinfo as applicant ID
+      setApplicantId(user.zoneinfo);
+      fetchMissingSubitems(user.zoneinfo);
     } else {
-      // If no applicant ID in URL, try to load from localStorage or set a default
+      // If no applicant ID in URL or user zoneinfo, try to load from localStorage
       const savedApplicantId = localStorage.getItem('lastApplicantId');
       if (savedApplicantId) {
         setApplicantId(savedApplicantId);
         fetchMissingSubitems(savedApplicantId);
       }
     }
-  }, []);
+  }, [user]);
 
   const fetchMissingSubitems = async (id: string) => {
     setLoading(true);
@@ -280,6 +286,27 @@ export default function MissingDocumentsPage() {
     };
   };
 
+  // Check if user is authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Missing Documents Tracker
+            </h1>
+            <p className="text-gray-600 mb-4">
+              Please log in to view your missing documents
+            </p>
+            <Button onClick={() => setLocation('/login')}>
+              Go to Login
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -292,6 +319,13 @@ export default function MissingDocumentsPage() {
             <p className="text-gray-600 mb-4">
               Track and manage missing documents for rental applications
             </p>
+            {user?.zoneinfo && (
+              <div className="bg-green-50 p-4 rounded-lg max-w-2xl mx-auto mb-4">
+                <p className="text-sm text-green-800">
+                  <span className="font-medium">👤 User ID:</span> {user.zoneinfo}
+                </p>
+              </div>
+            )}
             <div className="bg-blue-50 p-4 rounded-lg max-w-2xl mx-auto">
               <p className="text-sm text-blue-800">
                 <span className="font-medium">📤 Upload Feature:</span> You can now upload missing documents directly from this page. 
