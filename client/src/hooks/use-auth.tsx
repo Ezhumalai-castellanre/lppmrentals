@@ -77,6 +77,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Check zoneinfo for temporary applicantId
         const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
         console.log('🔍 Zoneinfo value:', zoneinfoValue);
+        console.log('🔍 User attributes keys:', Object.keys(userAttributes));
+        console.log('🔍 User attributes:', userAttributes);
         
         // Determine the actual applicantId
         let actualApplicantId = applicantId; // Default to database applicantId
@@ -91,19 +93,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         console.log('✅ Final applicantId determined:', actualApplicantId);
         
-        setUser({
+        const userState = {
           id: currentUser.username,
           email: userAttributes.email || '',
           username: currentUser.username,
           applicantId: actualApplicantId,
-          zoneinfo: zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_') || zoneinfoValue.startsWith('LPPM-')) ? undefined : zoneinfoValue,
+          zoneinfo: zoneinfoValue, // Always keep the zoneinfo value
           name: userAttributes.name,
           given_name: userAttributes.given_name,
           family_name: userAttributes.family_name,
           phone_number: userAttributes.phone_number,
-        });
+        };
         
+        setUser(userState);
+        
+        console.log('✅ User state set successfully:', userState);
         console.log('✅ User state set successfully with applicantId:', actualApplicantId);
+        console.log('✅ User state set successfully with zoneinfo:', zoneinfoValue);
       } else {
         console.log('❌ No current user found');
         setUser(null);
