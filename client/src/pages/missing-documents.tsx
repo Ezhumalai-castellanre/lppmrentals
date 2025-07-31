@@ -32,6 +32,11 @@ export default function MissingDocumentsPage() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const [applicantId, setApplicantId] = useState('');
+  
+  // Log when applicantId changes
+  useEffect(() => {
+    console.log('📝 Missing Documents - applicantId changed to:', applicantId);
+  }, [applicantId]);
   const [missingItems, setMissingItems] = useState<MissingSubitem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +82,7 @@ export default function MissingDocumentsPage() {
     } else if (user?.zoneinfo) {
       console.log('🔍 Missing Documents - Using user zoneinfo:', user.zoneinfo);
       setApplicantId(user.zoneinfo);
+      console.log('📝 Missing Documents - Set applicantId to zoneinfo value:', user.zoneinfo);
       // Pass the zoneinfo to fetchMissingSubitems, but it will use user.zoneinfo for API call
       fetchMissingSubitems(user.zoneinfo);
     } else {
@@ -385,6 +391,9 @@ export default function MissingDocumentsPage() {
               <div className="bg-green-50 p-4 rounded-lg max-w-2xl mx-auto mb-4">
                 <p className="text-sm text-green-800">
                   <span className="font-medium">👤 User ID:</span> {user.zoneinfo}
+                </p>
+                <p className="text-sm text-green-700 mt-1">
+                  <span className="font-medium">📝 Applicant ID:</span> {applicantId}
                 </p>
                 <p className="text-sm text-green-700 mt-1">
                   <span className="font-medium">🔍 API Call:</span> /api/monday/missing-subitems/{user.zoneinfo}
