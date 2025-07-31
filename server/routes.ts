@@ -407,10 +407,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Find items matching the applicant ID
+      // Create a list of possible applicant IDs to search for
+      const searchApplicantIds = [applicantId];
+      
+      // If the requested ID is in new Lppm format, also search for old format equivalents
+      if (applicantId.startsWith('Lppm-')) {
+        // Extract date and number from Lppm format
+        const match = applicantId.match(/^Lppm-(\d{8})-(\d{5})$/);
+        if (match) {
+          const [, dateStr, numberStr] = match;
+          const timestamp = new Date(
+            parseInt(dateStr.substring(0, 4)),
+            parseInt(dateStr.substring(4, 6)) - 1,
+            parseInt(dateStr.substring(6, 8))
+          ).getTime();
+          
+          // Create old format equivalents
+          const oldZoneFormat = `zone_${timestamp}_${numberStr}`;
+          const oldTempFormat = `temp_${timestamp}_${numberStr}`;
+          
+          searchApplicantIds.push(oldZoneFormat, oldTempFormat);
+          console.log(`🔍 Also searching for old format equivalents: ${oldZoneFormat}, ${oldTempFormat}`);
+        }
+      }
+      
+      // If the requested ID is in old format, also search for new Lppm format
+      if (applicantId.startsWith('zone_') || applicantId.startsWith('temp_')) {
+        // Extract timestamp and number from old format
+        const match = applicantId.match(/^(zone_|temp_)(\d+)_(.+)$/);
+        if (match) {
+          const [, prefix, timestamp, numberStr] = match;
+          const date = new Date(parseInt(timestamp));
+          const dateStr = date.getFullYear().toString() + 
+                         String(date.getMonth() + 1).padStart(2, '0') + 
+                         String(date.getDate()).padStart(2, '0');
+          
+          const newLppmFormat = `Lppm-${dateStr}-${numberStr.padStart(5, '0')}`;
+          searchApplicantIds.push(newLppmFormat);
+          console.log(`🔍 Also searching for new Lppm format: ${newLppmFormat}`);
+        }
+      }
+      
+      console.log(`🔍 Searching for applicant IDs: ${searchApplicantIds.join(', ')}`);
+      
+      // Find items matching any of the possible applicant IDs
       const matchingItems = items.filter((item: any) => {
         const itemApplicantId = item.column_values.find((cv: any) => cv.id === "text_mksxyax3")?.text;
-        return itemApplicantId === applicantId;
+        const matches = searchApplicantIds.includes(itemApplicantId);
+        
+        if (matches) {
+          console.log(`✅ Found matching item: ${item.name} with applicant ID: ${itemApplicantId}`);
+        }
+        
+        return matches;
       });
 
       console.log('📊 Found', matchingItems.length, 'items matching applicant ID', `"${applicantId}"`);

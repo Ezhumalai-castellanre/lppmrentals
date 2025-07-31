@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { generateTimezoneBasedUUID, isValidTimezoneUUID } from '@/lib/utils';
+import { generateLppmNumber, isValidLppmNumber } from '@/lib/utils';
 import { triggerAwsDebug } from '@/lib/aws-config';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,9 +13,9 @@ export default function TestAuthPage() {
     console.log('🧪 Running comprehensive tests...');
     
     const results = {
-      timezoneUUID: {
-        generated: generateTimezoneBasedUUID(),
-        isValid: isValidTimezoneUUID(generateTimezoneBasedUUID()),
+      lppmNumber: {
+        generated: generateLppmNumber(),
+        isValid: isValidLppmNumber(generateLppmNumber()),
       },
       user: {
         isAuthenticated,
@@ -47,7 +47,7 @@ export default function TestAuthPage() {
     <div className="container mx-auto p-8">
       <Card>
         <CardHeader>
-          <CardTitle>Authentication & Timezone UUID Test</CardTitle>
+          <CardTitle>Authentication & Lppm Number Test</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button onClick={runTests} className="w-full">
@@ -61,11 +61,11 @@ export default function TestAuthPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-sm">Timezone UUID Test</CardTitle>
+                    <CardTitle className="text-sm">Lppm Number Test</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <pre className="text-xs bg-gray-100 p-2 rounded">
-                      {JSON.stringify(testResults.timezoneUUID, null, 2)}
+                      {JSON.stringify(testResults.lppmNumber, null, 2)}
                     </pre>
                   </CardContent>
                 </Card>

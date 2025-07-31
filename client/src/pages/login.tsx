@@ -328,21 +328,7 @@ const LoginPage: React.FC = () => {
             {mode === 'reset' && 'Enter the reset code and your new password.'}
           </CardDescription>
           
-          {/* Debug Button - Only show in development */}
-          {import.meta.env.DEV && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                console.log('🔍 Triggering AWS Debug...');
-                await triggerAwsDebug();
-              }}
-              className="mt-2"
-            >
-              🔍 Debug AWS Config
-            </Button>
-          )}
+
         </CardHeader>
 
         <CardContent className="px-4 md:px-6">

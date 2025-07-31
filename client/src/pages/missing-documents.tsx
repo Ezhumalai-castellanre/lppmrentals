@@ -11,6 +11,7 @@ import { FileUpload } from '@/components/ui/file-upload';
 import { encryptFiles, validateFileForEncryption, type EncryptedFile } from '@/lib/file-encryption';
 import { WebhookService } from '@/lib/webhook-service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { getAllApplicantIdFormats, isValidLppmNumber } from '@/lib/utils';
 
 interface MissingSubitem {
   id: string;
@@ -81,6 +82,10 @@ export default function MissingDocumentsPage() {
     setSuccessMessage(null);
     
     try {
+      // Get all possible formats for the applicant ID
+      const searchFormats = getAllApplicantIdFormats(id);
+      console.log(`🔍 Searching for applicant ID "${id}" with formats:`, searchFormats);
+      
       const response = await fetch(`/api/monday/missing-subitems/${id}`);
       
       if (!response.ok) {
@@ -93,6 +98,13 @@ export default function MissingDocumentsPage() {
       
       // Save applicant ID to localStorage for future use
       localStorage.setItem('lastApplicantId', id);
+      
+      // Provide feedback about the search
+      if (data.length === 0) {
+        setSuccessMessage(`No missing documents found for applicant ID: ${id}. The system searched for multiple formats including: ${searchFormats.join(', ')}`);
+      } else {
+        setSuccessMessage(`Found ${data.length} document(s) for applicant ID: ${id}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch missing documents');
       setMissingItems([]);
@@ -256,6 +268,18 @@ export default function MissingDocumentsPage() {
     }
   };
 
+  const getApplicantIdInfo = (id: string) => {
+    const formats = getAllApplicantIdFormats(id);
+    const isNewFormat = isValidLppmNumber(id);
+    
+    return {
+      formats,
+      isNewFormat,
+      formatType: isNewFormat ? 'New Lppm Format' : 'Legacy Format',
+      searchCount: formats.length
+    };
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -301,7 +325,7 @@ export default function MissingDocumentsPage() {
                 <Input
                   id="applicantId"
                   type="text"
-                  placeholder="Enter applicant ID (e.g., app_1752839426391_2041fkmmy)"
+                  placeholder="Enter applicant ID (e.g., Lppm-20250731-59145)"
                   value={applicantId}
                   onChange={(e) => setApplicantId(e.target.value)}
                   className="mt-1"

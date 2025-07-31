@@ -1577,15 +1577,7 @@ export function ApplicationForm() {
           webhookPayload,
           referenceId,
           user?.applicantId || 'unknown',
-          user?.id,
-          {
-            zoneinfo: user?.zoneinfo,
-            email: user?.email,
-            name: user?.name,
-            given_name: user?.given_name,
-            family_name: user?.family_name,
-            phone_number: user?.phone_number,
-          },
+          user?.zoneinfo,
           uploadedFilesMetadata
         );
         
@@ -2546,14 +2538,7 @@ export function ApplicationForm() {
                 enableWebhook={true}
                 applicationId={user?.applicantId || 'unknown'}
                 applicantId={user?.id}
-                userAttributes={{
-                  zoneinfo: user?.zoneinfo,
-                  email: user?.email,
-                  name: user?.name,
-                  given_name: user?.given_name,
-                  family_name: user?.family_name,
-                  phone_number: user?.phone_number,
-                }}
+                zoneinfo={user?.zoneinfo}
                 showOnlyCoApplicant={false}
               />
             </CardContent>
@@ -3050,14 +3035,7 @@ export function ApplicationForm() {
                   enableWebhook={true}
                   applicationId={user?.applicantId || 'unknown'}
                   applicantId={user?.id}
-                  userAttributes={{
-                    zoneinfo: user?.zoneinfo,
-                    email: user?.email,
-                    name: user?.name,
-                    given_name: user?.given_name,
-                    family_name: user?.family_name,
-                    phone_number: user?.phone_number,
-                  }}
+                  zoneinfo={user?.zoneinfo}
                   showOnlyCoApplicant={true}
                 />
               </CardContent>

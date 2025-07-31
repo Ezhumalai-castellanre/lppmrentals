@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { signIn, signUp, confirmSignUp, signOut, resetPassword, confirmResetPassword, resendSignUpCode, getCurrentUser, fetchUserAttributes, updatePassword } from 'aws-amplify/auth';
-import { generateTimezoneBasedUUID } from '@/lib/utils';
+import { generateLppmNumber } from '@/lib/utils';
 import { getCurrentUserWithDebug, getUserAttributesWithDebug } from '@/lib/aws-config';
 
 interface User {
@@ -100,13 +100,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const healthResponse = await fetch('/api/health');
         console.log('🔧 Server health check status:', healthResponse.status);
         if (!healthResponse.ok) {
-          console.warn('🔧 Server health check failed, using fallback applicantId');
-          const fallbackId = generateTimezoneBasedUUID();
-          return fallbackId;
+                  console.warn('🔧 Server health check failed, using fallback applicantId');
+        const fallbackId = generateLppmNumber();
+        return fallbackId;
         }
       } catch (healthError) {
         console.warn('🔧 Server health check error, using fallback applicantId:', healthError);
-        const fallbackId = generateTimezoneBasedUUID();
+        const fallbackId = generateLppmNumber();
         return fallbackId;
       }
 
@@ -139,15 +139,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else {
         const errorText = await response.text();
         console.error('🔧 Failed to register user in database:', response.status, errorText);
-        // Return a timezone-based UUID when database is not available
-        const fallbackId = generateTimezoneBasedUUID();
+        // Return a Lppm number when database is not available
+        const fallbackId = generateLppmNumber();
         console.log('🔧 Using fallback applicantId:', fallbackId);
         return fallbackId;
       }
     } catch (error) {
       console.error('🔧 Error registering user in database:', error);
-      // Return a timezone-based UUID when database is not available
-      const fallbackId = generateTimezoneBasedUUID();
+      // Return a Lppm number when database is not available
+      const fallbackId = generateLppmNumber();
       console.log('🔧 Using fallback applicantId due to error:', fallbackId);
       return fallbackId;
     }
@@ -241,7 +241,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             custom_attributes: Object.keys(userAttributes.attributes).filter(key => key.startsWith('custom:')),
             actual_zoneinfo: actualZoneinfo,
             actual_applicantId: actualApplicantId,
-            is_temp_applicant_id: zoneinfoValue && zoneinfoValue.startsWith('temp_'),
+            is_temp_applicant_id: zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')),
           });
         } else {
           console.log('⚠️ No debug result available, falling back to basic auth');
@@ -259,8 +259,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           // Check if zoneinfo contains the applicantId (temporary mapping)
           const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
-          const actualZoneinfo = zoneinfoValue && zoneinfoValue.startsWith('temp_') ? undefined : zoneinfoValue;
-          const actualApplicantId = zoneinfoValue && zoneinfoValue.startsWith('temp_') ? zoneinfoValue : applicantId;
+          const actualZoneinfo = zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')) ? undefined : zoneinfoValue;
+          const actualApplicantId = zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')) ? zoneinfoValue : applicantId;
 
           setUser({
             id: currentUser.username,
@@ -278,7 +278,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // If Identity Pool fails, still set the user from sign-in
         console.log('Identity Pool error (non-critical):', identityError);
         // Set user with basic info from sign-in and generate fallback applicantId
-        const fallbackApplicantId = generateTimezoneBasedUUID();
+        const fallbackApplicantId = generateLppmNumber();
         setUser({
           id: username,
           email: '',

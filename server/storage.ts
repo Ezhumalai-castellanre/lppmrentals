@@ -4,54 +4,53 @@ import type { RentalApplication, InsertRentalApplication, User, InsertUser } fro
 import { randomUUID } from 'crypto';
 
 /**
- * Generate a timezone-based UUID for ApplicantId
- * Uses timezone information to create a unique identifier
+ * Generate a Lppm-number format ID for ApplicantId
+ * Format: Lppm-YYYYMMDD-XXXXX (where XXXXX is a 5-digit sequential number)
  */
-function generateTimezoneBasedUUID(): string {
+function generateLppmNumber(): string {
   try {
     const now = new Date();
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-    const timezoneOffset = now.getTimezoneOffset();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateString = `${year}${month}${day}`;
     
-    // Create a unique string based on timezone and timestamp
-    const timezoneInfo = `${timezone}_${timezoneOffset}_${now.getTime()}`;
-    
-    // Generate a hash-like string from the timezone info
-    let hash = 0;
-    for (let i = 0; i < timezoneInfo.length; i++) {
-      const char = timezoneInfo.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    
-    // Create a UUID-like string with timezone info
+    // Generate a 5-digit sequential number based on timestamp
     const timestamp = now.getTime();
-    const randomPart = Math.random().toString(36).substr(2, 9);
-    const timezoneHash = Math.abs(hash).toString(36).substr(0, 8);
+    const sequentialNumber = (timestamp % 100000).toString().padStart(5, '0');
     
-    const uuid = `zone_${timestamp}_${timezoneHash}_${randomPart}`;
+    const lppmNumber = `Lppm-${dateString}-${sequentialNumber}`;
     
-    console.log('🔧 Server generated timezone UUID:', {
-      timezone,
-      timezoneOffset,
-      timestamp,
-      timezoneHash,
-      randomPart,
-      uuid
+    console.log('🔧 Server generated Lppm number:', {
+      dateString,
+      sequentialNumber,
+      lppmNumber
     });
     
-    return uuid;
+    return lppmNumber;
   } catch (error) {
-    console.error('Error generating timezone UUID on server:', error);
-    // Fallback to simple timestamp-based UUID
-    return `zone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.error('Error generating Lppm number on server:', error);
+    // Fallback to simple timestamp-based Lppm number
+    const fallbackDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const fallbackNumber = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+    return `Lppm-${fallbackDate}-${fallbackNumber}`;
   }
+}
+
+/**
+ * Generate a timezone-based UUID for ApplicantId
+ * Uses timezone information to create a unique identifier
+ * @deprecated Use generateLppmNumber() instead
+ */
+function generateTimezoneBasedUUID(): string {
+  // Use the new Lppm number format instead
+  return generateLppmNumber();
 }
 
 export const storage = {
   // User management functions
   async createUser(userData: Omit<InsertUser, 'applicantId'>): Promise<User> {
-    const applicantId = generateTimezoneBasedUUID();
+    const applicantId = generateLppmNumber();
     const result = await db.insert(users).values({
       ...userData,
       applicantId,

@@ -5,25 +5,11 @@ export interface FileUploadWebhookData {
   document_name: string;
   file_base64: string;
   application_id: string;
-  applicant_id?: string;
-  zoneinfo?: string;
-  user_email?: string;
-  user_name?: string;
-  user_given_name?: string;
-  user_family_name?: string;
-  user_phone_number?: string;
 }
 
 export interface FormDataWebhookData {
   reference_id: string;
   application_id: string;
-  applicant_id?: string;
-  zoneinfo?: string;
-  user_email?: string;
-  user_name?: string;
-  user_given_name?: string;
-  user_family_name?: string;
-  user_phone_number?: string;
   form_data: any;
   uploaded_files: {
     supporting_w9_forms: {
@@ -211,15 +197,7 @@ export class WebhookService {
     sectionName: string,
     documentName: string,
     applicationId?: string,
-    applicantId?: string,
-    userAttributes?: {
-      zoneinfo?: string;
-      email?: string;
-      name?: string;
-      given_name?: string;
-      family_name?: string;
-      phone_number?: string;
-    }
+    zoneinfo?: string
   ): Promise<{ success: boolean; error?: string }> {
     // Create a unique key for this file upload
     const fileUploadKey = `${referenceId}-${sectionName}-${file.name}-${file.size}`;
@@ -249,14 +227,7 @@ export class WebhookService {
         section_name: sectionName,
         document_name: documentName,
         file_base64: base64,
-        application_id: applicationId || 'unknown',
-        applicant_id: applicantId,
-        zoneinfo: userAttributes?.zoneinfo,
-        user_email: userAttributes?.email,
-        user_name: userAttributes?.name,
-        user_given_name: userAttributes?.given_name,
-        user_family_name: userAttributes?.family_name,
-        user_phone_number: userAttributes?.phone_number
+        application_id: zoneinfo || applicationId || 'unknown',
       };
 
       console.log(`Sending file ${file.name} to webhook for section ${sectionName} (Document: ${documentName})`);
@@ -361,15 +332,7 @@ export class WebhookService {
     formData: any,
     referenceId: string,
     applicationId: string,
-    applicantId?: string,
-    userAttributes?: {
-      zoneinfo?: string;
-      email?: string;
-      name?: string;
-      given_name?: string;
-      family_name?: string;
-      phone_number?: string;
-    },
+    zoneinfo?: string,
     uploadedFiles?: {
       supporting_w9_forms?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
       supporting_photo_id?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
@@ -425,14 +388,7 @@ export class WebhookService {
       // Format data for external webhook
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
-        application_id: applicationId,
-        applicant_id: applicantId,
-        zoneinfo: userAttributes?.zoneinfo,
-        user_email: userAttributes?.email,
-        user_name: userAttributes?.name,
-        user_given_name: userAttributes?.given_name,
-        user_family_name: userAttributes?.family_name,
-        user_phone_number: userAttributes?.phone_number,
+        application_id: zoneinfo || applicationId,
         form_data: cleanFormData,
         uploaded_files: {
           supporting_w9_forms: uploadedFiles?.supporting_w9_forms || [],
@@ -735,4 +691,4 @@ export class WebhookService {
       };
     }
   }
-} 
+}
