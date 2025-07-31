@@ -60,29 +60,40 @@ export default function MissingDocumentsPage() {
 
   // Parse applicant ID from URL query parameters and auto-load
   useEffect(() => {
+    console.log('🔍 Missing Documents - User state:', user);
+    console.log('🔍 Missing Documents - User zoneinfo:', user?.zoneinfo);
+    
     const urlParams = new URLSearchParams(window.location.search);
     const applicantIdFromUrl = urlParams.get('applicantId');
     
+    console.log('🔍 Missing Documents - URL applicantId:', applicantIdFromUrl);
+    
     if (applicantIdFromUrl) {
+      console.log('🔍 Missing Documents - Using URL applicantId:', applicantIdFromUrl);
       setApplicantId(applicantIdFromUrl);
       setLoadedFromUrl(true);
       // Automatically search for the applicant if ID is provided in URL
       fetchMissingSubitems(applicantIdFromUrl);
     } else if (user?.zoneinfo) {
-      // Use the authenticated user's zoneinfo as applicant ID
+      console.log('🔍 Missing Documents - Using user zoneinfo:', user.zoneinfo);
       setApplicantId(user.zoneinfo);
       fetchMissingSubitems(user.zoneinfo);
     } else {
+      console.log('🔍 Missing Documents - No zoneinfo found, checking localStorage');
       // If no applicant ID in URL or user zoneinfo, try to load from localStorage
       const savedApplicantId = localStorage.getItem('lastApplicantId');
       if (savedApplicantId) {
+        console.log('🔍 Missing Documents - Using saved applicantId:', savedApplicantId);
         setApplicantId(savedApplicantId);
         fetchMissingSubitems(savedApplicantId);
+      } else {
+        console.log('🔍 Missing Documents - No applicantId found anywhere');
       }
     }
   }, [user]);
 
   const fetchMissingSubitems = async (id: string) => {
+    console.log('🔍 fetchMissingSubitems called with ID:', id);
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
