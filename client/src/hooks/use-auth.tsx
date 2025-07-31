@@ -206,8 +206,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           // Check if zoneinfo contains the applicantId (temporary mapping)
           const zoneinfoValue = userAttributes.attributes.zoneinfo || userAttributes.attributes['custom:zoneinfo'];
-          const actualZoneinfo = zoneinfoValue && zoneinfoValue.startsWith('temp_') ? undefined : zoneinfoValue;
-          const actualApplicantId = zoneinfoValue && zoneinfoValue.startsWith('temp_') ? zoneinfoValue : applicantId;
+          const actualZoneinfo = zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')) ? undefined : zoneinfoValue;
+          
+          // Determine the actual applicantId - prioritize zoneinfo if it's a valid temporary ID, otherwise use the database applicantId
+          let actualApplicantId = applicantId; // Default to database applicantId
+          if (zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_'))) {
+            actualApplicantId = zoneinfoValue; // Use zoneinfo as applicantId if it's a temporary format
+          } else if (!applicantId) {
+            // If no applicantId from database, generate a new one
+            actualApplicantId = generateLppmNumber();
+            console.log('🔧 Generated new applicantId because none found in database:', actualApplicantId);
+          }
 
           setUser({
             id: currentUser.username,
@@ -229,7 +238,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             given_name: userAttributes.attributes.given_name,
             family_name: userAttributes.attributes.family_name,
             phone_number: userAttributes.attributes.phone_number,
-            applicantId,
+            databaseApplicantId: applicantId,
+            finalApplicantId: actualApplicantId,
           });
           
           // Additional detailed logging for zoneinfo
@@ -240,8 +250,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             all_attributes_keys: Object.keys(userAttributes.attributes),
             custom_attributes: Object.keys(userAttributes.attributes).filter(key => key.startsWith('custom:')),
             actual_zoneinfo: actualZoneinfo,
-            actual_applicantId: actualApplicantId,
+            database_applicantId: applicantId,
+            final_applicantId: actualApplicantId,
             is_temp_applicant_id: zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')),
+            zoneinfo_used_as_applicantId: zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')),
           });
         } else {
           console.log('⚠️ No debug result available, falling back to basic auth');
@@ -260,7 +272,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Check if zoneinfo contains the applicantId (temporary mapping)
           const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
           const actualZoneinfo = zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')) ? undefined : zoneinfoValue;
-          const actualApplicantId = zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')) ? zoneinfoValue : applicantId;
+          
+          // Determine the actual applicantId - prioritize zoneinfo if it's a valid temporary ID, otherwise use the database applicantId
+          let actualApplicantId = applicantId; // Default to database applicantId
+          if (zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_'))) {
+            actualApplicantId = zoneinfoValue; // Use zoneinfo as applicantId if it's a temporary format
+          } else if (!applicantId) {
+            // If no applicantId from database, generate a new one
+            actualApplicantId = generateLppmNumber();
+            console.log('🔧 Generated new applicantId because none found in database:', actualApplicantId);
+          }
 
           setUser({
             id: currentUser.username,

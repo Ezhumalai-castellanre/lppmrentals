@@ -28,6 +28,7 @@ import { useLocation } from "wouter";
 import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "@/lib/file-encryption";
 import { WebhookService } from "@/lib/webhook-service";
 import { MondayApiService, type UnitItem } from "@/lib/monday-api";
+import { DebugUserState } from "@/components/debug-user-state";
 import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "@/components/ui/validated-input";
 import { StateCitySelector, StateSelector, CitySelector } from "@/components/ui/state-city-selector";
 import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail, validateDriverLicense } from "@/lib/validation";
@@ -872,9 +873,11 @@ export function ApplicationForm() {
     // Check if user is authenticated and has applicantId
     if (!user?.applicantId) {
       console.log("❌ User not authenticated or missing applicantId");
+      console.log("🔍 User object:", user);
+      console.log("🔍 User applicantId:", user?.applicantId);
       toast({
         title: 'Authentication Required',
-        description: 'Please sign in to submit your application.',
+        description: 'Please sign in to submit your application. If you are already signed in, please try refreshing the page.',
         variant: 'destructive',
       });
       return;
@@ -3855,6 +3858,9 @@ export function ApplicationForm() {
             </h1>
             
           </div>
+          
+          {/* Debug component - remove in production */}
+          <DebugUserState />
           
           {/* Progress Steps */}
           <div className="flex items-center justify-between mb-2 sm:mb-4 overflow-x-auto">
