@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { signIn, signUp, confirmSignUp, signOut, resetPassword, confirmResetPassword, resendSignUpCode, getCurrentUser, fetchUserAttributes, updatePassword } from 'aws-amplify/auth';
-import { generateLppmNumber } from '@/lib/utils';
+import { generateLppmNumber, generateLppmUincid } from '@/lib/utils';
 import { getCurrentUserWithDebug, getUserAttributesWithDebug } from '@/lib/aws-config';
 
 interface User {
@@ -80,8 +80,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Determine the actual applicantId
         let actualApplicantId = applicantId; // Default to database applicantId
-        if (zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_'))) {
-          actualApplicantId = zoneinfoValue; // Use zoneinfo as applicantId if it's a temporary format
+        if (zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_') || zoneinfoValue.startsWith('LPPM-'))) {
+          actualApplicantId = zoneinfoValue; // Use zoneinfo as applicantId if it's a temporary format or LPPM format
           console.log('🔧 Using zoneinfo as applicantId:', actualApplicantId);
         } else if (!applicantId) {
           // If no applicantId from database, generate a new one
@@ -96,7 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           email: userAttributes.email || '',
           username: currentUser.username,
           applicantId: actualApplicantId,
-          zoneinfo: zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')) ? undefined : zoneinfoValue,
+          zoneinfo: zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_') || zoneinfoValue.startsWith('LPPM-')) ? undefined : zoneinfoValue,
           name: userAttributes.name,
           given_name: userAttributes.given_name,
           family_name: userAttributes.family_name,
@@ -347,9 +347,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const handleSignUp = async (username: string, email: string, password: string, userAttributes?: any, firstName?: string, lastName?: string, phoneNumber?: string) => {
     try {
-      const attributes = userAttributes || {
+      // Generate LPPM-uincid for zoneinfo
+      const lppmUincid = generateLppmUincid();
+      console.log('🔧 Generated LPPM-uincid for new user:', lppmUincid);
+
+      const attributes = {
+        ...userAttributes,
         email,
+        zoneinfo: lppmUincid, // Set the LPPM-uincid as zoneinfo
       };
+
+      console.log('🔧 Signing up user with attributes:', attributes);
 
       await signUp({
         username,
@@ -359,10 +367,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
       });
 
+      console.log('✅ User signed up successfully with LPPM-uincid:', lppmUincid);
+
       // Register user in database after successful Cognito sign-up
       await registerUserInDatabase(username, email, firstName, lastName, phoneNumber);
     } catch (error: any) {
-      console.error('Error signing up:', error);
+      console.error('❌ Error signing up:', error);
       throw error;
     }
   };

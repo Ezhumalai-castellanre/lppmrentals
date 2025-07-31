@@ -139,3 +139,28 @@ export function getAllApplicantIdFormats(applicantId: string): string[] {
 export function isValidTimezoneUUID(uuid: string): boolean {
   return uuid.startsWith('zone_') && uuid.split('_').length === 4;
 }
+
+export function generateLppmUincid(): string {
+  try {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateString = `${year}${month}${day}`;
+    const timestamp = now.getTime();
+    const sequentialNumber = (timestamp % 100000).toString().padStart(5, '0');
+    const lppmUincid = `LPPM-${dateString}-${sequentialNumber}`;
+    console.log('🔧 Generated LPPM-uincid:', { dateString, sequentialNumber, lppmUincid });
+    return lppmUincid;
+  } catch (error) {
+    console.error('Error generating LPPM-uincid:', error);
+    const fallbackDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const fallbackNumber = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+    return `LPPM-${fallbackDate}-${fallbackNumber}`;
+  }
+}
+
+export function isValidLppmUincid(uincid: string): boolean {
+  const pattern = /^LPPM-\d{8}-\d{5}$/;
+  return pattern.test(uincid);
+}
