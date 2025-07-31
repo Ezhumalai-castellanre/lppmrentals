@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, Home, Lock } from 'lucide-react';
+import { LogOut, Home, Lock, FileText } from 'lucide-react';
 import LogoutButton from './logout-button';
 import { useLocation } from 'wouter';
 
@@ -37,6 +37,16 @@ const NavHeader: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-4">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setLocation('/missing-documents')}
+            className="flex items-center space-x-2"
+          >
+            <FileText className="h-4 w-4" />
+            <span>Missing Documents</span>
+          </Button>
+          
           <Badge variant="secondary" className="text-xs">
             {user.name || user.given_name || user.email?.split('@')[0] || 'User'}
           </Badge>
