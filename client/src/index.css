@@ -374,6 +374,12 @@ html, body {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+/* Password input field styling */
+input[type="password"] {
+  text-align: left !important;
+  padding-left: 45px !important;
+}
+
 /* Consistent Input Heights */
 .input-field,
 select,

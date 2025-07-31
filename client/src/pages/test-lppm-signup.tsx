@@ -138,6 +138,7 @@ export default function TestLppmSignupPage() {
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
                     placeholder="Enter password"
+                    style={{ textAlign: 'left', paddingLeft: '45px' }}
                     required
                   />
                 </div>

@@ -90,6 +90,7 @@ const ChangePassword: React.FC = () => {
                 onChange={(e) => setOldPassword(e.target.value)}
                 placeholder="Enter your current password"
                 className="pl-10 pr-12 h-12 text-base"
+                style={{ textAlign: 'left', paddingLeft: '45px' }}
                 required
               />
               <Button
@@ -115,6 +116,7 @@ const ChangePassword: React.FC = () => {
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password"
                 className="pl-10 pr-12 h-12 text-base"
+                style={{ textAlign: 'left', paddingLeft: '45px' }}
                 required
               />
               <Button
@@ -143,6 +145,7 @@ const ChangePassword: React.FC = () => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm new password"
                 className="pl-10 pr-12 h-12 text-base"
+                style={{ textAlign: 'left', paddingLeft: '45px' }}
                 required
               />
               <Button
