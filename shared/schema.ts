@@ -1,9 +1,23 @@
-import { pgTable, text, serial, integer, boolean, timestamp, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, real, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  applicantId: uuid("applicant_id").notNull().unique(),
+  cognitoUsername: text("cognito_username").notNull().unique(),
+  email: text("email").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  phoneNumber: text("phone_number"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const rentalApplications = pgTable("rental_applications", {
   id: serial("id").primaryKey(),
+  // User reference
+  applicantId: uuid("applicant_id").notNull().references(() => users.applicantId),
   // Application Info
   applicationDate: timestamp("application_date").defaultNow(),
   buildingAddress: text("building_address").notNull(),
@@ -132,8 +146,16 @@ const baseSchema = createInsertSchema(rentalApplications).omit({
   submittedAt: true,
 });
 
+// User schemas
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertRentalApplicationSchema = baseSchema.extend({
   // Required fields (from database schema)
+  applicantId: z.string().uuid("Applicant ID must be a valid UUID"),
   buildingAddress: z.string().min(1, "Building address is required"),
   apartmentNumber: z.string().min(1, "Apartment number is required"),
   moveInDate: dateStringToDate.refine((val) => val !== null, "Move-in date is required"),
@@ -230,5 +252,7 @@ export const insertRentalApplicationSchema = baseSchema.extend({
   status: z.string().default("draft"),
 });
 
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
 export type InsertRentalApplication = z.infer<typeof insertRentalApplicationSchema>;
 export type RentalApplication = typeof rentalApplications.$inferSelect;

@@ -11,11 +11,20 @@ interface SupportingDocumentsProps {
   referenceId?: string;
   enableWebhook?: boolean;
   applicationId?: string;
+  applicantId?: string;
+  userAttributes?: {
+    zoneinfo?: string;
+    email?: string;
+    name?: string;
+    given_name?: string;
+    family_name?: string;
+    phone_number?: string;
+  };
   showOnlyCoApplicant?: boolean;
   showOnlyGuarantor?: boolean;
 }
 
-export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDocumentChange, referenceId, enableWebhook, applicationId, showOnlyCoApplicant = false, showOnlyGuarantor = false }: SupportingDocumentsProps) {
+export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDocumentChange, referenceId, enableWebhook, applicationId, applicantId, userAttributes, showOnlyCoApplicant = false, showOnlyGuarantor = false }: SupportingDocumentsProps) {
   console.log('🔍 SupportingDocuments rendered:', {
     showOnlyGuarantor,
     showOnlyCoApplicant,
@@ -288,6 +297,7 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                             documentName={document.name}
                             enableWebhook={enableWebhook}
                             applicationId={applicationId}
+                            userAttributes={userAttributes}
                           />
                         </div>
                       );
@@ -356,6 +366,7 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                             documentName={document.name}
                             enableWebhook={enableWebhook}
                             applicationId={applicationId}
+                            userAttributes={userAttributes}
                           />
                         </div>
                       );
@@ -421,6 +432,7 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                           documentName={document.name}
                           enableWebhook={enableWebhook}
                           applicationId={applicationId}
+                          userAttributes={userAttributes}
                         />
                         {document.id === 'w9_forms' && (
                           <a
@@ -497,6 +509,7 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
                               documentName={document.name}
                               enableWebhook={enableWebhook}
                               applicationId={applicationId}
+                              userAttributes={userAttributes}
                             />
                           </div>
                         );

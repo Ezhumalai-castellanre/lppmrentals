@@ -1,10 +1,18 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { signIn, signUp, confirmSignUp, signOut, resetPassword, confirmResetPassword, resendSignUpCode, getCurrentUser, fetchUserAttributes, updatePassword } from 'aws-amplify/auth';
+import { generateTimezoneBasedUUID } from '@/lib/utils';
+import { getCurrentUserWithDebug, getUserAttributesWithDebug } from '@/lib/aws-config';
 
 interface User {
   id: string;
   email: string;
   username: string;
+  applicantId?: string;
+  zoneinfo?: string;
+  name?: string;
+  given_name?: string;
+  family_name?: string;
+  phone_number?: string;
 }
 
 interface AuthContextType {
@@ -12,7 +20,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   signIn: (username: string, password: string) => Promise<void>;
-  signUp: (username: string, email: string, password: string, phoneNumber?: string) => Promise<void>;
+  signUp: (username: string, email: string, password: string, userAttributes?: any, firstName?: string, lastName?: string, phoneNumber?: string) => Promise<void>;
   confirmSignUp: (username: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearAuthState: () => Promise<void>;
@@ -54,6 +62,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             id: currentUser.username,
             email: userAttributes.email || '',
             username: currentUser.username,
+            zoneinfo: userAttributes.zoneinfo || userAttributes['custom:zoneinfo'],
+            name: userAttributes.name,
+            given_name: userAttributes.given_name,
+            family_name: userAttributes.family_name,
+            phone_number: userAttributes.phone_number,
           });
         } catch (identityError) {
           // If Identity Pool fails, still set the user from current user
@@ -69,6 +82,74 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('No authenticated user or AWS not configured');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const registerUserInDatabase = async (cognitoUsername: string, email: string, firstName?: string, lastName?: string, phoneNumber?: string) => {
+    try {
+      console.log('🔧 Attempting to register user in database:', {
+        cognitoUsername,
+        email,
+        firstName,
+        lastName,
+        phoneNumber
+      });
+
+      // First, test server connectivity
+      try {
+        const healthResponse = await fetch('/api/health');
+        console.log('🔧 Server health check status:', healthResponse.status);
+        if (!healthResponse.ok) {
+          console.warn('🔧 Server health check failed, using fallback applicantId');
+          const fallbackId = generateTimezoneBasedUUID();
+          return fallbackId;
+        }
+      } catch (healthError) {
+        console.warn('🔧 Server health check error, using fallback applicantId:', healthError);
+        const fallbackId = generateTimezoneBasedUUID();
+        return fallbackId;
+      }
+
+      const response = await fetch('/api/register-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cognitoUsername,
+          email,
+          firstName,
+          lastName,
+          phoneNumber,
+        }),
+      });
+
+      console.log('🔧 Register user response status:', response.status);
+      console.log('🔧 Register user response ok:', response.ok);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔧 Register user success data:', data);
+        return data.user.applicantId;
+      } else if (response.status === 409) {
+        // User already exists, get the existing applicantId
+        const data = await response.json();
+        console.log('🔧 User already exists, applicantId:', data.applicantId);
+        return data.applicantId;
+      } else {
+        const errorText = await response.text();
+        console.error('🔧 Failed to register user in database:', response.status, errorText);
+        // Return a timezone-based UUID when database is not available
+        const fallbackId = generateTimezoneBasedUUID();
+        console.log('🔧 Using fallback applicantId:', fallbackId);
+        return fallbackId;
+      }
+    } catch (error) {
+      console.error('🔧 Error registering user in database:', error);
+      // Return a timezone-based UUID when database is not available
+      const fallbackId = generateTimezoneBasedUUID();
+      console.log('🔧 Using fallback applicantId due to error:', fallbackId);
+      return fallbackId;
     }
   };
 
@@ -90,24 +171,121 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Now sign in
       await signIn({ username, password });
       
-      // Try to get current user and attributes
+      // Try to get current user and attributes with enhanced debugging
       try {
-        const currentUser = await getCurrentUser();
-        const userAttributes = await fetchUserAttributes();
-        setUser({
-          id: currentUser.username,
-          email: userAttributes.email || '',
-          username: currentUser.username,
-        });
+        console.log('🔍 Starting enhanced AWS user debugging...');
+        
+        const debugResult = await getCurrentUserWithDebug();
+        
+        if (debugResult && debugResult.userAttributes) {
+          const { currentUser, userAttributes } = debugResult;
+          
+          console.log('✅ AWS Debug Results:', {
+            currentUser: {
+              username: currentUser.username,
+              userId: currentUser.userId,
+            },
+            userAttributes: {
+              hasName: userAttributes.hasName,
+              hasZoneinfo: userAttributes.hasZoneinfo,
+              zoneinfo: userAttributes.zoneinfo,
+              name: userAttributes.attributes.name,
+              given_name: userAttributes.attributes.given_name,
+              family_name: userAttributes.attributes.family_name,
+            }
+          });
+          
+          // Get the applicantId from the database
+          const applicantId = await registerUserInDatabase(
+            currentUser.username,
+            userAttributes.attributes.email || '',
+            userAttributes.attributes.given_name,
+            userAttributes.attributes.family_name,
+            userAttributes.attributes.phone_number
+          );
+
+          // Check if zoneinfo contains the applicantId (temporary mapping)
+          const zoneinfoValue = userAttributes.attributes.zoneinfo || userAttributes.attributes['custom:zoneinfo'];
+          const actualZoneinfo = zoneinfoValue && zoneinfoValue.startsWith('temp_') ? undefined : zoneinfoValue;
+          const actualApplicantId = zoneinfoValue && zoneinfoValue.startsWith('temp_') ? zoneinfoValue : applicantId;
+
+          setUser({
+            id: currentUser.username,
+            email: userAttributes.attributes.email || '',
+            username: currentUser.username,
+            applicantId: actualApplicantId,
+            zoneinfo: actualZoneinfo,
+            name: userAttributes.attributes.name,
+            given_name: userAttributes.attributes.given_name,
+            family_name: userAttributes.attributes.family_name,
+            phone_number: userAttributes.attributes.phone_number,
+          });
+          
+          console.log('✅ User logged in with attributes:', {
+            id: currentUser.username,
+            email: userAttributes.attributes.email,
+            zoneinfo: userAttributes.attributes.zoneinfo || userAttributes.attributes['custom:zoneinfo'],
+            name: userAttributes.attributes.name,
+            given_name: userAttributes.attributes.given_name,
+            family_name: userAttributes.attributes.family_name,
+            phone_number: userAttributes.attributes.phone_number,
+            applicantId,
+          });
+          
+          // Additional detailed logging for zoneinfo
+          console.log('🔍 Detailed zoneinfo analysis:', {
+            zoneinfo_standard: userAttributes.attributes.zoneinfo,
+            zoneinfo_custom: userAttributes.attributes['custom:zoneinfo'],
+            zoneinfo_final: userAttributes.attributes.zoneinfo || userAttributes.attributes['custom:zoneinfo'],
+            all_attributes_keys: Object.keys(userAttributes.attributes),
+            custom_attributes: Object.keys(userAttributes.attributes).filter(key => key.startsWith('custom:')),
+            actual_zoneinfo: actualZoneinfo,
+            actual_applicantId: actualApplicantId,
+            is_temp_applicant_id: zoneinfoValue && zoneinfoValue.startsWith('temp_'),
+          });
+        } else {
+          console.log('⚠️ No debug result available, falling back to basic auth');
+          // Fallback to basic auth
+          const currentUser = await getCurrentUser();
+          const userAttributes = await fetchUserAttributes();
+          
+          const applicantId = await registerUserInDatabase(
+            currentUser.username,
+            userAttributes.email || '',
+            userAttributes.given_name,
+            userAttributes.family_name,
+            userAttributes.phone_number
+          );
+
+          // Check if zoneinfo contains the applicantId (temporary mapping)
+          const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
+          const actualZoneinfo = zoneinfoValue && zoneinfoValue.startsWith('temp_') ? undefined : zoneinfoValue;
+          const actualApplicantId = zoneinfoValue && zoneinfoValue.startsWith('temp_') ? zoneinfoValue : applicantId;
+
+          setUser({
+            id: currentUser.username,
+            email: userAttributes.email || '',
+            username: currentUser.username,
+            applicantId: actualApplicantId,
+            zoneinfo: actualZoneinfo,
+            name: userAttributes.name,
+            given_name: userAttributes.given_name,
+            family_name: userAttributes.family_name,
+            phone_number: userAttributes.phone_number,
+          });
+        }
       } catch (identityError) {
         // If Identity Pool fails, still set the user from sign-in
         console.log('Identity Pool error (non-critical):', identityError);
-        // Set user with basic info from sign-in
+        // Set user with basic info from sign-in and generate fallback applicantId
+        const fallbackApplicantId = generateTimezoneBasedUUID();
         setUser({
           id: username,
           email: '',
           username: username,
+          applicantId: fallbackApplicantId,
         });
+        console.log('🔧 Using fallback applicantId due to Identity Pool error:', fallbackApplicantId);
       }
     } catch (error: any) {
       console.error('Error signing in:', error);
@@ -115,7 +293,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const handleSignUp = async (username: string, email: string, password: string, userAttributes?: any) => {
+  const handleSignUp = async (username: string, email: string, password: string, userAttributes?: any, firstName?: string, lastName?: string, phoneNumber?: string) => {
     try {
       const attributes = userAttributes || {
         email,
@@ -128,6 +306,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           userAttributes: attributes,
         },
       });
+
+      // Register user in database after successful Cognito sign-up
+      await registerUserInDatabase(username, email, firstName, lastName, phoneNumber);
     } catch (error: any) {
       console.error('Error signing up:', error);
       throw error;

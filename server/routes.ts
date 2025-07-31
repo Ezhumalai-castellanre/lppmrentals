@@ -1,13 +1,107 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertRentalApplicationSchema } from "@shared/schema";
+import { insertRentalApplicationSchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 import CryptoJS from "crypto-js";
 import fs from "fs";
 import path from "path";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint
+  app.get("/api/health", async (req, res) => {
+    try {
+      res.json({ 
+        status: "ok", 
+        timestamp: new Date().toISOString(),
+        message: "Server is running"
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Health check failed" });
+    }
+  });
+
+  // User registration endpoint
+  app.post("/api/register-user", async (req, res) => {
+    try {
+      const { cognitoUsername, email, firstName, lastName, phoneNumber } = req.body;
+      
+      // Validate required fields
+      if (!cognitoUsername || !email) {
+        return res.status(400).json({ 
+          error: "Missing required fields: cognitoUsername and email are required" 
+        });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByCognitoUsername(cognitoUsername);
+      if (existingUser) {
+        return res.status(409).json({ 
+          error: "User already exists with this Cognito username",
+          applicantId: existingUser.applicantId
+        });
+      }
+
+      // Create user with UUID-based Applicant ID
+      const user = await storage.createUser({
+        cognitoUsername,
+        email,
+        firstName,
+        lastName,
+        phoneNumber,
+      });
+
+      res.status(201).json({ 
+        message: "User registered successfully", 
+        user: {
+          applicantId: user.applicantId,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        }
+      });
+    } catch (error) {
+      console.error('User registration error:', error);
+      res.status(500).json({ error: "Failed to register user" });
+    }
+  });
+
+  // Get user by Applicant ID
+  app.get("/api/users/:applicantId", async (req, res) => {
+    try {
+      const { applicantId } = req.params;
+      const user = await storage.getUserByApplicantId(applicantId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({
+        applicantId: user.applicantId,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phoneNumber: user.phoneNumber,
+        createdAt: user.createdAt,
+      });
+    } catch (error) {
+      console.error('Get user error:', error);
+      res.status(500).json({ error: "Failed to get user" });
+    }
+  });
+
+  // Get applications by Applicant ID
+  app.get("/api/applications/user/:applicantId", async (req, res) => {
+    try {
+      const { applicantId } = req.params;
+      const applications = await storage.getApplicationsByApplicantId(applicantId);
+      res.json(applications);
+    } catch (error) {
+      console.error('Get applications by user error:', error);
+      res.status(500).json({ error: "Failed to fetch applications" });
+    }
+  });
+
   // Get all applications
   app.get("/api/applications", async (req, res) => {
     try {

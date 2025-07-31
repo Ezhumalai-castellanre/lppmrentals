@@ -22,6 +22,15 @@ interface FileUploadProps {
   documentName?: string;
   enableWebhook?: boolean;
   applicationId?: string;
+  applicantId?: string;
+  userAttributes?: {
+    zoneinfo?: string;
+    email?: string;
+    name?: string;
+    given_name?: string;
+    family_name?: string;
+    phone_number?: string;
+  };
 }
 
 export function FileUpload({
@@ -39,7 +48,9 @@ export function FileUpload({
   sectionName,
   documentName,
   enableWebhook = false,
-  applicationId
+  applicationId,
+  applicantId,
+  userAttributes
 }: FileUploadProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [encryptedFiles, setEncryptedFiles] = useState<EncryptedFile[]>([]);
@@ -119,7 +130,7 @@ export function FileUpload({
       }
 
       // Send files to webhook immediately if enabled
-      console.log('FileUpload webhook check:', { enableWebhook, referenceId, sectionName, applicationId });
+      console.log('FileUpload webhook check:', { enableWebhook, referenceId, sectionName, applicationId, applicantId });
       
       // Special debugging for guarantor documents
       if (sectionName && sectionName.startsWith('guarantor_')) {
@@ -139,7 +150,7 @@ export function FileUpload({
           setUploadStatus(prev => ({ ...prev, [fileKey]: 'uploading' }));
           
           try {
-            const result = await WebhookService.sendFileToWebhook(file, referenceId, sectionName, documentName || 'Unknown Document', applicationId);
+            const result = await WebhookService.sendFileToWebhook(file, referenceId, sectionName, documentName || 'Unknown Document', applicationId, applicantId, userAttributes);
             if (result.success) {
               setUploadStatus(prev => ({ ...prev, [fileKey]: 'success' }));
               console.log(`✅ Webhook upload successful for ${file.name}`);
@@ -163,7 +174,7 @@ export function FileUpload({
     } finally {
       setIsEncrypting(false);
     }
-  }, [files, encryptedFiles, multiple, maxFiles, onFileChange, onEncryptedFilesChange, enableEncryption, enableWebhook, referenceId, sectionName, applicationId]);
+  }, [files, encryptedFiles, multiple, maxFiles, onFileChange, onEncryptedFilesChange, enableEncryption, enableWebhook, referenceId, sectionName, applicationId, applicantId, userAttributes]);
 
   const removeFile = (index: number) => {
     const updatedFiles = files.filter((_, i) => i !== index);

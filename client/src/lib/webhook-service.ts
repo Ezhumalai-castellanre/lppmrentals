@@ -5,11 +5,25 @@ export interface FileUploadWebhookData {
   document_name: string;
   file_base64: string;
   application_id: string;
+  applicant_id?: string;
+  zoneinfo?: string;
+  user_email?: string;
+  user_name?: string;
+  user_given_name?: string;
+  user_family_name?: string;
+  user_phone_number?: string;
 }
 
 export interface FormDataWebhookData {
   reference_id: string;
   application_id: string;
+  applicant_id?: string;
+  zoneinfo?: string;
+  user_email?: string;
+  user_name?: string;
+  user_given_name?: string;
+  user_family_name?: string;
+  user_phone_number?: string;
   form_data: any;
   uploaded_files: {
     supporting_w9_forms: {
@@ -169,6 +183,7 @@ export interface FormDataWebhookData {
 export interface PDFWebhookData {
   reference_id: string;
   application_id: string;
+  applicant_id?: string;
   file_name: string;
   file_base64: string;
   submission_type: 'pdf_generation';
@@ -195,7 +210,16 @@ export class WebhookService {
     referenceId: string,
     sectionName: string,
     documentName: string,
-    applicationId?: string
+    applicationId?: string,
+    applicantId?: string,
+    userAttributes?: {
+      zoneinfo?: string;
+      email?: string;
+      name?: string;
+      given_name?: string;
+      family_name?: string;
+      phone_number?: string;
+    }
   ): Promise<{ success: boolean; error?: string }> {
     // Create a unique key for this file upload
     const fileUploadKey = `${referenceId}-${sectionName}-${file.name}-${file.size}`;
@@ -225,7 +249,14 @@ export class WebhookService {
         section_name: sectionName,
         document_name: documentName,
         file_base64: base64,
-        application_id: applicationId || 'unknown'
+        application_id: applicationId || 'unknown',
+        applicant_id: applicantId,
+        zoneinfo: userAttributes?.zoneinfo,
+        user_email: userAttributes?.email,
+        user_name: userAttributes?.name,
+        user_given_name: userAttributes?.given_name,
+        user_family_name: userAttributes?.family_name,
+        user_phone_number: userAttributes?.phone_number
       };
 
       console.log(`Sending file ${file.name} to webhook for section ${sectionName} (Document: ${documentName})`);
@@ -330,6 +361,15 @@ export class WebhookService {
     formData: any,
     referenceId: string,
     applicationId: string,
+    applicantId?: string,
+    userAttributes?: {
+      zoneinfo?: string;
+      email?: string;
+      name?: string;
+      given_name?: string;
+      family_name?: string;
+      phone_number?: string;
+    },
     uploadedFiles?: {
       supporting_w9_forms?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
       supporting_photo_id?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
@@ -386,6 +426,13 @@ export class WebhookService {
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: applicationId,
+        applicant_id: applicantId,
+        zoneinfo: userAttributes?.zoneinfo,
+        user_email: userAttributes?.email,
+        user_name: userAttributes?.name,
+        user_given_name: userAttributes?.given_name,
+        user_family_name: userAttributes?.family_name,
+        user_phone_number: userAttributes?.phone_number,
         form_data: cleanFormData,
         uploaded_files: {
           supporting_w9_forms: uploadedFiles?.supporting_w9_forms || [],
@@ -505,12 +552,14 @@ export class WebhookService {
     pdfBase64: string,
     referenceId: string,
     applicationId: string,
+    applicantId?: string,
     fileName: string = 'rental-application.pdf'
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const webhookData: PDFWebhookData = {
         reference_id: referenceId,
         application_id: applicationId,
+        applicant_id: applicantId,
         file_name: fileName,
         file_base64: pdfBase64,
         submission_type: 'pdf_generation'

@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { rentalApplications } from '@shared/schema';
+import { rentalApplications, users } from '@shared/schema';
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -15,5 +15,5 @@ if (!connectionString) {
 const client = postgres(connectionString);
 export const db = drizzle(client);
 
-// Export the table for use in storage
-export { rentalApplications }; 
+// Export the tables for use in storage
+export { rentalApplications, users }; 

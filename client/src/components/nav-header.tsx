@@ -38,7 +38,7 @@ const NavHeader: React.FC = () => {
 
         <div className="flex items-center space-x-4">
           <Badge variant="secondary" className="text-xs">
-            {user.email}
+            {user.name || user.given_name || user.email?.split('@')[0] || 'User'}
           </Badge>
           
           <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
@@ -46,7 +46,7 @@ const NavHeader: React.FC = () => {
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="text-sm font-medium">
-                    {getInitials(user.username)}
+                    {getInitials(user.name || user.given_name || user.username)}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -54,7 +54,7 @@ const NavHeader: React.FC = () => {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user.username}</p>
+                  <p className="text-sm font-medium leading-none">{user.name || user.given_name || user.username}</p>
                   <p className="text-xs leading-none text-muted-foreground">
                     {user.email}
                   </p>

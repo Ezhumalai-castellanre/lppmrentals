@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Mail, Lock, User, Phone, CheckCircle, User as UserIcon } from 'lucide-react';
+import { triggerAwsDebug } from '@/lib/aws-config';
 
 type AuthMode = 'signin' | 'signup' | 'confirm' | 'forgot' | 'reset';
 
@@ -23,7 +24,6 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   
   // Form states
-  const [username, setUsername] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -37,6 +37,7 @@ const LoginPage: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [markEmailVerified, setMarkEmailVerified] = useState(false);
   const [markPhoneVerified, setMarkPhoneVerified] = useState(false);
+  const [generatedUsername, setGeneratedUsername] = useState('');
 
   // Redirect to home page if already authenticated
   useEffect(() => {
@@ -51,7 +52,7 @@ const LoginPage: React.FC = () => {
     setError('');
 
     try {
-      await signIn(username, password);
+      await signIn(email, password);
       toast({
         title: 'Success',
         description: 'Signed in successfully!',
@@ -119,7 +120,10 @@ const LoginPage: React.FC = () => {
         }
       }
 
-      await signUp(username, email, password, userAttributes);
+      // Generate a unique username for Cognito (since email is used as alias)
+      const username = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      setGeneratedUsername(username);
+      await signUp(username, email, password, userAttributes, firstName, lastName, phoneNumber);
       setMode('confirm');
       toast({
         title: 'Success',
@@ -143,9 +147,11 @@ const LoginPage: React.FC = () => {
     setError('');
 
     try {
-      await confirmSignUp(username, otpCode);
+      // Use the generated username for confirmation
+      await confirmSignUp(generatedUsername, otpCode);
       setMode('signin');
       setOtpCode('');
+      setGeneratedUsername(''); // Clear the stored username
       toast({
         title: 'Success',
         description: 'Account verified! You can now sign in.',
@@ -168,7 +174,7 @@ const LoginPage: React.FC = () => {
     setError('');
 
     try {
-      await forgotPassword(username);
+      await forgotPassword(email);
       setMode('reset');
       toast({
         title: 'Success',
@@ -192,7 +198,7 @@ const LoginPage: React.FC = () => {
     setError('');
 
     try {
-      await confirmForgotPassword(username, otpCode, newPassword);
+      await confirmForgotPassword(email, otpCode, newPassword);
       setMode('signin');
       setOtpCode('');
       setNewPassword('');
@@ -217,7 +223,7 @@ const LoginPage: React.FC = () => {
     setError('');
 
     try {
-      await resendConfirmationCode(username);
+      await resendConfirmationCode(generatedUsername);
       toast({
         title: 'Success',
         description: 'Verification code resent to your email.',
@@ -235,7 +241,6 @@ const LoginPage: React.FC = () => {
   };
 
   const resetForm = () => {
-    setUsername('');
     setFirstName('');
     setLastName('');
     setEmail('');
@@ -250,6 +255,7 @@ const LoginPage: React.FC = () => {
     setShowNewPassword(false);
     setMarkEmailVerified(false);
     setMarkPhoneVerified(false);
+    setGeneratedUsername('');
   };
 
   // Show loading spinner while checking authentication status
@@ -321,6 +327,22 @@ const LoginPage: React.FC = () => {
             {mode === 'forgot' && 'Enter your username to receive a reset code.'}
             {mode === 'reset' && 'Enter the reset code and your new password.'}
           </CardDescription>
+          
+          {/* Debug Button - Only show in development */}
+          {import.meta.env.DEV && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                console.log('🔍 Triggering AWS Debug...');
+                await triggerAwsDebug();
+              }}
+              className="mt-2"
+            >
+              🔍 Debug AWS Config
+            </Button>
+          )}
         </CardHeader>
 
         <CardContent className="px-4 md:px-6">
@@ -333,16 +355,17 @@ const LoginPage: React.FC = () => {
           {mode === 'signin' && (
             <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username" className="text-sm font-medium">Username</Label>
+                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
-                    id="username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter your username"
-                    className="pl-10 h-12 text-base"
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="pl-11 h-12 text-base"
+                    style={{ textAlign: 'left', paddingLeft: '42px' }}
                     required
                   />
                 </div>
@@ -351,14 +374,15 @@ const LoginPage: React.FC = () => {
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="pl-10 pr-12 h-12 text-base"
+                    className="pl-11 pr-12 h-12 text-base"
+                    style={{ textAlign: 'left', paddingLeft: '42px' }}
                     required
                   />
                   <Button
@@ -406,26 +430,6 @@ const LoginPage: React.FC = () => {
 
           {mode === 'signup' && (
             <form onSubmit={handleSignUp} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="signup-username" className="text-sm font-medium">
-                  Username <span className="text-red-500">*</span>
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="signup-username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter username (required)"
-                    className="pl-10 h-12 text-base"
-                    required
-                  />
-                </div>
-                <p className="text-xs text-gray-500">
-                  Username is a required attribute based on your user pool configuration.
-                </p>
-              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
@@ -433,14 +437,15 @@ const LoginPage: React.FC = () => {
                     First Name <span className="text-red-500">*</span>
                   </Label>
                   <div className="relative">
-                    <UserIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <Input
                       id="firstName"
                       type="text"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       placeholder="First name"
-                      className="pl-10 h-12 text-base"
+                      className="pl-11 h-12 text-base"
+                      style={{ textAlign: 'left', paddingLeft: '42px' }}
                       required
                     />
                   </div>
@@ -451,14 +456,15 @@ const LoginPage: React.FC = () => {
                     Last Name <span className="text-red-500">*</span>
                   </Label>
                   <div className="relative">
-                    <UserIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <Input
                       id="lastName"
                       type="text"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       placeholder="Last name"
-                      className="pl-10 h-12 text-base"
+                      className="pl-11 h-12 text-base"
+                      style={{ textAlign: 'left', paddingLeft: '42px' }}
                       required
                     />
                   </div>
@@ -470,14 +476,15 @@ const LoginPage: React.FC = () => {
                   Email Address <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter email address"
-                    className="pl-10 h-12 text-base"
+                    className="pl-11 h-12 text-base"
+                    style={{ textAlign: 'left', paddingLeft: '42px' }}
                     required
                   />
                 </div>
@@ -491,14 +498,15 @@ const LoginPage: React.FC = () => {
                   Phone Number <span className="text-gray-400">(optional)</span>
                 </Label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
                     id="phone"
                     type="tel"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     placeholder="+1 (555) 123-4567"
-                    className="pl-10 h-12 text-base"
+                    className="pl-11 h-12 text-base"
+                    style={{ textAlign: 'left', paddingLeft: '42px' }}
                   />
                 </div>
                 <p className="text-xs text-gray-500">
@@ -511,14 +519,15 @@ const LoginPage: React.FC = () => {
                   Password <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
                     id="signup-password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Create a password"
-                    className="pl-10 pr-12 h-12 text-base"
+                    className="pl-11 pr-12 h-12 text-base"
+                    style={{ textAlign: 'left', paddingLeft: '42px' }}
                     required
                   />
                   <Button
@@ -538,14 +547,15 @@ const LoginPage: React.FC = () => {
                   Confirm Password <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
                     id="confirm-password"
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm your password"
-                    className="pl-10 pr-12 h-12 text-base"
+                    className="pl-11 pr-12 h-12 text-base"
+                    style={{ textAlign: 'left', paddingLeft: '42px' }}
                     required
                   />
                   <Button
@@ -630,16 +640,17 @@ const LoginPage: React.FC = () => {
           {mode === 'forgot' && (
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="forgot-username" className="text-sm font-medium">Username</Label>
+                <Label htmlFor="forgot-email" className="text-sm font-medium">Email</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
-                    id="forgot-username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter your username"
-                    className="pl-10 h-12 text-base"
+                    id="forgot-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="pl-11 h-12 text-base"
+                    style={{ textAlign: 'left', paddingLeft: '42px' }}
                     required
                   />
                 </div>
@@ -686,14 +697,15 @@ const LoginPage: React.FC = () => {
               <div className="space-y-2">
                 <Label htmlFor="new-password" className="text-sm font-medium">New Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
                     id="new-password"
                     type={showNewPassword ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
-                    className="pl-10 pr-12 h-12 text-base"
+                    className="pl-11 pr-12 h-12 text-base"
+                    style={{ textAlign: 'left', paddingLeft: '42px' }}
                     required
                   />
                   <Button

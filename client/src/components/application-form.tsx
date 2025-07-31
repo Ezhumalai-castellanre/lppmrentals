@@ -21,6 +21,7 @@ import { EnhancedPDFGenerator } from "@/lib/pdf-generator-enhanced";
 import { ResetPDFGenerator } from "@/lib/pdf-generator-reset";
 import { Download, FileText, Save, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import ApplicationInstructions from "./application-instructions";
 import { useRef } from "react";
 import { useLocation } from "wouter";
@@ -194,6 +195,7 @@ function formatPhoneForPayload(phone: string) {
 
 export function ApplicationForm() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<any>({
@@ -214,7 +216,6 @@ export function ApplicationForm() {
   const [showHowDidYouHearOther, setShowHowDidYouHearOther] = useState(false);
   const pdfContentRef = useRef<HTMLDivElement>(null);
   const [referenceId] = useState(() => `app_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
-  const [applicationId] = useState(() => `app_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const [uploadedFilesMetadata, setUploadedFilesMetadata] = useState<{ [section: string]: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[] }>({});
   // Add state for uploadedDocuments
   const [uploadedDocuments, setUploadedDocuments] = useState<{
@@ -223,6 +224,10 @@ export function ApplicationForm() {
     section_name: string;
     documents?: string;
   }[]>([]);
+
+  // Welcome message state
+  const [showWelcomeMessage, setShowWelcomeMessage] = useState(true);
+  const [welcomeMessage, setWelcomeMessage] = useState('');
 
   // Monday.com API state
   const [units, setUnits] = useState<UnitItem[]>([]);
@@ -247,6 +252,21 @@ export function ApplicationForm() {
 
     fetchUnits();
   }, []);
+
+  // Set up welcome message
+  useEffect(() => {
+    if (user) {
+      const userName = user.name || user.given_name || user.email?.split('@')[0] || 'User';
+      setWelcomeMessage(`Welcome back, ${userName}!`);
+      
+      // Hide welcome message after 5 minutes
+      const timer = setTimeout(() => {
+        setShowWelcomeMessage(false);
+      }, 5 * 60 * 1000); // 5 minutes
+
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
 
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
@@ -482,14 +502,15 @@ export function ApplicationForm() {
       console.log('Sending PDF to webhook:', {
         filename,
         referenceId,
-        applicationId,
+        applicantId: user?.applicantId,
         base64Length: base64.length
       });
       
       const webhookResult = await WebhookService.sendPDFToWebhook(
         base64,
         referenceId,
-        applicationId,
+        user?.applicantId || 'unknown',
+        user?.applicantId || 'unknown',
         filename
       );
 
@@ -848,6 +869,21 @@ export function ApplicationForm() {
     
     console.log("=== END COMPLETE FORM DATA ===");
     
+    // Check if user is authenticated and has applicantId
+    if (!user?.applicantId) {
+      console.log("❌ User not authenticated or missing applicantId");
+      toast({
+        title: 'Authentication Required',
+        description: 'Please sign in to submit your application.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Use the applicantId (could be temporary for development)
+    const currentApplicantId = user.applicantId;
+    console.log("✅ Using applicantId:", currentApplicantId);
+
     // ✅ FIX: Trigger form validation before checking validity
     console.log("🔍 Triggering form validation...");
     const isValid = await form.trigger();
@@ -1111,6 +1147,8 @@ export function ApplicationForm() {
       // Create a server-optimized version with only document metadata
       const serverOptimizedData = {
         ...completeServerData,
+        // Add applicantId from authenticated user
+        applicantId: currentApplicantId,
         // Completely remove encrypted documents from server request - they will be sent via webhook
         encryptedDocuments: undefined,
         // Remove uploadedFilesMetadata from server request - files are sent via webhook
@@ -1481,7 +1519,7 @@ export function ApplicationForm() {
           },
           
           // Application IDs
-          application_id: applicationId,
+          application_id: user?.applicantId || 'unknown',
           reference_id: referenceId,
           
 
@@ -1532,12 +1570,23 @@ export function ApplicationForm() {
         console.log('🌐 === WEBHOOK SUBMISSION ===');
         console.log('📤 Webhook payload being sent:', JSON.stringify(webhookPayload, null, 2));
         console.log('🔗 Reference ID:', referenceId);
-        console.log('🔗 Application ID:', applicationId);
+        console.log('🔗 Application ID:', user?.applicantId);
         
+        // Send form data to webhook
         const webhookResult = await WebhookService.sendFormDataToWebhook(
           webhookPayload,
           referenceId,
-          applicationId
+          user?.applicantId || 'unknown',
+          user?.id,
+          {
+            zoneinfo: user?.zoneinfo,
+            email: user?.email,
+            name: user?.name,
+            given_name: user?.given_name,
+            family_name: user?.family_name,
+            phone_number: user?.phone_number,
+          },
+          uploadedFilesMetadata
         );
         
         console.log('📥 Webhook response:', JSON.stringify(webhookResult, null, 2));
@@ -2396,6 +2445,10 @@ export function ApplicationForm() {
 
       case 4:
         if (!formData.applicant?.employmentType) {
+          console.log('🔍 Primary Applicant Documents - No employment type selected:', {
+            applicant_employmentType: formData.applicant?.employmentType,
+            applicant_data: formData.applicant,
+          });
           return (
             <Card className="form-section">
               <CardHeader>
@@ -2428,6 +2481,10 @@ export function ApplicationForm() {
             </Card>
           );
         }
+        console.log('🔍 Primary Applicant Documents - Employment type selected:', {
+          applicant_employmentType: formData.applicant?.employmentType,
+          applicant_data: formData.applicant,
+        });
         return (
           <Card className="form-section">
             <CardHeader>
@@ -2487,7 +2544,17 @@ export function ApplicationForm() {
                 }}
                 referenceId={referenceId}
                 enableWebhook={true}
-                applicationId={applicationId}
+                applicationId={user?.applicantId || 'unknown'}
+                applicantId={user?.id}
+                userAttributes={{
+                  zoneinfo: user?.zoneinfo,
+                  email: user?.email,
+                  name: user?.name,
+                  given_name: user?.given_name,
+                  family_name: user?.family_name,
+                  phone_number: user?.phone_number,
+                }}
+                showOnlyCoApplicant={false}
               />
             </CardContent>
           </Card>
@@ -2981,7 +3048,16 @@ export function ApplicationForm() {
                   onEncryptedDocumentChange={coApplicantEncryptedDocumentChange}
                   referenceId={referenceId}
                   enableWebhook={true}
-                  applicationId={applicationId}
+                  applicationId={user?.applicantId || 'unknown'}
+                  applicantId={user?.id}
+                  userAttributes={{
+                    zoneinfo: user?.zoneinfo,
+                    email: user?.email,
+                    name: user?.name,
+                    given_name: user?.given_name,
+                    family_name: user?.family_name,
+                    phone_number: user?.phone_number,
+                  }}
                   showOnlyCoApplicant={true}
                 />
               </CardContent>
@@ -3120,7 +3196,8 @@ export function ApplicationForm() {
                       sectionName={`occupant_${idx}_ssn`}
                       documentName="ssn"
                       enableWebhook={true}
-                      applicationId={applicationId}
+                      applicationId={user?.applicantId || 'unknown'}
+                      applicantId={user?.applicantId}
                     />
                     {(!occupant.ssnEncryptedDocument) && (
                       <div className="text-red-600 text-xs mt-1">SSN document upload is required.</div>
@@ -3662,7 +3739,7 @@ export function ApplicationForm() {
             }}
             referenceId={referenceId}
             enableWebhook={true}
-            applicationId={applicationId}
+            applicationId={user?.applicantId || 'unknown'}
             showOnlyGuarantor={true}
           />
         );
@@ -3764,22 +3841,35 @@ export function ApplicationForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 sm:bg-gradient-to-br sm:from-blue-50 sm:to-gray-100 sm:dark:from-gray-900 sm:dark:to-gray-800">
-      {/* Header - Hidden */}
-      {/* <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
-          <div className="text-center">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Liberty Place Property Management</h1>
-            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 space-y-1">
-              <p className="break-words">122 East 42nd Street, Suite 1903, New York, NY 10168</p>
-              <p className="break-words">Tel: (646) 545-6700 | Fax: (646) 304-2255</p>
-              <p className="text-blue-600 dark:text-blue-400 font-medium">Rental Application Form</p>
+      {/* Welcome Message */}
+      {showWelcomeMessage && user && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 font-semibold text-lg">
+                  {user.name?.[0] || user.given_name?.[0] || user.email?.[0]?.toUpperCase() || 'U'}
+                </span>
+              </div>
+              <div>
+                <p className="text-blue-900 font-medium">{welcomeMessage}</p>
+                <p className="text-blue-700 text-sm">Ready to continue your application</p>
+              </div>
             </div>
+            <button
+              onClick={() => setShowWelcomeMessage(false)}
+              className="text-blue-400 hover:text-blue-600 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
-      </header> */}
+      )}
 
+      {/* Header with Navigation */}
       <div className="w-full max-w-4xl mx-auto px-3 py-4 sm:px-4 sm:py-8">
-        {/* Header with Navigation */}
         <div className="mb-4 sm:mb-8">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
