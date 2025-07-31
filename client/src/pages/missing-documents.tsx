@@ -115,36 +115,60 @@ export default function MissingDocumentsPage() {
       }
       
       const data = await response.json();
+      console.log('📡 Missing Documents - API Response:', data);
+      console.log('📊 Missing Documents - Response Details:', {
+        responseStatus: response.status,
+        responseOk: response.ok,
+        dataLength: data.length,
+        dataType: typeof data,
+        isArray: Array.isArray(data)
+      });
+      
       setMissingItems(data);
       setSearched(true);
       
       // Save applicant ID to localStorage for future use
       localStorage.setItem('lastApplicantId', id);
+      console.log('💾 Missing Documents - Saved to localStorage:', id);
       
       // Provide feedback about the search
       if (data.length === 0) {
+        console.log('📭 Missing Documents - No documents found');
         setSuccessMessage(`No missing documents found for applicant ID: ${id}. The system searched for multiple formats including: ${searchFormats.join(', ')}`);
       } else {
+        console.log('📄 Missing Documents - Documents found:', data.length);
         setSuccessMessage(`Found ${data.length} document(s) for applicant ID: ${id}`);
       }
     } catch (err) {
+      console.log('❌ Missing Documents - API Error:', err);
+      console.log('🚨 Missing Documents - Error Details:', {
+        errorMessage: err instanceof Error ? err.message : 'Unknown error',
+        errorType: err instanceof Error ? err.constructor.name : typeof err,
+        errorStack: err instanceof Error ? err.stack : undefined
+      });
       setError(err instanceof Error ? err.message : 'Failed to fetch missing documents');
       setMissingItems([]);
     } finally {
+      console.log('🏁 Missing Documents - API call completed');
       setLoading(false);
     }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔍 Missing Documents - Search triggered:', { applicantId: applicantId.trim() });
+    
     if (applicantId.trim()) {
       // Update URL with applicant ID for sharing
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.set('applicantId', applicantId.trim());
       window.history.pushState({}, '', newUrl.toString());
+      console.log('🔗 Missing Documents - URL updated:', newUrl.toString());
       
       setLoadedFromUrl(false);
       fetchMissingSubitems(applicantId.trim());
+    } else {
+      console.log('⚠️ Missing Documents - Search attempted with empty applicantId');
     }
   };
 
@@ -171,6 +195,7 @@ export default function MissingDocumentsPage() {
   };
 
   const clearSearch = () => {
+    console.log('🧹 Missing Documents - Clearing search state');
     setApplicantId('');
     setMissingItems([]);
     setSearched(false);
@@ -184,6 +209,7 @@ export default function MissingDocumentsPage() {
     const newUrl = new URL(window.location.href);
     newUrl.searchParams.delete('applicantId');
     window.history.pushState({}, '', newUrl.toString());
+    console.log('🔗 Missing Documents - URL cleared:', newUrl.toString());
   };
 
   const getStatusIcon = (status: string) => {
@@ -303,7 +329,10 @@ export default function MissingDocumentsPage() {
   };
 
   // Check if user is authenticated
+  console.log('🔍 Missing Documents - Authentication Check:', { user: !!user, userDetails: user });
+  
   if (!user) {
+    console.log('❌ Missing Documents - User not authenticated, redirecting to login');
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -322,6 +351,23 @@ export default function MissingDocumentsPage() {
       </div>
     );
   }
+
+  console.log('✅ Missing Documents - User authenticated, rendering page');
+  console.log('📊 Missing Documents - Current State:', {
+    applicantId,
+    missingItems: missingItems.length,
+    loading,
+    error,
+    searched,
+    userZoneinfo: user?.zoneinfo,
+    userDetails: {
+      id: user?.id,
+      email: user?.email,
+      name: user?.name,
+      zoneinfo: user?.zoneinfo,
+      applicantId: user?.applicantId
+    }
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
