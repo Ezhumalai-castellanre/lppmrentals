@@ -106,9 +106,17 @@ export default function MissingDocumentsPage() {
     setSuccessMessage(null);
     
     try {
-      // Use the user's zoneinfo directly for the API call
-      const apiId = user?.zoneinfo || id;
+      // Always prioritize user's zoneinfo for the API call
+      if (!user?.zoneinfo) {
+        console.log('❌ Missing Documents - No zoneinfo found, cannot proceed');
+        setError('User zoneinfo not found. Please ensure you are properly authenticated.');
+        return;
+      }
+      
+      const apiId = user.zoneinfo;
       console.log(`🔍 Using API ID: "${apiId}" for API call`);
+      console.log(`🔍 User zoneinfo: "${user.zoneinfo}"`);
+      console.log(`🔍 Final API endpoint: "/api/monday/missing-subitems/${apiId}"`);
       
       // Get all possible formats for the applicant ID
       const searchFormats = getAllApplicantIdFormats(apiId);
@@ -140,10 +148,10 @@ export default function MissingDocumentsPage() {
       // Provide feedback about the search
       if (data.length === 0) {
         console.log('📭 Missing Documents - No documents found');
-        setSuccessMessage(`No missing documents found for applicant ID: ${id}. The system searched for multiple formats including: ${searchFormats.join(', ')}`);
+        setSuccessMessage(`No missing documents found for applicant ID: ${apiId}. The system searched for multiple formats including: ${searchFormats.join(', ')}`);
       } else {
         console.log('📄 Missing Documents - Documents found:', data.length);
-        setSuccessMessage(`Found ${data.length} document(s) for applicant ID: ${id}`);
+        setSuccessMessage(`Found ${data.length} document(s) for applicant ID: ${apiId}`);
       }
     } catch (err) {
       console.log('❌ Missing Documents - API Error:', err);
