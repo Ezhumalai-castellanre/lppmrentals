@@ -77,6 +77,7 @@ export default function MissingDocumentsPage() {
     } else if (user?.zoneinfo) {
       console.log('🔍 Missing Documents - Using user zoneinfo:', user.zoneinfo);
       setApplicantId(user.zoneinfo);
+      // Pass the zoneinfo to fetchMissingSubitems, but it will use user.zoneinfo for API call
       fetchMissingSubitems(user.zoneinfo);
     } else {
       console.log('🔍 Missing Documents - No zoneinfo found, checking localStorage');
@@ -99,11 +100,15 @@ export default function MissingDocumentsPage() {
     setSuccessMessage(null);
     
     try {
-      // Get all possible formats for the applicant ID
-      const searchFormats = getAllApplicantIdFormats(id);
-      console.log(`🔍 Searching for applicant ID "${id}" with formats:`, searchFormats);
+      // Use the user's zoneinfo directly for the API call
+      const apiId = user?.zoneinfo || id;
+      console.log(`🔍 Using API ID: "${apiId}" for API call`);
       
-      const response = await fetch(`/api/monday/missing-subitems/${id}`);
+      // Get all possible formats for the applicant ID
+      const searchFormats = getAllApplicantIdFormats(apiId);
+      console.log(`🔍 Searching for applicant ID "${apiId}" with formats:`, searchFormats);
+      
+      const response = await fetch(`/api/monday/missing-subitems/${apiId}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -334,6 +339,9 @@ export default function MissingDocumentsPage() {
               <div className="bg-green-50 p-4 rounded-lg max-w-2xl mx-auto mb-4">
                 <p className="text-sm text-green-800">
                   <span className="font-medium">👤 User ID:</span> {user.zoneinfo}
+                </p>
+                <p className="text-sm text-green-700 mt-1">
+                  <span className="font-medium">🔍 API Call:</span> /api/monday/missing-subitems/{user.zoneinfo}
                 </p>
               </div>
             )}
