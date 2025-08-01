@@ -105,9 +105,9 @@ export class EnhancedPDFGenerator {
   private addTableRow(label: string, value: string | number | undefined, highlight: boolean = false): void {
     // Show all fields, even if empty
     const displayValue = (value !== undefined && value !== null && value !== '') ? String(value) : 'Not provided';
-    const labelWidth = 20; // Set label width to 20px as requested
-    const valueStartX = this.marginLeft + labelWidth + 2; // Minimal 2px gap between label and value
-    const valueWidth = this.contentWidth - labelWidth - 2; // Available width for value
+    const labelWidth = 55; // Reduced label width for better alignment
+    const valueStartX = this.marginLeft + labelWidth + 4; // Reduced gap between label and value to 4px
+    const valueWidth = this.contentWidth - labelWidth - 4; // Available width for value
     
     // Add label with proper alignment
     this.doc.setFontSize(10);
@@ -344,7 +344,7 @@ export class EnhancedPDFGenerator {
     }
     
     // Landlord Information as separate section with better alignment
-    if (person.landlordName || person.landlordAddressLine1 || person.landlordAddressLine2 || person.landlordCity || person.landlordState || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
+    if (person.landlordName || person.landlordAddressLine1 || person.landlordCity || person.landlordState || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
       this.yPosition += 8; // More spacing before landlord section
       
       // Create a separate section for Landlord Information
