@@ -18,9 +18,9 @@ export class EnhancedPDFGenerator {
   private doc: jsPDF;
   private yPosition: number = 30;
   private readonly pageWidth: number = 210;
-  private readonly marginLeft: number = 20; // Reduced margin for more content space
-  private readonly marginRight: number = 20;
-  private readonly contentWidth: number = 170; // Increased content width
+  private readonly marginLeft: number = 10; // Updated to 10px margin
+  private readonly marginRight: number = 10; // Updated to 10px margin
+  private readonly contentWidth: number = 190; // Increased content width due to smaller margins
   private readonly primaryColor: number[] = [0, 102, 204]; // Blue
   private readonly secondaryColor: number[] = [51, 51, 51]; // Dark gray
   private readonly accentColor: number[] = [255, 193, 7]; // Gold
@@ -151,13 +151,13 @@ export class EnhancedPDFGenerator {
     this.doc.setFontSize(8);
     this.doc.setFont('helvetica', 'normal');
     this.doc.setTextColor(128, 128, 128);
-    this.doc.text(`Page ${pageCount}`, this.pageWidth - 30, 15);
+    this.doc.text(`Page ${pageCount}`, this.pageWidth - 20, 10); // Updated position for 10px margin
     
     // Add company name in header
     this.doc.setFontSize(10);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
-    this.doc.text('Liberty Place Property Management', this.marginLeft, 15);
+    this.doc.text('Liberty Place Property Management', this.marginLeft, 10); // Updated position for 10px margin
   }
 
   private addHeader(): void {
@@ -343,23 +343,39 @@ export class EnhancedPDFGenerator {
       this.addTableRow("Reason for Moving", person.reasonForMoving);
     }
     
-    // Landlord Information subsection
+    // Landlord Information as separate section with better alignment
     if (person.landlordName || person.landlordAddressLine1 || person.landlordCity || person.landlordState || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
-      this.yPosition += 6;
-      this.doc.setFontSize(11);
+      this.yPosition += 8; // More spacing before landlord section
+      
+      // Create a separate section for Landlord Information
+      this.doc.setFontSize(12);
       this.doc.setFont('helvetica', 'bold');
       this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
-      this.doc.text("Current Landlord Information", this.marginLeft, this.yPosition);
-      this.yPosition += 8;
+      this.doc.text("Landlord Information", this.marginLeft, this.yPosition);
       
-      this.addTableRow("Landlord Name", person.landlordName);
-      this.addTableRow("Landlord Address Line 1", person.landlordAddressLine1);
-      this.addTableRow("Landlord Address Line 2", person.landlordAddressLine2);
-      this.addTableRow("Landlord City", person.landlordCity);
-      this.addTableRow("Landlord State", person.landlordState);
-      this.addTableRow("Landlord ZIP Code", person.landlordZipCode);
-      this.addTableRow("Landlord Phone", person.landlordPhone);
-      this.addTableRow("Landlord Email", person.landlordEmail);
+      // Add accent line under landlord section title
+      this.doc.setFillColor(this.accentColor[0], this.accentColor[1], this.accentColor[2]);
+      this.doc.rect(this.marginLeft, this.yPosition + 1, 50, 1, 'F');
+      
+      this.yPosition += 12;
+      
+      // Add landlord information in a table format with better alignment
+      const landlordFields = [
+        { label: "Landlord Name", value: person.landlordName },
+        { label: "Landlord Address Line 1", value: person.landlordAddressLine1 },
+        { label: "Landlord Address Line 2", value: person.landlordAddressLine2 },
+        { label: "Landlord City", value: person.landlordCity },
+        { label: "Landlord State", value: person.landlordState },
+        { label: "Landlord ZIP Code", value: person.landlordZipCode },
+        { label: "Landlord Phone", value: person.landlordPhone },
+        { label: "Landlord Email", value: person.landlordEmail }
+      ];
+      
+      landlordFields.forEach(field => {
+        if (field.value) {
+          this.addTableRow(field.label, field.value);
+        }
+      });
     }
     
     this.yPosition += 4;
@@ -551,7 +567,7 @@ export class EnhancedPDFGenerator {
     this.doc.line(this.marginLeft, this.yPosition, this.pageWidth - this.marginRight, this.yPosition);
     this.yPosition += 4; // Reduced spacing
     
-    // Footer text
+    // Footer text with 10px margin
     this.doc.setFontSize(7); // Reduced font size
     this.doc.setFont('helvetica', 'normal');
     this.doc.setTextColor(128, 128, 128);

@@ -18,8 +18,8 @@ export class PDFGenerator {
   private doc: jsPDF;
   private yPosition: number = 20;
   private readonly pageWidth: number = 210;
-  private readonly marginLeft: number = 20;
-  private readonly marginRight: number = 20;
+  private readonly marginLeft: number = 10; // Updated to 10px margin
+  private readonly marginRight: number = 10; // Updated to 10px margin
 
   constructor() {
     this.doc = new jsPDF();
@@ -131,9 +131,13 @@ export class PDFGenerator {
     this.addField("Current Monthly Rent", person.currentRent ? `$${person.currentRent}` : undefined);
     this.addField("Reason for Moving", person.reasonForMoving);
     
-    // Landlord Information
+    // Landlord Information as separate section with better alignment
     if (person.landlordName || person.landlordAddressLine1 || person.landlordAddressLine2 || person.landlordCity || person.landlordState || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
-      this.addText("Landlord Information:", 10, true);
+      this.yPosition += 8; // More spacing before landlord section
+      
+      // Create a separate section for Landlord Information
+      this.addSection("Landlord Information");
+      
       this.addField("Landlord Name", person.landlordName);
       this.addField("Landlord Address Line 1", person.landlordAddressLine1);
       this.addField("Landlord Address Line 2", person.landlordAddressLine2);
@@ -348,7 +352,7 @@ export class PDFGenerator {
     // Add terms & conditions at the end
     this.addTermsAndConditions();
     
-    // Add footer
+    // Add footer with 10px margin
     this.checkPageBreak();
     this.yPosition += 10;
     this.addText("This application was submitted electronically on " + new Date().toLocaleString(), 8);
