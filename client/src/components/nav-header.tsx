@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, Home, Lock, FileText, Database, UserCheck, Settings, TestTube } from 'lucide-react';
+import { LogOut, Home, Lock, FileText } from 'lucide-react';
 import LogoutButton from './logout-button';
 import { useLocation } from 'wouter';
 
@@ -61,36 +61,6 @@ const NavHeader: React.FC = () => {
           >
             <FileText className="h-4 w-4" />
             <span>Missing Documents</span>
-          </Button>
-
-          <Button 
-            variant={isActiveRoute('/test-auth') ? "default" : "outline"}
-            size="sm"
-            onClick={() => setLocation('/test-auth')}
-            className="flex items-center space-x-2"
-          >
-            <UserCheck className="h-4 w-4" />
-            <span>Test Auth</span>
-          </Button>
-
-          <Button 
-            variant={isActiveRoute('/test-db') ? "default" : "outline"}
-            size="sm"
-            onClick={() => setLocation('/test-db')}
-            className="flex items-center space-x-2"
-          >
-            <Database className="h-4 w-4" />
-            <span>Test DB</span>
-          </Button>
-
-          <Button 
-            variant={isActiveRoute('/test-lppm-signup') ? "default" : "outline"}
-            size="sm"
-            onClick={() => setLocation('/test-lppm-signup')}
-            className="flex items-center space-x-2"
-          >
-            <TestTube className="h-4 w-4" />
-            <span>Test Signup</span>
           </Button>
         </div>
 
