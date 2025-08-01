@@ -574,7 +574,7 @@ export default function MissingDocumentsPage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="text-xs" style={{ fontSize: '10px' }}>
                                 {item.applicantType}
                               </Badge>
                               {uploadedDocuments[item.id] ? (
@@ -782,7 +782,7 @@ export default function MissingDocumentsPage() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="text-xs" style={{ fontSize: '10px' }}>
                                 {item.applicantType}
                               </Badge>
                               {uploadedDocuments[item.id] ? (

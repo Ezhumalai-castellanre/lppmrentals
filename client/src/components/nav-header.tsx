@@ -131,7 +131,7 @@ const NavHeader: React.FC = () => {
                     variant="ghost" 
                     size="sm"
                     className="w-full justify-start"
-                    showIcon={true}
+                    showIcon={false}
                   >
                     Sign out
                   </LogoutButton>
@@ -172,7 +172,7 @@ const NavHeader: React.FC = () => {
               className="w-full justify-start"
             >
               <FileText className="mr-3 h-5 w-5" />
-              <span>Missing Documents</span>
+              <span>Supporting Documents</span>
             </Button>
           </nav>
 
@@ -197,7 +197,7 @@ const NavHeader: React.FC = () => {
                     {user.email}
                   </p>
                   {user.zoneinfo && (
-                    <Badge variant="outline" className="mt-1 text-xs bg-blue-50 text-blue-700 border-blue-200">
+                    <Badge variant="outline" className="mt-1 text-xs bg-blue-50 text-blue-700 border-blue-200" style={{ fontSize: '10px' }}>
                       {user.zoneinfo}
                     </Badge>
                   )}
@@ -228,7 +228,7 @@ const NavHeader: React.FC = () => {
                   variant="ghost" 
                   size="sm"
                   className="w-full justify-start h-10 group hover:bg-red-50 hover:text-red-700 transition-all duration-200"
-                  showIcon={true}
+                  showIcon={false}
                 >
                   <div className="flex items-center space-x-2">
                     <div className="p-1.5 rounded-md bg-red-100 group-hover:bg-red-200 transition-colors">
@@ -290,7 +290,7 @@ const NavHeader: React.FC = () => {
                 className="w-full justify-start h-12 text-base"
               >
                 <FileText className="mr-3 h-5 w-5" />
-                <span>Missing Documents</span>
+                <span>Supporting Documents</span>
               </Button>
             </nav>
 
@@ -315,7 +315,7 @@ const NavHeader: React.FC = () => {
                       {user.email}
                     </p>
                     {user.zoneinfo && (
-                      <Badge variant="outline" className="mt-1 text-xs bg-blue-50 text-blue-700 border-blue-200">
+                      <Badge variant="outline" className="mt-1 text-xs bg-blue-50 text-blue-700 border-blue-200" style={{ fontSize: '10px' }}>
                         {user.zoneinfo}
                       </Badge>
                     )}
@@ -346,7 +346,7 @@ const NavHeader: React.FC = () => {
                     variant="ghost" 
                     size="sm"
                     className="w-full justify-start h-10 group hover:bg-red-50 hover:text-red-700 transition-all duration-200"
-                    showIcon={true}
+                    showIcon={false}
                   >
                     <div className="flex items-center space-x-2">
                       <div className="p-1.5 rounded-md bg-red-100 group-hover:bg-red-200 transition-colors">
