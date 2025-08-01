@@ -18,9 +18,13 @@ export class EnhancedPDFGenerator {
   private doc: jsPDF;
   private yPosition: number = 30;
   private readonly pageWidth: number = 210;
+  private readonly pageHeight: number = 297; // Added page height
   private readonly marginLeft: number = 10; // Updated to 10px margin
   private readonly marginRight: number = 10; // Updated to 10px margin
+  private readonly marginTop: number = 10; // Added top margin
+  private readonly marginBottom: number = 10; // Added bottom margin
   private readonly contentWidth: number = 190; // Increased content width due to smaller margins
+  private readonly contentHeight: number = 277; // Page height minus top and bottom margins
   private readonly primaryColor: number[] = [0, 102, 204]; // Blue
   private readonly secondaryColor: number[] = [51, 51, 51]; // Dark gray
   private readonly accentColor: number[] = [255, 193, 7]; // Gold
@@ -138,9 +142,9 @@ export class EnhancedPDFGenerator {
   }
 
   private checkPageBreak(): void {
-    if (this.yPosition > 280) { // Increased page break threshold
+    if (this.yPosition > this.pageHeight - this.marginBottom - 20) { // Updated to respect bottom margin
       this.doc.addPage();
-      this.yPosition = 30;
+      this.yPosition = this.marginTop + 20; // Start with top margin
       this.addPageHeader();
     }
   }
@@ -151,13 +155,13 @@ export class EnhancedPDFGenerator {
     this.doc.setFontSize(8);
     this.doc.setFont('helvetica', 'normal');
     this.doc.setTextColor(128, 128, 128);
-    this.doc.text(`Page ${pageCount}`, this.pageWidth - 20, 10); // Updated position for 10px margin
+    this.doc.text(`Page ${pageCount}`, this.pageWidth - 20, this.marginTop + 5); // Updated position for top margin
     
     // Add company name in header
     this.doc.setFontSize(10);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
-    this.doc.text('Liberty Place Property Management', this.marginLeft, 10); // Updated position for 10px margin
+    this.doc.text('Liberty Place Property Management', this.marginLeft, this.marginTop + 5); // Updated position for top margin
   }
 
   private addHeader(): void {
@@ -567,7 +571,7 @@ export class EnhancedPDFGenerator {
     this.doc.line(this.marginLeft, this.yPosition, this.pageWidth - this.marginRight, this.yPosition);
     this.yPosition += 4; // Reduced spacing
     
-    // Footer text with 10px margin
+    // Footer text with top and bottom margins
     this.doc.setFontSize(7); // Reduced font size
     this.doc.setFont('helvetica', 'normal');
     this.doc.setTextColor(128, 128, 128);

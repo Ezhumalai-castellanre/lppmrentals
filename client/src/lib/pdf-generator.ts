@@ -18,8 +18,11 @@ export class PDFGenerator {
   private doc: jsPDF;
   private yPosition: number = 20;
   private readonly pageWidth: number = 210;
+  private readonly pageHeight: number = 297; // Added page height
   private readonly marginLeft: number = 10; // Updated to 10px margin
   private readonly marginRight: number = 10; // Updated to 10px margin
+  private readonly marginTop: number = 10; // Added top margin
+  private readonly marginBottom: number = 10; // Added bottom margin
 
   constructor() {
     this.doc = new jsPDF();
@@ -46,9 +49,9 @@ export class PDFGenerator {
   }
 
   private checkPageBreak(): void {
-    if (this.yPosition > 270) {
+    if (this.yPosition > this.pageHeight - this.marginBottom - 20) { // Updated to respect bottom margin
       this.doc.addPage();
-      this.yPosition = 20;
+      this.yPosition = this.marginTop + 20; // Start with top margin
     }
   }
 
