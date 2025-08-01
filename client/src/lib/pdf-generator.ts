@@ -41,7 +41,19 @@ export class PDFGenerator {
 
   private addField(label: string, value: string | number | undefined): void {
     if (value !== undefined && value !== null && value !== '') {
-      this.addText(`${label}: ${value}`, 10);
+      const labelWidth = 50; // Fixed label width for better alignment
+      const valueStartX = this.marginLeft + labelWidth + 4; // 4px gap between label and value
+      
+      // Label
+      this.doc.setFontSize(10);
+      this.doc.setFont('helvetica', 'bold');
+      this.doc.text(label, this.marginLeft, this.yPosition);
+      
+      // Value
+      this.doc.setFont('helvetica', 'normal');
+      this.doc.text(String(value), valueStartX, this.yPosition);
+      
+      this.yPosition += 6; // Consistent row spacing
     }
   }
 

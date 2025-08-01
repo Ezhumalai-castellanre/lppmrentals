@@ -88,9 +88,9 @@ export class ResetPDFGenerator {
 
   private addFieldRow(label: string, value: any, highlight: boolean = false): void {
     const displayValue = (value !== undefined && value !== null && value !== '') ? String(value) : 'Not provided';
-    const labelWidth = 75; // Adjusted label width for better alignment
-    const valueStartX = this.marginLeft + labelWidth + 8; // 8px gap between label and value
-    const valueWidth = this.contentWidth - labelWidth - 8; // Available width for value
+    const labelWidth = 50; // Reduced label width for better alignment
+    const valueStartX = this.marginLeft + labelWidth + 4; // Reduced gap to 4px between label and value
+    const valueWidth = this.contentWidth - labelWidth - 4; // Available width for value
     
     // Label
     this.doc.setFontSize(9);
