@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, Home, Lock, FileText, Menu, X } from 'lucide-react';
+import { LogOut, Home, Lock, FileText, Menu, X, User, Shield, Settings } from 'lucide-react';
 import LogoutButton from './logout-button';
 import { useLocation } from 'wouter';
 
@@ -176,48 +176,80 @@ const NavHeader: React.FC = () => {
             </Button>
           </nav>
 
-          {/* Sidebar Footer */}
-          <div className="border-t border-gray-200 p-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <Avatar className="h-10 w-10">
-                <AvatarFallback className="text-sm font-medium">
-                  {getInitials(user.name || user.given_name || user.username)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user.name || user.given_name || user.username}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {user.email}
-                </p>
-                {user.zoneinfo && (
-                  <p className="text-xs text-gray-500 truncate">
-                    ID: {user.zoneinfo}
+          {/* Advanced User Profile Section */}
+          <div className="border-t border-gray-200">
+            {/* Profile Header */}
+            <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-b border-gray-100">
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <Avatar className="h-12 w-12 ring-2 ring-white shadow-lg">
+                    <AvatarFallback className="text-sm font-medium bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                      {getInitials(user.name || user.given_name || user.username)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {user.name || user.given_name || user.username}
                   </p>
-                )}
+                  <p className="text-xs text-gray-600 truncate">
+                    {user.email}
+                  </p>
+                  {user.zoneinfo && (
+                    <Badge variant="outline" className="mt-1 text-xs bg-blue-50 text-blue-700 border-blue-200">
+                      {user.zoneinfo}
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="space-y-2">
+            {/* Action Buttons */}
+            <div className="p-4 space-y-2">
               <Button 
                 variant="ghost" 
                 size="sm"
                 onClick={() => setLocation('/change-password')}
-                className="w-full justify-start"
+                className="w-full justify-start h-10 group hover:bg-blue-50 hover:text-blue-700 transition-all duration-200"
               >
-                <Lock className="mr-2 h-4 w-4" />
-                <span>Change Password</span>
+                <div className="flex items-center space-x-2">
+                  <div className="p-1.5 rounded-md bg-blue-100 group-hover:bg-blue-200 transition-colors">
+                    <Lock className="h-3.5 w-3.5 text-blue-600" />
+                  </div>
+                  <span className="font-medium">Change Password</span>
+                </div>
               </Button>
               
-              <LogoutButton 
+              <Button 
                 variant="ghost" 
                 size="sm"
-                className="w-full justify-start"
-                showIcon={true}
+                onClick={() => setLocation('/change-password')}
+                className="w-full justify-start h-10 group hover:bg-gray-50 hover:text-gray-700 transition-all duration-200"
               >
-                Sign out
-              </LogoutButton>
+                <div className="flex items-center space-x-2">
+                  <div className="p-1.5 rounded-md bg-gray-100 group-hover:bg-gray-200 transition-colors">
+                    <User className="h-3.5 w-3.5 text-gray-600" />
+                  </div>
+                  <span className="font-medium">Profile Settings</span>
+                </div>
+              </Button>
+
+              <div className="pt-2">
+                <LogoutButton 
+                  variant="ghost" 
+                  size="sm"
+                  className="w-full justify-start h-10 group hover:bg-red-50 hover:text-red-700 transition-all duration-200"
+                  showIcon={true}
+                >
+                  <div className="flex items-center space-x-2">
+                    <div className="p-1.5 rounded-md bg-red-100 group-hover:bg-red-200 transition-colors">
+                      <LogOut className="h-3.5 w-3.5 text-red-600" />
+                    </div>
+                    <span className="font-medium">Sign out</span>
+                  </div>
+                </LogoutButton>
+              </div>
             </div>
           </div>
         </div>
@@ -274,47 +306,80 @@ const NavHeader: React.FC = () => {
               </Button>
             </nav>
 
-            <div className="border-t border-gray-200 p-4">
-              <div className="flex items-center space-x-3 mb-4">
-                <Avatar className="h-12 w-12">
-                  <AvatarFallback className="text-sm font-medium">
-                    {getInitials(user.name || user.given_name || user.username)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {user.name || user.given_name || user.username}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {user.email}
-                  </p>
-                  {user.zoneinfo && (
-                    <p className="text-xs text-gray-500 truncate">
-                      ID: {user.zoneinfo}
+            {/* Mobile Advanced User Profile Section */}
+            <div className="border-t border-gray-200">
+              {/* Profile Header */}
+              <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-b border-gray-100">
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <Avatar className="h-12 w-12 ring-2 ring-white shadow-lg">
+                      <AvatarFallback className="text-sm font-medium bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                        {getInitials(user.name || user.given_name || user.username)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {user.name || user.given_name || user.username}
                     </p>
-                  )}
+                    <p className="text-xs text-gray-600 truncate">
+                      {user.email}
+                    </p>
+                    {user.zoneinfo && (
+                      <Badge variant="outline" className="mt-1 text-xs bg-blue-50 text-blue-700 border-blue-200">
+                        {user.zoneinfo}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              {/* Action Buttons */}
+              <div className="p-4 space-y-2">
                 <Button 
                   variant="ghost" 
                   size="sm"
                   onClick={() => handleNavigation('/change-password')}
-                  className="w-full justify-start h-10"
+                  className="w-full justify-start h-10 group hover:bg-blue-50 hover:text-blue-700 transition-all duration-200"
                 >
-                  <Lock className="mr-2 h-4 w-4" />
-                  <span>Change Password</span>
+                  <div className="flex items-center space-x-2">
+                    <div className="p-1.5 rounded-md bg-blue-100 group-hover:bg-blue-200 transition-colors">
+                      <Lock className="h-3.5 w-3.5 text-blue-600" />
+                    </div>
+                    <span className="font-medium">Change Password</span>
+                  </div>
                 </Button>
                 
-                <LogoutButton 
+                <Button 
                   variant="ghost" 
                   size="sm"
-                  className="w-full justify-start h-10"
-                  showIcon={true}
+                  onClick={() => handleNavigation('/change-password')}
+                  className="w-full justify-start h-10 group hover:bg-gray-50 hover:text-gray-700 transition-all duration-200"
                 >
-                  Sign out
-                </LogoutButton>
+                  <div className="flex items-center space-x-2">
+                    <div className="p-1.5 rounded-md bg-gray-100 group-hover:bg-gray-200 transition-colors">
+                      <User className="h-3.5 w-3.5 text-gray-600" />
+                    </div>
+                    <span className="font-medium">Profile Settings</span>
+                  </div>
+                </Button>
+
+                <div className="pt-2">
+                  <LogoutButton 
+                    variant="ghost" 
+                    size="sm"
+                    className="w-full justify-start h-10 group hover:bg-red-50 hover:text-red-700 transition-all duration-200"
+                    showIcon={true}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 rounded-md bg-red-100 group-hover:bg-red-200 transition-colors">
+                        <LogOut className="h-3.5 w-3.5 text-red-600" />
+                      </div>
+                      <span className="font-medium">Sign out</span>
+                    </div>
+                  </LogoutButton>
+                </div>
               </div>
             </div>
           </div>
