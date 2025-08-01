@@ -672,7 +672,6 @@ export function ApplicationForm() {
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccessCard, setShowSuccessCard] = useState(false);
 
   const onSubmit = async (data: ApplicationFormData) => {
     console.log('🚀 FORM SUBMISSION TRIGGERED - Current Step:', currentStep);
@@ -1601,14 +1600,12 @@ export function ApplicationForm() {
         }
       } catch (webhookError) {
         console.error('Webhook error:', webhookError);
-        toast({
-          title: "Application Submitted",
+      toast({
+        title: "Application Submitted",
           description: "Your rental application has been submitted, but webhook delivery failed.",
-        });
+      });
       }
 
-      // Show success card
-      setShowSuccessCard(true);
       generatePDF();
     } catch (error) {
       console.error('Failed to submit application:', error);
@@ -1700,32 +1697,6 @@ export function ApplicationForm() {
       }
     }
   }, [formData.applicant?.dob, form]);
-
-  // Success Card Component
-  const SuccessCard = () => {
-    const handleOkay = () => {
-      setShowSuccessCard(false);
-      window.location.reload();
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center">
-          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Check className="w-8 h-8 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Submission Successful</h2>
-          <p className="text-gray-600 mb-6">Thank you for submitting your rental application.</p>
-          <Button
-            onClick={handleOkay}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
-          >
-            Okay
-          </Button>
-        </div>
-      </div>
-    );
-  };
 
   // Refactor renderStep to accept a stepIdx argument
   const renderStep = (stepIdx = currentStep) => {
@@ -3851,7 +3822,6 @@ export function ApplicationForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 sm:bg-gradient-to-br sm:from-blue-50 sm:to-gray-100 sm:dark:from-gray-900 sm:dark:to-gray-800">
-      {showSuccessCard && <SuccessCard />}
       {/* Welcome Message */}
       {showWelcomeMessage && user && (
         <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">

@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, Home, Lock, FileText } from 'lucide-react';
+import { LogOut, Home, Lock, FileText, Database, UserCheck, Settings, TestTube } from 'lucide-react';
 import LogoutButton from './logout-button';
 import { useLocation } from 'wouter';
 
 const NavHeader: React.FC = () => {
   const { user } = useAuth();
+  const [location] = useLocation();
   const [, setLocation] = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -26,6 +27,10 @@ const NavHeader: React.FC = () => {
       .slice(0, 2);
   };
 
+  const isActiveRoute = (path: string) => {
+    return location === path;
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -36,9 +41,20 @@ const NavHeader: React.FC = () => {
           </h1>
         </div>
 
-        <div className="flex items-center space-x-4">
+        {/* Main Navigation */}
+        <div className="flex items-center space-x-2">
           <Button 
-            variant="outline" 
+            variant={isActiveRoute('/') ? "default" : "outline"}
+            size="sm"
+            onClick={() => setLocation('/')}
+            className="flex items-center space-x-2"
+          >
+            <Home className="h-4 w-4" />
+            <span>Home</span>
+          </Button>
+
+          <Button 
+            variant={isActiveRoute('/missing-documents') ? "default" : "outline"}
             size="sm"
             onClick={() => setLocation('/missing-documents')}
             className="flex items-center space-x-2"
@@ -46,7 +62,40 @@ const NavHeader: React.FC = () => {
             <FileText className="h-4 w-4" />
             <span>Missing Documents</span>
           </Button>
-          
+
+          <Button 
+            variant={isActiveRoute('/test-auth') ? "default" : "outline"}
+            size="sm"
+            onClick={() => setLocation('/test-auth')}
+            className="flex items-center space-x-2"
+          >
+            <UserCheck className="h-4 w-4" />
+            <span>Test Auth</span>
+          </Button>
+
+          <Button 
+            variant={isActiveRoute('/test-db') ? "default" : "outline"}
+            size="sm"
+            onClick={() => setLocation('/test-db')}
+            className="flex items-center space-x-2"
+          >
+            <Database className="h-4 w-4" />
+            <span>Test DB</span>
+          </Button>
+
+          <Button 
+            variant={isActiveRoute('/test-lppm-signup') ? "default" : "outline"}
+            size="sm"
+            onClick={() => setLocation('/test-lppm-signup')}
+            className="flex items-center space-x-2"
+          >
+            <TestTube className="h-4 w-4" />
+            <span>Test Signup</span>
+          </Button>
+        </div>
+
+        {/* User Menu */}
+        <div className="flex items-center space-x-4">
           <Badge variant="secondary" className="text-xs">
             {user.name || user.given_name || user.email?.split('@')[0] || 'User'}
           </Badge>
@@ -68,6 +117,11 @@ const NavHeader: React.FC = () => {
                   <p className="text-xs leading-none text-muted-foreground">
                     {user.email}
                   </p>
+                  {user.zoneinfo && (
+                    <p className="text-xs leading-none text-muted-foreground">
+                      ID: {user.zoneinfo}
+                    </p>
+                  )}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -76,6 +130,7 @@ const NavHeader: React.FC = () => {
                 <Lock className="mr-2 h-4 w-4" />
                 <span>Change Password</span>
               </DropdownMenuItem>
+              
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <LogoutButton 

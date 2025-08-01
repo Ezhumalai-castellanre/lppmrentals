@@ -10,6 +10,8 @@ import RentalApplicationPage from "@/pages/rental-application";
 import MissingDocumentsPage from "@/pages/missing-documents";
 import LoginPage from "@/pages/login";
 import TestAuthPage from "@/pages/test-auth";
+import TestDbPage from "@/pages/test-db";
+import TestLppmSignupPage from "@/pages/test-lppm-signup";
 import ChangePasswordPage from "@/pages/change-password";
 import NotFound from "@/pages/not-found";
 import "./lib/aws-config";
@@ -38,6 +40,20 @@ function Router() {
           </AppLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/test-db">
+        <ProtectedRoute>
+          <AppLayout>
+            <TestDbPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/test-lppm-signup">
+        <ProtectedRoute>
+          <AppLayout>
+            <TestLppmSignupPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/change-password">
         <ProtectedRoute>
           <AppLayout>
@@ -45,17 +61,17 @@ function Router() {
           </AppLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/">
-        <ProtectedRoute>
-          <AppLayout>
-            <RentalApplicationPage />
-          </AppLayout>
-        </ProtectedRoute>
-      </Route>
       <Route path="/missing-documents">
         <ProtectedRoute>
           <AppLayout>
             <MissingDocumentsPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/">
+        <ProtectedRoute>
+          <AppLayout>
+            <RentalApplicationPage />
           </AppLayout>
         </ProtectedRoute>
       </Route>
