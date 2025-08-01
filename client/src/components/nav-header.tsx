@@ -350,20 +350,6 @@ const NavHeader: React.FC = () => {
                     <span className="font-medium">Change Password</span>
                   </div>
                 </Button>
-                
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => handleNavigation('/change-password')}
-                  className="w-full justify-start h-10 group hover:bg-gray-50 hover:text-gray-700 transition-all duration-200"
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className="p-1.5 rounded-md bg-gray-100 group-hover:bg-gray-200 transition-colors">
-                      <User className="h-3.5 w-3.5 text-gray-600" />
-                    </div>
-                    <span className="font-medium">Profile Settings</span>
-                  </div>
-                </Button>
 
                 <div className="pt-2">
                   <LogoutButton 
