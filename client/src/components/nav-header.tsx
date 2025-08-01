@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, Home, Lock, FileText, Menu, X, User, Shield, Settings } from 'lucide-react';
+import { LogOut, Home, Lock, FileText, Menu, X, User, Shield, Settings, Wrench } from 'lucide-react';
 import LogoutButton from './logout-button';
 import { useLocation } from 'wouter';
 
@@ -174,6 +174,16 @@ const NavHeader: React.FC = () => {
               <FileText className="mr-3 h-5 w-5" />
               <span>Supporting Documents</span>
             </Button>
+
+            <Button 
+              variant={isActiveRoute('/maintenance-request') ? "default" : "ghost"}
+              size="lg"
+              onClick={() => setLocation('/maintenance-request')}
+              className="w-full justify-start"
+            >
+              <Wrench className="mr-3 h-5 w-5" />
+              <span>Maintenance Request</span>
+            </Button>
           </nav>
 
           {/* Advanced User Profile Section */}
@@ -291,6 +301,16 @@ const NavHeader: React.FC = () => {
               >
                 <FileText className="mr-3 h-5 w-5" />
                 <span>Supporting Documents</span>
+              </Button>
+
+              <Button 
+                variant={isActiveRoute('/maintenance-request') ? "default" : "ghost"}
+                size="lg"
+                onClick={() => handleNavigation('/maintenance-request')}
+                className="w-full justify-start h-12 text-base"
+              >
+                <Wrench className="mr-3 h-5 w-5" />
+                <span>Maintenance Request</span>
               </Button>
             </nav>
 

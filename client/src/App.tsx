@@ -8,6 +8,7 @@ import ProtectedRoute from "@/components/protected-route";
 import NavHeader from "@/components/nav-header";
 import RentalApplicationPage from "@/pages/rental-application";
 import MissingDocumentsPage from "@/pages/missing-documents";
+import MaintenanceRequestPage from "@/pages/maintenance-request";
 import LoginPage from "@/pages/login";
 import TestAuthPage from "@/pages/test-auth";
 import TestDbPage from "@/pages/test-db";
@@ -65,6 +66,13 @@ function Router() {
         <ProtectedRoute>
           <AppLayout>
             <MissingDocumentsPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/maintenance-request">
+        <ProtectedRoute>
+          <AppLayout>
+            <MaintenanceRequestPage />
           </AppLayout>
         </ProtectedRoute>
       </Route>
