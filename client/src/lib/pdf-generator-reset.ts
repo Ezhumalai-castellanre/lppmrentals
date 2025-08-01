@@ -230,7 +230,7 @@ export class ResetPDFGenerator {
     }
     
     // Landlord Information section
-    if (person.landlordName || person.landlordAddressLine1 || person.landlordAddressLine2 || person.landlordCity || person.landlordState || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
+    if (person.landlordName || person.landlordAddressLine1 || person.landlordAddressLine2 || person.landlordCity || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
       this.yPosition += 8; // More spacing before landlord section
       
       // Create a separate section for Landlord Information
@@ -240,7 +240,6 @@ export class ResetPDFGenerator {
       this.addFieldRow("Landlord Address Line 1", person.landlordAddressLine1);
       this.addFieldRow("Landlord Address Line 2", person.landlordAddressLine2);
       this.addFieldRow("Landlord City", person.landlordCity);
-      this.addFieldRow("Landlord State", person.landlordState);
       this.addFieldRow("Landlord ZIP Code", person.landlordZipCode);
       this.addFieldRow("Landlord Phone", person.landlordPhone);
       this.addFieldRow("Landlord Email", person.landlordEmail);

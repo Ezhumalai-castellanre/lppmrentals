@@ -348,7 +348,7 @@ export class EnhancedPDFGenerator {
     }
     
     // Landlord Information as separate section with better alignment
-    if (person.landlordName || person.landlordAddressLine1 || person.landlordCity || person.landlordState || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
+    if (person.landlordName || person.landlordAddressLine1 || person.landlordCity || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
       this.yPosition += 8; // More spacing before landlord section
       
       // Create a separate section for Landlord Information
@@ -369,7 +369,6 @@ export class EnhancedPDFGenerator {
         { label: "Landlord Address Line 1", value: person.landlordAddressLine1 },
         { label: "Landlord Address Line 2", value: person.landlordAddressLine2 },
         { label: "Landlord City", value: person.landlordCity },
-        { label: "Landlord State", value: person.landlordState },
         { label: "Landlord ZIP Code", value: person.landlordZipCode },
         { label: "Landlord Phone", value: person.landlordPhone },
         { label: "Landlord Email", value: person.landlordEmail }

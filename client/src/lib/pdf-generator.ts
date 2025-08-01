@@ -135,7 +135,7 @@ export class PDFGenerator {
     this.addField("Reason for Moving", person.reasonForMoving);
     
     // Landlord Information as separate section with better alignment
-    if (person.landlordName || person.landlordAddressLine1 || person.landlordAddressLine2 || person.landlordCity || person.landlordState || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
+    if (person.landlordName || person.landlordAddressLine1 || person.landlordAddressLine2 || person.landlordCity || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
       this.yPosition += 8; // More spacing before landlord section
       
       // Create a separate section for Landlord Information
@@ -145,7 +145,6 @@ export class PDFGenerator {
       this.addField("Landlord Address Line 1", person.landlordAddressLine1);
       this.addField("Landlord Address Line 2", person.landlordAddressLine2);
       this.addField("Landlord City", person.landlordCity);
-      this.addField("Landlord State", person.landlordState);
       this.addField("Landlord ZIP Code", person.landlordZipCode);
       this.addField("Landlord Phone", person.landlordPhone);
       this.addField("Landlord Email", person.landlordEmail);
