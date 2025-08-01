@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -14,6 +14,17 @@ const NavHeader: React.FC = () => {
   const [, setLocation] = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   if (!user) {
     return null;
@@ -36,35 +47,56 @@ const NavHeader: React.FC = () => {
     setIsSidebarOpen(false);
   };
 
+  const handleNavigation = (path: string) => {
+    setLocation(path);
+    if (isMobile) {
+      closeSidebar();
+    }
+  };
+
+  // Prevent body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (isMobile && isSidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobile, isSidebarOpen]);
+
   return (
     <>
       {/* Mobile Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 lg:hidden">
+      <header className="bg-white border-b border-gray-200 px-4 py-3 lg:hidden sticky top-0 z-40">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2"
+              className="p-2 touch-manipulation"
+              aria-label="Toggle navigation menu"
             >
               <Menu className="h-5 w-5" />
             </Button>
             <Home className="h-6 w-6 text-blue-600" />
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-lg font-semibold text-gray-900 truncate">
               Rental Applications
             </h1>
           </div>
 
           {/* Mobile User Menu */}
-          <div className="flex items-center space-x-4">
-            <Badge variant="secondary" className="text-xs">
+          <div className="flex items-center space-x-3">
+            <Badge variant="secondary" className="text-xs hidden sm:inline-flex">
               {user.name || user.given_name || user.email?.split('@')[0] || 'User'}
             </Badge>
             
             <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full touch-manipulation">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="text-sm font-medium">
                       {getInitials(user.name || user.given_name || user.username)}
@@ -194,8 +226,14 @@ const NavHeader: React.FC = () => {
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={closeSidebar} />
-          <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300 ease-in-out" 
+            onClick={closeSidebar}
+          />
+          
+          {/* Sidebar */}
+          <div className="fixed inset-y-0 left-0 flex w-80 max-w-[85vw] flex-col bg-white shadow-xl transform transition-transform duration-300 ease-in-out">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <div className="flex items-center space-x-3">
                 <Home className="h-6 w-6 text-blue-600" />
@@ -207,21 +245,19 @@ const NavHeader: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 onClick={closeSidebar}
-                className="p-2"
+                className="p-2 touch-manipulation"
+                aria-label="Close navigation menu"
               >
                 <X className="h-5 w-5" />
               </Button>
             </div>
 
-            <nav className="flex-1 px-4 py-6 space-y-2">
+            <nav className="flex-1 px-4 py-6 space-y-3">
               <Button 
                 variant={isActiveRoute('/') ? "default" : "ghost"}
                 size="lg"
-                onClick={() => {
-                  setLocation('/');
-                  closeSidebar();
-                }}
-                className="w-full justify-start"
+                onClick={() => handleNavigation('/')}
+                className="w-full justify-start h-12 text-base"
               >
                 <Home className="mr-3 h-5 w-5" />
                 <span>Home</span>
@@ -230,11 +266,8 @@ const NavHeader: React.FC = () => {
               <Button 
                 variant={isActiveRoute('/missing-documents') ? "default" : "ghost"}
                 size="lg"
-                onClick={() => {
-                  setLocation('/missing-documents');
-                  closeSidebar();
-                }}
-                className="w-full justify-start"
+                onClick={() => handleNavigation('/missing-documents')}
+                className="w-full justify-start h-12 text-base"
               >
                 <FileText className="mr-3 h-5 w-5" />
                 <span>Missing Documents</span>
@@ -243,7 +276,7 @@ const NavHeader: React.FC = () => {
 
             <div className="border-t border-gray-200 p-4">
               <div className="flex items-center space-x-3 mb-4">
-                <Avatar className="h-10 w-10">
+                <Avatar className="h-12 w-12">
                   <AvatarFallback className="text-sm font-medium">
                     {getInitials(user.name || user.given_name || user.username)}
                   </AvatarFallback>
@@ -267,11 +300,8 @@ const NavHeader: React.FC = () => {
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  onClick={() => {
-                    setLocation('/change-password');
-                    closeSidebar();
-                  }}
-                  className="w-full justify-start"
+                  onClick={() => handleNavigation('/change-password')}
+                  className="w-full justify-start h-10"
                 >
                   <Lock className="mr-2 h-4 w-4" />
                   <span>Change Password</span>
@@ -280,7 +310,7 @@ const NavHeader: React.FC = () => {
                 <LogoutButton 
                   variant="ghost" 
                   size="sm"
-                  className="w-full justify-start"
+                  className="w-full justify-start h-10"
                   showIcon={true}
                 >
                   Sign out
