@@ -22,7 +22,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f2f8fe' }}>
       {isAuthenticated && <NavHeader />}
-      <main className={isAuthenticated ? "pt-0" : ""}>
+      <main className={isAuthenticated ? "lg:pl-64" : ""}>
         {children}
       </main>
     </div>
