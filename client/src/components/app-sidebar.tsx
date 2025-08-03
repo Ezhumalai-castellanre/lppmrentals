@@ -14,6 +14,7 @@ import {
   SidebarMenuItem,
   SidebarMenuAction,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -38,6 +39,7 @@ import {
   Calendar,
   DollarSign,
   Shield,
+  X,
 } from "lucide-react";
 import LogoutButton from "./logout-button";
 
@@ -90,6 +92,7 @@ const managementItems = [
 export function AppSidebar() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { setOpenMobile } = useSidebar();
 
   const getInitials = (name: string) => {
     return name
@@ -132,6 +135,13 @@ export function AppSidebar() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          </SidebarMenuItem>
+          {/* Mobile close button */}
+          <SidebarMenuItem className="md:hidden">
+            <SidebarMenuButton onClick={() => setOpenMobile(false)}>
+              <X className="h-4 w-4" />
+              <span className="hidden sm:inline">Close</span>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

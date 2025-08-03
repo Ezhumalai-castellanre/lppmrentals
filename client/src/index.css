@@ -344,6 +344,9 @@ html, body {
     width: 100vw;
     transform: translateX(-100%);
     transition: transform 0.3s ease-in-out;
+    background-color: hsl(var(--sidebar));
+    border-right: 1px solid hsl(var(--sidebar-border));
+    touch-action: pan-y;
   }
   
   .group\/sidebar[data-state="expanded"] {
@@ -352,6 +355,43 @@ html, body {
   
   .group\/sidebar[data-collapsible="icon"] {
     width: 18rem;
+  }
+
+  /* Mobile overlay backdrop */
+  .group\/sidebar::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    pointer-events: none;
+  }
+  
+  .group\/sidebar[data-state="expanded"]::before {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Ensure sidebar content is properly positioned */
+  .group\/sidebar > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Mobile swipe gesture support */
+  .group\/sidebar[data-state="expanded"]::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 0;
   }
 }
 
@@ -362,6 +402,15 @@ html, body {
   
   .group\/sidebar[data-collapsible="icon"] .hidden.sm\:inline {
     display: none;
+  }
+
+  /* Desktop hover effects */
+  .group\/sidebar[data-collapsible="icon"]:hover {
+    width: 16rem;
+  }
+  
+  .group\/sidebar[data-collapsible="icon"]:hover .hidden.sm\:inline {
+    display: inline;
   }
 }
 

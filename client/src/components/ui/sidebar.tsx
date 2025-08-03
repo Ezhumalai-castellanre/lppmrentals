@@ -70,6 +70,30 @@ const SidebarProvider = React.forwardRef<
     }
   }, [isMobile, openMobile, setOpenMobile, setOpen, openProp, openState])
 
+  // Auto-close mobile sidebar when screen size changes
+  React.useEffect(() => {
+    if (!isMobile && openMobile) {
+      setOpenMobile(false)
+    }
+  }, [isMobile, openMobile, setOpenMobile])
+
+  // Close mobile sidebar when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isMobile && openMobile) {
+        const sidebar = document.querySelector('[data-state="expanded"]')
+        if (sidebar && !sidebar.contains(event.target as Node)) {
+          setOpenMobile(false)
+        }
+      }
+    }
+
+    if (isMobile && openMobile) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isMobile, openMobile, setOpenMobile])
+
   React.useEffect(() => {
     const handleResize = () => {
       // Mobile: < 768px, Tablet: 768px - 1024px, Desktop: > 1024px
@@ -493,7 +517,7 @@ const SidebarTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ className, children, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar, isMobile } = useSidebar()
 
   return (
     <Button
