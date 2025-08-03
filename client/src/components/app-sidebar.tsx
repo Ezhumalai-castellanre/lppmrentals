@@ -89,7 +89,11 @@ const managementItems = [
   },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  variant?: "sidebar" | "inset" | "floating";
+}
+
+export function AppSidebar({ variant = "sidebar" }: AppSidebarProps) {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { setOpenMobile } = useSidebar();
@@ -112,7 +116,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" variant={variant}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
