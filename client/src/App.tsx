@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import ProtectedRoute from "@/components/protected-route";
 import NavHeader from "@/components/nav-header";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import RentalApplicationPage from "@/pages/rental-application";
 import MissingDocumentsPage from "@/pages/missing-documents";
@@ -33,32 +33,41 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
-            <div className="navbar-container h-14 px-4 md:px-6">
-              <div className="navbar-left">
-                <SidebarTrigger className="md:hidden navbar-item" />
-                <div className="hidden md:block navbar-item">
-                  <h1 className="text-lg font-semibold">Rental Portal</h1>
-                </div>
-              </div>
-              <div className="navbar-right">
-                <div className="navbar-item">
-                  {/* Add any additional navbar items here */}
-                </div>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }
+    >
+      <AppSidebar />
+      <SidebarInset>
+        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
+          <div className="navbar-container h-14 px-4 md:px-6">
+            <div className="navbar-left">
+              <SidebarTrigger className="md:hidden navbar-item" />
+              <div className="hidden md:block navbar-item">
+                <h1 className="text-lg font-semibold">Rental Portal</h1>
               </div>
             </div>
-          </header>
-          <main className="flex-1 overflow-auto p-4 md:p-6" style={{ backgroundColor: '#f2f8fe' }}>
-            <div className="max-w-7xl mx-auto">
-              {children}
+            <div className="navbar-right">
+              <div className="navbar-item">
+                {/* Add any additional navbar items here */}
+              </div>
             </div>
-          </main>
+          </div>
+        </header>
+        <div className="flex flex-1 flex-col" style={{ backgroundColor: '#f2f8fe' }}>
+          <div className="@container/main flex flex-1 flex-col gap-2">
+            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+              <div className="max-w-7xl mx-auto w-full px-4 lg:px-6">
+                {children}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </SidebarInset>
     </SidebarProvider>
   );
 }
