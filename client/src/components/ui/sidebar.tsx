@@ -1,6 +1,6 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { ChevronLeft, ChevronRight, Menu } from "lucide-react"
+import { ChevronLeft, ChevronRight, Menu, PanelLeft } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -520,16 +520,20 @@ const SidebarTrigger = React.forwardRef<
   const { toggleSidebar, isMobile } = useSidebar()
 
   return (
-    <Button
+    <button
       ref={ref}
-      variant="ghost"
-      size="sm"
-      className={cn("h-9 w-9 p-0", className)}
+      data-slot="sidebar-trigger"
+      data-sidebar="trigger"
+      className={cn(
+        "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 size-7 -ml-1",
+        className
+      )}
       onClick={toggleSidebar}
       {...props}
     >
-      {children ?? <Menu className="h-4 w-4" />}
-    </Button>
+      {children ?? <PanelLeft className="h-4 w-4" />}
+      <span className="sr-only">Toggle Sidebar</span>
+    </button>
   )
 })
 SidebarTrigger.displayName = "SidebarTrigger"
