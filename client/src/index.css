@@ -333,6 +333,38 @@ html, body {
   max-width: 100%;
 }
 
+/* Responsive Sidebar Styles */
+@media (max-width: 768px) {
+  .group\/sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 50;
+    height: 100vh;
+    width: 100vw;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .group\/sidebar[data-state="expanded"] {
+    transform: translateX(0);
+  }
+  
+  .group\/sidebar[data-collapsible="icon"] {
+    width: 18rem;
+  }
+}
+
+@media (min-width: 769px) {
+  .group\/sidebar[data-collapsible="icon"] {
+    width: 4rem;
+  }
+  
+  .group\/sidebar[data-collapsible="icon"] .hidden.sm\:inline {
+    display: none;
+  }
+}
+
 .form-section {
   width: 100%;
   max-width: 100%;

@@ -40,7 +40,7 @@ const SidebarProvider = React.forwardRef<
     onOpenChange?: (open: boolean) => void
   }
 >(({ defaultOpen = true, open, onOpenChange, children, ...props }, ref) => {
-  const [openState, setOpenState] = React.useState(defaultOpen)
+  const [openState, setOpenState] = React.useState<boolean>(defaultOpen)
   const [openMobile, setOpenMobile] = React.useState(false)
   const [isMobile, setIsMobile] = React.useState(false)
 
@@ -49,15 +49,15 @@ const SidebarProvider = React.forwardRef<
 
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
-      const openState = typeof value === "function" ? value(openState) : value
+      const newOpenState = typeof value === "function" ? value(openState) : value
       if (setOpenProp) {
-        setOpenProp(openState)
+        setOpenProp(newOpenState)
       } else {
-        setOpenState(openState)
+        setOpenState(newOpenState)
       }
 
       // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+      document.cookie = `${SIDEBAR_COOKIE_NAME}=${newOpenState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
     },
     [setOpenProp, openState]
   )
@@ -66,12 +66,13 @@ const SidebarProvider = React.forwardRef<
     if (isMobile) {
       setOpenMobile(!openMobile)
     } else {
-      setOpen(!openProp ?? openState)
+      setOpen(!(openProp ?? openState))
     }
   }, [isMobile, openMobile, setOpenMobile, setOpen, openProp, openState])
 
   React.useEffect(() => {
     const handleResize = () => {
+      // Mobile: < 768px, Tablet: 768px - 1024px, Desktop: > 1024px
       setIsMobile(window.innerWidth < 768)
     }
 
@@ -97,7 +98,7 @@ const SidebarProvider = React.forwardRef<
 
   const value = React.useMemo(
     () => ({
-      state: (openProp ?? openState) ? "expanded" : "collapsed",
+      state: (openProp ?? openState) ? "expanded" as const : "collapsed" as const,
       open: openProp ?? openState,
       setOpen,
       openMobile,

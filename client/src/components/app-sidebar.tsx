@@ -117,7 +117,7 @@ export function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton>
                   <Building className="h-4 w-4" />
-                  <span>Rental Portal</span>
+                  <span className="hidden sm:inline">Rental Portal</span>
                   <ChevronDown className="ml-auto h-4 w-4" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
@@ -150,7 +150,7 @@ export function AppSidebar() {
                   >
                     <a href={item.href}>
                       <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <span className="hidden sm:inline">{item.title}</span>
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -174,7 +174,7 @@ export function AppSidebar() {
                   >
                     <a href={item.href}>
                       <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <span className="hidden sm:inline">{item.title}</span>
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -195,7 +195,7 @@ export function AppSidebar() {
                       {getInitials(user?.name || user?.given_name || user?.username || 'U')}
                     </AvatarFallback>
                   </Avatar>
-                  <span>{user?.name || user?.given_name || user?.username || 'User'}</span>
+                  <span className="hidden sm:inline">{user?.name || user?.given_name || user?.username || 'User'}</span>
                   <ChevronUp className="ml-auto h-4 w-4" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
