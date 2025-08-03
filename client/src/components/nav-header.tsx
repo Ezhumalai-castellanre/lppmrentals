@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, Home, Lock, FileText } from 'lucide-react';
+import { LogOut, Home, Lock, FileText, ClipboardList, TestTube } from 'lucide-react';
 import LogoutButton from './logout-button';
 import { useLocation } from 'wouter';
 
@@ -40,11 +40,31 @@ const NavHeader: React.FC = () => {
           <Button 
             variant="outline" 
             size="sm"
+            onClick={() => setLocation('/applications')}
+            className="flex items-center space-x-2"
+          >
+            <ClipboardList className="h-4 w-4" />
+            <span>My Applications</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
             onClick={() => setLocation('/missing-documents')}
             className="flex items-center space-x-2"
           >
             <FileText className="h-4 w-4" />
             <span>Missing Documents</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setLocation('/test-applications')}
+            className="flex items-center space-x-2"
+          >
+            <TestTube className="h-4 w-4" />
+            <span>Test API</span>
           </Button>
           
           <Badge variant="secondary" className="text-xs">
