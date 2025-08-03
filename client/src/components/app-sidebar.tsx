@@ -5,11 +5,9 @@ import {
   Home, 
   FileText, 
   ClipboardList, 
-  TestTube, 
   Lock, 
   LogOut,
-  User,
-  Settings
+  User
 } from 'lucide-react';
 
 import {
@@ -24,12 +22,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuAction,
-  SidebarMenuBadge,
 } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
 import LogoutButton from './logout-button';
 
 export function AppSidebar() {
@@ -64,21 +59,6 @@ export function AppSidebar() {
       title: "Missing Documents",
       url: "/missing-documents",
       icon: FileText,
-    },
-    {
-      title: "Test API",
-      url: "/test-applications",
-      icon: TestTube,
-    },
-    {
-      title: "Test Sidebar",
-      url: "/test-sidebar",
-      icon: Settings,
-    },
-    {
-      title: "Sidebar Demo",
-      url: "/sidebar-demo",
-      icon: Settings,
     },
   ];
 

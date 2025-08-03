@@ -7,8 +7,6 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import ProtectedRoute from "@/components/protected-route";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { TestSidebar } from "@/components/test-sidebar";
-import SidebarDemo from "@/pages/sidebar-demo";
 import RentalApplicationPage from "@/pages/rental-application";
 import MissingDocumentsPage from "@/pages/missing-documents";
 import ApplicationsPage from "@/pages/applications";
@@ -94,16 +92,6 @@ function Router() {
           <AppLayout>
             <TestApplicationsPage />
           </AppLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/test-sidebar">
-        <ProtectedRoute>
-          <TestSidebar />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/sidebar-demo">
-        <ProtectedRoute>
-          <SidebarDemo />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
