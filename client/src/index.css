@@ -8,6 +8,30 @@ html, body {
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    --sidebar-background: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+  }
+
+  .dark {
+    --sidebar-background: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.439 0 0);
+  }
+}
+
 /* Custom Date Picker Styles */
 
 /* Material-UI Style Date Input */
@@ -228,16 +252,6 @@ html, body {
   --destructive-foreground: hsl(0, 85.7%, 97.3%);
   --ring: hsl(221, 83%, 53%);
   --radius: 0.5rem;
-  
-  /* Sidebar variables */
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
@@ -261,16 +275,6 @@ html, body {
   --destructive-foreground: hsl(0, 0%, 98%);
   --ring: hsl(240, 4.9%, 83.9%);
   --radius: 0.5rem;
-  
-  /* Dark mode sidebar variables */
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.439 0 0);
 }
 
 @layer base {
@@ -331,131 +335,6 @@ html, body {
   align-items: center;
   width: 100%;
   max-width: 100%;
-}
-
-/* Responsive Sidebar Styles */
-@media (max-width: 768px) {
-  .group\/sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 50;
-    height: 100vh;
-    width: 100vw;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease-in-out;
-    background-color: hsl(var(--sidebar));
-    border-right: 1px solid hsl(var(--sidebar-border));
-    touch-action: pan-y;
-  }
-  
-  .group\/sidebar[data-state="expanded"] {
-    transform: translateX(0);
-  }
-  
-  .group\/sidebar[data-collapsible="icon"] {
-    width: 18rem;
-  }
-
-  /* Mobile overlay backdrop */
-  .group\/sidebar::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: -1;
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out;
-    pointer-events: none;
-  }
-  
-  .group\/sidebar[data-state="expanded"]::before {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  /* Ensure sidebar content is properly positioned */
-  .group\/sidebar > * {
-    position: relative;
-    z-index: 1;
-  }
-
-  /* Mobile swipe gesture support */
-  .group\/sidebar[data-state="expanded"]::after {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 0;
-  }
-}
-
-/* Navbar Alignment Styles */
-.navbar-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  height: 100%;
-}
-
-.navbar-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.navbar-right {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Ensure proper spacing for navbar items */
-.navbar-item {
-  display: flex;
-  align-items: center;
-  height: 100%;
-  padding: 0 0.5rem;
-}
-
-/* Mobile navbar adjustments */
-@media (max-width: 768px) {
-  .navbar-container {
-    padding: 0 1rem;
-  }
-  
-  .navbar-left {
-    gap: 0.75rem;
-  }
-  
-  .navbar-right {
-    gap: 0.25rem;
-  }
-}
-
-@media (min-width: 769px) {
-  .group\/sidebar[data-collapsible="icon"] {
-    width: 4rem;
-  }
-  
-  .group\/sidebar[data-collapsible="icon"] .hidden.sm\:inline {
-    display: none;
-  }
-
-  /* Desktop hover effects */
-  .group\/sidebar[data-collapsible="icon"]:hover {
-    width: 16rem;
-  }
-  
-  .group\/sidebar[data-collapsible="icon"]:hover .hidden.sm\:inline {
-    display: inline;
-  }
 }
 
 .form-section {

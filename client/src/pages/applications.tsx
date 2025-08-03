@@ -56,56 +56,54 @@ const ApplicationCard = ({ application }: { application: Application }) => {
     <Card className="hover:shadow-lg transition-shadow duration-200">
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-base md:text-lg font-semibold text-gray-900 truncate">
+          <div>
+            <CardTitle className="text-lg font-semibold text-gray-900">
               {application.buildingAddress}
             </CardTitle>
-            <p className="text-xs md:text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 mt-1">
               Apartment {application.apartmentNumber}
             </p>
           </div>
-          <div className="flex-shrink-0 ml-2">
-            {getStatusBadge(application.status)}
-          </div>
+          {getStatusBadge(application.status)}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3 text-xs md:text-sm">
+        <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="flex items-center space-x-2">
-            <User className="w-3 h-3 md:w-4 md:h-4 text-gray-500 flex-shrink-0" />
-            <span className="text-gray-700 truncate">{application.applicantName}</span>
+            <User className="w-4 h-4 text-gray-500" />
+            <span className="text-gray-700">{application.applicantName}</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Building className="w-3 h-3 md:w-4 md:h-4 text-gray-500 flex-shrink-0" />
-            <span className="text-gray-700 truncate">{application.apartmentType}</span>
+            <Building className="w-4 h-4 text-gray-500" />
+            <span className="text-gray-700">{application.apartmentType}</span>
           </div>
           <div className="flex items-center space-x-2">
-            <DollarSign className="w-3 h-3 md:w-4 md:h-4 text-gray-500 flex-shrink-0" />
+            <DollarSign className="w-4 h-4 text-gray-500" />
             <span className="text-gray-700">${application.monthlyRent}/month</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Calendar className="w-3 h-3 md:w-4 md:h-4 text-gray-500 flex-shrink-0" />
-            <span className="text-gray-700 truncate">Move-in: {formatDate(application.moveInDate)}</span>
+            <Calendar className="w-4 h-4 text-gray-500" />
+            <span className="text-gray-700">Move-in: {formatDate(application.moveInDate)}</span>
           </div>
         </div>
         
         <div className="pt-3 border-t border-gray-100">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 text-xs text-gray-500">
+          <div className="flex justify-between items-center text-xs text-gray-500">
             <div className="flex items-center space-x-1">
-              <FileText className="w-3 h-3 flex-shrink-0" />
-              <span className="truncate">Submitted: {formatDate(application.applicationDate)}</span>
+              <FileText className="w-3 h-3" />
+              <span>Submitted: {formatDate(application.applicationDate)}</span>
             </div>
             {application.submittedAt && (
               <div className="flex items-center space-x-1">
-                <CheckCircle className="w-3 h-3 flex-shrink-0" />
-                <span className="truncate">Finalized: {formatDate(application.submittedAt)}</span>
+                <CheckCircle className="w-3 h-3" />
+                <span>Finalized: {formatDate(application.submittedAt)}</span>
               </div>
             )}
           </div>
         </div>
         
         <div className="pt-2">
-          <Button variant="outline" size="sm" className="w-full text-xs">
+          <Button variant="outline" size="sm" className="w-full">
             View Details
           </Button>
         </div>
@@ -150,20 +148,20 @@ export default function ApplicationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-4 md:py-8">
-      <div className="w-full">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-6 md:mb-8">
+        <div className="mb-8">
           <div className="text-center">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
               My Applications
             </h1>
-            <p className="text-gray-600 mb-4 text-sm md:text-base">
+            <p className="text-gray-600 mb-4">
               View and manage your rental applications
             </p>
             {user?.applicantId && (
-              <div className="bg-blue-50 p-3 md:p-4 rounded-lg max-w-2xl mx-auto">
-                <p className="text-xs md:text-sm text-blue-800">
+              <div className="bg-blue-50 p-4 rounded-lg max-w-2xl mx-auto">
+                <p className="text-sm text-blue-800">
                   <span className="font-medium">📝 Applicant ID:</span> {user.applicantId}
                 </p>
               </div>
@@ -173,7 +171,7 @@ export default function ApplicationsPage() {
 
         {/* Applications Grid */}
         {applications && applications.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {applications.map((application) => (
               <ApplicationCard key={application.id} application={application} />
             ))}

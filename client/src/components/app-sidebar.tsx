@@ -1,6 +1,17 @@
-import React from "react";
-import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
+import React from 'react';
+import { useLocation } from 'wouter';
+import { useAuth } from '@/hooks/use-auth';
+import { 
+  Home, 
+  FileText, 
+  ClipboardList, 
+  TestTube, 
+  Lock, 
+  LogOut,
+  User,
+  Settings
+} from 'lucide-react';
+
 import {
   Sidebar,
   SidebarContent,
@@ -13,90 +24,21 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuAction,
-  SidebarSeparator,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import {
-  Home,
-  FileText,
-  ClipboardList,
-  User,
-  Settings,
-  LogOut,
-  ChevronDown,
-  ChevronUp,
-  Building,
-  Calendar,
-  DollarSign,
-  Shield,
-  X,
-} from "lucide-react";
-import LogoutButton from "./logout-button";
+  SidebarMenuBadge,
+} from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+import LogoutButton from './logout-button';
 
-const navigationItems = [
-  {
-    title: "Dashboard",
-    icon: Home,
-    href: "/",
-  },
-  {
-    title: "New Application",
-    icon: FileText,
-    href: "/",
-  },
-  {
-    title: "My Applications",
-    icon: ClipboardList,
-    href: "/applications",
-  },
-  {
-    title: "Missing Documents",
-    icon: Shield,
-    href: "/missing-documents",
-  },
-  {
-    title: "Sidebar Demo",
-    icon: Settings,
-    href: "/sidebar-demo",
-  },
-];
-
-const managementItems = [
-  {
-    title: "Properties",
-    icon: Building,
-    href: "#",
-  },
-  {
-    title: "Calendar",
-    icon: Calendar,
-    href: "#",
-  },
-  {
-    title: "Payments",
-    icon: DollarSign,
-    href: "#",
-  },
-];
-
-interface AppSidebarProps {
-  variant?: "sidebar" | "inset" | "floating";
-}
-
-export function AppSidebar({ variant = "sidebar" }: AppSidebarProps) {
+export function AppSidebar() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const { setOpenMobile } = useSidebar();
+
+  if (!user) {
+    return null;
+  }
 
   const getInitials = (name: string) => {
     return name
@@ -107,49 +49,48 @@ export function AppSidebar({ variant = "sidebar" }: AppSidebarProps) {
       .slice(0, 2);
   };
 
-  const isActive = (href: string) => {
-    const currentPath = window.location.pathname;
-    if (href === "/") {
-      return currentPath === "/";
-    }
-    return currentPath.startsWith(href);
-  };
+  const navigationItems = [
+    {
+      title: "Home",
+      url: "/",
+      icon: Home,
+    },
+    {
+      title: "My Applications",
+      url: "/applications",
+      icon: ClipboardList,
+    },
+    {
+      title: "Missing Documents",
+      url: "/missing-documents",
+      icon: FileText,
+    },
+    {
+      title: "Test API",
+      url: "/test-applications",
+      icon: TestTube,
+    },
+    {
+      title: "Test Sidebar",
+      url: "/test-sidebar",
+      icon: Settings,
+    },
+    {
+      title: "Sidebar Demo",
+      url: "/sidebar-demo",
+      icon: Settings,
+    },
+  ];
 
   return (
-    <Sidebar collapsible="icon" variant={variant}>
+    <Sidebar>
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
-                  <Building className="h-4 w-4" />
-                  <span className="hidden sm:inline">Rental Portal</span>
-                  <ChevronDown className="ml-auto h-4 w-4" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[--radix-popper-anchor-width]">
-                <DropdownMenuLabel>Application</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <span>Dashboard</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <span>Settings</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-          {/* Mobile close button */}
-          <SidebarMenuItem className="md:hidden">
-            <SidebarMenuButton onClick={() => setOpenMobile(false)}>
-              <X className="h-4 w-4" />
-              <span className="hidden sm:inline">Close</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <div className="flex items-center gap-2 px-2">
+          <Home className="h-6 w-6 text-blue-600" />
+          <span className="font-semibold">Rental Apps</span>
+        </div>
       </SidebarHeader>
-
+      
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
@@ -157,38 +98,14 @@ export function AppSidebar({ variant = "sidebar" }: AppSidebarProps) {
             <SidebarMenu>
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.href)}
-                    onClick={() => setLocation(item.href)}
+                  <SidebarMenuButton 
+                    asChild 
+                    tooltip={item.title}
+                    onClick={() => setLocation(item.url)}
                   >
-                    <a href={item.href}>
-                      <item.icon className="h-4 w-4" />
-                      <span className="hidden sm:inline">{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarSeparator />
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {managementItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.href)}
-                    onClick={() => setLocation(item.href)}
-                  >
-                    <a href={item.href}>
-                      <item.icon className="h-4 w-4" />
-                      <span className="hidden sm:inline">{item.title}</span>
+                    <a href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -197,56 +114,58 @@ export function AppSidebar({ variant = "sidebar" }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
+      
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
-                  <Avatar className="h-6 w-6">
-                    <AvatarFallback className="text-xs">
-                      {getInitials(user?.name || user?.given_name || user?.username || 'U')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden sm:inline">{user?.name || user?.given_name || user?.username || 'User'}</span>
-                  <ChevronUp className="ml-auto h-4 w-4" />
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0">
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="text-xs font-medium">
+                            {getInitials(user.name || user.given_name || user.username)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span>{user.name || user.given_name || user.username}</span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[--radix-popper-anchor-width]" side="top">
+                      <DropdownMenuLabel className="font-normal">
+                        <div className="flex flex-col space-y-1">
+                          <p className="text-sm font-medium leading-none">
+                            {user.name || user.given_name || user.username}
+                          </p>
+                          <p className="text-xs leading-none text-muted-foreground">
+                            {user.email}
+                          </p>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setLocation('/change-password')}>
+                        <Lock className="mr-2 h-4 w-4" />
+                        <span>Change Password</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <LogoutButton 
+                          variant="ghost" 
+                          size="sm"
+                          className="w-full justify-start"
+                          showIcon={true}
+                        >
+                          Sign out
+                        </LogoutButton>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                side="top"
-                className="w-[--radix-popper-anchor-width]"
-              >
-                <DropdownMenuLabel>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {user?.name || user?.given_name || user?.username}
-                    </p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user?.email}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setLocation('/change-password')}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Change Password</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <LogoutButton 
-                    variant="ghost" 
-                    size="sm"
-                    className="w-full justify-start"
-                    showIcon={true}
-                  >
-                    Sign out
-                  </LogoutButton>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarFooter>
     </Sidebar>
   );
