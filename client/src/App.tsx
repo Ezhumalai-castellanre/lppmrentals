@@ -37,10 +37,19 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-14 items-center gap-4 px-4">
-              <SidebarTrigger className="md:hidden" />
-              <div className="flex-1" />
+          <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
+            <div className="navbar-container h-14 px-4 md:px-6">
+              <div className="navbar-left">
+                <SidebarTrigger className="md:hidden navbar-item" />
+                <div className="hidden md:block navbar-item">
+                  <h1 className="text-lg font-semibold">Rental Portal</h1>
+                </div>
+              </div>
+              <div className="navbar-right">
+                <div className="navbar-item">
+                  {/* Add any additional navbar items here */}
+                </div>
+              </div>
             </div>
           </header>
           <main className="flex-1 overflow-auto p-4 md:p-6" style={{ backgroundColor: '#f2f8fe' }}>
