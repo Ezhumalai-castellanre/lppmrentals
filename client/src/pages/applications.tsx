@@ -159,13 +159,7 @@ export default function ApplicationsPage() {
             <p className="text-gray-600 mb-4">
               View and manage your rental applications
             </p>
-            {user?.applicantId && (
-              <div className="bg-blue-50 p-4 rounded-lg max-w-2xl mx-auto">
-                <p className="text-sm text-blue-800">
-                  <span className="font-medium">📝 Applicant ID:</span> {user.applicantId}
-                </p>
-              </div>
-            )}
+
           </div>
         </div>
 

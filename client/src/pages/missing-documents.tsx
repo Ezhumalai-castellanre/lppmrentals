@@ -395,25 +395,7 @@ export default function MissingDocumentsPage() {
             <p className="text-gray-600 mb-4">
               Track and manage missing documents for rental applications
             </p>
-            {user?.zoneinfo && (
-              <div className="bg-green-50 p-4 rounded-lg max-w-2xl mx-auto mb-4">
-                <p className="text-sm text-green-800">
-                  <span className="font-medium">👤 User ID:</span> {user.zoneinfo}
-                </p>
-                <p className="text-sm text-green-700 mt-1">
-                  <span className="font-medium">📝 Applicant ID:</span> {applicantId}
-                </p>
-                <p className="text-sm text-green-700 mt-1">
-                  <span className="font-medium">🔍 API Call:</span> /api/monday/missing-subitems/{user.zoneinfo}
-                </p>
-              </div>
-            )}
-            <div className="bg-blue-50 p-4 rounded-lg max-w-2xl mx-auto">
-              <p className="text-sm text-blue-800">
-                <span className="font-medium">📤 Upload Feature:</span> You can now upload missing documents directly from this page. 
-                All files are encrypted and securely transmitted to complete your application.
-              </p>
-            </div>
+
           </div>
         </div>
 
@@ -501,13 +483,7 @@ export default function MissingDocumentsPage() {
           </Alert>
         )}
 
-        {/* Success Message */}
-        {successMessage && (
-          <Alert className="mb-6 border-green-200 bg-green-50">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
-          </Alert>
-        )}
+        {/* Success Message - Removed */}
 
         {/* Results */}
         {searched && !loading && (
