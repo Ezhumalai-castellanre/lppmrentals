@@ -28,6 +28,7 @@ import { useLocation } from "wouter";
 import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "@/lib/file-encryption";
 import { WebhookService } from "@/lib/webhook-service";
 import { MondayApiService, type UnitItem } from "@/lib/monday-api";
+import { useDraft } from "@/contexts/DraftContext";
 
 import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "@/components/ui/validated-input";
 import { StateCitySelector, StateSelector, CitySelector } from "@/components/ui/state-city-selector";
@@ -198,6 +199,27 @@ export function ApplicationForm() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { isDraftSaved, draftSavedAt, saveDraft, clearDraft, setIsDraftSaved, setDraftSavedAt, setSaveDraftHandler } = useDraft();
+
+  const handleSaveDraft = () => {
+    const draftData = {
+      formData,
+      signatures,
+      hasCoApplicant,
+      hasGuarantor,
+      sameAddressGuarantor,
+      currentStep,
+      savedAt: new Date().toISOString(),
+    };
+    
+    saveDraft(draftData);
+    
+    toast({
+      title: "Draft Saved",
+      description: "Your application has been saved as a draft. You can continue working on it later.",
+    });
+  };
+
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<any>({
     application: {},
@@ -268,6 +290,66 @@ export function ApplicationForm() {
       return () => clearTimeout(timer);
     }
   }, [user]);
+
+  // Register the save handler with the context
+  useEffect(() => {
+    setSaveDraftHandler(() => handleSaveDraft);
+  }, [formData, signatures, hasCoApplicant, hasGuarantor, sameAddressGuarantor, currentStep]);
+
+  // Load draft on component mount
+  useEffect(() => {
+    const savedDraft = localStorage.getItem('rentalApplicationDraft');
+    if (savedDraft) {
+      try {
+        const draftData = JSON.parse(savedDraft);
+        
+        // Restore form data
+        if (draftData.formData) {
+          setFormData(draftData.formData);
+        }
+        
+        // Restore signatures
+        if (draftData.signatures) {
+          setSignatures(draftData.signatures);
+        }
+        
+        // Restore form state
+        if (draftData.hasCoApplicant !== undefined) {
+          setHasCoApplicant(draftData.hasCoApplicant);
+        }
+        if (draftData.hasGuarantor !== undefined) {
+          setHasGuarantor(draftData.hasGuarantor);
+        }
+        if (draftData.sameAddressGuarantor !== undefined) {
+          setSameAddressGuarantor(draftData.sameAddressGuarantor);
+        }
+        if (draftData.currentStep !== undefined) {
+          setCurrentStep(draftData.currentStep);
+        }
+        
+        // Set draft status
+        setIsDraftSaved(true);
+        if (draftData.savedAt) {
+          setDraftSavedAt(new Date(draftData.savedAt));
+        }
+        
+        // Set header to indicate draft status
+        document.title = `📝 Draft - Rental Application | LPPM Rentals`;
+        
+        toast({
+          title: "Draft Loaded",
+          description: "Your saved draft has been loaded. You can continue where you left off.",
+        });
+      } catch (error) {
+        console.error('Failed to load draft:', error);
+        toast({
+          title: "Draft Load Error",
+          description: "Failed to load your saved draft. Starting fresh.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, []);
 
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
@@ -545,21 +627,7 @@ export function ApplicationForm() {
     }
   };
 
-  const saveDraft = () => {
-    localStorage.setItem('rentalApplicationDraft', JSON.stringify({
-      formData,
-      signatures,
-      hasCoApplicant,
-      hasGuarantor,
-      sameAddressGuarantor,
-      currentStep,
-    }));
 
-    toast({
-      title: "Draft Saved",
-      description: "Your application has been saved as a draft.",
-    });
-  };
 
   // Clear webhook cache when starting fresh
   const clearWebhookCache = () => {
@@ -1588,6 +1656,8 @@ export function ApplicationForm() {
         console.log('=== END WEBHOOK SUBMISSION ===');
         
         if (webhookResult.success) {
+          // Clear draft on successful submission
+          clearDraft();
           toast({
             title: "Application Submitted & Sent",
             description: "Your rental application has been submitted and sent to the webhook successfully.",
@@ -1600,10 +1670,12 @@ export function ApplicationForm() {
         }
       } catch (webhookError) {
         console.error('Webhook error:', webhookError);
-      toast({
-        title: "Application Submitted",
-          description: "Your rental application has been submitted, but webhook delivery failed.",
-      });
+        // Clear draft even if webhook fails, since the application was submitted successfully
+        clearDraft();
+        toast({
+          title: "Application Submitted",
+            description: "Your rental application has been submitted, but webhook delivery failed.",
+        });
       }
 
       generatePDF();
@@ -3853,10 +3925,24 @@ export function ApplicationForm() {
       <div className="w-full max-w-4xl mx-auto px-3 py-4 sm:px-4 sm:py-8">
         <div className="mb-4 sm:mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-              Rental Application
-            </h1>
-            
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                Rental Application
+              </h1>
+              {isDraftSaved && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-yellow-100 border border-yellow-300 rounded-full">
+                  <Save className="w-4 h-4 text-yellow-600" />
+                  <span className="text-sm font-medium text-yellow-800">
+                    Draft Saved
+                  </span>
+                  {draftSavedAt && (
+                    <span className="text-xs text-yellow-600">
+                      {draftSavedAt.toLocaleTimeString()}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           
           {/* Debug component - remove in production */}

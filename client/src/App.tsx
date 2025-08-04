@@ -15,10 +15,14 @@ import TestAuthPage from "@/pages/test-auth";
 import TestApplicationsPage from "@/pages/test-applications";
 import ChangePasswordPage from "@/pages/change-password";
 import NotFound from "@/pages/not-found";
+import { DraftProvider, useDraft } from "@/contexts/DraftContext";
+import { Button } from "@/components/ui/button";
+import { Save } from "lucide-react";
 import "./lib/aws-config";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
+  const { isDraftSaved, draftSavedAt, saveDraft } = useDraft();
   
   if (!isAuthenticated) {
     return (
@@ -38,6 +42,30 @@ function AppLayout({ children }: { children: React.ReactNode }) {
           <SidebarTrigger />
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-semibold">Rental Applications</h1>
+            {isDraftSaved && (
+              <div className="flex items-center gap-2 px-3 py-1 bg-yellow-100 border border-yellow-300 rounded-full">
+                <Save className="w-4 h-4 text-yellow-600" />
+                <span className="text-sm font-medium text-yellow-800">
+                  Draft Saved
+                </span>
+                {draftSavedAt && (
+                  <span className="text-xs text-yellow-600">
+                    {draftSavedAt.toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={saveDraft}
+              className="flex items-center text-sm px-3 py-1 bg-yellow-50 hover:bg-yellow-100 border-yellow-300 text-yellow-700"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Save Draft
+            </Button>
           </div>
         </div>
         <div className="flex-1 p-4" style={{ backgroundColor: '#f2f8fe' }}>
@@ -103,10 +131,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <DraftProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </DraftProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
