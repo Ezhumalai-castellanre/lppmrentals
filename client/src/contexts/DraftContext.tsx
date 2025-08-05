@@ -31,10 +31,54 @@ export const DraftProvider: React.FC<DraftProviderProps> = ({ children }) => {
 
   const saveDraft = (draftData?: any) => {
     if (draftData) {
-      localStorage.setItem('rentalApplicationDraft', JSON.stringify(draftData));
-      setIsDraftSaved(true);
-      setDraftSavedAt(new Date());
-      document.title = `📝 Draft - Rental Application | LPPM Rentals`;
+      try {
+        // Use a custom replacer function to handle circular references
+        const safeStringify = (obj: any): string => {
+          const seen = new WeakSet();
+          return JSON.stringify(obj, (key, value) => {
+            if (typeof value === 'object' && value !== null) {
+              if (seen.has(value)) {
+                return '[Circular Reference]';
+              }
+              seen.add(value);
+            }
+            // Filter out non-serializable values
+            if (value instanceof File || value instanceof Blob) {
+              return '[File Object]';
+            }
+            if (typeof value === 'function') {
+              return '[Function]';
+            }
+            if (value && typeof value === 'object' && value.nodeType) {
+              return '[DOM Element]';
+            }
+            return value;
+          });
+        };
+
+        localStorage.setItem('rentalApplicationDraft', safeStringify(draftData));
+        setIsDraftSaved(true);
+        setDraftSavedAt(new Date());
+        document.title = `📝 Draft - Rental Application | LPPM Rentals`;
+      } catch (error) {
+        console.error('Failed to save draft:', error);
+        // Fallback: try to save a minimal version
+        try {
+          const minimalDraft = {
+            currentStep: draftData.currentStep,
+            hasCoApplicant: draftData.hasCoApplicant,
+            hasGuarantor: draftData.hasGuarantor,
+            sameAddressGuarantor: draftData.sameAddressGuarantor,
+            savedAt: draftData.savedAt,
+          };
+          localStorage.setItem('rentalApplicationDraft', JSON.stringify(minimalDraft));
+          setIsDraftSaved(true);
+          setDraftSavedAt(new Date());
+          document.title = `📝 Draft - Rental Application | LPPM Rentals`;
+        } catch (fallbackError) {
+          console.error('Failed to save even minimal draft:', fallbackError);
+        }
+      }
     } else if (saveDraftHandler) {
       saveDraftHandler();
     }

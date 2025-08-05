@@ -202,14 +202,40 @@ export function ApplicationForm() {
   const { isDraftSaved, draftSavedAt, saveDraft, clearDraft, setIsDraftSaved, setDraftSavedAt, setSaveDraftHandler } = useDraft();
 
   const handleSaveDraft = () => {
+    // Create a sanitized version of the draft data that only includes serializable properties
+    const sanitizedFormData = {
+      application: formData.application,
+      applicant: formData.applicant,
+      coApplicant: formData.coApplicant,
+      guarantor: formData.guarantor,
+      occupants: formData.occupants,
+    };
+
+    // Sanitize signatures - only keep the signature data, not any DOM elements
+    const sanitizedSignatures = Object.keys(signatures).reduce((acc, key) => {
+      const signature = signatures[key];
+      // Only include if it's a string (base64 data) and not a DOM element
+      if (typeof signature === 'string' && signature.startsWith('data:image/')) {
+        acc[key] = signature;
+      }
+      return acc;
+    }, {} as any);
+
+    // Note: We intentionally exclude 'documents' and 'encryptedDocuments' from the draft
+    // because they contain File objects and EncryptedFile objects which cannot be serialized
+    // These will need to be re-uploaded when the user continues their application
+
     const draftData = {
-      formData,
-      signatures,
+      formData: sanitizedFormData,
+      signatures: sanitizedSignatures,
       hasCoApplicant,
       hasGuarantor,
       sameAddressGuarantor,
       currentStep,
       savedAt: new Date().toISOString(),
+      // Store metadata about uploaded documents for reference (but not the actual files)
+      uploadedFilesMetadata,
+      uploadedDocuments,
     };
     
     saveDraft(draftData);
@@ -336,9 +362,12 @@ export function ApplicationForm() {
         // Set header to indicate draft status
         document.title = `📝 Draft - Rental Application | LPPM Rentals`;
         
+        // Note: Documents and encrypted files are not saved in drafts due to serialization limitations
+        // Users will need to re-upload their documents when continuing their application
+        
         toast({
           title: "Draft Loaded",
-          description: "Your saved draft has been loaded. You can continue where you left off.",
+          description: "Your saved draft has been loaded. You can continue where you left off. Note: You'll need to re-upload any documents.",
         });
       } catch (error) {
         console.error('Failed to load draft:', error);

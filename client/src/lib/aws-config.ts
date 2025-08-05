@@ -22,8 +22,10 @@ const awsConfig = hasAwsCredentials ? {
       region: import.meta.env.VITE_AWS_REGION || 'us-east-1',
       userPoolId: import.meta.env.VITE_AWS_USER_POOL_ID || '',
       userPoolClientId: import.meta.env.VITE_AWS_USER_POOL_CLIENT_ID || '',
-      // Only add identityPoolId if it's properly configured
-      ...(import.meta.env.VITE_AWS_IDENTITY_POOL_ID && {
+      // Only add identityPoolId if it's properly configured and not empty
+      ...(import.meta.env.VITE_AWS_IDENTITY_POOL_ID && 
+          import.meta.env.VITE_AWS_IDENTITY_POOL_ID !== 'us-east-1:317775cf-6015-4ce2-9551-57994672861d' && // Skip demo ID
+          import.meta.env.VITE_AWS_IDENTITY_POOL_ID.trim() !== '' && {
         identityPoolId: import.meta.env.VITE_AWS_IDENTITY_POOL_ID,
       }),
       loginWith: {
@@ -44,8 +46,10 @@ const awsConfig = hasAwsCredentials ? {
       region: 'us-east-1',
       userPoolId: 'us-east-1_d07c780Tz',
       userPoolClientId: 'dodlhbfd06i8u5t9kl6lkk6a0',
-      // Only add identityPoolId if it's properly configured
-      ...(import.meta.env.VITE_AWS_IDENTITY_POOL_ID && {
+      // Only add identityPoolId if it's properly configured and not empty
+      ...(import.meta.env.VITE_AWS_IDENTITY_POOL_ID && 
+          import.meta.env.VITE_AWS_IDENTITY_POOL_ID !== 'us-east-1:317775cf-6015-4ce2-9551-57994672861d' && // Skip demo ID
+          import.meta.env.VITE_AWS_IDENTITY_POOL_ID.trim() !== '' && {
         identityPoolId: import.meta.env.VITE_AWS_IDENTITY_POOL_ID,
       }),
       loginWith: {
@@ -63,7 +67,7 @@ const awsConfig = hasAwsCredentials ? {
 
 Amplify.configure(awsConfig);
 
-// Function to get AWS credentials for authenticated users
+// Function to get AWS credentials for authenticated users with better error handling
 export const getAwsCredentials = async () => {
   try {
     const session = await fetchAuthSession();
@@ -84,11 +88,12 @@ export const getAwsCredentials = async () => {
     };
   } catch (error) {
     console.error('Error getting AWS credentials:', error);
+    // Don't throw the error, just return null to allow the app to continue
     return null;
   }
 };
 
-// Enhanced function to get user attributes including name and zoneinfo
+// Enhanced function to get user attributes including name and zoneinfo with better error handling
 export const getUserAttributesWithDebug = async () => {
   try {
     const { fetchUserAttributes } = await import('aws-amplify/auth');
@@ -138,11 +143,18 @@ export const getUserAttributesWithDebug = async () => {
     };
   } catch (error) {
     console.error('Error getting user attributes:', error);
-    return null;
+    // Return a fallback object instead of null to prevent app crashes
+    return {
+      attributes: {},
+      zoneinfo: undefined,
+      hasName: false,
+      hasZoneinfo: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
   }
 };
 
-// Function to get current user with full debug info
+// Function to get current user with full debug info and better error handling
 export const getCurrentUserWithDebug = async () => {
   try {
     const { getCurrentUser } = await import('aws-amplify/auth');
@@ -163,13 +175,24 @@ export const getCurrentUserWithDebug = async () => {
     };
   } catch (error) {
     console.error('Error getting current user:', error);
-    return null;
+    // Return a fallback object instead of null to prevent app crashes
+    return {
+      currentUser: null,
+      userAttributes: {
+        attributes: {},
+        zoneinfo: undefined,
+        hasName: false,
+        hasZoneinfo: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
   }
 };
 
 export default awsConfig; 
 
-// Comprehensive AWS configuration test function
+// Comprehensive AWS configuration test function with better error handling
 export const testAwsConfiguration = async () => {
   console.log('🧪 Starting AWS Configuration Test...');
   
@@ -250,14 +273,18 @@ export const testAwsConfiguration = async () => {
 export const triggerAwsDebug = async () => {
   console.log('🚀 Triggering AWS Debug...');
   
-  // Test basic configuration
-  await testAwsConfiguration();
-  
-  // Test user attributes
-  await getUserAttributesWithDebug();
-  
-  // Test current user
-  await getCurrentUserWithDebug();
-  
-  console.log('✅ AWS Debug Complete');
+  try {
+    // Test basic configuration
+    await testAwsConfiguration();
+    
+    // Test user attributes
+    await getUserAttributesWithDebug();
+    
+    // Test current user
+    await getCurrentUserWithDebug();
+    
+    console.log('✅ AWS Debug Complete');
+  } catch (error) {
+    console.error('❌ AWS Debug failed:', error);
+  }
 }; 

@@ -61,55 +61,68 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('✅ Current user found:', currentUser?.username);
       
       if (currentUser) {
-        const userAttributes = await fetchUserAttributes();
-        console.log('✅ User attributes fetched:', Object.keys(userAttributes));
-        
-        // Get applicantId from database
-        const applicantId = await registerUserInDatabase(
-          currentUser.username,
-          userAttributes.email || '',
-          userAttributes.given_name,
-          userAttributes.family_name,
-          userAttributes.phone_number
-        );
-        console.log('✅ Database applicantId:', applicantId);
-        
-        // Check zoneinfo for temporary applicantId
-        const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
-        console.log('🔍 Zoneinfo value:', zoneinfoValue);
-        console.log('🔍 User attributes keys:', Object.keys(userAttributes));
-        console.log('🔍 User attributes:', userAttributes);
-        
-        // Determine the actual applicantId
-        let actualApplicantId = applicantId; // Default to database applicantId
-        if (zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_') || zoneinfoValue.startsWith('LPPM-'))) {
-          actualApplicantId = zoneinfoValue; // Use zoneinfo as applicantId if it's a temporary format or LPPM format
-          console.log('🔧 Using zoneinfo as applicantId:', actualApplicantId);
-        } else if (!applicantId) {
-          // If no applicantId from database, generate a new one
-          actualApplicantId = generateLppmNumber();
-          console.log('🔧 Generated new applicantId because none found in database:', actualApplicantId);
+        try {
+          const userAttributes = await fetchUserAttributes();
+          console.log('✅ User attributes fetched:', Object.keys(userAttributes));
+          
+          // Get applicantId from database
+          const applicantId = await registerUserInDatabase(
+            currentUser.username,
+            userAttributes.email || '',
+            userAttributes.given_name,
+            userAttributes.family_name,
+            userAttributes.phone_number
+          );
+          console.log('✅ Database applicantId:', applicantId);
+          
+          // Check zoneinfo for temporary applicantId
+          const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
+          console.log('🔍 Zoneinfo value:', zoneinfoValue);
+          console.log('🔍 User attributes keys:', Object.keys(userAttributes));
+          console.log('🔍 User attributes:', userAttributes);
+          
+          // Determine the actual applicantId
+          let actualApplicantId = applicantId; // Default to database applicantId
+          if (zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_') || zoneinfoValue.startsWith('LPPM-'))) {
+            actualApplicantId = zoneinfoValue; // Use zoneinfo as applicantId if it's a temporary format or LPPM format
+            console.log('🔧 Using zoneinfo as applicantId:', actualApplicantId);
+          } else if (!applicantId) {
+            // If no applicantId from database, generate a new one
+            actualApplicantId = generateLppmNumber();
+            console.log('🔧 Generated new applicantId because none found in database:', actualApplicantId);
+          }
+          
+          console.log('✅ Final applicantId determined:', actualApplicantId);
+          
+          const userState = {
+            id: currentUser.username,
+            email: userAttributes.email || '',
+            username: currentUser.username,
+            applicantId: actualApplicantId,
+            zoneinfo: zoneinfoValue, // Always keep the zoneinfo value
+            name: userAttributes.name,
+            given_name: userAttributes.given_name,
+            family_name: userAttributes.family_name,
+            phone_number: userAttributes.phone_number,
+          };
+          
+          setUser(userState);
+          
+          console.log('✅ User state set successfully:', userState);
+          console.log('✅ User state set successfully with applicantId:', actualApplicantId);
+          console.log('✅ User state set successfully with zoneinfo:', zoneinfoValue);
+        } catch (attributesError) {
+          console.error('❌ Error fetching user attributes, using fallback:', attributesError);
+          // Fallback: set user with basic info and generate applicantId
+          const fallbackApplicantId = generateLppmNumber();
+          setUser({
+            id: currentUser.username,
+            email: '',
+            username: currentUser.username,
+            applicantId: fallbackApplicantId,
+          });
+          console.log('🔧 Using fallback user state due to attributes error:', fallbackApplicantId);
         }
-        
-        console.log('✅ Final applicantId determined:', actualApplicantId);
-        
-        const userState = {
-          id: currentUser.username,
-          email: userAttributes.email || '',
-          username: currentUser.username,
-          applicantId: actualApplicantId,
-          zoneinfo: zoneinfoValue, // Always keep the zoneinfo value
-          name: userAttributes.name,
-          given_name: userAttributes.given_name,
-          family_name: userAttributes.family_name,
-          phone_number: userAttributes.phone_number,
-        };
-        
-        setUser(userState);
-        
-        console.log('✅ User state set successfully:', userState);
-        console.log('✅ User state set successfully with applicantId:', actualApplicantId);
-        console.log('✅ User state set successfully with zoneinfo:', zoneinfoValue);
       } else {
         console.log('❌ No current user found');
         setUser(null);
