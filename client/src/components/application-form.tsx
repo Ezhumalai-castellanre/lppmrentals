@@ -1895,18 +1895,6 @@ export function ApplicationForm() {
         console.log('=== END WEBHOOK SUBMISSION ===');
         
         if (webhookResult.success) {
-          // Delete the draft since application was successfully submitted
-          try {
-            if (user?.applicantId) {
-              console.log('🗑️ Deleting draft after successful submission for applicantId:', user.applicantId);
-              await deleteDraft();
-              console.log('✅ Draft deleted successfully after submission');
-            }
-          } catch (draftDeleteError) {
-            console.warn('⚠️ Failed to delete draft after submission:', draftDeleteError);
-            // Don't show error to user since submission was successful
-          }
-
           toast({
             title: "Application Submitted & Sent",
             description: "Your rental application has been submitted and sent to the webhook successfully.",
@@ -1919,19 +1907,6 @@ export function ApplicationForm() {
         }
       } catch (webhookError) {
         console.error('Webhook error:', webhookError);
-        
-        // Delete the draft since application was submitted (even if webhook failed)
-        try {
-          if (user?.applicantId) {
-            console.log('🗑️ Deleting draft after submission (webhook failed) for applicantId:', user.applicantId);
-            await deleteDraft();
-            console.log('✅ Draft deleted successfully after submission (webhook failed)');
-          }
-        } catch (draftDeleteError) {
-          console.warn('⚠️ Failed to delete draft after submission (webhook failed):', draftDeleteError);
-          // Don't show error to user since submission was successful
-        }
-        
         toast({
           title: "Application Submitted",
             description: "Your rental application has been submitted, but webhook delivery failed.",
