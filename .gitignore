@@ -134,9 +134,7 @@ typings/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file
-.env
-.env.test
+
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -209,9 +207,7 @@ webhook-output.pdf
 received_files/
 uploads/
 
-# Encryption keys (backup)
-*.key
-*.pem
+
 
 # Local development files
 local/
