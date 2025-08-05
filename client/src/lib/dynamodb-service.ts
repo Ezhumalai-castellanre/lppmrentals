@@ -1,11 +1,24 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand, DeleteCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 
-// AWS Configuration
-const AWS_REGION = 'us-east-1';
-const AWS_ACCESS_KEY_ID = 'AKIA35BCK6ZHZC4EWVHT';
-const AWS_SECRET_ACCESS_KEY = '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';
-const TABLE_NAME = 'DraftSaved';
+// AWS Configuration from environment variables
+const AWS_REGION = import.meta.env.VITE_AWS_DYNAMODB_REGION || 'us-east-1';
+const AWS_ACCESS_KEY_ID = import.meta.env.VITE_AWS_DYNAMODB_ACCESS_KEY_ID || 'AKIA35BCK6ZHZC4EWVHT';
+const AWS_SECRET_ACCESS_KEY = import.meta.env.VITE_AWS_DYNAMODB_SECRET_ACCESS_KEY || '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';
+const TABLE_NAME = import.meta.env.VITE_AWS_DYNAMODB_TABLE_NAME || 'DraftSaved';
+
+// Log configuration for debugging (remove in production)
+console.log('🔧 DynamoDB Configuration:', {
+  region: AWS_REGION,
+  tableName: TABLE_NAME,
+  accessKeyId: AWS_ACCESS_KEY_ID ? `${AWS_ACCESS_KEY_ID.substring(0, 8)}...` : 'Not set',
+  hasSecretKey: !!AWS_SECRET_ACCESS_KEY,
+});
+
+// Validate required environment variables
+if (!AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY) {
+  console.warn('⚠️ AWS DynamoDB credentials not properly configured. Check your environment variables.');
+}
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({
