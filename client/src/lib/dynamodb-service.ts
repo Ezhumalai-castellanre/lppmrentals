@@ -3,8 +3,8 @@ import { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand, DeleteCo
 
 // AWS Configuration
 const AWS_REGION = 'us-east-1';
-const AWS_ACCESS_KEY_ID = import.meta.env.VITE_AWS_ACCESS_KEY_ID || '';
-const AWS_SECRET_ACCESS_KEY = import.meta.env.VITE_AWS_SECRET_ACCESS_KEY || '';
+const AWS_ACCESS_KEY_ID = 'AKIA35BCK6ZHZC4EWVHT';
+const AWS_SECRET_ACCESS_KEY = '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';
 const TABLE_NAME = 'DraftSaved';
 
 // Initialize DynamoDB client

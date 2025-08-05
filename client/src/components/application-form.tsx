@@ -19,16 +19,17 @@ import { SupportingDocuments } from "./supporting-documents";
 import { PDFGenerator } from "@/lib/pdf-generator";
 import { EnhancedPDFGenerator } from "@/lib/pdf-generator-enhanced";
 import { ResetPDFGenerator } from "@/lib/pdf-generator-reset";
-import { Download, FileText, Save, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search } from "lucide-react";
+import { Download, FileText, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { useDraft } from "@/hooks/use-draft";
 import ApplicationInstructions from "./application-instructions";
 import { useRef } from "react";
 import { useLocation } from "wouter";
 import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "@/lib/file-encryption";
 import { WebhookService } from "@/lib/webhook-service";
 import { MondayApiService, type UnitItem } from "@/lib/monday-api";
-import { useDraft } from "@/contexts/DraftContext";
+
 
 import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "@/components/ui/validated-input";
 import { StateCitySelector, StateSelector, CitySelector } from "@/components/ui/state-city-selector";
@@ -199,52 +200,72 @@ export function ApplicationForm() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const { isDraftSaved, draftSavedAt, saveDraft, clearDraft, setIsDraftSaved, setDraftSavedAt, setSaveDraftHandler } = useDraft();
 
-  const handleSaveDraft = () => {
-    // Create a sanitized version of the draft data that only includes serializable properties
-    const sanitizedFormData = {
-      application: formData.application,
-      applicant: formData.applicant,
-      coApplicant: formData.coApplicant,
-      guarantor: formData.guarantor,
-      occupants: formData.occupants,
-    };
-
-    // Sanitize signatures - only keep the signature data, not any DOM elements
-    const sanitizedSignatures = Object.keys(signatures).reduce((acc, key) => {
-      const signature = signatures[key];
-      // Only include if it's a string (base64 data) and not a DOM element
-      if (typeof signature === 'string' && signature.startsWith('data:image/')) {
-        acc[key] = signature;
+  // Draft functionality
+  const {
+    isLoading: isDraftLoading,
+    isSaving: isDraftSaving,
+    lastSaved,
+    hasUnsavedChanges,
+    currentDraft,
+    loadDraft,
+    saveDraft,
+    updateFormData: updateDraftFormData,
+    deleteDraft,
+    clearUnsavedChanges,
+  } = useDraft({
+    autoSaveInterval: 30000, // 30 seconds
+    enableAutoSave: true,
+    onDraftLoaded: (draft) => {
+      // Restore form data from draft
+      if (draft.formData) {
+        // Restore raw form data if available
+        if (draft.formData.rawFormData) {
+          setFormData(draft.formData.rawFormData);
+        } else {
+          setFormData(draft.formData);
+        }
+        
+        setCurrentStep(draft.currentStep);
+        
+        // Restore other state
+        if (draft.formData.signatures) {
+          setSignatures(draft.formData.signatures);
+        }
+        if (draft.formData.documents) {
+          setDocuments(draft.formData.documents);
+        }
+        if (draft.formData.encryptedDocuments) {
+          setEncryptedDocuments(draft.formData.encryptedDocuments);
+        }
+        if (draft.formData.uploadedDocuments) {
+          setUploadedDocuments(draft.formData.uploadedDocuments);
+        }
+        if (draft.formData.uploadedFilesMetadata) {
+          setUploadedFilesMetadata(draft.formData.uploadedFilesMetadata);
+        }
+        if (draft.formData.hasCoApplicant !== undefined) {
+          setHasCoApplicant(draft.formData.hasCoApplicant);
+        }
+        if (draft.formData.hasGuarantor !== undefined) {
+          setHasGuarantor(draft.formData.hasGuarantor);
+        }
+        
+        // Reset form with draft data - use rawFormValues if available
+        if (draft.formData.rawFormValues) {
+          form.reset(draft.formData.rawFormValues);
+        } else if (draft.formData.formValues) {
+          form.reset(draft.formData.formValues);
+        }
       }
-      return acc;
-    }, {} as any);
+    },
+    onDraftSaved: (draft) => {
+      console.log('Draft saved successfully:', draft);
+    },
+  });
 
-    // Note: We intentionally exclude 'documents' and 'encryptedDocuments' from the draft
-    // because they contain File objects and EncryptedFile objects which cannot be serialized
-    // These will need to be re-uploaded when the user continues their application
 
-    const draftData = {
-      formData: sanitizedFormData,
-      signatures: sanitizedSignatures,
-      hasCoApplicant,
-      hasGuarantor,
-      sameAddressGuarantor,
-      currentStep,
-      savedAt: new Date().toISOString(),
-      // Store metadata about uploaded documents for reference (but not the actual files)
-      uploadedFilesMetadata,
-      uploadedDocuments,
-    };
-    
-    saveDraft(draftData);
-    
-    toast({
-      title: "Draft Saved",
-      description: "Your application has been saved as a draft. You can continue working on it later.",
-    });
-  };
+
 
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<any>({
@@ -277,6 +298,9 @@ export function ApplicationForm() {
   // Welcome message state
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(true);
   const [welcomeMessage, setWelcomeMessage] = useState('');
+  
+  // Draft banner state
+  const [showDraftBanner, setShowDraftBanner] = useState(true);
 
   // Monday.com API state
   const [units, setUnits] = useState<UnitItem[]>([]);
@@ -317,68 +341,7 @@ export function ApplicationForm() {
     }
   }, [user]);
 
-  // Register the save handler with the context
-  useEffect(() => {
-    setSaveDraftHandler(() => handleSaveDraft);
-  }, [formData, signatures, hasCoApplicant, hasGuarantor, sameAddressGuarantor, currentStep]);
 
-  // Load draft on component mount
-  useEffect(() => {
-    const savedDraft = localStorage.getItem('rentalApplicationDraft');
-    if (savedDraft) {
-      try {
-        const draftData = JSON.parse(savedDraft);
-        
-        // Restore form data
-        if (draftData.formData) {
-          setFormData(draftData.formData);
-        }
-        
-        // Restore signatures
-        if (draftData.signatures) {
-          setSignatures(draftData.signatures);
-        }
-        
-        // Restore form state
-        if (draftData.hasCoApplicant !== undefined) {
-          setHasCoApplicant(draftData.hasCoApplicant);
-        }
-        if (draftData.hasGuarantor !== undefined) {
-          setHasGuarantor(draftData.hasGuarantor);
-        }
-        if (draftData.sameAddressGuarantor !== undefined) {
-          setSameAddressGuarantor(draftData.sameAddressGuarantor);
-        }
-        if (draftData.currentStep !== undefined) {
-          setCurrentStep(draftData.currentStep);
-        }
-        
-        // Set draft status
-        setIsDraftSaved(true);
-        if (draftData.savedAt) {
-          setDraftSavedAt(new Date(draftData.savedAt));
-        }
-        
-        // Set header to indicate draft status
-        document.title = `📝 Draft - Rental Application | LPPM Rentals`;
-        
-        // Note: Documents and encrypted files are not saved in drafts due to serialization limitations
-        // Users will need to re-upload their documents when continuing their application
-        
-        toast({
-          title: "Draft Loaded",
-          description: "Your saved draft has been loaded. You can continue where you left off. Note: You'll need to re-upload any documents.",
-        });
-      } catch (error) {
-        console.error('Failed to load draft:', error);
-        toast({
-          title: "Draft Load Error",
-          description: "Failed to load your saved draft. Starting fresh.",
-          variant: "destructive",
-        });
-      }
-    }
-  }, []);
 
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
@@ -449,13 +412,74 @@ export function ApplicationForm() {
   });
 
   const updateFormData = (section: string, field: string, value: any) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value,
-      },
-    }));
+    setFormData((prev: any) => {
+      const newFormData = {
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [field]: value,
+        },
+      };
+      
+      // Update draft with new form data using proper mapping
+      const safeDateToISO = (dateValue: any): string | null => {
+        if (!dateValue) return null;
+        try {
+          const date = new Date(dateValue);
+          if (isNaN(date.getTime())) {
+            console.warn('Invalid date value:', dateValue);
+            return null;
+          }
+          return date.toISOString();
+        } catch (error) {
+          console.warn('Error converting date to ISO:', dateValue, error);
+          return null;
+        }
+      };
+
+      const formValues = form.getValues();
+      
+      // Create mapped form data with proper field mapping
+      const mappedFormData = {
+        // Application Info
+        buildingAddress: formValues.buildingAddress || newFormData.application?.buildingAddress,
+        apartmentNumber: formValues.apartmentNumber || newFormData.application?.apartmentNumber,
+        moveInDate: safeDateToISO(formValues.moveInDate || newFormData.application?.moveInDate),
+        monthlyRent: formValues.monthlyRent || newFormData.application?.monthlyRent,
+        apartmentType: formValues.apartmentType || newFormData.application?.apartmentType,
+        howDidYouHear: formValues.howDidYouHear || newFormData.application?.howDidYouHear,
+        howDidYouHearOther: formValues.howDidYouHearOther || newFormData.application?.howDidYouHearOther,
+        
+        // Primary Applicant
+        applicantName: formValues.applicantName || newFormData.applicant?.name,
+        applicantDob: safeDateToISO(formValues.applicantDob || newFormData.applicant?.dob),
+        applicantSsn: newFormData.applicant?.ssn || formValues.applicantSsn,
+        applicantPhone: formatPhoneForPayload(newFormData.applicant?.phone || formValues.applicantPhone),
+        applicantEmail: formValues.applicantEmail || newFormData.applicant?.email,
+        applicantLicense: newFormData.applicant?.license || formValues.applicantLicense,
+        applicantLicenseState: newFormData.applicant?.licenseState || formValues.applicantLicenseState,
+        applicantAddress: formValues.applicantAddress || newFormData.applicant?.address,
+        applicantCity: formValues.applicantCity || newFormData.applicant?.city,
+        applicantState: formValues.applicantState || newFormData.applicant?.state,
+        applicantZip: formValues.applicantZip || newFormData.applicant?.zip,
+        
+        // Store the raw form data for restoration
+        rawFormData: newFormData,
+        rawFormValues: formValues,
+        signatures,
+        documents,
+        encryptedDocuments,
+        uploadedDocuments,
+        uploadedFilesMetadata,
+        hasCoApplicant,
+        hasGuarantor,
+        currentStep,
+      };
+      
+      updateDraftFormData(mappedFormData);
+      
+      return newFormData;
+    });
   };
 
   // Handle building selection
@@ -701,28 +725,152 @@ export function ApplicationForm() {
   }
 
   // --- Update nextStep and prevStep to use the helper ---
-  const nextStep = (e?: React.MouseEvent) => {
+  const nextStep = async (e?: React.MouseEvent) => {
     console.log('🔄 Next step clicked - Current step:', currentStep);
     // Prevent form submission
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
+    
+    // Save draft before moving to next step
+    try {
+      const safeDateToISO = (dateValue: any): string | null => {
+        if (!dateValue) return null;
+        try {
+          const date = new Date(dateValue);
+          if (isNaN(date.getTime())) {
+            console.warn('Invalid date value:', dateValue);
+            return null;
+          }
+          return date.toISOString();
+        } catch (error) {
+          console.warn('Error converting date to ISO:', dateValue, error);
+          return null;
+        }
+      };
+
+      const formValues = form.getValues();
+      
+      // Create mapped form data with proper field mapping
+      const mappedFormData = {
+        // Application Info
+        buildingAddress: formValues.buildingAddress || formData.application?.buildingAddress,
+        apartmentNumber: formValues.apartmentNumber || formData.application?.apartmentNumber,
+        moveInDate: safeDateToISO(formValues.moveInDate || formData.application?.moveInDate),
+        monthlyRent: formValues.monthlyRent || formData.application?.monthlyRent,
+        apartmentType: formValues.apartmentType || formData.application?.apartmentType,
+        howDidYouHear: formValues.howDidYouHear || formData.application?.howDidYouHear,
+        howDidYouHearOther: formValues.howDidYouHearOther || formData.application?.howDidYouHearOther,
+        
+        // Primary Applicant
+        applicantName: formValues.applicantName || formData.applicant?.name,
+        applicantDob: safeDateToISO(formValues.applicantDob || formData.applicant?.dob),
+        applicantSsn: formData.applicant?.ssn || formValues.applicantSsn,
+        applicantPhone: formatPhoneForPayload(formData.applicant?.phone || formValues.applicantPhone),
+        applicantEmail: formValues.applicantEmail || formData.applicant?.email,
+        applicantLicense: formData.applicant?.license || formValues.applicantLicense,
+        applicantLicenseState: formData.applicant?.licenseState || formValues.applicantLicenseState,
+        applicantAddress: formValues.applicantAddress || formData.applicant?.address,
+        applicantCity: formValues.applicantCity || formData.applicant?.city,
+        applicantState: formValues.applicantState || formData.applicant?.state,
+        applicantZip: formValues.applicantZip || formData.applicant?.zip,
+        
+        // Store the raw form data for restoration
+        rawFormData: formData,
+        rawFormValues: formValues,
+        signatures,
+        documents,
+        encryptedDocuments,
+        uploadedDocuments,
+        uploadedFilesMetadata,
+        hasCoApplicant,
+        hasGuarantor,
+        currentStep,
+      };
+
+      await saveDraft(mappedFormData, currentStep, false, false); // Don't show toast for auto-save
+    } catch (error) {
+      console.error('Error auto-saving draft:', error);
+    }
+    
     setCurrentStep((prev) => getNextAllowedStep(prev, 1));
   };
 
-  const prevStep = (e?: React.MouseEvent) => {
+  const prevStep = async (e?: React.MouseEvent) => {
     console.log('🔄 Previous step clicked - Current step:', currentStep);
     // Prevent form submission
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
+    
+    // Save draft before moving to previous step
+    try {
+      const safeDateToISO = (dateValue: any): string | null => {
+        if (!dateValue) return null;
+        try {
+          const date = new Date(dateValue);
+          if (isNaN(date.getTime())) {
+            console.warn('Invalid date value:', dateValue);
+            return null;
+          }
+          return date.toISOString();
+        } catch (error) {
+          console.warn('Error converting date to ISO:', dateValue, error);
+          return null;
+        }
+      };
+
+      const formValues = form.getValues();
+      
+      // Create mapped form data with proper field mapping
+      const mappedFormData = {
+        // Application Info
+        buildingAddress: formValues.buildingAddress || formData.application?.buildingAddress,
+        apartmentNumber: formValues.apartmentNumber || formData.application?.apartmentNumber,
+        moveInDate: safeDateToISO(formValues.moveInDate || formData.application?.moveInDate),
+        monthlyRent: formValues.monthlyRent || formData.application?.monthlyRent,
+        apartmentType: formValues.apartmentType || formData.application?.apartmentType,
+        howDidYouHear: formValues.howDidYouHear || formData.application?.howDidYouHear,
+        howDidYouHearOther: formValues.howDidYouHearOther || formData.application?.howDidYouHearOther,
+        
+        // Primary Applicant
+        applicantName: formValues.applicantName || formData.applicant?.name,
+        applicantDob: safeDateToISO(formValues.applicantDob || formData.applicant?.dob),
+        applicantSsn: formData.applicant?.ssn || formValues.applicantSsn,
+        applicantPhone: formatPhoneForPayload(formData.applicant?.phone || formValues.applicantPhone),
+        applicantEmail: formValues.applicantEmail || formData.applicant?.email,
+        applicantLicense: formData.applicant?.license || formValues.applicantLicense,
+        applicantLicenseState: formData.applicant?.licenseState || formValues.applicantLicenseState,
+        applicantAddress: formValues.applicantAddress || formData.applicant?.address,
+        applicantCity: formValues.applicantCity || formData.applicant?.city,
+        applicantState: formValues.applicantState || formData.applicant?.state,
+        applicantZip: formValues.applicantZip || formData.applicant?.zip,
+        
+        // Store the raw form data for restoration
+        rawFormData: formData,
+        rawFormValues: formValues,
+        signatures,
+        documents,
+        encryptedDocuments,
+        uploadedDocuments,
+        uploadedFilesMetadata,
+        hasCoApplicant,
+        hasGuarantor,
+        currentStep,
+      };
+
+      await saveDraft(mappedFormData, currentStep, false, false); // Don't show toast for auto-save
+    } catch (error) {
+      console.error('Error auto-saving draft:', error);
+    }
+    
     setCurrentStep((prev) => getNextAllowedStep(prev, -1));
   };
 
   // --- Update goToStep to block manual access to co-applicant/guarantor docs if not allowed ---
-  const goToStep = (step: number, e?: React.MouseEvent) => {
+  const goToStep = async (step: number, e?: React.MouseEvent) => {
     // Prevent form submission
     if (e) {
       e.preventDefault();
@@ -765,6 +913,68 @@ export function ApplicationForm() {
       });
       return;
     }
+    
+    // Save draft before jumping to step
+    try {
+      const safeDateToISO = (dateValue: any): string | null => {
+        if (!dateValue) return null;
+        try {
+          const date = new Date(dateValue);
+          if (isNaN(date.getTime())) {
+            console.warn('Invalid date value:', dateValue);
+            return null;
+          }
+          return date.toISOString();
+        } catch (error) {
+          console.warn('Error converting date to ISO:', dateValue, error);
+          return null;
+        }
+      };
+
+      const formValues = form.getValues();
+      
+      // Create mapped form data with proper field mapping
+      const mappedFormData = {
+        // Application Info
+        buildingAddress: formValues.buildingAddress || formData.application?.buildingAddress,
+        apartmentNumber: formValues.apartmentNumber || formData.application?.apartmentNumber,
+        moveInDate: safeDateToISO(formValues.moveInDate || formData.application?.moveInDate),
+        monthlyRent: formValues.monthlyRent || formData.application?.monthlyRent,
+        apartmentType: formValues.apartmentType || formData.application?.apartmentType,
+        howDidYouHear: formValues.howDidYouHear || formData.application?.howDidYouHear,
+        howDidYouHearOther: formValues.howDidYouHearOther || formData.application?.howDidYouHearOther,
+        
+        // Primary Applicant
+        applicantName: formValues.applicantName || formData.applicant?.name,
+        applicantDob: safeDateToISO(formValues.applicantDob || formData.applicant?.dob),
+        applicantSsn: formData.applicant?.ssn || formValues.applicantSsn,
+        applicantPhone: formatPhoneForPayload(formData.applicant?.phone || formValues.applicantPhone),
+        applicantEmail: formValues.applicantEmail || formData.applicant?.email,
+        applicantLicense: formData.applicant?.license || formValues.applicantLicense,
+        applicantLicenseState: formData.applicant?.licenseState || formValues.applicantLicenseState,
+        applicantAddress: formValues.applicantAddress || formData.applicant?.address,
+        applicantCity: formValues.applicantCity || formData.applicant?.city,
+        applicantState: formValues.applicantState || formData.applicant?.state,
+        applicantZip: formValues.applicantZip || formData.applicant?.zip,
+        
+        // Store the raw form data for restoration
+        rawFormData: formData,
+        rawFormValues: formValues,
+        signatures,
+        documents,
+        encryptedDocuments,
+        uploadedDocuments,
+        uploadedFilesMetadata,
+        hasCoApplicant,
+        hasGuarantor,
+        currentStep,
+      };
+
+      await saveDraft(mappedFormData, currentStep, false, false); // Don't show toast for auto-save
+    } catch (error) {
+      console.error('Error auto-saving draft:', error);
+    }
+    
     setCurrentStep(step);
   };
 
@@ -1685,8 +1895,6 @@ export function ApplicationForm() {
         console.log('=== END WEBHOOK SUBMISSION ===');
         
         if (webhookResult.success) {
-          // Clear draft on successful submission
-          clearDraft();
           toast({
             title: "Application Submitted & Sent",
             description: "Your rental application has been submitted and sent to the webhook successfully.",
@@ -1699,8 +1907,6 @@ export function ApplicationForm() {
         }
       } catch (webhookError) {
         console.error('Webhook error:', webhookError);
-        // Clear draft even if webhook fails, since the application was submitted successfully
-        clearDraft();
         toast({
           title: "Application Submitted",
             description: "Your rental application has been submitted, but webhook delivery failed.",
@@ -3888,22 +4094,7 @@ export function ApplicationForm() {
     return undefined;
   }
 
-  // On mount, if loading draft from localStorage, always convert dob to Date
-  useEffect(() => {
-    const draft = localStorage.getItem('rentalApplicationDraft');
-    if (draft) {
-      try {
-        const parsed = JSON.parse(draft);
-        if (parsed?.formData?.applicant?.dob) {
-          parsed.formData.applicant.dob = toValidDate(parsed.formData.applicant.dob);
-        }
-        setFormData(parsed.formData || {});
-        // ... set other state as needed
-      } catch (e) {
-        console.warn('Failed to parse draft:', e);
-      }
-    }
-  }, []);
+
 
   // Enhanced sync effect for applicantDob
   useEffect(() => {
@@ -3950,6 +4141,52 @@ export function ApplicationForm() {
         </div>
       )}
 
+      {/* Draft Restoration Banner */}
+      {currentDraft && showDraftBanner && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <Save className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-green-900 font-medium">Draft Restored</p>
+                <p className="text-green-700 text-sm">
+                  Your application has been restored from your last saved draft. You're on step {currentDraft.currentStep + 1}.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  try {
+                    await deleteDraft();
+                    setShowDraftBanner(false);
+                    toast({
+                      title: 'Draft Deleted',
+                      description: 'Your draft has been deleted. Starting fresh.',
+                    });
+                  } catch (error) {
+                    console.error('Error deleting draft:', error);
+                  }
+                }}
+                className="text-green-600 hover:text-green-800 text-sm font-medium"
+              >
+                Start Fresh
+              </button>
+              <button
+                onClick={() => setShowDraftBanner(false)}
+                className="text-green-400 hover:text-green-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header with Navigation */}
       <div className="w-full max-w-4xl mx-auto px-3 py-4 sm:px-4 sm:py-8">
         <div className="mb-4 sm:mb-8">
@@ -3958,19 +4195,6 @@ export function ApplicationForm() {
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
                 Rental Application
               </h1>
-              {isDraftSaved && (
-                <div className="flex items-center gap-2 px-3 py-1 bg-yellow-100 border border-yellow-300 rounded-full">
-                  <Save className="w-4 h-4 text-yellow-600" />
-                  <span className="text-sm font-medium text-yellow-800">
-                    Draft Saved
-                  </span>
-                  {draftSavedAt && (
-                    <span className="text-xs text-yellow-600">
-                      {draftSavedAt.toLocaleTimeString()}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
           </div>
           
@@ -4035,20 +4259,104 @@ export function ApplicationForm() {
 
             {/* Navigation Buttons */}
             <div className="flex justify-between items-center pt-4 sm:pt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={(e) => prevStep(e)}
-                disabled={currentStep === 0}
-                className="flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2"
-              >
-                <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Previous</span>
-                <span className="sm:hidden">Prev</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={(e) => prevStep(e)}
+                  disabled={currentStep === 0}
+                  className="flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2"
+                >
+                  <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Previous</span>
+                  <span className="sm:hidden">Prev</span>
+                </Button>
 
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                Step {currentStep + 1} of {STEPS.length}
+                {/* Save Draft Button */}
+                <Button
+                  type="button"
+                  variant="outline"
+                                  onClick={async () => {
+                  try {
+                    // Create the same mapped data structure as used for server submission
+                    const safeDateToISO = (dateValue: any): string | null => {
+                      if (!dateValue) return null;
+                      try {
+                        const date = new Date(dateValue);
+                        if (isNaN(date.getTime())) {
+                          console.warn('Invalid date value:', dateValue);
+                          return null;
+                        }
+                        return date.toISOString();
+                      } catch (error) {
+                        console.warn('Error converting date to ISO:', dateValue, error);
+                        return null;
+                      }
+                    };
+
+                    const formValues = form.getValues();
+                    
+                    // Create mapped form data with proper field mapping
+                    const mappedFormData = {
+                      // Application Info
+                      buildingAddress: formValues.buildingAddress || formData.application?.buildingAddress,
+                      apartmentNumber: formValues.apartmentNumber || formData.application?.apartmentNumber,
+                      moveInDate: safeDateToISO(formValues.moveInDate || formData.application?.moveInDate),
+                      monthlyRent: formValues.monthlyRent || formData.application?.monthlyRent,
+                      apartmentType: formValues.apartmentType || formData.application?.apartmentType,
+                      howDidYouHear: formValues.howDidYouHear || formData.application?.howDidYouHear,
+                      howDidYouHearOther: formValues.howDidYouHearOther || formData.application?.howDidYouHearOther,
+                      
+                      // Primary Applicant
+                      applicantName: formValues.applicantName || formData.applicant?.name,
+                      applicantDob: safeDateToISO(formValues.applicantDob || formData.applicant?.dob),
+                      applicantSsn: formData.applicant?.ssn || formValues.applicantSsn,
+                      applicantPhone: formatPhoneForPayload(formData.applicant?.phone || formValues.applicantPhone),
+                      applicantEmail: formValues.applicantEmail || formData.applicant?.email,
+                      applicantLicense: formData.applicant?.license || formValues.applicantLicense,
+                      applicantLicenseState: formData.applicant?.licenseState || formValues.applicantLicenseState,
+                      applicantAddress: formValues.applicantAddress || formData.applicant?.address,
+                      applicantCity: formValues.applicantCity || formData.applicant?.city,
+                      applicantState: formValues.applicantState || formData.applicant?.state,
+                      applicantZip: formValues.applicantZip || formData.applicant?.zip,
+                      
+                      // Store the raw form data for restoration
+                      rawFormData: formData,
+                      rawFormValues: formValues,
+                      signatures,
+                      documents,
+                      encryptedDocuments,
+                      uploadedDocuments,
+                      uploadedFilesMetadata,
+                      hasCoApplicant,
+                      hasGuarantor,
+                      currentStep,
+                    };
+
+                    await saveDraft(mappedFormData, currentStep, false, true);
+                  } catch (error) {
+                    console.error('Error saving draft:', error);
+                  }
+                }}
+                  disabled={isDraftSaving}
+                  className="flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2"
+                >
+                  <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  {isDraftSaving ? (
+                    <span className="hidden sm:inline">Saving...</span>
+                  ) : (
+                    <span className="hidden sm:inline">Save Draft</span>
+                  )}
+                </Button>
+              </div>
+
+              <div className="flex flex-col items-center text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                <div>Step {currentStep + 1} of {STEPS.length}</div>
+                {lastSaved && (
+                  <div className="text-xs text-gray-500">
+                    Last saved: {new Date(lastSaved).toLocaleTimeString()}
+                  </div>
+                )}
               </div>
 
               {currentStep === STEPS.length - 1 ? (
