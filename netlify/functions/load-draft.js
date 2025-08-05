@@ -1,6 +1,9 @@
-const { loadDraft } = require('./dynamodb-service');
+import { loadDraft } from './dynamodb-service.js';
 
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
+  console.log('🔄 Load draft function called');
+  console.log('📋 Event:', JSON.stringify(event, null, 2));
+  
   // Handle CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -10,6 +13,7 @@ exports.handler = async (event, context) => {
 
   // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
+    console.log('✅ CORS preflight request handled');
     return {
       statusCode: 200,
       headers,
@@ -18,6 +22,7 @@ exports.handler = async (event, context) => {
   }
 
   if (event.httpMethod !== 'GET') {
+    console.log('❌ Invalid method:', event.httpMethod);
     return {
       statusCode: 405,
       headers,
@@ -26,9 +31,12 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    console.log('📥 Parsing query parameters...');
     const { applicantId } = event.queryStringParameters || {};
+    console.log('✅ Query parameters parsed');
 
     if (!applicantId) {
+      console.log('❌ Missing applicantId');
       return {
         statusCode: 400,
         headers,
@@ -36,7 +44,9 @@ exports.handler = async (event, context) => {
       };
     }
 
+    console.log('🔄 Calling loadDraft function...');
     const result = await loadDraft(applicantId);
+    console.log('✅ Draft loaded successfully');
 
     return {
       statusCode: 200,
@@ -44,13 +54,15 @@ exports.handler = async (event, context) => {
       body: JSON.stringify(result)
     };
   } catch (error) {
-    console.error('Error loading draft:', error);
+    console.error('❌ Error in load-draft function:', error);
+    console.error('Error stack:', error.stack);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({ 
         error: 'Failed to load draft',
-        message: error.message 
+        message: error.message,
+        stack: error.stack
       })
     };
   }

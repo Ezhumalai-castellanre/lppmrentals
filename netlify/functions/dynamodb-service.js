@@ -1,11 +1,24 @@
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 
 // AWS Configuration from environment variables
 const AWS_REGION = process.env.VITE_AWS_DYNAMODB_REGION || 'us-east-1';
 const AWS_ACCESS_KEY_ID = process.env.VITE_AWS_DYNAMODB_ACCESS_KEY_ID || 'AKIA35BCK6ZHZC4EWVHT';
 const AWS_SECRET_ACCESS_KEY = process.env.VITE_AWS_DYNAMODB_SECRET_ACCESS_KEY || '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';
 const TABLE_NAME = process.env.VITE_AWS_DYNAMODB_TABLE_NAME || 'DraftSaved';
+
+// Log configuration for debugging
+console.log('🔧 DynamoDB Configuration:', {
+  region: AWS_REGION,
+  tableName: TABLE_NAME,
+  accessKeyId: AWS_ACCESS_KEY_ID ? `${AWS_ACCESS_KEY_ID.substring(0, 8)}...` : 'Not set',
+  hasSecretKey: !!AWS_SECRET_ACCESS_KEY,
+});
+
+// Validate required environment variables
+if (!AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY) {
+  console.warn('⚠️ AWS DynamoDB credentials not properly configured. Check your environment variables.');
+}
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({
@@ -184,7 +197,7 @@ async function getDraftMetadata(applicantId) {
   }
 }
 
-module.exports = {
+export {
   saveDraft,
   loadDraft,
   deleteDraft,

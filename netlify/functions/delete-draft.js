@@ -1,6 +1,6 @@
-const { deleteDraft } = require('./dynamodb-service');
+import { deleteDraft } from './dynamodb-service.js';
 
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
   // Handle CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
