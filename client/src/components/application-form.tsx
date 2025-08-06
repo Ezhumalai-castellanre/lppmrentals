@@ -686,7 +686,19 @@ export function ApplicationForm() {
     }));
   };
 
-  const handleEncryptedDocumentChange = (person: string, documentType: string, encryptedFiles: EncryptedFile[]) => {
+  // Handler to attach webhook file URL to encrypted file
+const handleWebhookFileUrl = (person: string, documentType: string, fileUrl: string, fileName: string) => {
+  setEncryptedDocuments((prev: any) => {
+    const updated = { ...prev };
+    if (!updated[person] || !updated[person][documentType]) return prev;
+    updated[person][documentType] = updated[person][documentType].map((file: any) =>
+      file.filename === fileName ? { ...file, fileUrl } : file
+    );
+    return updated;
+  });
+};
+
+const handleEncryptedDocumentChange = (person: string, documentType: string, encryptedFiles: EncryptedFile[]) => {
     console.log('handleEncryptedDocumentChange called:', { person, documentType, encryptedFilesCount: encryptedFiles.length });
     
     // Special debugging for guarantor documents
@@ -709,11 +721,13 @@ export function ApplicationForm() {
 
     // Track uploadedDocuments for webhook
     const sectionKey = `${person}_${documentType}`;
+    // Map docs and include file_url if present on the file
     const docs = encryptedFiles.map(file => ({
       reference_id: file.uploadDate + '-' + file.filename, // or use a better unique id if available
       file_name: file.filename,
       section_name: sectionKey,
-      documents: documentType // <-- Now included
+      documents: documentType, // <-- Now included
+      file_url: file.fileUrl || '' // Use fileUrl if present, else blank
     }));
     setUploadedDocuments(prev => {
       // Ensure prev is always an array
