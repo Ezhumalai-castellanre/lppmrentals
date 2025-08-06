@@ -268,6 +268,18 @@ export class WebhookService {
         
         clearTimeout(timeoutId);
 
+        // Log response details
+        console.log('📝 Webhook Response Details:', {
+          url: this.FILE_WEBHOOK_URL,
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          cf_ray: response.headers.get('cf-ray'),
+          cf_cache_status: response.headers.get('cf-cache-status'),
+          make_actual_status: response.headers.get('make-actual-status'),
+          powered_by: response.headers.get('x-powered-by')
+        });
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error('Webhook failed:', response.status, errorText);
