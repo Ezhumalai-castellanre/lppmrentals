@@ -250,6 +250,9 @@ export function ApplicationForm() {
         if (draft.formData.hasGuarantor !== undefined) {
           setHasGuarantor(draft.formData.hasGuarantor);
         }
+        if (draft.formData.webhookResponses) {
+          setWebhookResponses(draft.formData.webhookResponses);
+        }
         
         // Reset form with draft data - use rawFormValues if available
         if (draft.formData.rawFormValues) {
@@ -294,6 +297,9 @@ export function ApplicationForm() {
     section_name: string;
     documents?: string;
   }[]>([]);
+
+  // Add state for webhook responses
+  const [webhookResponses, setWebhookResponses] = useState<Record<string, any>>({});
 
   // Welcome message state
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(true);
@@ -614,6 +620,7 @@ export function ApplicationForm() {
         encryptedDocuments,
         uploadedDocuments,
         uploadedFilesMetadata,
+        webhookResponses,
         hasCoApplicant,
         hasGuarantor,
         currentStep,
@@ -1982,6 +1989,8 @@ export function ApplicationForm() {
           application_id: user?.applicantId || 'unknown',
           reference_id: referenceId,
           
+          // Webhook responses for uploaded documents
+          webhookResponses: webhookResponses,
 
         };
 
@@ -3017,11 +3026,21 @@ export function ApplicationForm() {
             </CardHeader>
             <CardContent>
               <SupportingDocuments 
-                formData={formData}
+                formData={{
+                  ...formData,
+                  webhookResponses
+                }}
                 onDocumentChange={(documentType, files) => {
                   setDocuments((prev: any) => ({
                     ...prev,
                     [documentType]: files,
+                  }));
+                }}
+                onWebhookResponse={(documentType, response) => {
+                  console.log('Webhook response received:', documentType, response);
+                  setWebhookResponses((prev: any) => ({
+                    ...prev,
+                    [documentType]: response,
                   }));
                 }}
                 onEncryptedDocumentChange={(documentType, encryptedFiles) => {
@@ -3547,6 +3566,13 @@ export function ApplicationForm() {
         // Wrapper functions for SupportingDocuments to match expected signature
         const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicant', documentType, files);
         const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicant', documentType, encryptedFiles);
+        const coApplicantWebhookResponse = (documentType: string, response: any) => {
+          console.log('Co-applicant webhook response received:', documentType, response);
+          setWebhookResponses((prev: any) => ({
+            ...prev,
+            [`coApplicant_${documentType}`]: response,
+          }));
+        };
         return (
           hasCoApplicant ? (
             <Card className="form-section border-l-4 border-l-green-500">
@@ -3558,9 +3584,17 @@ export function ApplicationForm() {
               </CardHeader>
               <CardContent>
                 <SupportingDocuments
-                  formData={formData}
+                  formData={{
+                    ...formData,
+                    webhookResponses: Object.fromEntries(
+                      Object.entries(webhookResponses)
+                        .filter(([key]) => key.startsWith('coApplicant_'))
+                        .map(([key, value]) => [key.replace('coApplicant_', ''), value])
+                    )
+                  }}
                   onDocumentChange={coApplicantDocumentChange}
                   onEncryptedDocumentChange={coApplicantEncryptedDocumentChange}
+                  onWebhookResponse={coApplicantWebhookResponse}
                   referenceId={referenceId}
                   enableWebhook={true}
                   applicationId={user?.applicantId || 'unknown'}
@@ -4196,11 +4230,25 @@ export function ApplicationForm() {
         }
         return (
           <SupportingDocuments
-            formData={formData}
+            formData={{
+              ...formData,
+              webhookResponses: Object.fromEntries(
+                Object.entries(webhookResponses)
+                  .filter(([key]) => key.startsWith('guarantor_'))
+                  .map(([key, value]) => [key.replace('guarantor_', ''), value])
+              )
+            }}
             onDocumentChange={(documentType, files) => {
               setDocuments((prev: any) => ({
                 ...prev,
                 [documentType]: files,
+              }));
+            }}
+            onWebhookResponse={(documentType, response) => {
+              console.log('Guarantor webhook response received:', documentType, response);
+              setWebhookResponses((prev: any) => ({
+                ...prev,
+                [`guarantor_${documentType}`]: response,
               }));
             }}
             onEncryptedDocumentChange={(documentType, encryptedFiles) => {

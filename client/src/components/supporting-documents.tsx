@@ -216,25 +216,40 @@ export const SupportingDocuments = ({
                       )}
                     </div>
                   </div>
-                  <FileUpload
-                    onFileChange={(files) => onDocumentChange(document.id, files)}
-                    onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
-                    onWebhookResponse={(response) => onWebhookResponse?.(document.id, response)}
-                    initialWebhookResponse={formData.webhookResponses?.[document.id]}
-                    accept={document.acceptedTypes}
-                    multiple={false}
-                    maxFiles={1}
-                    maxSize={10}
-                    label={`Upload ${document.name}`}
-                    className="mt-2"
-                    enableEncryption={true}
-                    referenceId={referenceId}
-                    sectionName={document.id}
-                    documentName={document.name}
-                    enableWebhook={enableWebhook}
-                    applicationId={applicationId}
-                    zoneinfo={zoneinfo}
-                  />
+                  <div>
+                    <FileUpload
+                      onFileChange={(files) => onDocumentChange(document.id, files)}
+                      onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
+                      onWebhookResponse={(response) => onWebhookResponse?.(document.id, response)}
+                      initialWebhookResponse={formData.webhookResponses?.[document.id]}
+                      accept={document.acceptedTypes}
+                      multiple={false}
+                      maxFiles={1}
+                      maxSize={10}
+                      label={`Upload ${document.name}`}
+                      className="mt-2"
+                      enableEncryption={true}
+                      referenceId={referenceId}
+                      sectionName={document.id}
+                      documentName={document.name}
+                      enableWebhook={enableWebhook}
+                      applicationId={applicationId}
+                      zoneinfo={zoneinfo}
+                    />
+                    {/* Hidden input field for webhook response data */}
+                    {formData.webhookResponses?.[document.id] && (
+                      <input 
+                        type="hidden"
+                        name={`webhook_response_${document.id}`}
+                        value={typeof formData.webhookResponses[document.id] === 'string' 
+                          ? formData.webhookResponses[document.id]
+                          : JSON.stringify(formData.webhookResponses[document.id])
+                        }
+                        data-document-type={document.id}
+                        data-document-name={document.name}
+                      />
+                    )}
+                  </div>
                 </div>
               );
             })}
