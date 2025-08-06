@@ -97,13 +97,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const userState = {
             id: currentUser.username,
             email: userAttributes.email || '',
-            username: currentUser.username,
-            applicantId: actualApplicantId,
-            zoneinfo: zoneinfoValue, // Always keep the zoneinfo value
-            name: userAttributes.name,
-            given_name: userAttributes.given_name,
-            family_name: userAttributes.family_name,
-            phone_number: userAttributes.phone_number,
+            username: currentUser?.username || '',
+            applicantId: zoneinfoValue,
+            zoneinfo: zoneinfoValue, // Keep zoneinfo and applicantId in sync
+            name: userAttributes?.attributes?.name || '',
+            given_name: userAttributes?.attributes?.given_name || '',
+            family_name: userAttributes?.attributes?.family_name || '',
+            phone_number: userAttributes?.attributes?.phone_number || '',
           };
           
           setUser(userState);
@@ -272,12 +272,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             id: currentUser.username,
             email: userAttributes.attributes.email || '',
             username: currentUser.username,
-            applicantId: actualApplicantId,
-            zoneinfo: actualZoneinfo,
+            applicantId: zoneinfoValue,
+            zoneinfo: zoneinfoValue,
             name: userAttributes.attributes.name,
-            given_name: userAttributes.attributes.given_name,
-            family_name: userAttributes.attributes.family_name,
-            phone_number: userAttributes.attributes.phone_number,
+            given_name: userAttributes.attributes?.given_name || '',
+            family_name: userAttributes.attributes?.family_name || '',
+            phone_number: userAttributes.attributes?.phone_number || '',
           });
           
           console.log('✅ User logged in with attributes:', {
@@ -337,8 +337,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             id: currentUser.username,
             email: userAttributes.email || '',
             username: currentUser.username,
-            applicantId: actualApplicantId,
-            zoneinfo: actualZoneinfo,
+            applicantId: zoneinfoValue,
+            zoneinfo: zoneinfoValue,
             name: userAttributes.name,
             given_name: userAttributes.given_name,
             family_name: userAttributes.family_name,

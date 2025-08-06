@@ -1,3 +1,5 @@
+import { corsHeaders, createCorsResponse, prepareWebhookPayload } from './utils';
+
 export const handler = async (event, context) => {
   console.log('=== MINIMAL SUBMIT-APPLICATION FUNCTION CALLED ===');
   console.log('📥 Request ID:', event.headers['x-request-id'] || context.awsRequestId || 'unknown');
@@ -72,10 +74,10 @@ export const handler = async (event, context) => {
     }
     
     // Extract data
-    const { applicationData } = body;
+    const { applicationData, userInfo } = body;
 
-    if (!applicationData) {
-      console.error('❌ Missing application data');
+    if (!applicationData || !userInfo) {
+      console.error('❌ Missing application data or user info');
       return {
         statusCode: 400,
         headers: {
@@ -84,10 +86,17 @@ export const handler = async (event, context) => {
           'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
         },
         body: JSON.stringify({ 
-          error: 'Missing application data'
+          error: 'Missing application data or user info'
         })
       };
     }
+
+    // Prepare the webhook payload with proper applicantId and zoneinfo mapping
+    const payload = prepareWebhookPayload(applicationData, userInfo);
+    console.log('✅ Prepared webhook payload with mapped values:', { 
+      applicantId: payload.applicantId,
+      zoneinfo: payload.zoneinfo 
+    });
 
     // Log received data
     console.log('📋 Received applicationData keys:', Object.keys(applicationData));

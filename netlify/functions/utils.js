@@ -39,4 +39,21 @@ export const validateRequiredFields = (body, requiredFields) => {
     };
   }
   return { isValid: true };
-}; 
+};
+
+// Helper function to prepare webhook payload with applicantId and zoneinfo mapping
+export const prepareWebhookPayload = (applicationData, userInfo) => {
+  const applicantId = userInfo.applicantId || userInfo.zoneinfo;
+  const zoneinfo = userInfo.zoneinfo || userInfo.applicantId;
+
+  return {
+    ...applicationData,
+    applicantId,
+    zoneinfo,
+    userInfo: {
+      ...userInfo,
+      applicantId,
+      zoneinfo
+    }
+  };
+};
