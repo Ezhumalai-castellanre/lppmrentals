@@ -411,6 +411,149 @@ export function ApplicationForm() {
     mode: "onChange", // Enable real-time validation
   });
 
+  // Update form fields when formData is loaded from draft
+  useEffect(() => {
+    if (formData && Object.keys(formData).length > 0) {
+      console.log('🔄 Updating form fields from formData:', formData);
+      
+      // Helper function to safely convert string dates to Date objects
+      const toValidDate = (dateValue: any): Date | undefined => {
+        if (!dateValue) return undefined;
+        try {
+          const date = new Date(dateValue);
+          return isNaN(date.getTime()) ? undefined : date;
+        } catch {
+          return undefined;
+        }
+      };
+
+      // Update application fields
+      if (formData.application) {
+        console.log('📋 Application data found:', formData.application);
+        
+        if (formData.application.buildingAddress) {
+          console.log('🏢 Setting buildingAddress:', formData.application.buildingAddress);
+          form.setValue('buildingAddress', formData.application.buildingAddress);
+        }
+        if (formData.application.apartmentNumber) {
+          console.log('🏠 Setting apartmentNumber:', formData.application.apartmentNumber);
+          form.setValue('apartmentNumber', formData.application.apartmentNumber);
+        }
+        if (formData.application.moveInDate) {
+          console.log('📅 Setting moveInDate:', formData.application.moveInDate);
+          const moveInDate = toValidDate(formData.application.moveInDate);
+          if (moveInDate) {
+            form.setValue('moveInDate', moveInDate);
+          }
+        }
+        if (formData.application.monthlyRent !== undefined) {
+          console.log('💰 Setting monthlyRent:', formData.application.monthlyRent);
+          form.setValue('monthlyRent', formData.application.monthlyRent);
+        }
+        if (formData.application.apartmentType) {
+          console.log('🏘️ Setting apartmentType:', formData.application.apartmentType);
+          form.setValue('apartmentType', formData.application.apartmentType);
+        }
+        if (formData.application.howDidYouHear) {
+          form.setValue('howDidYouHear', formData.application.howDidYouHear);
+        }
+        if (formData.application.howDidYouHearOther) {
+          form.setValue('howDidYouHearOther', formData.application.howDidYouHearOther);
+        }
+      }
+
+      // Update applicant fields
+      if (formData.applicant) {
+        if (formData.applicant.name) {
+          form.setValue('applicantName', formData.applicant.name);
+        }
+        if (formData.applicant.dob) {
+          const applicantDob = toValidDate(formData.applicant.dob);
+          if (applicantDob) {
+            form.setValue('applicantDob', applicantDob);
+          }
+        }
+        if (formData.applicant.ssn) {
+          form.setValue('applicantSsn', formData.applicant.ssn);
+        }
+        if (formData.applicant.phone) {
+          form.setValue('applicantPhone', formData.applicant.phone);
+        }
+        if (formData.applicant.email) {
+          form.setValue('applicantEmail', formData.applicant.email);
+        }
+        if (formData.applicant.license) {
+          form.setValue('applicantLicense', formData.applicant.license);
+        }
+        if (formData.applicant.licenseState) {
+          form.setValue('applicantLicenseState', formData.applicant.licenseState);
+        }
+        if (formData.applicant.address) {
+          form.setValue('applicantAddress', formData.applicant.address);
+        }
+        if (formData.applicant.city) {
+          form.setValue('applicantCity', formData.applicant.city);
+        }
+        if (formData.applicant.state) {
+          form.setValue('applicantState', formData.applicant.state);
+        }
+        if (formData.applicant.zip) {
+          form.setValue('applicantZip', formData.applicant.zip);
+        }
+      }
+
+      // Update co-applicant fields if they exist
+      if (formData.coApplicant) {
+        if (formData.coApplicant.ssn) {
+          form.setValue('coApplicantSsn', formData.coApplicant.ssn);
+        }
+        if (formData.coApplicant.phone) {
+          form.setValue('coApplicantPhone', formData.coApplicant.phone);
+        }
+        if (formData.coApplicant.email) {
+          form.setValue('coApplicantEmail', formData.coApplicant.email);
+        }
+        if (formData.coApplicant.license) {
+          form.setValue('coApplicantLicense', formData.coApplicant.license);
+        }
+        if (formData.coApplicant.zip) {
+          form.setValue('coApplicantZip', formData.coApplicant.zip);
+        }
+      }
+
+      // Update guarantor fields if they exist
+      if (formData.guarantor) {
+        if (formData.guarantor.ssn) {
+          form.setValue('guarantorSsn', formData.guarantor.ssn);
+        }
+        if (formData.guarantor.phone) {
+          form.setValue('guarantorPhone', formData.guarantor.phone);
+        }
+        if (formData.guarantor.email) {
+          form.setValue('guarantorEmail', formData.guarantor.email);
+        }
+        if (formData.guarantor.license) {
+          form.setValue('guarantorLicense', formData.guarantor.license);
+        }
+        if (formData.guarantor.zip) {
+          form.setValue('guarantorZip', formData.guarantor.zip);
+        }
+      }
+
+      // Update building and apartment selection if available
+      if (formData.application?.buildingAddress && units.length > 0) {
+        setSelectedBuilding(formData.application.buildingAddress);
+        const unitsForBuilding = MondayApiService.getUnitsByBuilding(units, formData.application.buildingAddress);
+        setAvailableApartments(unitsForBuilding);
+        
+        if (formData.application.apartmentNumber) {
+          const selectedApartment = unitsForBuilding.find(unit => unit.name === formData.application.apartmentNumber);
+          setSelectedUnit(selectedApartment || null);
+        }
+      }
+    }
+  }, [formData, form, units]);
+
   const updateFormData = (section: string, field: string, value: any) => {
     setFormData((prev: any) => {
       const newFormData = {
@@ -505,7 +648,9 @@ export function ApplicationForm() {
 
   // Handle apartment selection
   const handleApartmentSelect = (apartmentName: string) => {
+    console.log('🏠 handleApartmentSelect called with:', apartmentName);
     const selectedApartment = availableApartments.find(unit => unit.name === apartmentName);
+    console.log('🏠 selectedApartment:', selectedApartment);
     setSelectedUnit(selectedApartment || null);
     
     // Update form data
@@ -514,6 +659,11 @@ export function ApplicationForm() {
     updateFormData('application', 'monthlyRent', selectedApartment?.monthlyRent || undefined);
     
     // Update form fields
+    console.log('🏠 Setting form values:');
+    console.log('- apartmentNumber:', apartmentName);
+    console.log('- apartmentType:', selectedApartment?.unitType || '');
+    console.log('- monthlyRent:', selectedApartment?.monthlyRent || undefined);
+    
     form.setValue('apartmentNumber', apartmentName);
     form.setValue('apartmentType', selectedApartment?.unitType || '');
     form.setValue('monthlyRent', selectedApartment?.monthlyRent || undefined);
@@ -2005,6 +2155,55 @@ export function ApplicationForm() {
     }
   }, [formData.applicant?.dob, form]);
 
+  // Ensure moveInDate in formData and react-hook-form stay in sync for DatePicker display
+  useEffect(() => {
+    const formValue = form.watch('moveInDate');
+    const stateValue = formData.application?.moveInDate;
+    console.log('📅 moveInDate sync check - formValue:', formValue, 'stateValue:', stateValue);
+    if (stateValue && (!formValue || (formValue instanceof Date && stateValue instanceof Date && formValue.getTime() !== stateValue.getTime()))) {
+      // Only set if different and stateValue is a valid Date
+      if (stateValue instanceof Date && !isNaN(stateValue.getTime())) {
+        console.log('📅 Setting moveInDate from Date object:', stateValue);
+        form.setValue('moveInDate', stateValue);
+      } else if (typeof stateValue === 'string' || typeof stateValue === 'number') {
+        const parsed = new Date(stateValue);
+        if (!isNaN(parsed.getTime())) {
+          console.log('📅 Setting moveInDate from parsed string/number:', parsed);
+          form.setValue('moveInDate', parsed);
+        }
+      }
+    }
+  }, [formData.application?.moveInDate, form]);
+
+  // Ensure apartmentNumber in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('apartmentNumber');
+    const stateValue = formData.application?.apartmentNumber;
+    console.log('🏠 apartmentNumber sync check - formValue:', formValue, 'stateValue:', stateValue);
+    if (stateValue && formValue !== stateValue) {
+      console.log('🏠 Setting apartmentNumber:', stateValue);
+      form.setValue('apartmentNumber', stateValue);
+    }
+  }, [formData.application?.apartmentNumber, form]);
+
+  // Ensure monthlyRent in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('monthlyRent');
+    const stateValue = formData.application?.monthlyRent;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('monthlyRent', stateValue);
+    }
+  }, [formData.application?.monthlyRent, form]);
+
+  // Ensure apartmentType in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('apartmentType');
+    const stateValue = formData.application?.apartmentType;
+    if (stateValue && formValue !== stateValue) {
+      form.setValue('apartmentType', stateValue);
+    }
+  }, [formData.application?.apartmentType, form]);
+
   // Refactor renderStep to accept a stepIdx argument
   const renderStep = (stepIdx = currentStep) => {
     switch (stepIdx) {
@@ -2109,6 +2308,27 @@ export function ApplicationForm() {
                     </FormItem>
                   )}
                 />
+
+                {/* Debug button to test form field values */}
+                <div className="col-span-1 md:col-span-2 lg:col-span-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      console.log('🔍 DEBUG: Current form values:');
+                      console.log('- apartmentNumber:', form.watch('apartmentNumber'));
+                      console.log('- moveInDate:', form.watch('moveInDate'));
+                      console.log('- monthlyRent:', form.watch('monthlyRent'));
+                      console.log('- apartmentType:', form.watch('apartmentType'));
+                      console.log('- buildingAddress:', form.watch('buildingAddress'));
+                      console.log('🔍 DEBUG: Current formData:');
+                      console.log('- formData.application:', formData.application);
+                    }}
+                    className="text-xs"
+                  >
+                    Debug Form Values
+                  </Button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2124,7 +2344,7 @@ export function ApplicationForm() {
                           placeholder="0.00"
                           {...field}
                           className="input-field"
-                          value={formData.application?.monthlyRent?.toString() || ''}
+                          value={field.value?.toString() || formData.application?.monthlyRent?.toString() || ''}
                           disabled
                         />
                       </FormControl>
@@ -2145,7 +2365,7 @@ export function ApplicationForm() {
                           {...field}
                           className="input-field bg-gray-50"
                           readOnly
-                          value={selectedUnit?.unitType || field.value}
+                          value={field.value || selectedUnit?.unitType || ''}
                         />
                       </FormControl>
                       <FormMessage />
