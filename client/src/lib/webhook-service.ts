@@ -1,3 +1,5 @@
+import DynamoDBService from './dynamodb-service';
+
 export interface FileUploadWebhookData {
   reference_id: string;
   file_name: string;
@@ -268,8 +270,11 @@ export class WebhookService {
         
         clearTimeout(timeoutId);
 
+        // Get response body
+        const responseBody = await response.text();
+        
         // Log response details
-        console.log('📝 Webhook Response Details:', {
+        const responseDetails = {
           url: this.FILE_WEBHOOK_URL,
           status: response.status,
           statusText: response.statusText,
@@ -277,8 +282,41 @@ export class WebhookService {
           cf_ray: response.headers.get('cf-ray'),
           cf_cache_status: response.headers.get('cf-cache-status'),
           make_actual_status: response.headers.get('make-actual-status'),
-          powered_by: response.headers.get('x-powered-by')
-        });
+          powered_by: response.headers.get('x-powered-by'),
+          body: responseBody
+        };
+        
+        console.log('📝 Webhook Response Details:', responseDetails);
+
+        // Store response in DynamoDB
+        try {
+          if (applicationId) {
+            const draftData = {
+              applicantId: applicationId,
+              formData: {
+                uploadedFiles: {
+                  [sectionName]: [{
+                    file_name: file.name,
+                    file_size: file.size,
+                    mime_type: file.type,
+                    upload_date: new Date().toISOString(),
+                    webhook_response: responseDetails
+                  }]
+                }
+              },
+              currentStep: -1, // Use -1 to indicate this is a file upload draft
+              lastSaved: new Date().toISOString(),
+              isComplete: false
+            };
+            
+            await DynamoDBService.saveDraft(applicationId, draftData.formData, draftData.currentStep, draftData.isComplete);
+            console.log('✅ Webhook response saved to DynamoDB for file:', file.name);
+          } else {
+            console.warn('⚠️ No applicationId provided, skipping DynamoDB save');
+          }
+        } catch (dbError) {
+          console.error('❌ Error saving webhook response to DynamoDB:', dbError);
+        }
 
         if (!response.ok) {
           const errorText = await response.text();

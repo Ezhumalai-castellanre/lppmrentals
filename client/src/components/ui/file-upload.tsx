@@ -9,6 +9,8 @@ import { WebhookService } from "@/lib/webhook-service";
 interface FileUploadProps {
   onFileChange: (files: File[]) => void;
   onEncryptedFilesChange?: (encryptedFiles: EncryptedFile[]) => void;
+  onWebhookResponse?: (response: any) => void;
+  initialWebhookResponse?: any;
   accept?: string;
   multiple?: boolean;
   maxFiles?: number;
@@ -29,6 +31,8 @@ interface FileUploadProps {
 export function FileUpload({
   onFileChange,
   onEncryptedFilesChange,
+  onWebhookResponse,
+  initialWebhookResponse,
   accept = ".pdf,.jpg,.jpeg,.png",
   multiple = false,
   maxFiles = multiple ? 10 : 1,
@@ -45,9 +49,27 @@ export function FileUpload({
   applicantId,
   zoneinfo
 }: FileUploadProps) {
+  // Don't show the uploader if we have an initial webhook response
+  if (initialWebhookResponse) {
+    return (
+      <div className={cn("space-y-4", className)}>
+        <div className="flex items-center text-sm text-green-600">
+          <CheckCircle className="w-4 h-4 mr-2" />
+          <span>Previously uploaded</span>
+          <input 
+            type="hidden"
+            name={`webhook_response_${sectionName}`}
+            value={initialWebhookResponse.body || JSON.stringify(initialWebhookResponse)}
+            data-document-type={sectionName}
+          />
+        </div>
+      </div>
+    );
+  }
   const [files, setFiles] = useState<File[]>([]);
   const [encryptedFiles, setEncryptedFiles] = useState<EncryptedFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [webhookResponse, setWebhookResponse] = useState<any>(null);
   const [error, setError] = useState<string>("");
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ [key: string]: 'uploading' | 'success' | 'error' }>({});
@@ -147,6 +169,12 @@ export function FileUpload({
             if (result.success) {
               setUploadStatus(prev => ({ ...prev, [fileKey]: 'success' }));
               console.log(`✅ Webhook upload successful for ${file.name}`);
+              // Store only the S3 URL from the webhook response
+              const webhookResult = result as { success: boolean; body?: string; error?: string };
+              if (webhookResult.body) {
+                setWebhookResponse(webhookResult.body);
+                onWebhookResponse?.(webhookResult.body);
+              }
             } else {
               setUploadStatus(prev => ({ ...prev, [fileKey]: 'error' }));
               console.error(`❌ Webhook upload failed for ${file.name}:`, result.error);
@@ -333,6 +361,25 @@ export function FileUpload({
               </Card>
             );
           })}
+        </div>
+      )}
+      
+      {/* Hidden input for webhook response */}
+      {webhookResponse && (
+        <input 
+          type="hidden"
+          name={`webhook_response_${sectionName}`}
+          value={webhookResponse}
+          data-document-type={sectionName}
+          data-file-type="s3-url"
+        />
+      )}
+      
+      {/* Show "Previously Uploaded" message if initial response exists */}
+      {initialWebhookResponse && (
+        <div className="mt-2 flex items-center text-sm text-green-600">
+          <CheckCircle className="w-4 h-4 mr-2" />
+          <span>Previously uploaded</span>
         </div>
       )}
     </div>
