@@ -7,7 +7,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Create the connection
-const databasePath = process.env.DATABASE_URL?.replace('file:', '') || './dev.db';
+const databasePath = process.env.DATABASE_URL?.startsWith('postgresql://') 
+  ? './dev.db' // Use SQLite for development
+  : process.env.DATABASE_URL?.replace('file:', '') || './dev.db';
 console.log('🔧 Connecting to SQLite database:', databasePath);
 
 const sqlite = new Database(databasePath);
