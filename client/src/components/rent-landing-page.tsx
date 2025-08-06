@@ -50,6 +50,7 @@ interface Unit {
   propertyName: string;
   unitType: string;
   status: string;
+  imageUrl?: string;
 }
 
 const RentLandingPage: React.FC = () => {
@@ -83,7 +84,9 @@ const RentLandingPage: React.FC = () => {
     <div className="rent-cards">
       {units.map((unit) => (
         <div key={unit.id} className="rent-card">
-          {/* If you add an image link to the Netlify function, render it here! */}
+          {unit.imageUrl && (
+            <img src={unit.imageUrl} alt={unit.name} className="rent-card-img" style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'cover', marginBottom: 8 }} />
+          )}
           <h3>{unit.name}</h3>
           <ul>
             <li><strong>Property:</strong> {unit.propertyName}</li>

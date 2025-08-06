@@ -24,7 +24,7 @@ export const handler = async (event, context) => {
             items {
               id
               name
-              column_values(ids: ["color_mkp7xdce", "color_mkp77nrv", "color_mkp7fmq4"]) {
+              column_values(ids: ["color_mkp7xdce", "color_mkp77nrv", "color_mkp7fmq4", "link_mktj22y9"]) {
                 id
                 text
               }
@@ -55,7 +55,8 @@ export const handler = async (event, context) => {
       name: item.name,
       propertyName: item.column_values.find((c) => c.id === "color_mkp7xdce")?.text || "",
       unitType: item.column_values.find((c) => c.id === "color_mkp77nrv")?.text || "",
-      status: item.column_values.find((c) => c.id === "color_mkp7fmq4")?.text || ""
+      status: item.column_values.find((c) => c.id === "color_mkp7fmq4")?.text || "",
+      imageUrl: item.column_values.find((c) => c.id === "link_mktj22y9")?.text || ""
     }));
 
     return createCorsResponse(200, { units });
