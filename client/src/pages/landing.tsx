@@ -35,13 +35,13 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
 
 
   return (
-    <div className="max-w-md mx-auto">
-      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-0 shadow-md">
+    <div className="w-full max-w-sm mx-auto">
+      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-0 shadow-md h-full">
         {/* Images Slider - Top Section */}
         <div className="relative">
           <div className="relative group">
             {/* Main Image */}
-            <div className="relative h-48 bg-muted">
+            <div className="relative h-48 bg-muted mx-4 mt-4 rounded-lg overflow-hidden">
               {hasImages ? (
                 <img 
                   src={displayedImages[currentImageIndex]} 
@@ -97,7 +97,7 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
             
             {/* Dots Indicator */}
             {hasImages && displayedImages.length > 1 && (
-              <div className="flex justify-center gap-1.5 mt-3 px-4">
+              <div className="flex justify-center gap-1.5 mt-3 px-8">
                 {displayedImages.map((_, index) => (
                   <button
                     key={index}
@@ -112,23 +112,11 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
               </div>
             )}
             
-            {/* Show More Images Button */}
-            {hasImages && hasMoreImages && !showAllImages && (
-              <div className="flex justify-center mt-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAllImages(true)}
-                  className="text-xs"
-                >
-                  Show All {images.length} Images
-                </Button>
-              </div>
-            )}
+
             
             {/* Thumbnail Strip */}
             {hasImages && displayedImages.length > 1 && (
-              <div className="flex gap-2 mt-3 px-4 overflow-x-auto pb-1 justify-center">
+              <div className="flex gap-2 mt-3 px-8 overflow-x-auto pb-1 justify-center">
                 {displayedImages.map((src, index) => (
                   <button
                     key={index}
