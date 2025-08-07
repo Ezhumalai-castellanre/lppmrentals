@@ -368,19 +368,6 @@ export class WebhookService {
           console.error('❌ Error saving webhook response to DynamoDB:', dbError);
         }
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Webhook failed:', response.status, errorText);
-          
-          // Add to failed uploads to prevent retries
-          this.failedUploads.add(fileUploadKey);
-          
-          return {
-            success: false,
-            error: `Webhook failed: ${response.status} - ${errorText}`
-          };
-        }
-
         const responseTime = Date.now() - startTime;
         console.log(`✅ File ${file.name} sent to webhook successfully in ${responseTime}ms`);
         console.log(`📊 File Upload Performance: ${fileSizeMB}MB file, ${responseTime}ms response time`);
@@ -392,8 +379,20 @@ export class WebhookService {
           success: true, 
           body: extractedUrl || responseBody 
         };
+      } else {
+        const errorText = await response.text();
+        console.error('Webhook failed:', response.status, errorText);
+        
+        // Add to failed uploads to prevent retries
+        this.failedUploads.add(fileUploadKey);
+        
+        return {
+          success: false,
+          error: `Webhook failed: ${response.status} - ${errorText}`
+        };
+      }
 
-      } catch (fetchError) {
+    } catch (fetchError) {
         clearTimeout(timeoutId);
         
         if (fetchError instanceof Error && fetchError.name === 'AbortError') {
