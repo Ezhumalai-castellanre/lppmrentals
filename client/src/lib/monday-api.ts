@@ -1,5 +1,12 @@
 
 
+export type UnitImage = {
+  id: string;
+  name: string;
+  url: string;
+  text: string;
+};
+
 export type UnitItem = {
   id: string;
   name: string; // Apartment Name
@@ -7,6 +14,7 @@ export type UnitItem = {
   unitType: string; // Apartment Type
   status: string; // Status (Vacant, etc.)
   monthlyRent?: number; // Monthly Rent (column ID: numeric_mksz7rkz)
+  images?: UnitImage[]; // Images from subitems
 };
 
 export class MondayApiService {

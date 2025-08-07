@@ -86,14 +86,37 @@ export const handler = async (event, context) => {
       });
     });
     
-    const units = items.map((item) => ({
-      id: item.id,
-      name: item.name,
-      propertyName: item.column_values.find((col) => col.id === "color_mkp7xdce")?.text || "",
-      unitType: item.column_values.find((col) => col.id === "color_mkp77nrv")?.text || "",
-      status: item.column_values.find((col) => col.id === "color_mkp7fmq4")?.text || "",
-      monthlyRent: item.column_values.find((col) => col.id === "numeric_mksz7rkz")?.text || ""
-    }));
+    const units = items.map((item) => {
+      // Extract images from subitems
+      const images = item.subitems?.map(subitem => {
+        const linkColumn = subitem.column_values.find(col => col.id === "link_mktj22y9");
+        if (linkColumn?.value) {
+          try {
+            const linkData = JSON.parse(linkColumn.value);
+            return {
+              id: subitem.id,
+              name: subitem.name,
+              url: linkData.url,
+              text: linkData.text
+            };
+          } catch (e) {
+            console.log('Error parsing link data:', e);
+            return null;
+          }
+        }
+        return null;
+      }).filter(Boolean) || [];
+
+      return {
+        id: item.id,
+        name: item.name,
+        propertyName: item.column_values.find((col) => col.id === "color_mkp7xdce")?.text || "",
+        unitType: item.column_values.find((col) => col.id === "color_mkp77nrv")?.text || "",
+        status: item.column_values.find((col) => col.id === "color_mkp7fmq4")?.text || "",
+        monthlyRent: item.column_values.find((col) => col.id === "numeric_mksz7rkz")?.text || "",
+        images: images
+      };
+    });
 
     console.log('Returning units:', units.length);
     return createCorsResponse(200, { units });

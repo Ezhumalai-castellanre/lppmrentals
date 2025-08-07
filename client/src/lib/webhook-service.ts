@@ -288,6 +288,97 @@ export class WebhookService {
         
         console.log('📝 Webhook Response Details:', responseDetails);
 
+        // Enhanced logging for successful webhook responses
+        if (response.ok) {
+          console.log('✅ === WEBHOOK SUCCESS LOG ===');
+          console.log('🌐 Request URL:', this.FILE_WEBHOOK_URL);
+          console.log('📊 Status Code:', response.status);
+          console.log('📄 Response Body:', responseBody);
+          console.log('📦 File Details:', {
+            fileName: file.name,
+            fileSize: `${Math.round(file.size / 1024)} KB`,
+            mimeType: file.type,
+            sectionName: sectionName,
+            documentName: documentName,
+            applicationId: applicationId
+          });
+          
+          // Try to parse response body as JSON to extract URL, or handle plain URL string
+          let parsedResponse;
+          let extractedUrl = null;
+          
+          // First, check if the response body is a plain URL string
+          if (responseBody.trim().startsWith('http')) {
+            extractedUrl = responseBody.trim();
+            console.log('🔗 Response is a plain URL:', extractedUrl);
+          } else {
+            // Try to parse as JSON
+            try {
+              parsedResponse = JSON.parse(responseBody);
+              console.log('🔍 Parsed Response:', parsedResponse);
+              
+              // Extract URL from various possible response structures
+              if (parsedResponse.url) {
+                extractedUrl = parsedResponse.url;
+              } else if (parsedResponse.data?.url) {
+                extractedUrl = parsedResponse.data.url;
+              } else if (parsedResponse.file_url) {
+                extractedUrl = parsedResponse.file_url;
+              } else if (parsedResponse.s3_url) {
+                extractedUrl = parsedResponse.s3_url;
+              } else if (parsedResponse.document_url) {
+                extractedUrl = parsedResponse.document_url;
+              } else if (parsedResponse.upload_url) {
+                extractedUrl = parsedResponse.upload_url;
+              }
+              
+              if (extractedUrl) {
+                console.log('🔗 Extracted URL from JSON:', extractedUrl);
+              } else {
+                console.log('⚠️ No URL found in JSON response body');
+              }
+            } catch (parseError) {
+              console.log('⚠️ Could not parse response as JSON:', parseError);
+              console.log('📄 Raw response body:', responseBody);
+            }
+          }
+          
+          console.log('=== END WEBHOOK SUCCESS LOG ===');
+          
+          // Store response in DynamoDB with extracted URL
+          try {
+            if (applicationId) {
+              const draftData = {
+                applicantId: applicationId,
+                formData: {
+                  uploadedFiles: {
+                    [sectionName]: [{
+                      file_name: file.name,
+                      file_size: file.size,
+                      mime_type: file.type,
+                      upload_date: new Date().toISOString(),
+                      webhook_response: responseDetails,
+                      extracted_url: extractedUrl,
+                      webhook_status: 'success',
+                      webhook_status_code: response.status
+                    }]
+                  }
+                },
+                currentStep: -1, // Use -1 to indicate this is a file upload draft
+                lastSaved: new Date().toISOString(),
+                isComplete: false
+              };
+              
+              await DynamoDBService.saveDraft(applicationId, draftData.formData, draftData.currentStep, draftData.isComplete);
+              console.log('✅ Webhook response saved to DynamoDB for file:', file.name);
+            } else {
+              console.warn('⚠️ No applicationId provided, skipping DynamoDB save');
+            }
+          } catch (dbError) {
+            console.error('❌ Error saving webhook response to DynamoDB:', dbError);
+          }
+        }
+
         // Store response in DynamoDB
         try {
           if (applicationId) {

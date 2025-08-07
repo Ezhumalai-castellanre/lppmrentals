@@ -14,6 +14,7 @@ import LoginPage from "@/pages/login";
 import TestAuthPage from "@/pages/test-auth";
 import TestApplicationsPage from "@/pages/test-applications";
 import ChangePasswordPage from "@/pages/change-password";
+import LandingPage from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import { DraftProvider, useDraft } from "@/contexts/DraftContext";
 import { Button } from "@/components/ui/button";
@@ -80,21 +81,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
-      <Route path="/test-auth">
-        <ProtectedRoute>
-          <AppLayout>
-            <TestAuthPage />
-          </AppLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/change-password">
-        <ProtectedRoute>
-          <AppLayout>
-            <ChangePasswordPage />
-          </AppLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/">
+      <Route path="/application">
         <ProtectedRoute>
           <AppLayout>
             <RentalApplicationPage />
@@ -121,6 +108,23 @@ function Router() {
             <TestApplicationsPage />
           </AppLayout>
         </ProtectedRoute>
+      </Route>
+      <Route path="/test-auth">
+        <ProtectedRoute>
+          <AppLayout>
+            <TestAuthPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/change-password">
+        <ProtectedRoute>
+          <AppLayout>
+            <ChangePasswordPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/">
+        <LandingPage />
       </Route>
       <Route component={NotFound} />
     </Switch>

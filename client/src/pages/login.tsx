@@ -9,8 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Mail, Lock, User, Phone, CheckCircle, User as UserIcon } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, CheckCircle, User as UserIcon, MapPin, Home } from 'lucide-react';
 import { triggerAwsDebug } from '@/lib/aws-config';
+import { UnitItem } from '@/lib/monday-api';
 
 type AuthMode = 'signin' | 'signup' | 'confirm' | 'forgot' | 'reset';
 
@@ -38,6 +39,7 @@ const LoginPage: React.FC = () => {
   const [markEmailVerified, setMarkEmailVerified] = useState(false);
   const [markPhoneVerified, setMarkPhoneVerified] = useState(false);
   const [generatedUsername, setGeneratedUsername] = useState('');
+  const [selectedUnit, setSelectedUnit] = useState<UnitItem | null>(null);
 
   // Redirect to home page if already authenticated
   useEffect(() => {
@@ -45,6 +47,19 @@ const LoginPage: React.FC = () => {
       setLocation('/');
     }
   }, [isAuthenticated, isLoading, setLocation]);
+
+  // Check for selected unit from landing page
+  useEffect(() => {
+    const storedUnit = sessionStorage.getItem('selectedUnit');
+    if (storedUnit) {
+      try {
+        const unit = JSON.parse(storedUnit);
+        setSelectedUnit(unit);
+      } catch (error) {
+        console.error('Error parsing stored unit:', error);
+      }
+    }
+  }, []);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -327,6 +342,42 @@ const LoginPage: React.FC = () => {
             {mode === 'forgot' && 'Enter your username to receive a reset code.'}
             {mode === 'reset' && 'Enter the reset code and your new password.'}
           </CardDescription>
+          
+          {/* Selected Unit Information */}
+          {selectedUnit && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center space-x-2 mb-2">
+                <Home className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-900">Selected Unit</span>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-blue-700">Unit:</span>
+                  <span className="text-xs font-medium text-blue-900">{selectedUnit.name}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-blue-700">Type:</span>
+                  <span className="text-xs font-medium text-blue-900">{selectedUnit.unitType}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-blue-700">Location:</span>
+                  <span className="text-xs font-medium text-blue-900">{selectedUnit.propertyName}</span>
+                </div>
+                {selectedUnit.monthlyRent && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-blue-700">Rent:</span>
+                    <span className="text-xs font-medium text-green-600">
+                      {new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'USD',
+                        minimumFractionDigits: 0,
+                      }).format(parseFloat(selectedUnit.monthlyRent.toString()))}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           
 
         </CardHeader>
