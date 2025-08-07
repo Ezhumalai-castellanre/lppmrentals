@@ -175,30 +175,31 @@ export const SupportingDocuments = ({
   const coApplicantEmploymentType = formData?.coApplicant?.employmentType;
   const guarantorEmploymentType = formData?.guarantor?.employmentType;
 
-  // Helper to get allowed categories for a given employment type
-  function allowedCategoriesForType(type: string | undefined) {
-    if (!type) return new Set(requiredDocuments.map(c => c.category));
+  // Helper to filter documents based on employment type
+  function filterDocumentsByEmploymentType(documents: CategoryInfo[], employmentType: string | undefined) {
+    if (!employmentType) return documents;
     
-    // For salaried/employed: show Employment Documents, hide Financial Documents
-    if (type === 'salaried' || type === 'employed') {
-      return new Set(requiredDocuments.map(c => c.category).filter(cat => 
-        cat !== 'Financial Documents'
-      ));
-    }
-    
-    // For self-employed: show Financial Documents, hide Employment Documents
-    if (type === 'self-employed') {
-      return new Set(requiredDocuments.map(c => c.category).filter(cat => 
-        cat !== 'Employment Documents'
-      ));
-    }
-    
-    // For other employment types: show all documents
-    if (["unemployed", "retired", "student"].includes(type)) {
-      return new Set(requiredDocuments.map(c => c.category));
-    }
-    
-    return new Set(requiredDocuments.map(c => c.category));
+    return documents.map(category => ({
+      ...category,
+      documents: category.documents.filter(document => {
+        // For salaried/employed: show Employment Letter, hide Accountant Letter
+        if (employmentType === 'salaried' || employmentType === 'employed') {
+          return document.id !== 'accountant_letter';
+        }
+        
+        // For self-employed: show Accountant Letter, hide Employment Letter
+        if (employmentType === 'self-employed') {
+          return document.id !== 'employment_letter';
+        }
+        
+        // For other employment types: show all documents
+        if (["unemployed", "retired", "student"].includes(employmentType)) {
+          return true;
+        }
+        
+        return true;
+      })
+    })).filter(category => category.documents.length > 0); // Remove empty categories
   }
 
   // Determine which employment type to use based on the section being displayed
@@ -213,11 +214,8 @@ export const SupportingDocuments = ({
     relevantEmploymentType = applicantEmploymentType;
   }
 
-  // Get allowed categories based on the relevant employment type
-  const allowedCategories = allowedCategoriesForType(relevantEmploymentType);
-
-  // Filter requiredDocuments based on allowed categories
-  const filteredDocuments = requiredDocuments.filter((category) => allowedCategories.has(category.category));
+  // Filter documents based on the relevant employment type
+  const filteredDocuments = filterDocumentsByEmploymentType(requiredDocuments, relevantEmploymentType);
 
   // Add Other Occupant Documents category if there are other occupants
   const otherOccupants = Array.isArray(formData?.otherOccupants) ? formData.otherOccupants : [];
