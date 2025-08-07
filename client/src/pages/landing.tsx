@@ -55,10 +55,20 @@ export default function LandingPage() {
     sessionStorage.setItem('selectedUnit', JSON.stringify(unit));
     console.log('Redirecting to login page for unit:', unit.name);
     
-    // Use setTimeout to ensure the redirect happens after the current execution
-    setTimeout(() => {
+    // Debug: Log current location
+    console.log('Current location before redirect:', window.location.pathname);
+    
+    // Try multiple approaches to ensure redirect works
+    try {
+      // First try wouter navigation
+      console.log('Attempting wouter navigation...');
+      setLocation('/login');
+      console.log('Wouter navigation called successfully');
+    } catch (error) {
+      console.log('Wouter navigation failed, trying direct navigation:', error);
+      // Fallback to direct navigation
       window.location.href = '/login';
-    }, 100);
+    }
   };
 
   const filteredUnits = selectedBuilding === 'all' 
@@ -100,7 +110,13 @@ export default function LandingPage() {
               </div>
             </div>
             <Button
-              onClick={() => window.location.href = '/login'}
+              onClick={() => {
+                try {
+                  setLocation('/login');
+                } catch (error) {
+                  window.location.href = '/login';
+                }
+              }}
               className="bg-blue-600 hover:bg-blue-700"
             >
               Apply Now
@@ -248,7 +264,13 @@ export default function LandingPage() {
               Click on any unit above to start your application process.
             </p>
             <Button
-              onClick={() => window.location.href = '/login'}
+              onClick={() => {
+                try {
+                  setLocation('/login');
+                } catch (error) {
+                  window.location.href = '/login';
+                }
+              }}
               className="bg-blue-600 hover:bg-blue-700"
             >
               Get Started
