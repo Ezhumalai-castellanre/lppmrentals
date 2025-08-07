@@ -3058,10 +3058,76 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
                 }}
                 onWebhookResponse={(documentType, response) => {
                   console.log('Webhook response received:', documentType, response);
+                  
+                  // Store the webhook response (S3 URL)
                   setWebhookResponses((prev: any) => ({
                     ...prev,
                     [documentType]: response,
                   }));
+                  
+                  // Save draft immediately after successful webhook response
+                  if (user?.applicantId && response) {
+                    const formValues = form.getValues();
+                    const safeDateToISO = (dateValue: any): string | null => {
+                      if (!dateValue) return null;
+                      try {
+                        const date = new Date(dateValue);
+                        if (isNaN(date.getTime())) {
+                          console.warn('Invalid date value:', dateValue);
+                          return null;
+                        }
+                        return date.toISOString();
+                      } catch (error) {
+                        console.warn('Error converting date to ISO:', dateValue, error);
+                        return null;
+                      }
+                    };
+                    
+                    // Create mapped form data with webhook response
+                    const mappedFormData = {
+                      // Application Info
+                      buildingAddress: formValues.buildingAddress || formData.application?.buildingAddress,
+                      apartmentNumber: formValues.apartmentNumber || formData.application?.apartmentNumber,
+                      moveInDate: safeDateToISO(formValues.moveInDate || formData.application?.moveInDate),
+                      monthlyRent: formValues.monthlyRent || formData.application?.monthlyRent,
+                      apartmentType: formValues.apartmentType || formData.application?.apartmentType,
+                      howDidYouHear: formValues.howDidYouHear || formData.application?.howDidYouHear,
+                      howDidYouHearOther: formValues.howDidYouHearOther || formData.application?.howDidYouHearOther,
+                      
+                      // Primary Applicant
+                      applicantName: formValues.applicantName || formData.applicant?.name,
+                      applicantDob: safeDateToISO(formValues.applicantDob || formData.applicant?.dob),
+                      applicantSsn: formData.applicant?.ssn || formValues.applicantSsn,
+                      applicantPhone: formatPhoneForPayload(formData.applicant?.phone || formValues.applicantPhone),
+                      applicantEmail: formValues.applicantEmail || formData.applicant?.email,
+                      applicantLicense: formData.applicant?.license || formValues.applicantLicense,
+                      applicantLicenseState: formData.applicant?.licenseState || formValues.applicantLicenseState,
+                      applicantAddress: formValues.applicantAddress || formData.applicant?.address,
+                      applicantCity: formValues.applicantCity || formData.applicant?.city,
+                      applicantState: formValues.applicantState || formData.applicant?.state,
+                      applicantZip: formValues.applicantZip || formData.applicant?.zip,
+                      
+                      // Store the raw form data for restoration
+                      rawFormData: formData,
+                      rawFormValues: formValues,
+                      signatures,
+                      documents,
+                      encryptedDocuments,
+                      uploadedDocuments,
+                      uploadedFilesMetadata,
+                      hasCoApplicant,
+                      hasGuarantor,
+                      currentStep,
+                      webhookResponses: {
+                        ...webhookResponses,
+                        [documentType]: response
+                      }
+                    };
+                    
+                    // Save draft with webhook response
+                    saveDraft(mappedFormData, currentStep, false, false);
+                    console.log(`✅ Draft saved with webhook response for ${documentType}: ${response}`);
+                  }
                 }}
                 onEncryptedDocumentChange={(documentType, encryptedFiles) => {
                   console.log('Encrypted document change:', documentType, encryptedFiles);

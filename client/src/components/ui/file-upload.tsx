@@ -94,69 +94,57 @@ export function FileUpload({
   };
 
   const handleFiles = useCallback(async (newFiles: FileList | File[]) => {
-    console.log('FileUpload handleFiles called:', {
-      filesCount: newFiles.length,
-      sectionName,
-      enableWebhook,
-      referenceId,
-      enableEncryption
-    });
-    
-    setError("");
-    setIsEncrypting(true);
-    
     try {
-      const fileArray = Array.from(newFiles);
+      setIsEncrypting(true);
+      setError("");
+
+      const filesArray = Array.from(newFiles);
       const validFiles: File[] = [];
-      
-      for (const file of fileArray) {
-        const error = validateFile(file);
-        if (error) {
-          setError(error);
-          setIsEncrypting(false);
-          return;
-        }
-        validFiles.push(file);
-      }
-      
-      if (files.length + validFiles.length > maxFiles) {
-        setError(`Maximum ${maxFiles} file(s) allowed.`);
-        setIsEncrypting(false);
-        return;
-      }
-      
-      const updatedFiles = multiple ? [...files, ...validFiles] : validFiles;
-      setFiles(updatedFiles);
-      onFileChange(updatedFiles);
-      
-      // Encrypt files if encryption is enabled
-      if (enableEncryption && onEncryptedFilesChange) {
-        try {
-          const encrypted = await encryptFiles(validFiles);
-          const updatedEncryptedFiles = multiple 
-            ? [...encryptedFiles, ...encrypted] 
-            : encrypted;
-          
-          setEncryptedFiles(updatedEncryptedFiles);
-          onEncryptedFilesChange(updatedEncryptedFiles);
-        } catch (encryptError) {
-          setError(`Failed to encrypt files: ${encryptError}`);
+      const invalidFiles: string[] = [];
+
+      // Validate files
+      for (const file of filesArray) {
+        const validationError = validateFile(file);
+        if (validationError) {
+          invalidFiles.push(`${file.name}: ${validationError}`);
+        } else {
+          validFiles.push(file);
         }
       }
 
-      // Send files to webhook immediately if enabled
-      console.log('FileUpload webhook check:', { enableWebhook, referenceId, sectionName, applicationId, applicantId });
-      
-      // Special debugging for guarantor documents
-      if (sectionName && sectionName.startsWith('guarantor_')) {
-        console.log('🎯 GUARANTOR FileUpload processing:', {
-          enableWebhook,
-          referenceId,
-          sectionName,
-          applicationId,
-          filesCount: validFiles.length,
-          fileNames: validFiles.map(f => f.name)
-        });
+      if (invalidFiles.length > 0) {
+        setError(`Invalid files: ${invalidFiles.join(', ')}`);
+        return;
+      }
+
+      if (validFiles.length === 0) {
+        setError('No valid files to upload');
+        return;
+      }
+
+      // Check if we already have a successful webhook response for this section
+      if (initialWebhookResponse && typeof initialWebhookResponse === 'string' && initialWebhookResponse.trim()) {
+        console.log(`✅ Section ${sectionName} already has uploaded files, skipping upload`);
+        console.log(`🔗 Existing S3 URL: ${initialWebhookResponse}`);
+        setError('Files have already been uploaded for this section. Please remove existing files first.');
+        return;
+      }
+
+      // Update files state
+      const updatedFiles = multiple ? [...files, ...validFiles] : validFiles;
+      setFiles(updatedFiles);
+      onFileChange(updatedFiles);
+
+      // Handle encryption if enabled
+      if (enableEncryption && onEncryptedFilesChange) {
+        const encryptedFilesArray = await encryptFiles(validFiles);
+
+        const updatedEncryptedFiles = multiple 
+          ? [...encryptedFiles, ...encryptedFilesArray]
+          : encryptedFilesArray;
+        
+        setEncryptedFiles(updatedEncryptedFiles);
+        onEncryptedFilesChange(updatedEncryptedFiles);
       }
       
       if (enableWebhook && referenceId && sectionName) {
@@ -169,11 +157,12 @@ export function FileUpload({
             if (result.success) {
               setUploadStatus(prev => ({ ...prev, [fileKey]: 'success' }));
               console.log(`✅ Webhook upload successful for ${file.name}`);
-              // Store only the S3 URL from the webhook response
-              const webhookResult = result as { success: boolean; body?: string; error?: string };
-              if (webhookResult.body) {
-                setWebhookResponse(webhookResult.body);
-                onWebhookResponse?.(webhookResult.body);
+              
+              // Store the S3 URL from the webhook response
+              if (result.body) {
+                setWebhookResponse(result.body);
+                onWebhookResponse?.(result.body);
+                console.log(`🔗 S3 URL stored: ${result.body}`);
               }
             } else {
               setUploadStatus(prev => ({ ...prev, [fileKey]: 'error' }));
@@ -195,7 +184,7 @@ export function FileUpload({
     } finally {
       setIsEncrypting(false);
     }
-  }, [files, encryptedFiles, multiple, maxFiles, onFileChange, onEncryptedFilesChange, enableEncryption, enableWebhook, referenceId, sectionName, applicationId, applicantId, zoneinfo]);
+  }, [files, encryptedFiles, multiple, maxFiles, onFileChange, onEncryptedFilesChange, enableEncryption, enableWebhook, referenceId, sectionName, applicationId, applicantId, zoneinfo, initialWebhookResponse]);
 
   const removeFile = (index: number) => {
     const updatedFiles = files.filter((_, i) => i !== index);

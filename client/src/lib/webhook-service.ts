@@ -200,7 +200,7 @@ export class WebhookService {
     documentName: string,
     applicationId?: string,
     zoneinfo?: string
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; body?: string }> {
     // Create a unique key for this file upload
     const fileUploadKey = `${referenceId}-${sectionName}-${file.name}-${file.size}`;
     
@@ -219,167 +219,123 @@ export class WebhookService {
     // Add to ongoing uploads
     this.ongoingFileUploads.add(fileUploadKey);
     
+    const startTime = Date.now();
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    
+    console.log(`🚀 Starting file upload to webhook: ${file.name} (${fileSizeMB}MB)`);
+    console.log(`📋 Upload details:`, {
+      referenceId,
+      sectionName,
+      documentName,
+      applicationId,
+      zoneinfo
+    });
+
+    // Convert file to base64
+    let fileBase64: string;
     try {
-      // Convert file to base64
-      const base64 = await this.fileToBase64(file);
-      
-      const webhookData: FileUploadWebhookData = {
-        reference_id: referenceId,
-        file_name: file.name,
-        section_name: sectionName,
-        document_name: documentName,
-        file_base64: base64,
-        application_id: zoneinfo || applicationId || 'unknown',
+      fileBase64 = await this.fileToBase64(file);
+      console.log(`✅ File converted to base64: ${file.name}`);
+    } catch (error) {
+      console.error(`❌ Error converting file to base64: ${file.name}`, error);
+      this.ongoingFileUploads.delete(fileUploadKey);
+      return { success: false, error: 'Failed to convert file to base64' };
+    }
+
+    // Prepare webhook data
+    const webhookData: FileUploadWebhookData = {
+      reference_id: referenceId,
+      file_name: file.name,
+      section_name: sectionName,
+      document_name: documentName,
+      file_base64: fileBase64,
+      application_id: applicationId || ''
+    };
+
+    console.log(`📤 Sending file to webhook: ${file.name}`);
+    console.log(`📊 Payload size: ${(JSON.stringify(webhookData).length / 1024).toFixed(2)}KB`);
+
+    // Set up timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+    try {
+      const response = await fetch(this.FILE_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookData),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      // Log response details
+      console.log(`📥 Webhook response received for ${file.name}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
+      // Get response body
+      const responseBody = await response.text();
+      console.log(`📄 Response body:`, responseBody);
+
+      // Parse response details
+      const responseDetails = {
+        url: this.FILE_WEBHOOK_URL,
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        body: responseBody
       };
 
-      console.log(`Sending file ${file.name} to webhook for section ${sectionName} (Document: ${documentName})`);
-      
-      // Special logging for Guarantor documents
-      if (sectionName.startsWith('guarantor_')) {
-        console.log('🚀 GUARANTOR DOCUMENT UPLOAD:', {
-          file_name: file.name,
-          section_name: sectionName,
-          reference_id: referenceId,
-          application_id: applicationId,
-          file_size: file.size,
-          mime_type: file.type
-        });
-      }
-
-      // Check file size before sending
-      const fileSizeMB = Math.round(file.size / (1024 * 1024) * 100) / 100;
-      console.log(`📦 File size: ${fileSizeMB}MB`);
-      
-      if (fileSizeMB > 10) {
-        console.warn('⚠️ Large file detected:', fileSizeMB, 'MB');
-      }
-
-      const startTime = Date.now();
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for file uploads
-      
+      // Extract S3 URL from response body
+      let extractedUrl: string | null = null;
       try {
-        const response = await fetch(this.FILE_WEBHOOK_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(webhookData),
-          signal: controller.signal,
-        });
-        
-        clearTimeout(timeoutId);
-
-        // Get response body
-        const responseBody = await response.text();
-        
-        // Log response details
-        const responseDetails = {
-          url: this.FILE_WEBHOOK_URL,
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries()),
-          cf_ray: response.headers.get('cf-ray'),
-          cf_cache_status: response.headers.get('cf-cache-status'),
-          make_actual_status: response.headers.get('make-actual-status'),
-          powered_by: response.headers.get('x-powered-by'),
-          body: responseBody
-        };
-        
-        console.log('📝 Webhook Response Details:', responseDetails);
-
-        // Enhanced logging for successful webhook responses
-        if (response.ok) {
-          console.log('✅ === WEBHOOK SUCCESS LOG ===');
-          console.log('🌐 Request URL:', this.FILE_WEBHOOK_URL);
-          console.log('📊 Status Code:', response.status);
-          console.log('📄 Response Body:', responseBody);
-          console.log('📦 File Details:', {
-            fileName: file.name,
-            fileSize: `${Math.round(file.size / 1024)} KB`,
-            mimeType: file.type,
-            sectionName: sectionName,
-            documentName: documentName,
-            applicationId: applicationId
-          });
-          
-          // Try to parse response body as JSON to extract URL, or handle plain URL string
-          let parsedResponse;
-          let extractedUrl = null;
-          
-          // First, check if the response body is a plain URL string
-          if (responseBody.trim().startsWith('http')) {
-            extractedUrl = responseBody.trim();
-            console.log('🔗 Response is a plain URL:', extractedUrl);
-          } else {
-            // Try to parse as JSON
-            try {
-              parsedResponse = JSON.parse(responseBody);
-              console.log('🔍 Parsed Response:', parsedResponse);
-              
-              // Extract URL from various possible response structures
-              if (parsedResponse.url) {
-                extractedUrl = parsedResponse.url;
-              } else if (parsedResponse.data?.url) {
-                extractedUrl = parsedResponse.data.url;
-              } else if (parsedResponse.file_url) {
-                extractedUrl = parsedResponse.file_url;
-              } else if (parsedResponse.s3_url) {
-                extractedUrl = parsedResponse.s3_url;
-              } else if (parsedResponse.document_url) {
-                extractedUrl = parsedResponse.document_url;
-              } else if (parsedResponse.upload_url) {
-                extractedUrl = parsedResponse.upload_url;
-              }
-              
-              if (extractedUrl) {
-                console.log('🔗 Extracted URL from JSON:', extractedUrl);
-              } else {
-                console.log('⚠️ No URL found in JSON response body');
-              }
-            } catch (parseError) {
-              console.log('⚠️ Could not parse response as JSON:', parseError);
-              console.log('📄 Raw response body:', responseBody);
-            }
-          }
-          
-          console.log('=== END WEBHOOK SUCCESS LOG ===');
-          
-          // Store response in DynamoDB with extracted URL
-          try {
-            if (applicationId) {
-              const draftData = {
-                applicantId: applicationId,
-                formData: {
-                  uploadedFiles: {
-                    [sectionName]: [{
-                      file_name: file.name,
-                      file_size: file.size,
-                      mime_type: file.type,
-                      upload_date: new Date().toISOString(),
-                      webhook_response: responseDetails,
-                      extracted_url: extractedUrl,
-                      webhook_status: 'success',
-                      webhook_status_code: response.status
-                    }]
-                  }
-                },
-                currentStep: -1, // Use -1 to indicate this is a file upload draft
-                lastSaved: new Date().toISOString(),
-                isComplete: false
-              };
-              
-              await DynamoDBService.saveDraft(applicationId, draftData.formData, draftData.currentStep, draftData.isComplete);
-              console.log('✅ Webhook response saved to DynamoDB for file:', file.name);
-            } else {
-              console.warn('⚠️ No applicationId provided, skipping DynamoDB save');
-            }
-          } catch (dbError) {
-            console.error('❌ Error saving webhook response to DynamoDB:', dbError);
-          }
+        // Try to parse as JSON first
+        const responseJson = JSON.parse(responseBody);
+        if (responseJson && typeof responseJson === 'string') {
+          extractedUrl = responseJson;
+        } else if (responseJson && responseJson.url) {
+          extractedUrl = responseJson.url;
+        } else if (responseJson && responseJson.body) {
+          extractedUrl = responseJson.body;
         }
+      } catch (parseError) {
+        // If not JSON, treat the entire response as the URL
+        console.log('⚠️ Response is not JSON, treating as direct URL');
+        extractedUrl = responseBody.trim();
+      }
 
-        // Store response in DynamoDB
+      console.log(`🔗 Extracted URL:`, extractedUrl);
+
+      if (response.ok) {
+        console.log('=== WEBHOOK SUCCESS LOG ===');
+        console.log(`✅ File ${file.name} uploaded successfully`);
+        console.log(`📊 File size: ${fileSizeMB}MB`);
+        console.log(`🔗 S3 URL: ${extractedUrl}`);
+        console.log(`📋 Section: ${sectionName}`);
+        console.log(`📄 Document: ${documentName}`);
+        console.log(`🆔 Reference ID: ${referenceId}`);
+        console.log(`🆔 Application ID: ${applicationId}`);
+        console.log(`🌍 Zoneinfo: ${zoneinfo}`);
+        console.log(`📊 Response time: ${Date.now() - startTime}ms`);
+        console.log(`📄 Full response:`, responseDetails);
+        
+        // Try to parse response as JSON for additional details
+        try {
+          const responseJson = JSON.parse(responseBody);
+          console.log(`📋 Parsed response JSON:`, responseJson);
+        } catch (parseError) {
+          console.log('⚠️ Could not parse response as JSON:', parseError);
+          console.log('📄 Raw response body:', responseBody);
+        }
+        
+        console.log('=== END WEBHOOK SUCCESS LOG ===');
+        
+        // Store response in DynamoDB with extracted URL
         try {
           if (applicationId) {
             const draftData = {
@@ -391,7 +347,10 @@ export class WebhookService {
                     file_size: file.size,
                     mime_type: file.type,
                     upload_date: new Date().toISOString(),
-                    webhook_response: responseDetails
+                    webhook_response: responseDetails,
+                    extracted_url: extractedUrl,
+                    webhook_status: 'success',
+                    webhook_status_code: response.status
                   }]
                 }
               },
@@ -429,7 +388,10 @@ export class WebhookService {
         // Remove from ongoing uploads on success
         this.ongoingFileUploads.delete(fileUploadKey);
         
-        return { success: true };
+        return { 
+          success: true, 
+          body: extractedUrl || responseBody 
+        };
 
       } catch (fetchError) {
         clearTimeout(timeoutId);
@@ -437,6 +399,7 @@ export class WebhookService {
         if (fetchError instanceof Error && fetchError.name === 'AbortError') {
           console.error('File webhook request timed out after 60 seconds');
           this.failedUploads.add(fileUploadKey);
+          this.ongoingFileUploads.delete(fileUploadKey);
           return {
             success: false,
             error: 'File webhook request timed out'
@@ -445,24 +408,23 @@ export class WebhookService {
         
         console.error('Error sending file to webhook:', fetchError);
         this.failedUploads.add(fileUploadKey);
+        this.ongoingFileUploads.delete(fileUploadKey);
         
         return {
           success: false,
           error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
         };
       }
-
     } catch (error) {
-      console.error('Error in sendFileToWebhook:', error);
+      clearTimeout(timeoutId);
+      console.error('Unexpected error in sendFileToWebhook:', error);
       this.failedUploads.add(fileUploadKey);
+      this.ongoingFileUploads.delete(fileUploadKey);
       
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
-    } finally {
-      // Remove from ongoing uploads
-      this.ongoingFileUploads.delete(fileUploadKey);
     }
   }
 

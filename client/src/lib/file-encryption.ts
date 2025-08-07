@@ -9,6 +9,7 @@ export interface EncryptedFile {
   originalSize: number;
   mimeType: string;
   uploadDate: string;
+  fileUrl?: string; // Optional S3 URL from webhook response
 }
 
 /**

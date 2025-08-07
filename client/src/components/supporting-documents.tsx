@@ -101,30 +101,29 @@ export const SupportingDocuments = ({
   ];
 
   const getDocumentStatus = (documentId: string): DocumentStatus => {
-    // Check for regular documents
-    const files = formData.documents?.[documentId];
-    if (files && files.length > 0) {
-      return { status: "uploaded", count: files.length };
+    const documents = formData.documents?.[documentId] || [];
+    const webhookResponse = formData.webhookResponses?.[documentId];
+    
+    // Check if we have a webhook response (S3 URL) indicating successful upload
+    if (webhookResponse && typeof webhookResponse === 'string' && webhookResponse.trim()) {
+      return {
+        status: "uploaded",
+        count: 1 // We have a successful upload
+      };
     }
     
-    // Check for webhook responses
-    const webhookResponses = formData.webhookResponses?.[documentId];
-    if (webhookResponses) {
-      return { status: "uploaded", count: Array.isArray(webhookResponses) ? webhookResponses.length : 1 };
+    // Fall back to checking actual files
+    if (documents.length > 0) {
+      return {
+        status: "uploaded",
+        count: documents.length
+      };
     }
     
-    // Check for encrypted documents (for guarantor, co-applicant, etc.)
-    if (showOnlyGuarantor && formData.encryptedDocuments?.guarantor?.[documentId]) {
-      const encryptedFiles = formData.encryptedDocuments.guarantor[documentId];
-      return { status: "uploaded", count: encryptedFiles.length };
-    }
-    
-    if (showOnlyCoApplicant && formData.encryptedDocuments?.coApplicant?.[documentId]) {
-      const encryptedFiles = formData.encryptedDocuments.coApplicant[documentId];
-      return { status: "uploaded", count: encryptedFiles.length };
-    }
-    
-    return { status: "pending", count: 0 };
+    return {
+      status: "pending",
+      count: 0
+    };
   };
 
   // Determine employment type for applicant and co-applicant
