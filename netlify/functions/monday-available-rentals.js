@@ -79,8 +79,8 @@ export const handler = async (event, context) => {
     });
     
     const rentals = items.map((item) => {
-      // Extract amenities from long_text_mktjp2nj
-      const amenitiesCol = item.column_values.find(col => col.id === "long_text_mktjp2nj");
+      // Extract amenities from long_text_mktkpv9y
+      const amenitiesCol = item.column_values.find(col => col.id === "long_text_mktkpv9y");
       const amenities = amenitiesCol ? amenitiesCol.text : "";
 
       // Extract media files from subitems
@@ -111,7 +111,7 @@ export const handler = async (event, context) => {
         name: item.name,
         propertyName: item.column_values.find((col) => col.id === "text_mktkkbsb")?.text || "", // Address column
         unitType: item.column_values.find((col) => col.id === "color_mktkdvc5")?.text || "", // Unit Type column
-        status: "Available Now", // Always show "Available Now" for available rentals
+        status: item.column_values.find((col) => col.id === "color_mktk40b8")?.text || "", // Marketing column as status
         monthlyRent: item.column_values.find((col) => col.id === "numeric_mktkj4pm")?.text || "", // Rent column
         amenities: amenities,
         mediaFiles: mediaFiles

@@ -101,7 +101,7 @@ export const handler = async (event, context) => {
       }
 
       // Extract amenities
-      const amenitiesCol = item.column_values.find(col => col.id === "long_text_mktjp2nj");
+      const amenitiesCol = item.column_values.find(col => col.id === "long_text_mktkpv9y");
       const amenities = amenitiesCol ? amenitiesCol.text : "";
 
       return {

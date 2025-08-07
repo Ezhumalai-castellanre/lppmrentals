@@ -130,24 +130,30 @@ export function PropertyMap({ rentals, onViewDetails, onApplyNow }: PropertyMapP
                     <div className="min-w-64">
                       <div className="flex items-center gap-2 mb-2">
                         <Home className="w-4 h-4 text-blue-600" />
-                        <h3 className="font-semibold text-sm">{rental.name || 'Unit not specified'}</h3>
+                        <h3 className="font-semibold text-sm">{rental.name}</h3>
                       </div>
                       
                       <div className="space-y-1 mb-3">
                         <div className="flex items-center gap-1 text-xs text-gray-600">
                           <MapPin className="w-3 h-3" />
-                          <span>{rental.propertyName || 'Address not available'}</span>
+                          <span>{rental.propertyName}</span>
                         </div>
                         
                         <div className="flex items-center gap-1 text-xs text-gray-600">
                           <DollarSign className="w-3 h-3" />
-                          <span>{rental.monthlyRent || 'Contact for pricing'}</span>
+                          <span>
+                            {rental.monthlyRent && rental.monthlyRent.trim() !== '' 
+                              ? `$${rental.monthlyRent}` 
+                              : 'Contact for pricing'
+                            }
+                          </span>
                         </div>
                         
                         <Badge 
                           variant="secondary"
                           className="text-xs bg-green-100 text-green-800"
                         >
+                          <div className="w-1.5 h-1.5 rounded-full mr-1 bg-green-500"></div>
                           Available Now
                         </Badge>
                       </div>

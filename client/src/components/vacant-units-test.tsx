@@ -83,7 +83,7 @@ export default function VacantUnitsTest() {
               <div className="space-y-1 text-sm">
                 <div><strong>Property:</strong> {unit.propertyName}</div>
                 <div><strong>Type:</strong> {unit.unitType}</div>
-                <div><strong>Status:</strong> {unit.status}</div>
+                <div><strong>Status:</strong> Available Now</div>
                 <div><strong>Rent:</strong> {unit.monthlyRent}</div>
                 
                 {unit.amenities && (

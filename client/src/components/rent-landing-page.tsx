@@ -97,7 +97,7 @@ const RentLandingPage: React.FC = () => {
           <ul>
             <li><strong>Property:</strong> {unit.propertyName}</li>
             <li><strong>Type:</strong> {unit.unitType}</li>
-            <li><strong>Status:</strong> {unit.status}</li>
+            <li><strong>Status:</strong> Available Now</li>
           </ul>
         </div>
       ))}

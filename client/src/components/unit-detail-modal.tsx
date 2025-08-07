@@ -135,8 +135,9 @@ export function UnitDetailModal({ unit, isOpen, onClose, onApply }: UnitDetailMo
                 <MapPin className="h-4 w-4 text-gray-500" />
                 <span className="text-gray-600">{unit.propertyName}</span>
               </div>
-              <Badge variant={unit.status === 'Vacant' ? 'default' : 'secondary'}>
-                {unit.status}
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                <div className="w-2 h-2 rounded-full mr-1 bg-green-500"></div>
+                Available Now
               </Badge>
             </div>
 
@@ -148,16 +149,26 @@ export function UnitDetailModal({ unit, isOpen, onClose, onApply }: UnitDetailMo
               <div className="space-y-2">
                 <h3 className="font-semibold text-gray-900">Monthly Rent</h3>
                 <p className="text-green-600 font-semibold text-lg">
-                  {formatRent(unit.monthlyRent)}
+                  {unit.monthlyRent && unit.monthlyRent.toString().trim() !== '' 
+                    ? `$${unit.monthlyRent}` 
+                    : 'Contact for pricing'
+                  }
                 </p>
               </div>
             </div>
 
             {/* Amenities Section */}
-            {unit.amenities && (
+            {unit.amenities && unit.amenities.trim() !== '' ? (
               <div className="space-y-2">
-                <h3 className="font-semibold text-gray-900">Amenities</h3>
-                <p className="text-gray-600 whitespace-pre-line">{unit.amenities}</p>
+                <h3 className="font-semibold text-gray-900">Property Description</h3>
+                <div className="text-gray-600 whitespace-pre-line leading-relaxed">
+                  {unit.amenities}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-900">Property Description</h3>
+                <p className="text-gray-500 italic">Property description not available</p>
               </div>
             )}
             {/* Action Buttons */}

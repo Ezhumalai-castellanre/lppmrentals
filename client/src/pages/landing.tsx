@@ -315,23 +315,55 @@ export default function LandingPage() {
   };
 
   const renderDetailedAmenities = (amenities: string) => {
-    if (!amenities) return null;
-    
-    const amenityList = amenities.split('\n').filter(line => line.trim().startsWith('•'));
-    
-    return (
-      <div className="space-y-2">
-        <h4 className="font-semibold text-sm">Amenities</h4>
-        <div className="text-sm text-gray-700 space-y-1">
-          {amenityList.map((amenity, index) => (
-            <div key={index} className="flex items-start">
-              <span className="w-1 h-1 bg-blue-500 rounded-full mr-2 mt-2 flex-shrink-0"></span>
-              <span>{amenity.trim().substring(1).trim()}</span>
-            </div>
-          ))}
+    if (!amenities || amenities.trim() === '') {
+      return (
+        <div className="space-y-2">
+          <h4 className="font-semibold text-sm">Property Description</h4>
+          <div className="text-sm text-gray-500 italic">
+            Property description not available
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
+    
+    // Split by newlines and filter out empty lines
+    const lines = amenities.split('\n').filter(line => line.trim() !== '');
+    
+    // Check if the text contains bullet points
+    const hasBullets = lines.some(line => line.trim().startsWith('•'));
+    
+    if (hasBullets) {
+      // Display bulleted amenities
+      const amenityList = lines.filter(line => line.trim().startsWith('•'));
+      
+      return (
+        <div className="space-y-2">
+          <h4 className="font-semibold text-sm">Amenities</h4>
+          <div className="text-sm text-gray-700 space-y-1">
+            {amenityList.map((amenity, index) => (
+              <div key={index} className="flex items-start">
+                <span className="w-1 h-1 bg-blue-500 rounded-full mr-2 mt-2 flex-shrink-0"></span>
+                <span>{amenity.trim().substring(1).trim()}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    } else {
+      // Display as paragraphs for non-bulleted text
+      return (
+        <div className="space-y-2">
+          <h4 className="font-semibold text-sm">Property Description</h4>
+          <div className="text-sm text-gray-700 space-y-2">
+            {lines.map((line, idx) => (
+              <p key={idx} className="leading-relaxed">
+                {line.trim()}
+              </p>
+            ))}
+          </div>
+        </div>
+      );
+    }
   };
 
   if (loading) {
@@ -607,14 +639,18 @@ export default function LandingPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Status:</span>
-                      <Badge variant={selectedRental.status === 'Vacant' ? 'default' : 'secondary'}>
-                        {selectedRental.status}
+                      <Badge variant="secondary" className="bg-green-100 text-green-800">
+                        <div className="w-2 h-2 rounded-full mr-1 bg-green-500"></div>
+                        Available Now
                       </Badge>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Monthly Rent:</span>
                       <span className="font-medium text-green-600">
-                        {formatRent(selectedRental.monthlyRent)}
+                        {selectedRental.monthlyRent && selectedRental.monthlyRent.trim() !== '' 
+                          ? `$${selectedRental.monthlyRent}` 
+                          : 'Contact for pricing'
+                        }
                       </span>
                     </div>
                   </div>

@@ -407,8 +407,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }).filter(Boolean);
         }
 
-        // Extract amenities (long_text_mktjp2nj)
-        const amenitiesCol = item.column_values.find((col: any) => col.id === "long_text_mktjp2nj");
+        // Extract amenities (long_text_mktkpv9y)
+        const amenitiesCol = item.column_values.find((col: any) => col.id === "long_text_mktkpv9y");
         const amenities = amenitiesCol ? amenitiesCol.text : "";
 
         // Filter subitems by vacant status as requested
@@ -494,8 +494,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const items = result?.data?.boards?.[0]?.items_page?.items ?? [];
 
       const rentals = items.map((item: any) => {
-        // Extract amenities from long_text_mktjp2nj
-        const amenitiesCol = item.column_values.find((col: any) => col.id === "long_text_mktjp2nj");
+        // Extract amenities from long_text_mktkpv9y
+        const amenitiesCol = item.column_values.find((col: any) => col.id === "long_text_mktkpv9y");
         const amenities = amenitiesCol ? amenitiesCol.text : "";
 
         // Extract media files from subitems
@@ -536,9 +536,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return {
           id: item.id,
           name: item.name,
-          propertyName: item.column_values.find((col: any) => col.id === "text_mktkkbsb")?.text || "", // Address column
-          unitType: item.column_values.find((col: any) => col.id === "color_mktkdvc5")?.text || "", // Unit Type column
-          status: "Available Now", // Always show "Available Now" for available rentals
+          propertyName: item.column_values.find((col: any) => col.id === "color_mktk40b8")?.text || "", // Marketing column
+          unitType: item.column_values.find((col: any) => col.id === "numeric_mktdfshe")?.text || "", // Bedrooms column
+          status: item.column_values.find((col: any) => col.id === "color_mktk40b8")?.text || "", // Marketing column as status
           monthlyRent: item.column_values.find((col: any) => col.id === "numeric_mktkj4pm")?.text || "", // Rent column
           amenities: amenities,
           mediaFiles: mediaFiles
