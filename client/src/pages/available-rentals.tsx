@@ -1,76 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@/hooks/use-auth';
-import { MondayApiService, RentalItem } from '@/lib/monday-api';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { MondayApiService, RentalItem } from '../lib/monday-api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, Home, MapPin, DollarSign, Image, Eye, Play, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { Play, Image, Building, MapPin, DollarSign, Home, Eye, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
-export default function LandingPage() {
+export default function AvailableRentalsPage() {
   const [, setLocation] = useLocation();
-  const { isAuthenticated } = useAuth();
   const [rentals, setRentals] = useState<RentalItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [showVacantOnly, setShowVacantOnly] = useState(false);
   const [selectedRental, setSelectedRental] = useState<RentalItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
-  useEffect(() => {
-    fetchRentals();
-  }, []);
-
   const fetchRentals = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
-      const rentalsData = await MondayApiService.fetchAvailableRentals();
-      setRentals(rentalsData);
-      
-
-      
-              console.log('Fetched rentals:', rentalsData);
-    } catch (error) {
-      console.error('Error fetching rentals:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load available rentals. Please try again.",
-        variant: "destructive",
-      });
+      const availableRentals = await MondayApiService.fetchAvailableRentals();
+      setRentals(availableRentals);
+      console.log('Fetched available rentals:', availableRentals);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch rentals');
+      console.error('Error fetching available rentals:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApplyNow = (rental: RentalItem) => {
-    if (isAuthenticated) {
-      // For authenticated users, redirect to application form
-      sessionStorage.setItem('selectedRental', JSON.stringify(rental));
-      console.log('Redirecting to application form for rental:', rental.name);
-      setLocation('/application');
-    } else {
-      // For non-authenticated users, redirect to login
-      sessionStorage.setItem('selectedRental', JSON.stringify(rental));
-      console.log('Redirecting to login page for rental:', rental.name);
-      setLocation('/login');
-    }
-  };
+  useEffect(() => {
+    fetchRentals();
+  }, []);
 
   const handleViewDetails = (rental: RentalItem) => {
-    if (isAuthenticated) {
-      // For authenticated users, show detailed modal
-      setSelectedRental(rental);
-      setCurrentMediaIndex(0);
-      setIsModalOpen(true);
-    } else {
-      // For non-authenticated users, redirect to login
-      sessionStorage.setItem('selectedRental', JSON.stringify(rental));
-      console.log('Redirecting to login page for rental details:', rental.name);
-      setLocation('/login');
-    }
+    setSelectedRental(rental);
+    setCurrentMediaIndex(0);
+    setIsModalOpen(true);
+  };
+
+  const handleApplyNow = (rental: RentalItem) => {
+    // Store rental info in sessionStorage for the application process
+    sessionStorage.setItem('selectedRental', JSON.stringify(rental));
+    console.log('Redirecting to application form for rental:', rental.name);
+    setLocation('/application');
   };
 
   const handlePreviousMedia = () => {
@@ -100,22 +78,11 @@ export default function LandingPage() {
     return filtered;
   };
 
-  const formatRent = (rent: string | undefined) => {
-    if (!rent || rent === '') return 'Contact for pricing';
-    const num = parseFloat(rent);
-    if (isNaN(num)) return 'Contact for pricing';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(num);
-  };
-
   const renderMediaPreview = (mediaFiles: RentalItem['mediaFiles']) => {
     if (!mediaFiles || mediaFiles.length === 0) {
       return (
-        <div className="h-48 bg-gray-100 flex items-center justify-center">
-          <Image className="h-12 w-12 text-gray-400" />
+        <div className="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
+          <Image className="w-8 h-8 text-gray-400" />
         </div>
       );
     }
@@ -124,7 +91,7 @@ export default function LandingPage() {
     
     if (firstMedia.isVideo) {
       return (
-        <div className="relative h-48 bg-gray-100 overflow-hidden">
+        <div className="relative w-full h-48 bg-gray-200 rounded-lg overflow-hidden">
           <video 
             src={firstMedia.url} 
             className="w-full h-full object-cover"
@@ -139,7 +106,7 @@ export default function LandingPage() {
     }
 
     return (
-      <div className="relative h-48 bg-gray-100 overflow-hidden">
+      <div className="relative w-full h-48 bg-gray-200 rounded-lg overflow-hidden">
         <img 
           src={firstMedia.url} 
           alt={firstMedia.name}
@@ -160,17 +127,21 @@ export default function LandingPage() {
     const amenityList = amenities.split('\n').filter(line => line.trim().startsWith('•'));
     
     return (
-      <div className="mt-3">
+      <div className="mt-4">
+        <h4 className="font-semibold text-sm mb-2 flex items-center">
+          <Home className="w-4 h-4 mr-1" />
+          Amenities
+        </h4>
         <div className="text-xs text-gray-600 space-y-1">
-          {amenityList.slice(0, 3).map((amenity, index) => (
-            <div key={index} className="flex items-center">
-              <span className="w-1 h-1 bg-gray-400 rounded-full mr-2"></span>
-              {amenity.trim().substring(1).trim()}
+          {amenityList.slice(0, 5).map((amenity, idx) => (
+            <div key={idx} className="flex items-start">
+              <span className="text-blue-500 mr-1">•</span>
+              <span>{amenity.replace('•', '').trim()}</span>
             </div>
           ))}
-          {amenityList.length > 3 && (
-            <div className="text-xs text-gray-500">
-              +{amenityList.length - 3} more amenities
+          {amenityList.length > 5 && (
+            <div className="text-blue-500 text-xs">
+              +{amenityList.length - 5} more amenities
             </div>
           )}
         </div>
@@ -184,13 +155,16 @@ export default function LandingPage() {
     const amenityList = amenities.split('\n').filter(line => line.trim().startsWith('•'));
     
     return (
-      <div className="space-y-2">
-        <h4 className="font-semibold text-sm">Amenities</h4>
-        <div className="text-sm text-gray-700 space-y-1">
-          {amenityList.map((amenity, index) => (
-            <div key={index} className="flex items-start">
-              <span className="w-1 h-1 bg-blue-500 rounded-full mr-2 mt-2 flex-shrink-0"></span>
-              <span>{amenity.trim().substring(1).trim()}</span>
+      <div className="mt-4">
+        <h4 className="font-semibold text-sm mb-3 flex items-center">
+          <Home className="w-4 h-4 mr-2" />
+          Amenities
+        </h4>
+        <div className="text-sm text-gray-700 space-y-2">
+          {amenityList.map((amenity, idx) => (
+            <div key={idx} className="flex items-start">
+              <span className="text-blue-500 mr-2 mt-0.5">•</span>
+              <span>{amenity.replace('•', '').trim()}</span>
             </div>
           ))}
         </div>
@@ -200,10 +174,26 @@ export default function LandingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f2f8fe' }}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Loading available rentals...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading vacant units...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 mb-4">Error: {error}</div>
+          <Button 
+            onClick={fetchRentals}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Retry
+          </Button>
         </div>
       </div>
     );
@@ -212,19 +202,11 @@ export default function LandingPage() {
   const filteredRentals = getFilteredRentals();
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f2f8fe' }}>
+    <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            {isAuthenticated ? 'Available Rentals' : 'Find Your Perfect Home'}
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            {isAuthenticated 
-              ? 'Browse our available properties and start your application today.'
-              : 'Discover beautiful properties in prime locations. Sign in to apply.'
-            }
-          </p>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Available Rentals</h1>
+          <p className="text-gray-600">Discover your perfect home from our available properties</p>
         </div>
 
         {/* Filters */}
@@ -244,73 +226,62 @@ export default function LandingPage() {
         </div>
 
         {/* Rental Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredRentals.map((rental) => (
-            <Card key={rental.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              {renderMediaPreview(rental.mediaFiles)}
-              
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{rental.name}</CardTitle>
-                    <CardDescription className="flex items-center mt-1">
-                      <MapPin className="w-4 h-4 mr-1 text-gray-500" />
-                      {rental.propertyName}
-                    </CardDescription>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredRentals.map((rental) => (
+              <Card key={rental.id} className="border rounded-lg p-4 shadow-sm">
+                <h3 className="font-semibold text-lg mb-2">{rental.name}</h3>
+                <div className="space-y-1 text-sm">
+                  <div><strong>Property:</strong> {rental.propertyName}</div>
+                  <div><strong>Type:</strong> {rental.unitType}</div>
+                  <div><strong>Status:</strong> {rental.status}</div>
+                  <div><strong>Rent:</strong> {rental.monthlyRent || 'Contact for pricing'}</div>
+                  
+                  {rental.amenities && (
+                    <div>
+                      <strong>Amenities:</strong>
+                      <div className="text-xs text-gray-600 mt-1">{rental.amenities}</div>
+                    </div>
+                  )}
+                  
+                  {rental.mediaFiles && rental.mediaFiles.length > 0 && (
+                    <div>
+                      <strong>Images:</strong>
+                      <div className="flex gap-2 mt-1">
+                        {rental.mediaFiles.map((img, idx) => (
+                          <img 
+                            key={idx} 
+                            src={img.url} 
+                            alt={img.name || `Image ${idx + 1}`}
+                            className="w-16 h-16 object-cover rounded"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="mt-3 pt-3 border-t space-y-2">
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => handleViewDetails(rental)}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Details
+                    </Button>
+                    <Button 
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleApplyNow(rental)}
+                    >
+                      Apply Now
+                    </Button>
                   </div>
-                  <Badge 
-                    variant={rental.status === 'Vacant' ? 'default' : 'secondary'}
-                    className="ml-2"
-                  >
-                    {rental.status}
-                  </Badge>
                 </div>
-              </CardHeader>
-              
-              <CardContent className="pt-0">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center">
-                    <DollarSign className="w-4 h-4 mr-1 text-green-600" />
-                    <span className="font-semibold text-green-600">
-                      {formatRent(rental.monthlyRent)}
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-500">{rental.unitType}</span>
-                </div>
-                
-                {renderAmenities(rental.amenities)}
-                
-                <div className="flex gap-2 mt-4">
-                  <Button 
-                    onClick={() => handleViewDetails(rental)}
-                    variant="outline" 
-                    size="sm"
-                    className="flex-1"
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    View Details
-                  </Button>
-                  <Button 
-                    onClick={() => handleApplyNow(rental)}
-                    size="sm"
-                    className="flex-1"
-                  >
-                    Apply Now
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {filteredRentals.length === 0 && (
-          <div className="text-center py-12">
-            <Home className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No properties found</h3>
-            <p className="text-gray-600">Try adjusting your filters to see more results.</p>
+              </Card>
+            ))}
           </div>
-        )}
-      </div>
+        </div>
 
       {/* Detailed View Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -410,11 +381,11 @@ export default function LandingPage() {
                   )}
                 </div>
               )}
-              
+
               {/* Rental Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">Property Details</h3>
+                  <h3 className="text-xl font-semibold mb-4">Rental Details</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Unit:</span>
@@ -436,20 +407,49 @@ export default function LandingPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Monthly Rent:</span>
-                      <span className="font-medium text-green-600">
-                        {formatRent(selectedRental.monthlyRent)}
+                      <span className="font-semibold text-green-600">
+                        {selectedRental.monthlyRent || 'Contact for pricing'}
                       </span>
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
-                  {renderDetailedAmenities(selectedRental.amenities)}
+                  <h3 className="text-xl font-semibold mb-4">Media Files</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {selectedRental.mediaFiles?.map((media, index) => (
+                      <div
+                        key={media.id}
+                        className={`relative cursor-pointer rounded overflow-hidden ${
+                          index === currentMediaIndex ? 'ring-2 ring-blue-500' : ''
+                        }`}
+                        onClick={() => setCurrentMediaIndex(index)}
+                      >
+                        {media.isVideo ? (
+                          <div className="aspect-square bg-gray-200 flex items-center justify-center">
+                            <Play className="h-6 w-6 text-gray-600" />
+                          </div>
+                        ) : (
+                          <img
+                            src={media.url}
+                            alt={media.name}
+                            className="w-full h-20 object-cover"
+                          />
+                        )}
+                        <div className="absolute top-1 right-1 bg-black/50 text-white text-xs px-1 rounded">
+                          {index + 1}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              
+
+              {/* Amenities */}
+              {renderDetailedAmenities(selectedRental.amenities)}
+
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t">
+              <div className="flex space-x-3 pt-4 border-t">
                 <Button 
                   onClick={() => handleApplyNow(selectedRental)}
                   className="flex-1"

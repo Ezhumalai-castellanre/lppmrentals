@@ -201,6 +201,9 @@ export function ApplicationForm() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
+  // Read selected rental from sessionStorage
+  const [selectedRental, setSelectedRental] = useState<any>(null);
+
   // Draft functionality
   const {
     isLoading: isDraftLoading,
@@ -410,6 +413,28 @@ export function ApplicationForm() {
     },
     mode: "onChange", // Enable real-time validation
   });
+
+  // Read selected rental from sessionStorage and pre-populate form
+  useEffect(() => {
+    const storedRental = sessionStorage.getItem('selectedRental');
+    if (storedRental) {
+      try {
+        const rental = JSON.parse(storedRental);
+        setSelectedRental(rental);
+        console.log('Loaded selected rental:', rental);
+        
+        // Pre-populate form with rental data
+        if (rental) {
+          form.setValue('buildingAddress', rental.propertyName || '');
+          form.setValue('apartmentNumber', rental.name || '');
+          form.setValue('apartmentType', rental.unitType || '');
+          form.setValue('monthlyRent', rental.monthlyRent ? parseFloat(rental.monthlyRent) : undefined);
+        }
+      } catch (error) {
+        console.error('Error parsing selected rental:', error);
+      }
+    }
+  }, [form]);
 
   // Update form fields when formData is loaded from draft
   useEffect(() => {
@@ -2309,26 +2334,7 @@ export function ApplicationForm() {
                   )}
                 />
 
-                {/* Debug button to test form field values */}
-                <div className="col-span-1 md:col-span-2 lg:col-span-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      console.log('🔍 DEBUG: Current form values:');
-                      console.log('- apartmentNumber:', form.watch('apartmentNumber'));
-                      console.log('- moveInDate:', form.watch('moveInDate'));
-                      console.log('- monthlyRent:', form.watch('monthlyRent'));
-                      console.log('- apartmentType:', form.watch('apartmentType'));
-                      console.log('- buildingAddress:', form.watch('buildingAddress'));
-                      console.log('🔍 DEBUG: Current formData:');
-                      console.log('- formData.application:', formData.application);
-                    }}
-                    className="text-xs"
-                  >
-                    Debug Form Values
-                  </Button>
-                </div>
+
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

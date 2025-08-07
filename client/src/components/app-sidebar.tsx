@@ -7,7 +7,8 @@ import {
   ClipboardList, 
   Lock, 
   LogOut,
-  User
+  User,
+  Building
 } from 'lucide-react';
 
 import {
@@ -46,14 +47,19 @@ export function AppSidebar() {
 
   const navigationItems = [
     {
-      title: "Home",
+      title: "Available Rentals",
       url: "/",
-      icon: Home,
+      icon: Building,
     },
     {
       title: "My Applications",
       url: "/applications",
       icon: ClipboardList,
+    },
+    {
+      title: "Start New Application",
+      url: "/application",
+      icon: FileText,
     },
     {
       title: "Missing Documents",
@@ -73,7 +79,6 @@ export function AppSidebar() {
       
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => (
@@ -121,6 +126,10 @@ export function AppSidebar() {
                         </div>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setLocation('/application')}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        <span>Start New Application</span>
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setLocation('/change-password')}>
                         <Lock className="mr-2 h-4 w-4" />
                         <span>Change Password</span>

@@ -153,6 +153,13 @@ export function UnitDetailModal({ unit, isOpen, onClose, onApply }: UnitDetailMo
               </div>
             </div>
 
+            {/* Amenities Section */}
+            {unit.amenities && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-900">Amenities</h3>
+                <p className="text-gray-600 whitespace-pre-line">{unit.amenities}</p>
+              </div>
+            )}
             {/* Action Buttons */}
             <div className="flex space-x-3 pt-4 border-t">
               <Button
