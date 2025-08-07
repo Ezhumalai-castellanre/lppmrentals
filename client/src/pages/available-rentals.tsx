@@ -19,9 +19,12 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
   onApplyNow: (rental: RentalItem) => void;
 }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showAllImages, setShowAllImages] = useState(false);
 
-  const images = rental.mediaFiles?.map(file => file.url).slice(0, 4) || [];
+  const images = rental.mediaFiles?.map(file => file.url) || [];
   const hasImages = images.length > 0;
+  const displayedImages = showAllImages ? images : images.slice(0, 4);
+  const hasMoreImages = images.length > 4;
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % images.length);
@@ -153,7 +156,7 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
                 </div>
               </div>
               <Badge 
-                variant="secondary"
+                variant="secondary" 
                 className="bg-green-100 text-green-800 hover:bg-green-100"
               >
                 <div className="w-2 h-2 rounded-full mr-1 bg-green-500"></div>

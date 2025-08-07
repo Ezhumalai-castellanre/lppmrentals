@@ -17,16 +17,19 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
   onApplyNow: (rental: RentalItem) => void;
 }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showAllImages, setShowAllImages] = useState(false);
 
-  const images = rental.mediaFiles?.map(file => file.url).slice(0, 4) || [];
+  const images = rental.mediaFiles?.map(file => file.url) || [];
   const hasImages = images.length > 0;
+  const displayedImages = showAllImages ? images : images.slice(0, 4);
+  const hasMoreImages = images.length > 4;
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    setCurrentImageIndex((prev) => (prev + 1) % displayedImages.length);
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    setCurrentImageIndex((prev) => (prev - 1 + displayedImages.length) % displayedImages.length);
   };
 
 
@@ -41,7 +44,7 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
             <div className="relative h-48 bg-muted">
               {hasImages ? (
                 <img 
-                  src={images[currentImageIndex]} 
+                  src={displayedImages[currentImageIndex]} 
                   alt={`Property image ${currentImageIndex + 1}`}
                   className="w-full h-full object-cover transition-all duration-300"
                   onError={(e) => {
@@ -68,7 +71,7 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
               )}
               
               {/* Navigation Arrows */}
-              {hasImages && images.length > 1 && (
+              {hasImages && displayedImages.length > 1 && (
                 <>
                   <button
                     onClick={prevImage}
@@ -86,16 +89,16 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
                   
                   {/* Image Counter Overlay */}
                   <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
-                    {currentImageIndex + 1} / {images.length}
+                    {currentImageIndex + 1} / {displayedImages.length}
                   </div>
                 </>
               )}
             </div>
             
             {/* Dots Indicator */}
-            {hasImages && images.length > 1 && (
+            {hasImages && displayedImages.length > 1 && (
               <div className="flex justify-center gap-1.5 mt-3 px-4">
-                {images.map((_, index) => (
+                {displayedImages.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => setCurrentImageIndex(index)}
@@ -109,10 +112,24 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
               </div>
             )}
             
+            {/* Show More Images Button */}
+            {hasImages && hasMoreImages && !showAllImages && (
+              <div className="flex justify-center mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAllImages(true)}
+                  className="text-xs"
+                >
+                  Show All {images.length} Images
+                </Button>
+              </div>
+            )}
+            
             {/* Thumbnail Strip */}
-            {hasImages && images.length > 1 && (
+            {hasImages && displayedImages.length > 1 && (
               <div className="flex gap-2 mt-3 px-4 overflow-x-auto pb-1 justify-center">
-                {images.map((src, index) => (
+                {displayedImages.map((src, index) => (
                   <button
                     key={index}
                     onClick={() => setCurrentImageIndex(index)}
@@ -151,7 +168,7 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
                 </div>
               </div>
               <Badge 
-                variant="secondary"
+                variant="secondary" 
                 className="bg-green-100 text-green-800 hover:bg-green-100"
               >
                 <div className="w-2 h-2 rounded-full mr-1 bg-green-500"></div>
