@@ -179,7 +179,7 @@ export interface PDFWebhookData {
 
 export class WebhookService {
   private static readonly FILE_WEBHOOK_URL = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
-  private static readonly FORM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk'; // Use external webhook for form data
+  private static readonly FORM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
   
   // Track ongoing submissions to prevent duplicates
   private static ongoingSubmissions = new Set<string>();
@@ -393,36 +393,25 @@ export class WebhookService {
       }
 
     } catch (fetchError) {
-        clearTimeout(timeoutId);
-        
-        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          console.error('File webhook request timed out after 60 seconds');
-          this.failedUploads.add(fileUploadKey);
-          this.ongoingFileUploads.delete(fileUploadKey);
-          return {
-            success: false,
-            error: 'File webhook request timed out'
-          };
-        }
-        
-        console.error('Error sending file to webhook:', fetchError);
+      clearTimeout(timeoutId);
+      
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        console.error('File webhook request timed out after 60 seconds');
         this.failedUploads.add(fileUploadKey);
         this.ongoingFileUploads.delete(fileUploadKey);
-        
         return {
           success: false,
-          error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
+          error: 'File webhook request timed out'
         };
       }
-    } catch (error) {
-      clearTimeout(timeoutId);
-      console.error('Unexpected error in sendFileToWebhook:', error);
+      
+      console.error('Error sending file to webhook:', fetchError);
       this.failedUploads.add(fileUploadKey);
       this.ongoingFileUploads.delete(fileUploadKey);
       
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
       };
     }
   }
@@ -527,14 +516,14 @@ export class WebhookService {
       // Log payload size for debugging
       const payloadSize = JSON.stringify(webhookData).length;
       const payloadSizeMB = Math.round(payloadSize / (1024 * 1024) * 100) / 100;
-      console.log(`📦 Webhook payload size: ${payloadSizeMB}MB`);
       
-      if (payloadSize > 5 * 1024 * 1024) { // 5MB limit
-        console.warn('⚠️ Webhook payload is large:', payloadSizeMB, 'MB');
+      console.log(`📊 Form data payload size: ${payloadSizeMB}MB`);
+      
+      if (payloadSizeMB > 5) {
+        console.warn('⚠️ Large form data payload detected:', payloadSizeMB, 'MB');
       }
 
       const startTime = Date.now();
-
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
@@ -548,7 +537,7 @@ export class WebhookService {
           signal: controller.signal,
         });
         
-                clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -591,9 +580,7 @@ export class WebhookService {
       }
 
     } catch (error) {
-      console.error('Error in sendFormDataToNetlify:', error);
-      
-      // Remove from ongoing submissions
+      console.error('Error in sendFormDataToWebhook:', error);
       this.ongoingSubmissions.delete(submissionId);
       
       return {
@@ -604,7 +591,7 @@ export class WebhookService {
   }
 
   /**
-   * Sends PDF generation to the webhook
+   * Sends PDF to webhook
    */
   static async sendPDFToWebhook(
     pdfBase64: string,
@@ -623,66 +610,31 @@ export class WebhookService {
         submission_type: 'pdf_generation'
       };
 
-      console.log(`Sending PDF to webhook for application ${applicationId}`);
+      console.log(`Sending PDF to webhook: ${fileName}`);
+      console.log(`PDF size: ${Math.round(pdfBase64.length / 1024)} KB`);
 
-      // Check PDF size before sending
-      const pdfSizeMB = Math.round(pdfBase64.length / (1024 * 1024) * 100) / 100;
-      console.log(`📦 PDF size: ${pdfSizeMB}MB`);
-      
-      if (pdfSizeMB > 10) {
-        console.warn('⚠️ Large PDF detected:', pdfSizeMB, 'MB');
-      }
-
-      const startTime = Date.now();
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for PDFs
-      
-      try {
-        const response = await fetch(this.FILE_WEBHOOK_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(webhookData),
-          signal: controller.signal,
-        });
-        
-        clearTimeout(timeoutId);
+      const response = await fetch(this.FILE_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookData),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Webhook failed:', response.status, errorText);
+        console.error('PDF webhook failed:', response.status, errorText);
         return {
           success: false,
-          error: `Webhook failed: ${response.status} - ${errorText}`
+          error: `PDF webhook failed: ${response.status} - ${errorText}`
         };
       }
 
-      const responseTime = Date.now() - startTime;
-      console.log(`✅ PDF sent to webhook successfully in ${responseTime}ms`);
-      console.log(`📊 PDF Performance: ${pdfSizeMB}MB PDF, ${responseTime}ms response time`);
+      console.log('✅ PDF sent to webhook successfully');
       return { success: true };
 
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        
-        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          console.error('PDF webhook request timed out after 45 seconds');
-          return {
-            success: false,
-            error: 'PDF webhook request timed out'
-          };
-        }
-        
-        console.error('Error sending PDF to webhook:', fetchError);
-        return {
-          success: false,
-          error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
-        };
-      }
-
     } catch (error) {
-      console.error('Error in sendPDFToWebhook:', error);
+      console.error('Error sending PDF to webhook:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -691,7 +643,7 @@ export class WebhookService {
   }
 
   /**
-   * Converts a file to base64 string
+   * Converts a file to base64
    */
   private static fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
