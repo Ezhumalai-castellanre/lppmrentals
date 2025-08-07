@@ -116,13 +116,25 @@ export default function MissingDocumentsPage() {
       const apiId = user.zoneinfo;
       console.log(`🔍 Using API ID: "${apiId}" for API call`);
       console.log(`🔍 User zoneinfo: "${user.zoneinfo}"`);
-      console.log(`🔍 Final API endpoint: "/api/monday/missing-subitems/${apiId}"`);
+      // Determine if we're in development or production
+      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const endpoint = isDevelopment 
+        ? `/api/monday/missing-subitems/${apiId}`
+        : `/.netlify/functions/monday-missing-subitems`;
+      
+      console.log(`🔍 Final API endpoint: "${endpoint}"`);
       
       // Get all possible formats for the applicant ID
       const searchFormats = getAllApplicantIdFormats(apiId);
       console.log(`🔍 Searching for applicant ID "${apiId}" with formats:`, searchFormats);
       
-      const response = await fetch(`/api/monday/missing-subitems/${apiId}`);
+      const response = await fetch(endpoint, {
+        method: isDevelopment ? 'GET' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: isDevelopment ? undefined : JSON.stringify({ applicantId: apiId })
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

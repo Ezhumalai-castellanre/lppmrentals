@@ -46,10 +46,33 @@ export type UnitItem = {
 };
 
 export class MondayApiService {
+  // Helper method to determine if we're in development
+  private static isDevelopment(): boolean {
+    return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  }
+
+  // Helper method to get the appropriate endpoint
+  private static getEndpoint(path: string): string {
+    const isDev = this.isDevelopment();
+    if (isDev) {
+      return `/api/monday/${path}`;
+    } else {
+      // Map local endpoints to Netlify functions
+      const endpointMap: Record<string, string> = {
+        'units': 'monday-units',
+        'vacant-units': 'monday-vacant-units', 
+        'available-rentals': 'monday-available-rentals'
+      };
+      const netlifyFunction = endpointMap[path] || path;
+      return `/.netlify/functions/${netlifyFunction}`;
+    }
+  }
+
   static async fetchVacantUnits(): Promise<UnitItem[]> {
     try {
-      const response = await fetch('/api/monday/units', {
-        method: 'GET',
+      const endpoint = this.getEndpoint('units');
+      const response = await fetch(endpoint, {
+        method: this.isDevelopment() ? 'GET' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -60,7 +83,7 @@ export class MondayApiService {
       }
 
       const result = await response.json();
-      console.log('API response from /api/monday/units:', result);
+      console.log(`API response from ${endpoint}:`, result);
       return result.units || [];
     } catch (error) {
       console.error('Error fetching vacant units:', error);
@@ -71,8 +94,9 @@ export class MondayApiService {
   // New method to fetch vacant units with enhanced filtering and subitems
   static async fetchVacantUnitsWithSubitems(): Promise<UnitItem[]> {
     try {
-      const response = await fetch('/api/monday/vacant-units', {
-        method: 'GET',
+      const endpoint = this.getEndpoint('vacant-units');
+      const response = await fetch(endpoint, {
+        method: this.isDevelopment() ? 'GET' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -83,7 +107,7 @@ export class MondayApiService {
       }
 
       const result = await response.json();
-      console.log('API response from /api/monday/vacant-units:', result);
+      console.log(`API response from ${endpoint}:`, result);
       return result.units || [];
     } catch (error) {
       console.error('Error fetching vacant units with subitems:', error);
@@ -94,8 +118,9 @@ export class MondayApiService {
   // Method to fetch available rentals with media files
   static async fetchAvailableRentals(): Promise<RentalItem[]> {
     try {
-      const response = await fetch('/api/monday/available-rentals', {
-        method: 'GET',
+      const endpoint = this.getEndpoint('available-rentals');
+      const response = await fetch(endpoint, {
+        method: this.isDevelopment() ? 'GET' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -106,7 +131,7 @@ export class MondayApiService {
       }
 
       const result = await response.json();
-      console.log('API response from /api/monday/available-rentals:', result);
+      console.log(`API response from ${endpoint}:`, result);
       return result.rentals || [];
     } catch (error) {
       console.error('Error fetching available rentals:', error);

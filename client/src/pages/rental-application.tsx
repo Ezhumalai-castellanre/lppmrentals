@@ -1,5 +1,5 @@
-import RentLandingPage from "@/components/rent-landing-page";
+import { ApplicationForm } from "@/components/application-form";
 
 export default function RentalApplicationPage() {
-  return <RentLandingPage />;
+  return <ApplicationForm />;
 }
