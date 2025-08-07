@@ -680,6 +680,79 @@ export default function LandingPage() {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Footer with Social Media Links */}
+      <footer className="bg-gray-900 text-white py-12">
+        <div className="container mx-auto px-4 max-w-7xl">
+          <div className="text-center">
+            <div className="flex justify-center mb-6">
+              <img 
+                src="https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/image+(1).png"
+                alt="Liberty Place Property Management Logo"
+                className="h-16 w-auto object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const fallback = document.createElement('div');
+                  fallback.className = 'text-2xl font-bold text-white';
+                  fallback.textContent = 'LPPM Rentals';
+                  target.parentNode?.appendChild(fallback);
+                }}
+              />
+            </div>
+            <h3 className="text-2xl font-bold mb-4">Liberty Place Property Management</h3>
+            <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
+              Full service property management company located in Midtown, Manhattan. 
+              We manage a growing portfolio of residential and mixed-use retail locations 
+              throughout New York City and Westchester County.
+            </p>
+            
+            {/* Social Media Links */}
+            <div className="flex justify-center items-center gap-6 mb-8">
+              <a 
+                href="https://www.tiktok.com/@libertyplacepm?is_from_webapp=1&sender_device=pc" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.7-1.35 3.83-.82 1.13-1.87 2.02-3.07 2.71-1.2.69-2.49 1.13-3.8 1.33-.62.09-1.24.13-1.86.14-1.3-.01-2.6-.28-3.76-.77-1.16-.49-2.18-1.18-3.04-2.03-.86-.85-1.54-1.87-2.03-3.03-.49-1.16-.76-2.46-.77-3.76.01-1.3.28-2.6.77-3.76.49-1.16 1.18-2.18 2.03-3.04.86-.86 1.88-1.54 3.04-2.03 1.16-.49 2.46-.76 3.76-.77.62-.01 1.24-.05 1.86-.14 1.31-.2 2.6-.64 3.8-1.33 1.2-.69 2.25-1.58 3.07-2.71 1.13-1.13 1.67-2.69 1.75-4.22.05-1.26.06-1.64.06-4.849 0-3.205-.012-3.584-.069-4.849-.149-3.225-1.664-4.771-4.919-4.919-1.266-.058-1.644-.07-4.85-.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                </svg>
+                TikTok
+              </a>
+              
+              <a 
+                href="https://www.instagram.com/p/DM-yYtzohdJ/?utm_source=ig_web_copy_link" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                </svg>
+                Instagram
+              </a>
+              
+              <a 
+                href="https://www.linkedin.com/company/liberty-place-property-management/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+                LinkedIn
+              </a>
+            </div>
+            
+            <div className="text-gray-400 text-sm">
+              <p>© 2025 Liberty Place Property Management, LLC. All rights reserved.</p>
+              <p className="mt-2">1841 Broadway, Suite 400, New York, NY 10023</p>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
