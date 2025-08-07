@@ -7,6 +7,7 @@ export interface FileUploadWebhookData {
   document_name: string;
   file_base64: string;
   application_id: string;
+  comment_id?: string;
 }
 
 export interface FormDataWebhookData {
@@ -177,6 +178,38 @@ export interface PDFWebhookData {
   submission_type: 'pdf_generation';
 }
 
+// Helper function to clean sensitive data from objects
+const cleanObject = (obj: any) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  
+  const fieldsToRemove = [
+    'documents',
+    'encryptedDocuments',
+    'uploaded_documents',
+    'applicantBankRecords',
+    'coApplicantBankRecords',
+    'guarantorBankRecords',
+    'guarantor.encryptedDocuments',
+    'coApplicant.encryptedDocuments',
+    'applicant.encryptedDocuments'
+  ];
+
+  const cleaned = { ...obj };
+  fieldsToRemove.forEach(field => {
+    const parts = field.split('.');
+    let current = cleaned;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (current[parts[i]] && typeof current[parts[i]] === 'object') {
+        current = current[parts[i]];
+      } else {
+        break;
+      }
+    }
+    delete current[parts[parts.length - 1]];
+  });
+  return cleaned;
+};
+
 export class WebhookService {
   private static readonly FILE_WEBHOOK_URL = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
   private static readonly FORM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
@@ -199,7 +232,8 @@ export class WebhookService {
     sectionName: string,
     documentName: string,
     applicationId?: string,
-    zoneinfo?: string
+    zoneinfo?: string,
+    commentId?: string
   ): Promise<{ success: boolean; error?: string; body?: string }> {
     // Create a unique key for this file upload
     const fileUploadKey = `${referenceId}-${sectionName}-${file.name}-${file.size}`;
@@ -249,7 +283,8 @@ export class WebhookService {
       section_name: sectionName,
       document_name: documentName,
       file_base64: fileBase64,
-      application_id: applicationId || ''
+      application_id: applicationId || '',
+      comment_id: commentId
     };
 
     console.log(`📤 Sending file to webhook: ${file.name}`);
@@ -338,10 +373,21 @@ export class WebhookService {
         // Store response in DynamoDB with extracted URL
         try {
           if (applicationId) {
+            // Load existing draft first
+            let existingDraft = null;
+            try {
+              existingDraft = await DynamoDBService.loadDraft(applicationId);
+            } catch (loadError) {
+              console.warn('⚠️ Could not load existing draft:', loadError);
+            }
+
+            // Prepare the new draft data
             const draftData = {
               applicantId: applicationId,
               formData: {
+                ...existingDraft?.formData,
                 uploadedFiles: {
+                  ...(existingDraft?.formData?.uploadedFiles || {}),
                   [sectionName]: [{
                     file_name: file.name,
                     file_size: file.size,
@@ -350,16 +396,20 @@ export class WebhookService {
                     webhook_response: responseDetails,
                     extracted_url: extractedUrl,
                     webhook_status: 'success',
-                    webhook_status_code: response.status
+                    webhook_status_code: response.status,
+                    comment_id: commentId
                   }]
                 }
               },
-              currentStep: -1, // Use -1 to indicate this is a file upload draft
+              currentStep: existingDraft?.currentStep ?? -1, // Use -1 to indicate this is a file upload draft
               lastSaved: new Date().toISOString(),
-              isComplete: false
+              isComplete: existingDraft?.isComplete ?? false
             };
+
+            // Clean the draft data to remove any sensitive information
+            const cleanDraftData = cleanObject(draftData);
             
-            await DynamoDBService.saveDraft(applicationId, draftData.formData, draftData.currentStep, draftData.isComplete);
+            await DynamoDBService.saveDraft(applicationId, cleanDraftData.formData, cleanDraftData.currentStep, cleanDraftData.isComplete);
             console.log('✅ Webhook response saved to DynamoDB for file:', file.name);
           } else {
             console.warn('⚠️ No applicationId provided, skipping DynamoDB save');
@@ -465,16 +515,8 @@ export class WebhookService {
     this.ongoingSubmissions.add(submissionId);
     
     try {
-      // Create a clean form data object without large file content
-      const cleanFormData = { ...formData };
-      
-      // Remove large data that could cause payload size issues
-      delete cleanFormData.documents;
-      delete cleanFormData.encryptedDocuments;
-      delete cleanFormData.uploaded_documents;
-      delete cleanFormData.applicantBankRecords;
-      delete cleanFormData.coApplicantBankRecords;
-      delete cleanFormData.guarantorBankRecords;
+      // Clean the form data to remove sensitive information
+      const cleanFormData = cleanObject({ ...formData });
       
       // Format data for external webhook
       const webhookData: FormDataWebhookData = {

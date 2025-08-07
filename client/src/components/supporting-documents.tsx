@@ -294,6 +294,7 @@ export const SupportingDocuments = ({
                       enableWebhook={enableWebhook}
                       applicationId={applicationId}
                       zoneinfo={zoneinfo}
+                      commentId={document.id}
                     />
                     {/* Hidden input field for webhook response data */}
                     {formData.webhookResponses?.[document.id] && (

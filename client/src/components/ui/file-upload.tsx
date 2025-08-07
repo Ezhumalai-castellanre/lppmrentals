@@ -26,6 +26,7 @@ interface FileUploadProps {
   applicationId?: string;
   applicantId?: string;
   zoneinfo?: string;
+  commentId?: string; // Added for document tracking
 }
 
 export function FileUpload({
@@ -47,7 +48,8 @@ export function FileUpload({
   enableWebhook = false,
   applicationId,
   applicantId,
-  zoneinfo
+  zoneinfo,
+  commentId
 }: FileUploadProps) {
   // Don't show the uploader if we have an initial webhook response
   if (initialWebhookResponse) {
@@ -61,6 +63,7 @@ export function FileUpload({
             name={`webhook_response_${sectionName}`}
             value={initialWebhookResponse.body || JSON.stringify(initialWebhookResponse)}
             data-document-type={sectionName}
+            data-comment-id={commentId}
           />
         </div>
       </div>
@@ -361,6 +364,7 @@ export function FileUpload({
           value={webhookResponse}
           data-document-type={sectionName}
           data-file-type="s3-url"
+          data-comment-id={commentId}
         />
       )}
       

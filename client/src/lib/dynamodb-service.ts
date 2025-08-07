@@ -6,9 +6,26 @@ const SAVE_DRAFT_ENDPOINT = `${API_BASE}/save-draft`;
 const LOAD_DRAFT_ENDPOINT = `${API_BASE}/load-draft`;
 const DELETE_DRAFT_ENDPOINT = `${API_BASE}/delete-draft`;
 
+export interface UploadedDocument {
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  upload_date: string;
+  webhook_response: any;
+  extracted_url: string;
+  webhook_status: 'success' | 'error';
+  webhook_status_code: number;
+  comment_id?: string;
+}
+
 export interface DraftData {
   applicantId: string;
-  formData: any;
+  formData: {
+    uploadedFiles?: {
+      [sectionName: string]: UploadedDocument[];
+    };
+    [key: string]: any;
+  };
   currentStep: number;
   lastSaved: string;
   isComplete: boolean;
