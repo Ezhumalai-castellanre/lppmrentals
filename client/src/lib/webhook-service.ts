@@ -179,7 +179,7 @@ export interface PDFWebhookData {
 }
 
 // Helper function to extract URL from webhook response
-const extractWebhookUrl = (response: any): string | null => {
+const extractWebhookUrl = (response: any, category?: string, sectionName?: string): string | null => {
   if (!response) return null;
   
   // If response is a string URL, return it directly
@@ -191,6 +191,17 @@ const extractWebhookUrl = (response: any): string | null => {
     // If response is a JSON string, parse it
     const parsed = typeof response === 'string' ? JSON.parse(response) : response;
     
+    // If we have category and section info, try to extract from nested structure
+    if (category && sectionName) {
+      const categoryData = parsed[category];
+      if (categoryData && typeof categoryData === 'object') {
+        const sectionUrl = categoryData[sectionName];
+        if (typeof sectionUrl === 'string' && sectionUrl.startsWith('http')) {
+          return sectionUrl;
+        }
+      }
+    }
+    
     // Check various possible locations of the URL
     if (typeof parsed === 'string' && parsed.startsWith('http')) {
       return parsed;
@@ -198,6 +209,16 @@ const extractWebhookUrl = (response: any): string | null => {
       return parsed.body;
     } else if (parsed.url && typeof parsed.url === 'string' && parsed.url.startsWith('http')) {
       return parsed.url;
+    }
+
+    // Try to find URL in nested structure
+    if (typeof parsed === 'object') {
+      for (const key in parsed) {
+        if (typeof parsed[key] === 'object') {
+          const nestedUrl = extractWebhookUrl(parsed[key]);
+          if (nestedUrl) return nestedUrl;
+        }
+      }
     }
   } catch (e) {
     console.warn('Failed to parse webhook response:', e);
@@ -222,13 +243,47 @@ const cleanObject = (obj: any) => {
     'applicant.encryptedDocuments'
   ];
 
-  // Create a map of webhook responses
-  const webhookUrls: Record<string, string> = {};
+  // Create a map of webhook responses organized by applicant type
+  const webhookUrls: Record<string, Record<string, string>> = {
+    applicant: {},
+    coApplicant: {},
+    guarantor: {}
+  };
+
   if (obj.webhookResponses) {
+    // Handle both flat and nested webhook responses
     Object.entries(obj.webhookResponses).forEach(([key, value]) => {
-      const url = extractWebhookUrl(value);
-      if (url) {
-        webhookUrls[key] = url;
+      if (typeof value === 'object' && value !== null) {
+        // Handle nested structure
+        if (key === 'applicant' || key === 'coApplicant' || key === 'guarantor') {
+          Object.entries(value as Record<string, any>).forEach(([sectionName, sectionValue]) => {
+            const url = extractWebhookUrl(sectionValue, key, sectionName);
+            if (url) {
+              webhookUrls[key][sectionName] = url;
+              
+              // Update metadata if it exists
+              if (obj.uploadedFilesMetadata?.[key]?.[sectionName]) {
+                obj.uploadedFilesMetadata[key][sectionName].webhook_body = url;
+                delete obj.uploadedFilesMetadata[key][sectionName].webhook_status_code;
+              }
+            }
+          });
+        }
+      } else {
+        // Handle flat structure
+        const category = key.startsWith('coApplicant_') ? 'coApplicant' :
+                        key.startsWith('guarantor_') ? 'guarantor' : 'applicant';
+        const baseName = key.replace(/^(coApplicant_|guarantor_)/, '');
+        const url = extractWebhookUrl(value);
+        if (url) {
+          webhookUrls[category][baseName] = url;
+          
+          // Update metadata if it exists
+          if (obj.uploadedFilesMetadata?.[category]?.[baseName]) {
+            obj.uploadedFilesMetadata[category][baseName].webhook_body = url;
+            delete obj.uploadedFilesMetadata[category][baseName].webhook_status_code;
+          }
+        }
       }
     });
   }
@@ -248,9 +303,27 @@ const cleanObject = (obj: any) => {
     delete current[parts[parts.length - 1]];
   });
 
-  // Remove uploadedDocuments but preserve webhook URLs
+  // Update webhook responses with organized structure
   if (cleaned.webhookResponses) {
     cleaned.webhookResponses = webhookUrls;
+  }
+
+  // Organize uploadedFilesMetadata by applicant type if it exists
+  if (cleaned.uploadedFilesMetadata) {
+    const organizedMetadata: Record<string, Record<string, any>> = {
+      applicant: {},
+      coApplicant: {},
+      guarantor: {}
+    };
+
+    Object.entries(cleaned.uploadedFilesMetadata).forEach(([key, value]) => {
+      const category = key.startsWith('coApplicant_') ? 'coApplicant' :
+                      key.startsWith('guarantor_') ? 'guarantor' : 'applicant';
+      const baseName = key.replace(/^(coApplicant_|guarantor_)/, '');
+      organizedMetadata[category][baseName] = value;
+    });
+
+    cleaned.uploadedFilesMetadata = organizedMetadata;
   }
 
   return cleaned;
@@ -427,30 +500,54 @@ export class WebhookService {
               console.warn('⚠️ Could not load existing draft:', loadError);
             }
 
-            // Extract existing webhook URLs
+            // Extract existing webhook URLs and metadata
             const existingWebhookUrls = existingDraft?.formData?.webhookResponses || {};
+            const existingMetadata = existingDraft?.formData?.uploadedFilesMetadata || {};
 
-            // Prepare the new draft data
+            // Determine document category based on section name
+            const getDocumentCategory = (section: string) => {
+              if (section.startsWith('coApplicant_')) return 'coApplicant';
+              if (section.startsWith('guarantor_')) return 'guarantor';
+              return 'applicant';
+            };
+
+            // Get the base section name without prefix
+            const getBaseSectionName = (section: string) => {
+              const category = getDocumentCategory(section);
+              if (category === 'applicant') return section;
+              return section.replace(`${category}_`, '');
+            };
+
+            const category = getDocumentCategory(sectionName);
+            const baseSectionName = getBaseSectionName(sectionName);
+
+            // Prepare the new draft data with organized sections
             const draftData = {
               applicantId: applicationId,
               formData: {
                 ...existingDraft?.formData,
-                // Store only the webhook URLs, not the full response
+                // Store webhook URLs organized by applicant type
                 webhookResponses: {
                   ...existingWebhookUrls,
-                  [sectionName]: extractedUrl
+                  [category]: {
+                    ...(existingWebhookUrls[category] || {}),
+                    [baseSectionName]: extractedUrl
+                  }
                 },
-                // Keep track of uploaded files metadata separately
+                // Keep track of uploaded files metadata organized by applicant type
                 uploadedFilesMetadata: {
-                  ...(existingDraft?.formData?.uploadedFilesMetadata || {}),
-                  [sectionName]: {
-                    file_name: file.name,
-                    file_size: file.size,
-                    mime_type: file.type,
-                    upload_date: new Date().toISOString(),
-                    webhook_status: 'success',
-                    webhook_status_code: response.status,
-                    comment_id: commentId
+                  ...existingMetadata,
+                  [category]: {
+                    ...(existingMetadata[category] || {}),
+                    [baseSectionName]: {
+                      file_name: file.name,
+                      file_size: file.size,
+                      mime_type: file.type,
+                      upload_date: new Date().toISOString(),
+                      webhook_status: 'success',
+                      webhook_body: extractedUrl,
+                      comment_id: commentId
+                    }
                   }
                 }
               },
