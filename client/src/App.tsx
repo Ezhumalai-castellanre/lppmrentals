@@ -14,7 +14,10 @@ import LoginPage from "@/pages/login";
 import TestAuthPage from "@/pages/test-auth";
 import TestApplicationsPage from "@/pages/test-applications";
 import ChangePasswordPage from "@/pages/change-password";
+import LandingPage from "@/pages/landing";
 import NotFound from "@/pages/not-found";
+import VacantUnitsTest from "@/components/vacant-units-test";
+import AvailableRentalsPage from "@/pages/available-rentals";
 import { DraftProvider, useDraft } from "@/contexts/DraftContext";
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
@@ -77,24 +80,14 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function Router() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
-      <Route path="/test-auth">
-        <ProtectedRoute>
-          <AppLayout>
-            <TestAuthPage />
-          </AppLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/change-password">
-        <ProtectedRoute>
-          <AppLayout>
-            <ChangePasswordPage />
-          </AppLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/">
+      
+      {/* Protected Routes - Only for authenticated users */}
+      <Route path="/application">
         <ProtectedRoute>
           <AppLayout>
             <RentalApplicationPage />
@@ -122,6 +115,50 @@ function Router() {
           </AppLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/test-auth">
+        <ProtectedRoute>
+          <AppLayout>
+            <TestAuthPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/vacant-units-test">
+        <ProtectedRoute>
+          <AppLayout>
+            <VacantUnitsTest />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/change-password">
+        <ProtectedRoute>
+          <AppLayout>
+            <ChangePasswordPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Root route - Conditional based on authentication */}
+      <Route path="/">
+        {isAuthenticated ? (
+          <ProtectedRoute>
+            <AppLayout>
+              <AvailableRentalsPage />
+            </AppLayout>
+          </ProtectedRoute>
+        ) : (
+          <LandingPage />
+        )}
+      </Route>
+      
+      {/* Available Rentals route - Only for authenticated users */}
+      <Route path="/available-rentals">
+        <ProtectedRoute>
+          <AppLayout>
+            <AvailableRentalsPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      
       <Route component={NotFound} />
     </Switch>
   );

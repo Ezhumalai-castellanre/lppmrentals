@@ -1,7 +1,7 @@
 import { createCorsResponse, handlePreflight } from './utils.js';
 
 export const handler = async (event, context) => {
-  console.log('Monday units function called with:', {
+  console.log('Monday available rentals function called with:', {
     path: event.path,
     httpMethod: event.httpMethod,
     queryStringParameters: event.queryStringParameters
@@ -20,37 +20,36 @@ export const handler = async (event, context) => {
     const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN || "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjUzOTcyMTg4NCwiYWFpIjoxMSwidWlkIjo3ODE3NzU4NCwiaWFkIjoiMjAyNS0wNy0xNlQxMjowMDowOC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NTUxNjQ0NSwicmduIjoidXNlMSJ9.s43_kjRmv-QaZ92LYdRlEvrq9CYqxKhh3XXpR-8nhKU";
     const BOARD_ID = process.env.MONDAY_BOARD_ID || "8740450373";
 
-    console.log('Fetching from Monday.com with token:', MONDAY_API_TOKEN ? 'Present' : 'Missing');
+    console.log('Fetching available rentals from Monday.com with token:', MONDAY_API_TOKEN ? 'Present' : 'Missing');
     console.log('Board ID:', BOARD_ID);
 
-  
-      const query = `
-  query {
-    boards(ids: [${BOARD_ID}]) {
-      items_page(limit: 100) {
-        items {
-          id
-          name
-          column_values {
-            id
-            value
-            text
-          }
-          subitems {
-            id
-            name
-            column_values {
+    // Query to get all items with their subitems (media files)
+    const query = `
+      query {
+        boards(ids: [${BOARD_ID}]) {
+          items_page(limit: 100) {
+            items {
               id
-              value
-              text
+              name
+              column_values {
+                id
+                value
+                text
+              }
+              subitems {
+                id
+                name
+                column_values {
+                  id
+                  value
+                  text
+                }
+              }
             }
           }
         }
       }
-    }
-  }
-`;
-
+    `;
 
     const response = await fetch('https://api.monday.com/v2', {
       method: 'POST',
@@ -69,36 +68,43 @@ export const handler = async (event, context) => {
     const result = await response.json();
     console.log('Monday API response:', JSON.stringify(result, null, 2));
     const items = result?.data?.boards?.[0]?.items_page?.items ?? [];
+    
     // Debug: Print all column IDs and values for each item
     items.forEach((item, idx) => {
       console.log(`Item #${idx + 1} (${item.name}):`);
       item.column_values.forEach(col => {
         console.log(`  - ${col.id}: ${col.text}`);
       });
+      console.log(`  Subitems: ${item.subitems?.length || 0}`);
     });
     
-    const units = items.map((item) => {
-      // Extract images from the new image column (ink_mktj22y9)
-      let images = [];
-      const imageCol = item.column_values.find(col => col.id === "ink_mktj22y9");
-      if (imageCol && imageCol.value) {
-        try {
-          const imageData = JSON.parse(imageCol.value);
-          if (Array.isArray(imageData)) {
-            images = imageData.map(img => ({
-              url: img.url,
-              name: img.name || '',
-              id: img.id || ''
-            }));
-          }
-        } catch (e) {
-          console.log('Error parsing image column value:', e);
-        }
-      }
-
-      // Extract amenities
+    const rentals = items.map((item) => {
+      // Extract amenities from long_text_mktjp2nj
       const amenitiesCol = item.column_values.find(col => col.id === "long_text_mktjp2nj");
       const amenities = amenitiesCol ? amenitiesCol.text : "";
+
+      // Extract media files from subitems
+      const mediaFiles = item.subitems?.map(subitem => {
+        const linkCol = subitem.column_values.find(col => col.id === "link_mktj22y9");
+        if (linkCol && linkCol.value) {
+          try {
+            const linkData = JSON.parse(linkCol.value);
+            return {
+              id: subitem.id,
+              name: subitem.name,
+              url: linkData.url,
+              type: linkData.text || "Media",
+              isVideo: subitem.name.toLowerCase().includes('.mov') || 
+                      subitem.name.toLowerCase().includes('.mp4') ||
+                      subitem.name.toLowerCase().includes('.avi')
+            };
+          } catch (e) {
+            console.log('Error parsing link column value:', e);
+            return null;
+          }
+        }
+        return null;
+      }).filter(Boolean) || [];
 
       return {
         id: item.id,
@@ -106,21 +112,21 @@ export const handler = async (event, context) => {
         propertyName: item.column_values.find((col) => col.id === "color_mkp7xdce")?.text || "",
         unitType: item.column_values.find((col) => col.id === "color_mkp77nrv")?.text || "",
         status: item.column_values.find((col) => col.id === "color_mkp7fmq4")?.text || "",
-        monthlyRent: item.column_values.find((col) => col.id === "numeric_mksz7rkz")?.text || "",
+        monthlyRent: item.column_values.find((col) => col.id === "numeric_mkp7xr4a")?.text || "",
         amenities: amenities,
-        images: images
+        mediaFiles: mediaFiles
       };
     });
 
-    console.log('Returning units:', units.length);
-    return createCorsResponse(200, { units });
+    console.log('Returning available rentals:', rentals.length);
+    return createCorsResponse(200, { rentals });
 
   } catch (error) {
     console.error('Monday API proxy error:', error);
     
     return createCorsResponse(500, { 
-      error: "Failed to fetch units from Monday.com",
+      error: "Failed to fetch available rentals from Monday.com",
       details: error.message 
     });
   }
-}; 
+};
