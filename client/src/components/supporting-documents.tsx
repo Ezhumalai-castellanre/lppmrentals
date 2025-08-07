@@ -187,9 +187,9 @@ export const SupportingDocuments = ({
           return document.id !== 'accountant_letter';
         }
         
-        // For self-employed: show Accountant Letter, hide Employment Letter
+        // For self-employed: show Financial Documents, hide Employment Documents
         if (employmentType === 'self-employed') {
-          return document.id !== 'employment_letter';
+          return category.category !== 'Employment Documents';
         }
         
         // For other employment types: show all documents
