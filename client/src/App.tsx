@@ -8,6 +8,7 @@ import ProtectedRoute from "@/components/protected-route";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import RentalApplicationPage from "@/pages/rental-application";
+import MondayApplicationPage from "@/pages/monday-application";
 import MissingDocumentsPage from "@/pages/missing-documents";
 import ApplicationsPage from "@/pages/applications";
 import LoginPage from "@/pages/login";
@@ -86,6 +87,15 @@ function Router() {
     <Switch>
       <Route path="/login" component={LoginPage} />
       
+      {/* Available Rentals route - Only for NON-authenticated users */}
+      <Route path="/available-rentals">
+        {!isAuthenticated ? (
+          <AvailableRentalsPage />
+        ) : (
+          <LandingPage />
+        )}
+      </Route>
+      
       {/* Protected Routes - Only for authenticated users */}
       <Route path="/application">
         <ProtectedRoute>
@@ -93,6 +103,9 @@ function Router() {
             <RentalApplicationPage />
           </AppLayout>
         </ProtectedRoute>
+      </Route>
+      <Route path="/monday-application">
+        <MondayApplicationPage />
       </Route>
       <Route path="/missing-documents">
         <ProtectedRoute>
@@ -142,21 +155,12 @@ function Router() {
         {isAuthenticated ? (
           <ProtectedRoute>
             <AppLayout>
-              <AvailableRentalsPage />
+              <ApplicationsPage />
             </AppLayout>
           </ProtectedRoute>
         ) : (
           <LandingPage />
         )}
-      </Route>
-      
-      {/* Available Rentals route - Only for authenticated users */}
-      <Route path="/available-rentals">
-        <ProtectedRoute>
-          <AppLayout>
-            <AvailableRentalsPage />
-          </AppLayout>
-        </ProtectedRoute>
       </Route>
       
       <Route component={NotFound} />

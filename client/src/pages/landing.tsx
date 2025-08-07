@@ -2,12 +2,215 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { MondayApiService, RentalItem } from '@/lib/monday-api';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, Home, MapPin, DollarSign, Image, Eye, Play, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Loader2, Home, MapPin, DollarSign, Image, Eye, Play, ChevronLeft, ChevronRight, X, Send, Square, Wifi, Car, Shield, Wrench, ChefHat, Bath, Sparkles, Users, Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { PropertyMap } from '@/components/property-map';
+
+// PropertyCard Component with enhanced UI
+function PropertyCard({ rental, onViewDetails, onApplyNow }: {
+  rental: RentalItem;
+  onViewDetails: (rental: RentalItem) => void;
+  onApplyNow: (rental: RentalItem) => void;
+}) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const images = rental.mediaFiles?.map(file => file.url) || [];
+  const hasImages = images.length > 0;
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+
+
+  return (
+    <div className="max-w-md mx-auto">
+      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-0 shadow-md">
+        {/* Images Slider - Top Section */}
+        <div className="relative">
+          <div className="relative group">
+            {/* Main Image */}
+            <div className="relative h-48 bg-muted">
+              {hasImages ? (
+                <img 
+                  src={images[currentImageIndex]} 
+                  alt={`Property image ${currentImageIndex + 1}`}
+                  className="w-full h-full object-cover transition-all duration-300"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const fallback = document.createElement('div');
+                    fallback.className = 'w-full h-full flex items-center justify-center bg-gray-200 text-gray-600';
+                    fallback.innerHTML = `
+                      <div class="text-center">
+                        <div class="text-2xl mb-2">🖼️</div>
+                        <div class="text-sm">Image not available</div>
+                      </div>
+                    `;
+                    target.parentNode?.appendChild(fallback);
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-600">
+                  <div className="text-center">
+                    <Image className="w-8 h-8 mx-auto mb-2" />
+                    <div className="text-sm">No images available</div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Navigation Arrows */}
+              {hasImages && images.length > 1 && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  
+                  {/* Image Counter Overlay */}
+                  <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                    {currentImageIndex + 1} / {images.length}
+                  </div>
+                </>
+              )}
+            </div>
+            
+            {/* Dots Indicator */}
+            {hasImages && images.length > 1 && (
+              <div className="flex justify-center gap-1.5 mt-3 px-4">
+                {images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                      index === currentImageIndex 
+                        ? 'bg-primary w-6' 
+                        : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+            
+            {/* Thumbnail Strip */}
+            {hasImages && images.length > 1 && (
+              <div className="flex gap-2 mt-3 px-4 overflow-x-auto pb-1 justify-center">
+                {images.map((src, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`relative flex-shrink-0 w-12 h-12 rounded-md overflow-hidden transition-all duration-200 ${
+                      index === currentImageIndex 
+                        ? 'ring-2 ring-primary ring-offset-1' 
+                        : 'opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    <img 
+                      src={src} 
+                      alt={`Thumbnail ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <CardHeader className="pb-4">
+          {/* Unit Information */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 p-2 rounded-lg">
+                  <Home className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-foreground">{rental.name}</h3>
+                  <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                    <MapPin className="w-3 h-3" />
+                    <span>{rental.propertyName}</span>
+                  </div>
+                </div>
+              </div>
+              <Badge 
+                variant={rental.status === 'Vacant' ? 'secondary' : 'outline'} 
+                className={rental.status === 'Vacant' ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}
+              >
+                <div className={`w-2 h-2 rounded-full mr-1 ${rental.status === 'Vacant' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                {rental.status}
+              </Badge>
+            </div>
+
+            {/* Property Details */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                <div className="bg-blue-100 p-1.5 rounded">
+                  <Home className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Type</p>
+                  <p className="font-semibold text-sm">{rental.unitType || 'STD'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                <div className="bg-green-100 p-1.5 rounded">
+                  <DollarSign className="w-4 h-4 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Monthly Rent</p>
+                  <p className="font-bold text-sm">{rental.monthlyRent || 'Contact'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          <Separator />
+        </CardContent>
+
+        <CardFooter className="pt-6 pb-4 bg-muted/20">
+          <div className="grid grid-cols-2 gap-3 w-full">
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2 hover:bg-muted"
+              onClick={() => onViewDetails(rental)}
+            >
+              <Eye className="w-4 h-4" />
+              View Details
+            </Button>
+            <Button 
+              className="flex items-center gap-2 bg-primary hover:bg-primary/90"
+              onClick={() => onApplyNow(rental)}
+            >
+              <Send className="w-4 h-4" />
+              Apply Now
+            </Button>
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
@@ -15,7 +218,7 @@ export default function LandingPage() {
   const [rentals, setRentals] = useState<RentalItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [showVacantOnly, setShowVacantOnly] = useState(false);
+  const [showVacantOnly, setShowVacantOnly] = useState(true);
   const [selectedRental, setSelectedRental] = useState<RentalItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
@@ -29,10 +232,7 @@ export default function LandingPage() {
       setLoading(true);
       const rentalsData = await MondayApiService.fetchAvailableRentals();
       setRentals(rentalsData);
-      
-
-      
-              console.log('Fetched rentals:', rentalsData);
+      console.log('Fetched rentals:', rentalsData);
     } catch (error) {
       console.error('Error fetching rentals:', error);
       toast({
@@ -46,31 +246,36 @@ export default function LandingPage() {
   };
 
   const handleApplyNow = (rental: RentalItem) => {
-    if (isAuthenticated) {
-      // For authenticated users, redirect to application form
-      sessionStorage.setItem('selectedRental', JSON.stringify(rental));
-      console.log('Redirecting to application form for rental:', rental.name);
-      setLocation('/application');
-    } else {
-      // For non-authenticated users, redirect to login
-      sessionStorage.setItem('selectedRental', JSON.stringify(rental));
-      console.log('Redirecting to login page for rental:', rental.name);
-      setLocation('/login');
+    // Build Monday.com form URL with property name and unit number
+    const baseUrl = 'https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1';
+    const params = new URLSearchParams();
+    
+    // Map property name to color_mktgkr4e parameter
+    if (rental.propertyName) {
+      params.append('color_mktgkr4e', rental.propertyName);
     }
+    
+    // Map unit number to short_text800omovg parameter
+    if (rental.name) {
+      params.append('short_text800omovg', rental.name);
+    }
+    
+    // Construct the final URL
+    const formUrl = params.toString() ? `${baseUrl}&${params.toString()}` : baseUrl;
+    
+    console.log('Opening Monday.com form in new tab for rental:', rental.name);
+    console.log('Form URL:', formUrl);
+    
+    // Open the form in a new tab
+    window.open(formUrl, '_blank');
   };
 
   const handleViewDetails = (rental: RentalItem) => {
-    if (isAuthenticated) {
-      // For authenticated users, show detailed modal
-      setSelectedRental(rental);
-      setCurrentMediaIndex(0);
-      setIsModalOpen(true);
-    } else {
-      // For non-authenticated users, redirect to login
-      sessionStorage.setItem('selectedRental', JSON.stringify(rental));
-      console.log('Redirecting to login page for rental details:', rental.name);
-      setLocation('/login');
-    }
+    // Show detailed modal for all users
+    console.log('Opening detailed view for rental:', rental.name);
+    setSelectedRental(rental);
+    setCurrentMediaIndex(0);
+    setIsModalOpen(true);
   };
 
   const handlePreviousMedia = () => {
@@ -111,73 +316,6 @@ export default function LandingPage() {
     }).format(num);
   };
 
-  const renderMediaPreview = (mediaFiles: RentalItem['mediaFiles']) => {
-    if (!mediaFiles || mediaFiles.length === 0) {
-      return (
-        <div className="h-48 bg-gray-100 flex items-center justify-center">
-          <Image className="h-12 w-12 text-gray-400" />
-        </div>
-      );
-    }
-
-    const firstMedia = mediaFiles[0];
-    
-    if (firstMedia.isVideo) {
-      return (
-        <div className="relative h-48 bg-gray-100 overflow-hidden">
-          <video 
-            src={firstMedia.url} 
-            className="w-full h-full object-cover"
-            controls
-          />
-          <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
-            <Play className="w-3 h-3 inline mr-1" />
-            Video
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="relative h-48 bg-gray-100 overflow-hidden">
-        <img 
-          src={firstMedia.url} 
-          alt={firstMedia.name}
-          className="w-full h-full object-cover"
-        />
-        {mediaFiles.length > 1 && (
-          <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-            +{mediaFiles.length - 1} more
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderAmenities = (amenities: string) => {
-    if (!amenities) return null;
-    
-    const amenityList = amenities.split('\n').filter(line => line.trim().startsWith('•'));
-    
-    return (
-      <div className="mt-3">
-        <div className="text-xs text-gray-600 space-y-1">
-          {amenityList.slice(0, 3).map((amenity, index) => (
-            <div key={index} className="flex items-center">
-              <span className="w-1 h-1 bg-gray-400 rounded-full mr-2"></span>
-              {amenity.trim().substring(1).trim()}
-            </div>
-          ))}
-          {amenityList.length > 3 && (
-            <div className="text-xs text-gray-500">
-              +{amenityList.length - 3} more amenities
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   const renderDetailedAmenities = (amenities: string) => {
     if (!amenities) return null;
     
@@ -200,7 +338,9 @@ export default function LandingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f2f8fe' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ 
+        background: 'linear-gradient(135deg, #dbeef8 0%, #daf7ef 100%)'
+      }}>
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
           <p className="text-gray-600">Loading available rentals...</p>
@@ -212,14 +352,32 @@ export default function LandingPage() {
   const filteredRentals = getFilteredRentals();
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f2f8fe' }}>
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            {isAuthenticated ? 'Available Rentals' : 'Find Your Perfect Home'}
+    <div className="min-h-screen" style={{ 
+      background: 'linear-gradient(135deg, #dbeef8 0%, #daf7ef 100%)'
+    }}>
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header Section */}
+        <div className="text-center mb-12">
+          <div className="flex justify-center mb-8">
+            <img 
+              src="https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/image.png"
+              alt="Liberty Place Property Management Logo"
+              className="h-32 w-auto object-contain drop-shadow-sm"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                // Show fallback text if image fails to load
+                const fallback = document.createElement('div');
+                fallback.className = 'text-4xl font-bold text-blue-600';
+                fallback.textContent = 'Liberty Place Property Management';
+                target.parentNode?.appendChild(fallback);
+              }}
+            />
+          </div>
+          <h1 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
+            {isAuthenticated ? 'Available Rentals' : 'Liberty Place Property Management'}
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
             {isAuthenticated 
               ? 'Browse our available properties and start your application today.'
               : 'Discover beautiful properties in prime locations. Sign in to apply.'
@@ -227,80 +385,38 @@ export default function LandingPage() {
           </p>
         </div>
 
-        {/* Filters */}
-        <div className="mb-6 flex justify-center">
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="vacant-only"
-              checked={showVacantOnly}
-              onChange={(e) => setShowVacantOnly(e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        {/* Property Map - Top Section */}
+        {filteredRentals.length > 0 && (
+          <div className="mb-12">
+            <PropertyMap
+              rentals={filteredRentals}
+              onViewDetails={handleViewDetails}
+              onApplyNow={handleApplyNow}
             />
-            <label htmlFor="vacant-only" className="text-sm font-medium text-gray-700">
-              Show Vacant Only
-            </label>
           </div>
-        </div>
+        )}
 
-        {/* Rental Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredRentals.map((rental) => (
-            <Card key={rental.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              {renderMediaPreview(rental.mediaFiles)}
-              
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{rental.name}</CardTitle>
-                    <CardDescription className="flex items-center mt-1">
-                      <MapPin className="w-4 h-4 mr-1 text-gray-500" />
-                      {rental.propertyName}
-                    </CardDescription>
-                  </div>
-                  <Badge 
-                    variant={rental.status === 'Vacant' ? 'default' : 'secondary'}
-                    className="ml-2"
-                  >
-                    {rental.status}
-                  </Badge>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="pt-0">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center">
-                    <DollarSign className="w-4 h-4 mr-1 text-green-600" />
-                    <span className="font-semibold text-green-600">
-                      {formatRent(rental.monthlyRent)}
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-500">{rental.unitType}</span>
-                </div>
-                
-                {renderAmenities(rental.amenities)}
-                
-                <div className="flex gap-2 mt-4">
-                  <Button 
-                    onClick={() => handleViewDetails(rental)}
-                    variant="outline" 
-                    size="sm"
-                    className="flex-1"
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    View Details
-                  </Button>
-                  <Button 
-                    onClick={() => handleApplyNow(rental)}
-                    size="sm"
-                    className="flex-1"
-                  >
-                    Apply Now
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        {/* Rental Cards Section */}
+        <div className="space-y-8">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-semibold text-gray-900 mb-2">
+              Available Properties
+            </h2>
+            <p className="text-gray-600">
+              Browse our selection of premium rental properties
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredRentals.map((rental) => (
+              <PropertyCard
+                key={rental.id}
+                rental={rental}
+                onViewDetails={handleViewDetails}
+                onApplyNow={handleApplyNow}
+              />
+            ))}
+          </div>
         </div>
 
         {filteredRentals.length === 0 && (
@@ -351,7 +467,7 @@ export default function LandingPage() {
                             <div class="text-center">
                               <div class="text-2xl mb-2">🎥</div>
                               <div class="text-sm">Video not available</div>
-                              <div class="text-xs text-gray-500">${selectedRental.mediaFiles[currentMediaIndex].name}</div>
+                              <div class="text-xs text-gray-500">${selectedRental.mediaFiles?.[currentMediaIndex]?.name || 'Unknown'}</div>
                             </div>
                           `;
                           target.parentNode?.appendChild(fallback);
@@ -373,7 +489,7 @@ export default function LandingPage() {
                             <div class="text-center">
                               <div class="text-2xl mb-2">🖼️</div>
                               <div class="text-sm">Image not available</div>
-                              <div class="text-xs text-gray-500">${selectedRental.mediaFiles[currentMediaIndex].name}</div>
+                              <div class="text-xs text-gray-500">${selectedRental.mediaFiles?.[currentMediaIndex]?.name || 'Unknown'}</div>
                             </div>
                           `;
                           target.parentNode?.appendChild(fallback);
@@ -444,7 +560,7 @@ export default function LandingPage() {
                 </div>
                 
                 <div>
-                  {renderDetailedAmenities(selectedRental.amenities)}
+                  {renderDetailedAmenities(selectedRental.amenities || '')}
                 </div>
               </div>
               

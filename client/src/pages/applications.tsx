@@ -179,7 +179,7 @@ export default function ApplicationsPage() {
                 You haven't submitted any rental applications yet.
               </p>
               <Button asChild>
-                <a href="/">Start New Application</a>
+                <a href="/application">Start New Application</a>
               </Button>
             </div>
           </div>

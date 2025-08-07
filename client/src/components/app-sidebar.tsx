@@ -47,11 +47,6 @@ export function AppSidebar() {
 
   const navigationItems = [
     {
-      title: "Available Rentals",
-      url: "/",
-      icon: Building,
-    },
-    {
       title: "My Applications",
       url: "/applications",
       icon: ClipboardList,

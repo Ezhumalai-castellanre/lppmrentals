@@ -865,3 +865,41 @@ select:focus {
   font-weight: 900;
   font-style: italic;
 }
+
+/* Map Component Styles */
+.leaflet-container {
+  font-family: 'Poppins', sans-serif;
+}
+
+.leaflet-popup-content {
+  margin: 8px 12px;
+  min-width: 200px;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.leaflet-popup-tip {
+  background: white;
+}
+
+.leaflet-popup-close-button {
+  color: #6b7280;
+  font-size: 18px;
+  font-weight: bold;
+  padding: 4px 8px;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #374151;
+}
+
+/* Ensure map container has proper dimensions */
+.map-container {
+  height: 384px;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
