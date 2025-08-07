@@ -100,8 +100,8 @@ export const handler = async (event, context) => {
         }).filter(Boolean);
       }
 
-      // Extract amenities (long_text_mktkpv9y)
-      const amenitiesCol = item.column_values.find(col => col.id === "long_text_mktkpv9y");
+      // Extract amenities (long_text_mktjp2nj)
+      const amenitiesCol = item.column_values.find(col => col.id === "long_text_mktjp2nj");
       const amenities = amenitiesCol ? amenitiesCol.text : "";
 
       // Filter subitems by vacant status as requested

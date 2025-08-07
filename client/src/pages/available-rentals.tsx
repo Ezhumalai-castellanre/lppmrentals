@@ -21,7 +21,7 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showAllImages, setShowAllImages] = useState(false);
 
-  const images = rental.mediaFiles?.map(file => file.url) || [];
+  const images = rental.mediaFiles?.filter(file => file.url && file.url.trim())?.map(file => file.url) || [];
   const hasImages = images.length > 0;
   const displayedImages = showAllImages ? images : images.slice(0, 4);
   const hasMoreImages = images.length > 4;
@@ -150,10 +150,10 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
                   <Home className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-foreground">{rental.name}</h3>
+                  <h3 className="text-xl font-bold text-foreground">{rental.name || 'Unit not specified'}</h3>
                   <div className="flex items-center gap-1 text-muted-foreground text-sm">
                     <MapPin className="w-3 h-3" />
-                    <span>{rental.propertyName}</span>
+                    <span>{rental.propertyName || 'Address not available'}</span>
                   </div>
                 </div>
               </div>
@@ -174,7 +174,7 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Type</p>
-                  <p className="font-semibold text-sm">{rental.unitType || 'STD'}</p>
+                  <p className="font-semibold text-sm">{rental.unitType || 'Standard'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
@@ -183,7 +183,7 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Monthly Rent</p>
-                  <p className="font-bold text-sm">{rental.monthlyRent || 'Contact'}</p>
+                  <p className="font-bold text-sm">{rental.monthlyRent || 'Contact for pricing'}</p>
                 </div>
               </div>
             </div>
@@ -192,6 +192,22 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
 
         <CardContent className="space-y-6">
           <Separator />
+          
+          {/* Amenities Preview */}
+          {rental.amenities && rental.amenities.trim() && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium text-gray-700">Amenities</span>
+              </div>
+              <div className="text-xs text-gray-600 line-clamp-3">
+                {rental.amenities.length > 150 
+                  ? `${rental.amenities.substring(0, 150)}...` 
+                  : rental.amenities
+                }
+              </div>
+            </div>
+          )}
         </CardContent>
 
         <CardFooter className="pt-6 pb-4 bg-muted/20">
@@ -246,6 +262,20 @@ export default function AvailableRentalsPage() {
       const availableRentals = await MondayApiService.fetchAvailableRentals();
       setRentals(availableRentals);
       console.log('Fetched available rentals:', availableRentals);
+      
+      // Debug: Log each rental's data
+      availableRentals.forEach((rental, index) => {
+        console.log(`Rental ${index + 1}:`, {
+          id: rental.id,
+          name: rental.name,
+          propertyName: rental.propertyName,
+          unitType: rental.unitType,
+          status: rental.status,
+          monthlyRent: rental.monthlyRent,
+          amenities: rental.amenities ? rental.amenities.substring(0, 100) + '...' : 'None',
+          mediaFilesCount: rental.mediaFiles?.length || 0
+        });
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch rentals');
       console.error('Error fetching available rentals:', err);
@@ -267,6 +297,16 @@ export default function AvailableRentalsPage() {
     setCurrentMediaIndex(0);
     setIsModalOpen(true);
   };
+
+  // Reset media index when modal opens/closes
+  useEffect(() => {
+    if (isModalOpen && selectedRental) {
+      const validMediaFiles = selectedRental.mediaFiles?.filter(file => file.url && file.url.trim()) || [];
+      if (currentMediaIndex >= validMediaFiles.length) {
+        setCurrentMediaIndex(0);
+      }
+    }
+  }, [isModalOpen, selectedRental, currentMediaIndex]);
 
   const handleApplyNow = (rental: RentalItem) => {
     // Build Monday.com form URL with property name and unit number
@@ -295,16 +335,18 @@ export default function AvailableRentalsPage() {
 
   const handlePreviousMedia = () => {
     if (selectedRental && selectedRental.mediaFiles) {
+      const validMediaFiles = selectedRental.mediaFiles.filter(file => file.url && file.url.trim());
       setCurrentMediaIndex(prev => 
-        prev === 0 ? selectedRental.mediaFiles!.length - 1 : prev - 1
+        prev === 0 ? validMediaFiles.length - 1 : prev - 1
       );
     }
   };
 
   const handleNextMedia = () => {
     if (selectedRental && selectedRental.mediaFiles) {
+      const validMediaFiles = selectedRental.mediaFiles.filter(file => file.url && file.url.trim());
       setCurrentMediaIndex(prev => 
-        prev === selectedRental.mediaFiles!.length - 1 ? 0 : prev + 1
+        prev === validMediaFiles.length - 1 ? 0 : prev + 1
       );
     }
   };
@@ -492,83 +534,109 @@ export default function AvailableRentalsPage() {
           {selectedRental && (
             <div className="space-y-6">
               {/* Media Gallery */}
-              {selectedRental.mediaFiles && selectedRental.mediaFiles.length > 0 && (
+              {selectedRental.mediaFiles && selectedRental.mediaFiles.filter(file => file.url && file.url.trim()).length > 0 && (
                 <div className="relative">
                   <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                    {selectedRental.mediaFiles[currentMediaIndex]?.isVideo ? (
-                      <video 
-                        src={selectedRental.mediaFiles[currentMediaIndex]?.url}
-                        className="w-full h-full object-cover"
-                        controls
-                        preload="metadata"
-                        onError={(e) => {
-                          console.error('Video loading error:', e);
-                          const target = e.target as HTMLVideoElement;
-                          target.style.display = 'none';
-                          // Show fallback message
-                          const fallback = document.createElement('div');
-                          fallback.className = 'w-full h-full flex items-center justify-center bg-gray-200 text-gray-600';
-                          fallback.innerHTML = `
-                            <div class="text-center">
-                              <div class="text-2xl mb-2">🎥</div>
-                              <div class="text-sm">Video not available</div>
-                              <div class="text-xs text-gray-500">${selectedRental.mediaFiles?.[currentMediaIndex]?.name || 'Unknown'}</div>
+                    {(() => {
+                      const validMediaFiles = selectedRental.mediaFiles?.filter(file => file.url && file.url.trim()) || [];
+                      const currentMedia = validMediaFiles[currentMediaIndex];
+                      
+                      if (!currentMedia) {
+                        return (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-600">
+                            <div className="text-center">
+                              <div className="text-2xl mb-2">🖼️</div>
+                              <div className="text-sm">No media available</div>
                             </div>
-                          `;
-                          target.parentNode?.appendChild(fallback);
-                        }}
-                      />
-                    ) : (
-                      <img 
-                        src={selectedRental.mediaFiles[currentMediaIndex]?.url}
-                        alt={selectedRental.mediaFiles[currentMediaIndex]?.name || 'Property image'}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          console.error('Image loading error:', e);
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          // Show fallback message
-                          const fallback = document.createElement('div');
-                          fallback.className = 'w-full h-full flex items-center justify-center bg-gray-200 text-gray-600';
-                          fallback.innerHTML = `
-                            <div class="text-center">
-                              <div class="text-2xl mb-2">🖼️</div>
-                              <div class="text-sm">Image not available</div>
-                              <div class="text-xs text-gray-500">${selectedRental.mediaFiles?.[currentMediaIndex]?.name || 'Unknown'}</div>
-                            </div>
-                          `;
-                          target.parentNode?.appendChild(fallback);
-                        }}
-                      />
-                    )}
+                          </div>
+                        );
+                      }
+                      
+                      if (currentMedia.isVideo) {
+                        return (
+                          <video 
+                            src={currentMedia.url}
+                            className="w-full h-full object-cover"
+                            controls
+                            preload="metadata"
+                            onError={(e) => {
+                              console.error('Video loading error:', e);
+                              const target = e.target as HTMLVideoElement;
+                              target.style.display = 'none';
+                              // Show fallback message
+                              const fallback = document.createElement('div');
+                              fallback.className = 'w-full h-full flex items-center justify-center bg-gray-200 text-gray-600';
+                              fallback.innerHTML = `
+                                <div class="text-center">
+                                  <div class="text-2xl mb-2">🎥</div>
+                                  <div class="text-sm">Video not available</div>
+                                  <div class="text-xs text-gray-500">${currentMedia.name || 'Unknown'}</div>
+                                </div>
+                              `;
+                              target.parentNode?.appendChild(fallback);
+                            }}
+                          />
+                        );
+                      } else {
+                        return (
+                          <img 
+                            src={currentMedia.url}
+                            alt={currentMedia.name || 'Property image'}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              console.error('Image loading error:', e);
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              // Show fallback message
+                              const fallback = document.createElement('div');
+                              fallback.className = 'w-full h-full flex items-center justify-center bg-gray-200 text-gray-600';
+                              fallback.innerHTML = `
+                                <div class="text-center">
+                                  <div class="text-2xl mb-2">🖼️</div>
+                                  <div class="text-sm">Image not available</div>
+                                  <div class="text-xs text-gray-500">${currentMedia.name || 'Unknown'}</div>
+                                </div>
+                              `;
+                              target.parentNode?.appendChild(fallback);
+                            }}
+                          />
+                        );
+                      }
+                    })()}
                   </div>
                   
                   {/* Navigation Controls */}
-                  {selectedRental.mediaFiles && selectedRental.mediaFiles.length > 1 && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
-                        onClick={handlePreviousMedia}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
-                        onClick={handleNextMedia}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                      
-                      {/* Media Counter */}
-                      <div className="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
-                        {currentMediaIndex + 1} / {selectedRental.mediaFiles.length}
-                      </div>
-                    </>
-                  )}
+                  {(() => {
+                    const validMediaFiles = selectedRental.mediaFiles?.filter(file => file.url && file.url.trim()) || [];
+                    if (validMediaFiles.length > 1) {
+                      return (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                            onClick={handlePreviousMedia}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                            onClick={handleNextMedia}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                          
+                          {/* Media Counter */}
+                          <div className="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
+                            {currentMediaIndex + 1} / {validMediaFiles.length}
+                          </div>
+                        </>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               )}
 
@@ -591,8 +659,8 @@ export default function AvailableRentalsPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Status:</span>
-                      <Badge variant={selectedRental.status === 'Vacant' ? 'default' : 'secondary'}>
-                        {selectedRental.status}
+                      <Badge variant="secondary" className="bg-green-100 text-green-800">
+                        Available Now
                       </Badge>
                     </div>
                     <div className="flex justify-between">
@@ -606,37 +674,70 @@ export default function AvailableRentalsPage() {
 
                 <div>
                   <h3 className="text-xl font-semibold mb-4">Media Files</h3>
-                  <div className="grid grid-cols-3 gap-2">
-                    {selectedRental.mediaFiles?.map((media, index) => (
-                      <div
-                        key={media.id}
-                        className={`relative cursor-pointer rounded overflow-hidden ${
-                          index === currentMediaIndex ? 'ring-2 ring-blue-500' : ''
-                        }`}
-                        onClick={() => setCurrentMediaIndex(index)}
-                      >
-                        {media.isVideo ? (
-                          <div className="aspect-square bg-gray-200 flex items-center justify-center">
-                            <Play className="h-6 w-6 text-gray-600" />
-                          </div>
-                        ) : (
-                          <img
-                            src={media.url}
-                            alt={media.name || `Media ${index + 1}`}
-                            className="w-full h-20 object-cover"
-                          />
-                        )}
-                        <div className="absolute top-1 right-1 bg-black/50 text-white text-xs px-1 rounded">
-                          {index + 1}
+                  {(() => {
+                    const validMediaFiles = selectedRental.mediaFiles?.filter(file => file.url && file.url.trim()) || [];
+                    if (validMediaFiles.length === 0) {
+                      return (
+                        <div className="text-sm text-gray-500 italic">
+                          No media files available for this property.
                         </div>
+                      );
+                    }
+                    return (
+                      <div className="grid grid-cols-3 gap-2">
+                        {validMediaFiles.map((media, index) => (
+                          <div
+                            key={media.id}
+                            className={`relative cursor-pointer rounded overflow-hidden ${
+                              index === currentMediaIndex ? 'ring-2 ring-blue-500' : ''
+                            }`}
+                            onClick={() => setCurrentMediaIndex(index)}
+                          >
+                            {media.isVideo ? (
+                              <div className="aspect-square bg-gray-200 flex items-center justify-center">
+                                <Play className="h-6 w-6 text-gray-600" />
+                              </div>
+                            ) : (
+                              <img
+                                src={media.url}
+                                alt={media.name || `Media ${index + 1}`}
+                                className="w-full h-20 object-cover"
+                              />
+                            )}
+                            <div className="absolute top-1 right-1 bg-black/50 text-white text-xs px-1 rounded">
+                              {index + 1}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
                 </div>
               </div>
 
               {/* Amenities */}
-              {renderDetailedAmenities(selectedRental.amenities || '')}
+              {selectedRental.amenities && selectedRental.amenities.trim() && (
+                <div className="space-y-4">
+                  <h3 className="text-xl font-semibold mb-4">Amenities</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="text-sm text-gray-700 whitespace-pre-line">
+                      {selectedRental.amenities}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* No Amenities Message */}
+              {(!selectedRental.amenities || !selectedRental.amenities.trim()) && (
+                <div className="space-y-4">
+                  <h3 className="text-xl font-semibold mb-4">Amenities</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="text-sm text-gray-500 italic">
+                      Amenities information not available for this property.
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex space-x-3 pt-4 border-t">
