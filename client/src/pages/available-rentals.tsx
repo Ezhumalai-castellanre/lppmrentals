@@ -20,7 +20,7 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
 }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const images = rental.mediaFiles?.map(file => file.url) || [];
+  const images = rental.mediaFiles?.map(file => file.url).slice(0, 4) || [];
   const hasImages = images.length > 0;
 
   const nextImage = () => {
@@ -153,11 +153,11 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
                 </div>
               </div>
               <Badge 
-                variant={rental.status === 'Vacant' ? 'secondary' : 'outline'} 
-                className={rental.status === 'Vacant' ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}
+                variant="secondary"
+                className="bg-green-100 text-green-800 hover:bg-green-100"
               >
-                <div className={`w-2 h-2 rounded-full mr-1 ${rental.status === 'Vacant' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                {rental.status}
+                <div className="w-2 h-2 rounded-full mr-1 bg-green-500"></div>
+                Available Now
               </Badge>
             </div>
 
