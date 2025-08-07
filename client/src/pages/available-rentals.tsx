@@ -220,7 +220,7 @@ export default function AvailableRentalsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [showVacantOnly, setShowVacantOnly] = useState(true);
+
   const [selectedRental, setSelectedRental] = useState<RentalItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
@@ -305,14 +305,8 @@ export default function AvailableRentalsPage() {
   };
 
   const getFilteredRentals = () => {
-    let filtered = rentals;
-    
-    // Filter by vacant status only
-    if (showVacantOnly) {
-      filtered = filtered.filter(rental => rental.status === 'Vacant');
-    }
-    
-    return filtered;
+    // Return all rentals without filtering by status
+    return rentals;
   };
 
   const renderDetailedAmenities = (amenities: string) => {
