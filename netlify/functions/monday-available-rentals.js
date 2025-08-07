@@ -18,7 +18,7 @@ export const handler = async (event, context) => {
 
   try {
     const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN || "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjUzOTcyMTg4NCwiYWFpIjoxMSwidWlkIjo3ODE3NzU4NCwiaWFkIjoiMjAyNS0wNy0xNlQxMjowMDowOC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NTUxNjQ0NSwicmduIjoidXNlMSJ9.s43_kjRmv-QaZ92LYdRlEvrq9CYqxKhh3XXpR-8nhKU";
-    const BOARD_ID = process.env.MONDAY_BOARD_ID || "8740450373";
+    const BOARD_ID = process.env.MONDAY_BOARD_ID || "9769934634";
 
     console.log('Fetching available rentals from Monday.com with token:', MONDAY_API_TOKEN ? 'Present' : 'Missing');
     console.log('Board ID:', BOARD_ID);
@@ -79,13 +79,13 @@ export const handler = async (event, context) => {
     });
     
     const rentals = items.map((item) => {
-      // Extract amenities from long_text_mktjp2nj
-      const amenitiesCol = item.column_values.find(col => col.id === "long_text_mktjp2nj");
+      // Extract amenities from long_text_mktkpv9y
+      const amenitiesCol = item.column_values.find(col => col.id === "long_text_mktkpv9y");
       const amenities = amenitiesCol ? amenitiesCol.text : "";
 
       // Extract media files from subitems
       const mediaFiles = item.subitems?.map(subitem => {
-        const linkCol = subitem.column_values.find(col => col.id === "link_mktj22y9");
+        const linkCol = subitem.column_values.find(col => col.id === "link_mktkw42r");
         if (linkCol && linkCol.value) {
           try {
             const linkData = JSON.parse(linkCol.value);
@@ -109,10 +109,10 @@ export const handler = async (event, context) => {
       return {
         id: item.id,
         name: item.name,
-        propertyName: item.column_values.find((col) => col.id === "color_mkp7xdce")?.text || "",
-        unitType: item.column_values.find((col) => col.id === "color_mkp77nrv")?.text || "",
-        status: item.column_values.find((col) => col.id === "color_mkp7fmq4")?.text || "",
-        monthlyRent: item.column_values.find((col) => col.id === "numeric_mkp7xr4a")?.text || "",
+        propertyName: item.column_values.find((col) => col.id === "text_mktkkbsb")?.text || "", // Address column
+        unitType: item.column_values.find((col) => col.id === "color_mktkdvc5")?.text || "", // Unit Type column
+        status: item.column_values.find((col) => col.id === "color_mktk40b8")?.text || "", // Marketing column as status
+        monthlyRent: item.column_values.find((col) => col.id === "numeric_mktkj4pm")?.text || "", // Rent column
         amenities: amenities,
         mediaFiles: mediaFiles
       };

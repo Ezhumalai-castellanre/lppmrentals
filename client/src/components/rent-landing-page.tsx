@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 
 // WARNING: Do not commit real tokens to public repos. Use env vars in production!
 const MONDAY_API_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjUzOTcyMTg4NCwiYWFpIjoxMSwidWlkIjo3ODE3NzU4NCwiaWFkIjoiMjAyNS0wNy0xNlQxMjowMDowOC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NTUxNjQ0NSwicmduIjoidXNlMSJ9.s43_kjRmv-QaZ92LYdRlEvrq9CYqxKhh3XXpR-8nhKU";
-const BOARD_ID = "8740450373";
+const BOARD_ID = "9769934634";
 
 interface ColumnValue {
   id: string;

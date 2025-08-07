@@ -18,40 +18,31 @@ export const handler = async (event, context) => {
 
   try {
     const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN || "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjUzOTcyMTg4NCwiYWFpIjoxMSwidWlkIjo3ODE3NzU4NCwiaWFkIjoiMjAyNS0wNy0xNlQxMjowMDowOC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NTUxNjQ0NSwicmduIjoidXNlMSJ9.s43_kjRmv-QaZ92LYdRlEvrq9CYqxKhh3XXpR-8nhKU";
-    const BOARD_ID = process.env.MONDAY_BOARD_ID || "8740450373";
+    const BOARD_ID = process.env.MONDAY_BOARD_ID || "9769934634";
 
     console.log('Fetching vacant units from Monday.com with token:', MONDAY_API_TOKEN ? 'Present' : 'Missing');
     console.log('Board ID:', BOARD_ID);
 
-    // Use the exact query structure requested by the user
+    // Query to get all items without filters
     const query = `
       query {
         boards(ids: [${BOARD_ID}]) {
-          items_page(query_params: {
-            rules: [
-              {
-                column_id: "color_mkp7fmq4",
-                compare_value: "Vacant",
-                operator: contains_terms
-              }
-            ]
-          }) {
+          items_page(limit: 100) {
             items {
               id
               name
-              column_values(ids: ["text_mksxyax3", "color_mkp7xdce", "color_mkp77nrv", "color_mkp7fmq4", "numeric_mksz7rkz", "long_text_mktjp2nj", "ink_mktj22y9"]) {
+              column_values {
                 id
+                value
                 text
               }
               subitems {
                 id
                 name
-                column_values(ids: ["status", "color_mksyqx5h", "color_mkp7fmq4"]) {
+                column_values {
                   id
+                  value
                   text
-                  ... on StatusValue {
-                    label
-                  }
                 }
               }
             }
@@ -87,30 +78,30 @@ export const handler = async (event, context) => {
     });
     
     const units = items.map((item) => {
-      // Extract images from the image column (ink_mktj22y9)
+      // Extract images from subitems
       let images = [];
-      const imageCol = item.column_values.find(col => col.id === "ink_mktj22y9");
-      if (imageCol && imageCol.text) {
-        try {
-          const imageData = JSON.parse(imageCol.text);
-          if (Array.isArray(imageData)) {
-            images = imageData.map(img => ({
-              url: img.url,
-              name: img.name || '',
-              id: img.id || ''
-            }));
+      if (item.subitems && item.subitems.length > 0) {
+        images = item.subitems.map(subitem => {
+          const linkCol = subitem.column_values.find(col => col.id === "link_mktkw42r");
+          if (linkCol && linkCol.value) {
+            try {
+              const linkData = JSON.parse(linkCol.value);
+              return {
+                url: linkData.url,
+                name: subitem.name,
+                id: subitem.id
+              };
+            } catch (e) {
+              console.log('Error parsing link column value:', e);
+              return null;
+            }
           }
-        } catch (e) {
-          console.log('Error parsing image column value:', e);
-          // If parsing fails, try to use the text directly as a URL
-          if (imageCol.text && imageCol.text.startsWith('http')) {
-            images = [{ url: imageCol.text, name: '', id: '' }];
-          }
-        }
+          return null;
+        }).filter(Boolean);
       }
 
-      // Extract amenities (long_text_mktjp2nj)
-      const amenitiesCol = item.column_values.find(col => col.id === "long_text_mktjp2nj");
+      // Extract amenities (long_text_mktkpv9y)
+      const amenitiesCol = item.column_values.find(col => col.id === "long_text_mktkpv9y");
       const amenities = amenitiesCol ? amenitiesCol.text : "";
 
       // Filter subitems by vacant status as requested
@@ -123,10 +114,10 @@ export const handler = async (event, context) => {
       return {
         id: item.id,
         name: item.name,
-        propertyName: item.column_values.find((col) => col.id === "color_mkp7xdce")?.text || "",
-        unitType: item.column_values.find((col) => col.id === "color_mkp77nrv")?.text || "",
-        status: item.column_values.find((col) => col.id === "color_mkp7fmq4")?.text || "",
-        monthlyRent: item.column_values.find((col) => col.id === "numeric_mksz7rkz")?.text || "",
+        propertyName: item.column_values.find((col) => col.id === "text_mktkkbsb")?.text || "", // Address column
+        unitType: item.column_values.find((col) => col.id === "color_mktkdvc5")?.text || "", // Unit Type column
+        status: item.column_values.find((col) => col.id === "color_mktk40b8")?.text || "", // Marketing column as status
+        monthlyRent: item.column_values.find((col) => col.id === "numeric_mktkj4pm")?.text || "", // Rent column
         amenities: amenities,
         images: images,
         vacantSubitems: filteredSubitems.map(sub => ({

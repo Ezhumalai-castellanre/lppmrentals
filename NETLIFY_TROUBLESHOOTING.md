@@ -30,7 +30,7 @@ curl https://jotform-v.netlify.app/.netlify/functions/monday-units
 In your Netlify dashboard, go to **Site settings > Environment variables** and ensure these are set:
 
 - `MONDAY_API_TOKEN` - Your Monday.com API token
-- `MONDAY_BOARD_ID` - Your Monday.com board ID (8740450373)
+- `MONDAY_BOARD_ID` - Your Monday.com board ID (9769934634)
 - `DATABASE_URL` - Your database connection string
 - `ENCRYPTION_KEY` - Your encryption key
 

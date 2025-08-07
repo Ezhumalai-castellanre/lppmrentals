@@ -159,7 +159,7 @@ A test component is available at `/vacant-units-test` to demonstrate the functio
 Make sure these environment variables are set:
 
 - `MONDAY_API_TOKEN`: Your Monday.com API token
-- `MONDAY_BOARD_ID`: Your Monday.com board ID (default: "8740450373")
+- `MONDAY_BOARD_ID`: Your Monday.com board ID (default: "9769934634")
 
 ## Error Handling
 

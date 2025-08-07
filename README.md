@@ -36,7 +36,7 @@ A comprehensive rental application system built with React, TypeScript, and Netl
    PORT=5000
    DEBUG=true
    MONDAY_API_TOKEN=your-monday-api-token-here
-   MONDAY_BOARD_ID=8740450373
+   MONDAY_BOARD_ID=9769934634
    MONDAY_DOCUMENTS_BOARD_ID=9602025981
    ```
 

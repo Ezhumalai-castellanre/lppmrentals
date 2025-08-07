@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Home, MapPin, DollarSign, Image, Eye, Play, ChevronLeft, ChevronRight, X, Send, Square, Wifi, Car, Shield, Wrench, ChefHat, Bath, Sparkles, Users, Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { PropertyMap } from '@/components/property-map';
 
 // PropertyCard Component with enhanced UI
 function PropertyCard({ rental, onViewDetails, onApplyNow }: {
@@ -352,51 +351,114 @@ export default function LandingPage() {
   const filteredRentals = getFilteredRentals();
 
   return (
-    <div className="min-h-screen" style={{ 
-      background: 'linear-gradient(135deg, #dbeef8 0%, #daf7ef 100%)'
-    }}>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header Section */}
-        <div className="text-center mb-12">
-          <div className="flex justify-center mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#dbeef7] to-[#dbf0f5]">
+      {/* Header Section */}
+      <header className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        <div className="flex items-center justify-between mb-8 sm:mb-12 lg:mb-16">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             <img 
-              src="https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/image.png"
-              alt="Liberty Place Property Management Logo"
-              className="h-32 w-auto object-contain drop-shadow-sm"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                // Show fallback text if image fails to load
-                const fallback = document.createElement('div');
-                fallback.className = 'text-4xl font-bold text-blue-600';
-                fallback.textContent = 'Liberty Place Property Management';
-                target.parentNode?.appendChild(fallback);
-              }}
+              src="https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/image+(1).png" 
+              alt="Liberty Place Property Management Logo" 
+              className="object-contain w-[120px] sm:w-[150px] h-10 sm:h-12 md:h-16 lg:h-20 xl:h-24"
             />
           </div>
-          <h1 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
-            {isAuthenticated ? 'Available Rentals' : 'Liberty Place Property Management'}
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            {isAuthenticated 
-              ? 'Browse our available properties and start your application today.'
-              : 'Discover beautiful properties in prime locations. Sign in to apply.'
-            }
-          </p>
         </div>
 
-        {/* Property Map - Top Section */}
-        {filteredRentals.length > 0 && (
-          <div className="mb-12">
-            <PropertyMap
-              rentals={filteredRentals}
-              onViewDetails={handleViewDetails}
-              onApplyNow={handleApplyNow}
+        {/* Hero Banner */}
+        <div className="relative">
+          <div className="relative h-[400px] sm:h-[500px] lg:h-[600px] rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl">
+            <img 
+              src="https://blog.mipimworld.com/wp-content/uploads/2017/07/10_Hottest_Startups_Cropped.jpg" 
+              alt="New York City Skyline" 
+              className="w-full h-full object-cover"
             />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent">
+              <div className="flex items-center h-full">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="max-w-2xl text-white">
+                    {/* Mobile: Split layout without card */}
+                    <div className="block sm:hidden">
+                      <h1 className="text-2xl font-bold mb-3 leading-tight">
+                        Liberty Place
+                        <span className="block text-lg font-light text-blue-200 mt-1">
+                          Property Management
+                        </span>
+                      </h1>
+                      <p className="text-xs mb-4 leading-relaxed text-gray-100">
+                        Discover beautiful properties in prime locations. Experience luxury living with our premium property management services.
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        <button className="border-2 border-white text-white px-3 py-2 rounded-lg font-semibold text-xs hover:bg-white hover:text-gray-900 transition-all duration-300">
+                          Sign In to Apply
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Desktop: Card layout */}
+                    <div className="hidden sm:block bg-black/20 backdrop-blur-sm rounded-xl p-6 lg:p-8 border border-white/20">
+                      <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-4 lg:mb-6 leading-tight">
+                        Liberty Place
+                        <span className="block text-xl md:text-2xl lg:text-3xl xl:text-4xl font-light text-blue-200 mt-2">
+                          Property Management
+                        </span>
+                      </h1>
+                      <p className="text-sm md:text-base lg:text-lg xl:text-xl mb-6 lg:mb-8 leading-relaxed text-gray-100">
+                        Discover beautiful properties in prime locations. Experience luxury living with our premium property management services.
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
+                        <button className="border-2 border-white text-white px-4 lg:px-6 xl:px-8 py-3 lg:py-4 rounded-lg font-semibold text-sm md:text-base lg:text-lg hover:bg-white hover:text-gray-900 transition-all duration-300">
+                          Sign In to Apply
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
 
-        {/* Rental Cards Section */}
+          {/* Feature Cards */}
+          <div className="absolute -bottom-8 sm:-bottom-12 lg:-bottom-16 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-2 sm:px-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+              <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-lg border border-gray-100">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-3 sm:mb-4">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">Premium Properties</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Luxury apartments and condos in the heart of the city</p>
+              </div>
+              
+              <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-lg border border-gray-100">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-green-100 rounded-lg flex items-center justify-center mb-3 sm:mb-4">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">Verified Listings</h3>
+                <p className="text-xs sm:text-sm text-gray-600">All properties are thoroughly vetted and verified</p>
+              </div>
+              
+              <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-lg border border-gray-100 sm:col-span-2 lg:col-span-1">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-3 sm:mb-4">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">Quick Application</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Streamlined application process for faster approval</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Spacer for feature cards */}
+      <div className="h-12 sm:h-16 lg:h-24"></div>
+
+      {/* Rental Cards Section */}
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="space-y-8">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-semibold text-gray-900 mb-2">
