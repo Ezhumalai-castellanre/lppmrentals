@@ -4283,9 +4283,9 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
       case 11:
         if (!formData.guarantor?.employmentType) {
           return (
-            <Card className="form-section">
+            <Card className="form-section border-l-4 border-l-green-500">
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                   <FolderOpen className="w-5 h-5 mr-2" />
                   Guarantor Documents
                 </CardTitle>
@@ -4314,76 +4314,46 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
             </Card>
           );
         }
+        // Wrapper functions for SupportingDocuments to match expected signature
+        const guarantorDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('guarantor', documentType, files);
+        const guarantorEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('guarantor', documentType, encryptedFiles);
+        const guarantorWebhookResponse = (documentType: string, response: any) => {
+          console.log('Guarantor webhook response received:', documentType, response);
+          setWebhookResponses((prev: any) => ({
+            ...prev,
+            [`guarantor_${documentType}`]: response,
+          }));
+        };
         return (
-          <SupportingDocuments
-            formData={{
-              ...formData,
-              webhookResponses: Object.fromEntries(
-                Object.entries(webhookResponses)
-                  .filter(([key]) => key.startsWith('guarantor_'))
-                  .map(([key, value]) => [key.replace('guarantor_', ''), value])
-              )
-            }}
-            onDocumentChange={(documentType, files) => {
-              setDocuments((prev: any) => ({
-                ...prev,
-                [documentType]: files,
-              }));
-            }}
-            onWebhookResponse={(documentType, response) => {
-              console.log('Guarantor webhook response received:', documentType, response);
-              setWebhookResponses((prev: any) => ({
-                ...prev,
-                [`guarantor_${documentType}`]: response,
-              }));
-            }}
-            onEncryptedDocumentChange={(documentType, encryptedFiles) => {
-              console.log('🚀 GUARANTOR ENCRYPTED DOCUMENT CHANGE:', {
-                documentType,
-                encryptedFilesCount: encryptedFiles.length,
-                encryptedFiles: encryptedFiles.map(f => ({ filename: f.filename, size: f.encryptedData.length }))
-              });
-              setEncryptedDocuments((prev: any) => ({
-                ...prev,
-                guarantor: {
-                  ...prev.guarantor,
-                  [documentType]: encryptedFiles,
-                },
-              }));
-
-              // Track uploadedDocuments for webhook
-              const sectionKey = `guarantor_${documentType}`;
-              const docs = encryptedFiles.map(file => ({
-                reference_id: file.uploadDate + '-' + file.filename,
-                file_name: file.filename,
-                section_name: sectionKey,
-                documents: documentType
-              }));
-              setUploadedDocuments(prev => {
-                // Ensure prev is always an array
-                const safePrev = Array.isArray(prev) ? prev : [];
-                const filtered = safePrev.filter(doc => doc.section_name !== sectionKey);
-                return [...filtered, ...docs];
-              });
-
-              // Track uploaded files metadata for webhook
-              const filesMetadata = encryptedFiles.map(file => ({
-                file_name: file.filename,
-                file_size: file.originalSize,
-                mime_type: file.mimeType,
-                upload_date: file.uploadDate
-              }));
-
-              setUploadedFilesMetadata(prev => ({
-                ...prev,
-                [sectionKey]: filesMetadata
-              }));
-            }}
-            referenceId={referenceId}
-            enableWebhook={true}
-            applicationId={user?.applicantId || 'unknown'}
-            showOnlyGuarantor={true}
-          />
+          <Card className="form-section border-l-4 border-l-green-500">
+            <CardHeader>
+              <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                <FolderOpen className="w-5 h-5 mr-2" />
+                Guarantor Documents
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SupportingDocuments
+                formData={{
+                  ...formData,
+                  webhookResponses: Object.fromEntries(
+                    Object.entries(webhookResponses)
+                      .filter(([key]) => key.startsWith('guarantor_'))
+                      .map(([key, value]) => [key.replace('guarantor_', ''), value])
+                  )
+                }}
+                onDocumentChange={guarantorDocumentChange}
+                onEncryptedDocumentChange={guarantorEncryptedDocumentChange}
+                onWebhookResponse={guarantorWebhookResponse}
+                referenceId={referenceId}
+                enableWebhook={true}
+                applicationId={user?.applicantId || 'unknown'}
+                applicantId={user?.id}
+                zoneinfo={user?.zoneinfo}
+                showOnlyGuarantor={true}
+              />
+            </CardContent>
+          </Card>
         );
 
       case 12:

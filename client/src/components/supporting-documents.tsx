@@ -87,6 +87,50 @@ export const SupportingDocuments = ({
       ]
     },
     {
+      category: "Employment Documents",
+      icon: <Building className="h-4 w-4" />,
+      documents: [
+        {
+          id: "employment_letter",
+          name: "Employment Letter",
+          required: true,
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
+        },
+        {
+          id: "pay_stubs",
+          name: "Pay Stubs (Last 2-4)",
+          required: true,
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf",
+          multiple: true
+        }
+      ]
+    },
+    {
+      category: "Financial Documents",
+      icon: <DollarSign className="h-4 w-4" />,
+      documents: [
+        {
+          id: "tax_returns",
+          name: "Tax Returns (Previous Year)",
+          required: true,
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
+        },
+        {
+          id: "bank_statements",
+          name: "Bank Statements",
+          required: true,
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf",
+          multiple: true
+        },
+        {
+          id: "accountant_letter",
+          name: "Accountant Letter",
+          required: true,
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
+        }
+      ]
+    },
+    {
       category: "Additional Documents",
       icon: <CreditCard className="h-4 w-4" />,
       documents: [
@@ -126,33 +170,51 @@ export const SupportingDocuments = ({
     };
   };
 
-  // Determine employment type for applicant and co-applicant
+  // Determine employment type for applicant, co-applicant, and guarantor
   const applicantEmploymentType = formData?.applicant?.employmentType;
   const coApplicantEmploymentType = formData?.coApplicant?.employmentType;
+  const guarantorEmploymentType = formData?.guarantor?.employmentType;
 
   // Helper to get allowed categories for a given employment type
   function allowedCategoriesForType(type: string | undefined) {
     if (!type) return new Set(requiredDocuments.map(c => c.category));
+    
+    // For salaried/employed: show Employment Documents, hide Financial Documents
     if (type === 'salaried' || type === 'employed') {
-      // Hide Self-Employed Documents
-      return new Set(requiredDocuments.map(c => c.category).filter(cat => cat !== 'Self-Employed Documents'));
+      return new Set(requiredDocuments.map(c => c.category).filter(cat => 
+        cat !== 'Financial Documents'
+      ));
     }
+    
+    // For self-employed: show Financial Documents, hide Employment Documents
     if (type === 'self-employed') {
-      // Hide Employment Verification
-      return new Set(requiredDocuments.map(c => c.category).filter(cat => cat !== 'Employment Verification'));
+      return new Set(requiredDocuments.map(c => c.category).filter(cat => 
+        cat !== 'Employment Documents'
+      ));
     }
+    
+    // For other employment types: show all documents
     if (["unemployed", "retired", "student"].includes(type)) {
-      return new Set(requiredDocuments.map(c => c.category).filter(cat => cat !== 'Employment Verification' && cat !== 'Self-Employed Documents'));
+      return new Set(requiredDocuments.map(c => c.category));
     }
+    
     return new Set(requiredDocuments.map(c => c.category));
   }
 
-  // Compute allowed categories (union if both applicant and co-applicant)
-  let allowedCategories = allowedCategoriesForType(applicantEmploymentType);
-  if (coApplicantEmploymentType) {
-    const coAllowed = allowedCategoriesForType(coApplicantEmploymentType);
-    allowedCategories = new Set([...Array.from(allowedCategories), ...Array.from(coAllowed)]);
+  // Determine which employment type to use based on the section being displayed
+  let relevantEmploymentType: string | undefined;
+  
+  if (showOnlyCoApplicant) {
+    relevantEmploymentType = coApplicantEmploymentType;
+  } else if (showOnlyGuarantor) {
+    relevantEmploymentType = guarantorEmploymentType;
+  } else {
+    // For supporting documents section, use applicant employment type
+    relevantEmploymentType = applicantEmploymentType;
   }
+
+  // Get allowed categories based on the relevant employment type
+  const allowedCategories = allowedCategoriesForType(relevantEmploymentType);
 
   // Filter requiredDocuments based on allowed categories
   const filteredDocuments = requiredDocuments.filter((category) => allowedCategories.has(category.category));
@@ -222,8 +284,8 @@ export const SupportingDocuments = ({
                       onWebhookResponse={(response) => onWebhookResponse?.(document.id, response)}
                       initialWebhookResponse={formData.webhookResponses?.[document.id]}
                       accept={document.acceptedTypes}
-                      multiple={false}
-                      maxFiles={1}
+                      multiple={document.multiple || false}
+                      maxFiles={document.multiple ? 4 : 1}
                       maxSize={10}
                       label={`Upload ${document.name}`}
                       className="mt-2"
