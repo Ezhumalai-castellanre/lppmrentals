@@ -178,7 +178,35 @@ export interface PDFWebhookData {
   submission_type: 'pdf_generation';
 }
 
-// Helper function to clean sensitive data from objects
+// Helper function to extract URL from webhook response
+const extractWebhookUrl = (response: any): string | null => {
+  if (!response) return null;
+  
+  // If response is a string URL, return it directly
+  if (typeof response === 'string' && response.startsWith('http')) {
+    return response;
+  }
+
+  try {
+    // If response is a JSON string, parse it
+    const parsed = typeof response === 'string' ? JSON.parse(response) : response;
+    
+    // Check various possible locations of the URL
+    if (typeof parsed === 'string' && parsed.startsWith('http')) {
+      return parsed;
+    } else if (parsed.body && typeof parsed.body === 'string' && parsed.body.startsWith('http')) {
+      return parsed.body;
+    } else if (parsed.url && typeof parsed.url === 'string' && parsed.url.startsWith('http')) {
+      return parsed.url;
+    }
+  } catch (e) {
+    console.warn('Failed to parse webhook response:', e);
+  }
+  
+  return null;
+};
+
+// Helper function to clean sensitive data from objects while preserving webhook URLs
 const cleanObject = (obj: any) => {
   if (!obj || typeof obj !== 'object') return obj;
   
@@ -194,6 +222,18 @@ const cleanObject = (obj: any) => {
     'applicant.encryptedDocuments'
   ];
 
+  // Create a map of webhook responses
+  const webhookUrls: Record<string, string> = {};
+  if (obj.webhookResponses) {
+    Object.entries(obj.webhookResponses).forEach(([key, value]) => {
+      const url = extractWebhookUrl(value);
+      if (url) {
+        webhookUrls[key] = url;
+      }
+    });
+  }
+
+  // Deep clean the object
   const cleaned = { ...obj };
   fieldsToRemove.forEach(field => {
     const parts = field.split('.');
@@ -207,6 +247,12 @@ const cleanObject = (obj: any) => {
     }
     delete current[parts[parts.length - 1]];
   });
+
+  // Remove uploadedDocuments but preserve webhook URLs
+  if (cleaned.webhookResponses) {
+    cleaned.webhookResponses = webhookUrls;
+  }
+
   return cleaned;
 };
 
@@ -381,27 +427,34 @@ export class WebhookService {
               console.warn('⚠️ Could not load existing draft:', loadError);
             }
 
+            // Extract existing webhook URLs
+            const existingWebhookUrls = existingDraft?.formData?.webhookResponses || {};
+
             // Prepare the new draft data
             const draftData = {
               applicantId: applicationId,
               formData: {
                 ...existingDraft?.formData,
-                uploadedFiles: {
-                  ...(existingDraft?.formData?.uploadedFiles || {}),
-                  [sectionName]: [{
+                // Store only the webhook URLs, not the full response
+                webhookResponses: {
+                  ...existingWebhookUrls,
+                  [sectionName]: extractedUrl
+                },
+                // Keep track of uploaded files metadata separately
+                uploadedFilesMetadata: {
+                  ...(existingDraft?.formData?.uploadedFilesMetadata || {}),
+                  [sectionName]: {
                     file_name: file.name,
                     file_size: file.size,
                     mime_type: file.type,
                     upload_date: new Date().toISOString(),
-                    webhook_response: responseDetails,
-                    extracted_url: extractedUrl,
                     webhook_status: 'success',
                     webhook_status_code: response.status,
                     comment_id: commentId
-                  }]
+                  }
                 }
               },
-              currentStep: existingDraft?.currentStep ?? -1, // Use -1 to indicate this is a file upload draft
+              currentStep: existingDraft?.currentStep ?? -1,
               lastSaved: new Date().toISOString(),
               isComplete: existingDraft?.isComplete ?? false
             };
