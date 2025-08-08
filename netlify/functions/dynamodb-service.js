@@ -201,107 +201,71 @@ async function saveDraft(applicantId, formData, currentStep, isComplete = false)
     console.log('🔄 Saving draft for applicantId:', applicantId);
     console.log('📊 Original form data size:', JSON.stringify(formData).length, 'characters');
     
-    // Validate the draft data
+    // Clean the form data to remove undefined values
+    const cleanedFormData = cleanData(formData);
+    
+    console.log('🧹 Cleaned form data size:', JSON.stringify(cleanedFormData).length, 'characters');
+    
+    // Compress data if it's too large for DynamoDB
+    const compressedFormData = compressData(cleanedFormData);
+    
     const draftData = {
       applicantId,
-      form_data: formData, // Use form_data as the main container
+      formData: compressedFormData,
       currentStep,
       lastSaved: new Date().toISOString(),
       isComplete,
     };
+
+    // Check final size before saving
+    const finalSize = JSON.stringify(draftData).length;
+    console.log('📊 Final draft data size:', finalSize, 'characters');
     
-    if (!validateDraftData(draftData)) {
-      throw new Error('Invalid draft data structure');
+    if (finalSize > 400000) { // DynamoDB limit is 400KB
+      console.error('❌ Draft data still too large after compression:', finalSize, 'characters');
+      throw new Error('Item size has exceeded the maximum allowed size');
     }
-    
-    // Clean and compress the data
-    const cleanedData = cleanData(draftData);
-    const compressedData = compressData(cleanedData);
-    
-    console.log('📊 Final compressed data size:', JSON.stringify(compressedData).length, 'characters');
-    
-    // Save to DynamoDB
-    const params = {
-      TableName: 'DraftSaved',
-      Item: {
-        applicantId: applicantId,
-        form_data: JSON.stringify(compressedData.form_data),
-        currentStep: compressedData.currentStep,
-        lastSaved: compressedData.lastSaved,
-        isComplete: compressedData.isComplete,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-    };
-    
-    console.log('💾 Saving to DynamoDB with params:', JSON.stringify(params, null, 2));
-    
-    const result = await dynamoDB.put(params).promise();
-    console.log('✅ Draft saved successfully:', result);
-    
-    return {
-      success: true,
-      applicantId,
-      currentStep,
-      lastSaved: draftData.lastSaved,
-      isComplete
-    };
+
+    // Validate the draft data before saving
+    if (!validateDraftData(draftData)) {
+      throw new Error('Invalid draft data');
+    }
+
+    const command = new PutCommand({
+      TableName: TABLE_NAME,
+      Item: draftData,
+    });
+
+    await docClient.send(command);
+    console.log('✅ Draft saved successfully for applicantId:', applicantId);
+    return { success: true };
   } catch (error) {
     console.error('❌ Error saving draft:', error);
-    throw new Error(`Failed to save draft: ${error.message}`);
+    throw error;
   }
 }
 
 async function loadDraft(applicantId) {
   try {
-    console.log('🔄 Loading draft for applicantId:', applicantId);
-    
-    const params = {
-      TableName: 'DraftSaved',
+    const command = new GetCommand({
+      TableName: TABLE_NAME,
       Key: {
-        applicantId: applicantId
-      }
-    };
+        applicantId,
+      },
+    });
+
+    const response = await docClient.send(command);
     
-    const result = await dynamoDB.get(params).promise();
-    
-    if (!result.Item) {
-      console.log('📭 No draft found for applicantId:', applicantId);
-      return null;
+    if (response.Item) {
+      console.log('✅ Draft loaded successfully for applicantId:', applicantId);
+      return { success: true, draft: response.Item };
+    } else {
+      console.log('ℹ️ No draft found for applicantId:', applicantId);
+      return { success: true, draft: null };
     }
-    
-    console.log('📥 Draft found, parsing data...');
-    
-    // Parse the form_data from JSON string
-    let formData = {};
-    try {
-      formData = JSON.parse(result.Item.form_data);
-    } catch (parseError) {
-      console.error('❌ Error parsing form_data:', parseError);
-      // Try to parse as old format
-      try {
-        formData = JSON.parse(result.Item.formData || '{}');
-      } catch (oldParseError) {
-        console.error('❌ Error parsing old format formData:', oldParseError);
-        formData = {};
-      }
-    }
-    
-    const draftData = {
-      applicantId: result.Item.applicantId,
-      form_data: formData,
-      currentStep: result.Item.currentStep,
-      lastSaved: result.Item.lastSaved,
-      isComplete: result.Item.isComplete,
-    };
-    
-    console.log('✅ Draft loaded successfully for applicantId:', applicantId);
-    console.log('📊 Draft data size:', JSON.stringify(draftData).length, 'characters');
-    
-    return draftData;
   } catch (error) {
     console.error('❌ Error loading draft:', error);
-    throw new Error(`Failed to load draft: ${error.message}`);
+    throw error;
   }
 }
 
@@ -324,7 +288,7 @@ async function deleteDraft(applicantId) {
 async function draftExists(applicantId) {
   try {
     const draft = await loadDraft(applicantId);
-    return draft !== null;
+    return draft.draft !== null;
   } catch (error) {
     console.error('❌ Error checking draft existence:', error);
     return false;

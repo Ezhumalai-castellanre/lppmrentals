@@ -219,86 +219,18 @@ export const SupportingDocuments = ({
       }
     }
     
-    // Check for direct file uploads
-    if (documents && documents.length > 0) {
+    // Fall back to checking actual files
+    if (documents.length > 0) {
       return {
         status: "uploaded",
         count: documents.length
       };
     }
     
-    // Check for webhook responses with person prefixes
-    const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_'];
-    for (const prefix of personPrefixes) {
-      const prefixedDocumentId = prefix + documentId;
-      const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
-      if (prefixedWebhookResponse && typeof prefixedWebhookResponse === 'string' && prefixedWebhookResponse.trim()) {
-        return {
-          status: "uploaded",
-          count: 1
-        };
-      }
-    }
-    
     return {
       status: "pending",
       count: 0
     };
-  };
-
-  // Helper to get uploaded files for a specific document from draft data
-  const getUploadedFilesForDocument = (documentId: string) => {
-    const uploadedFilesMetadata = formData.uploadedFilesMetadata;
-    const webhookResponses = formData.webhookResponses;
-    
-    // Check for documents in uploadedFilesMetadata
-    if (uploadedFilesMetadata) {
-      const uploadedFiles = uploadedFilesMetadata[documentId];
-      if (uploadedFiles && Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
-        return uploadedFiles;
-      }
-      
-      // Check for documents with person prefix (e.g., applicant_photo_id, guarantor_photo_id)
-      const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_'];
-      for (const prefix of personPrefixes) {
-        const prefixedDocumentId = prefix + documentId;
-        const prefixedFiles = uploadedFilesMetadata[prefixedDocumentId];
-        if (prefixedFiles && Array.isArray(prefixedFiles) && prefixedFiles.length > 0) {
-          return prefixedFiles;
-        }
-      }
-    }
-    
-    // Check for webhook responses
-    if (webhookResponses) {
-      // Check direct webhook response
-      const webhookResponse = webhookResponses[documentId];
-      if (webhookResponse && typeof webhookResponse === 'string' && webhookResponse.trim()) {
-        return [{
-          filename: `Uploaded Document`,
-          webhookbodyUrl: webhookResponse,
-          file_name: `Uploaded Document`,
-          upload_date: new Date().toISOString()
-        }];
-      }
-      
-      // Check for webhook responses with person prefixes
-      const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_'];
-      for (const prefix of personPrefixes) {
-        const prefixedDocumentId = prefix + documentId;
-        const prefixedWebhookResponse = webhookResponses[prefixedDocumentId];
-        if (prefixedWebhookResponse && typeof prefixedWebhookResponse === 'string' && prefixedWebhookResponse.trim()) {
-          return [{
-            filename: `Uploaded ${documentId.replace(/_/g, ' ')}`,
-            webhookbodyUrl: prefixedWebhookResponse,
-            file_name: `Uploaded ${documentId.replace(/_/g, ' ')}`,
-            upload_date: new Date().toISOString()
-          }];
-        }
-      }
-    }
-    
-    return null;
   };
 
   // Determine employment type for applicant, co-applicant, and guarantor
@@ -417,37 +349,6 @@ export const SupportingDocuments = ({
                       <p className="text-xs text-green-700 mt-1">
                         {docStatus.count} file{docStatus.count > 1 ? 's' : ''} uploaded from draft
                       </p>
-                      
-                      {/* Show uploaded files preview */}
-                      {(() => {
-                        const uploadedFiles = getUploadedFilesForDocument(document.id);
-                        if (uploadedFiles && uploadedFiles.length > 0) {
-                          return (
-                            <div className="mt-3 space-y-2">
-                              <p className="text-xs font-medium text-green-800">Uploaded Files:</p>
-                              <div className="space-y-1">
-                                {uploadedFiles.map((file, index) => (
-                                  <div key={index} className="flex items-center gap-2 text-xs text-green-700 bg-green-100 rounded px-2 py-1">
-                                    <FileText className="h-3 w-3" />
-                                    <span className="truncate">{file.filename || file.file_name || `File ${index + 1}`}</span>
-                                    {file.webhookbodyUrl && (
-                                      <a 
-                                        href={file.webhookbodyUrl} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="text-blue-600 hover:text-blue-800 underline"
-                                      >
-                                        View
-                                      </a>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
                     </div>
                   )}
                   <div>

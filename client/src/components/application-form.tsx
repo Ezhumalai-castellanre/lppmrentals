@@ -221,47 +221,47 @@ export function ApplicationForm() {
     enableAutoSave: true,
     onDraftLoaded: (draft) => {
       // Restore form data from draft
-      if (draft.form_data) {
+      if (draft.formData) {
         // Restore raw form data if available
-        if (draft.form_data.rawFormData) {
-          setFormData(draft.form_data.rawFormData);
+        if (draft.formData.rawFormData) {
+          setFormData(draft.formData.rawFormData);
         } else {
-          setFormData(draft.form_data);
+          setFormData(draft.formData);
         }
         
         setCurrentStep(draft.currentStep);
         
         // Restore other state
-        if (draft.form_data.signatures) {
-          setSignatures(draft.form_data.signatures);
+        if (draft.formData.signatures) {
+          setSignatures(draft.formData.signatures);
         }
-        if (draft.form_data.documents) {
-          setDocuments(draft.form_data.documents);
+        if (draft.formData.documents) {
+          setDocuments(draft.formData.documents);
         }
-        if (draft.form_data.encryptedDocuments) {
-          setEncryptedDocuments(draft.form_data.encryptedDocuments);
+        if (draft.formData.encryptedDocuments) {
+          setEncryptedDocuments(draft.formData.encryptedDocuments);
         }
-        if (draft.form_data.uploadedDocuments) {
-          setUploadedDocuments(draft.form_data.uploadedDocuments);
+        if (draft.formData.uploadedDocuments) {
+          setUploadedDocuments(draft.formData.uploadedDocuments);
         }
-        if (draft.form_data.uploadedFilesMetadata) {
-          setUploadedFilesMetadata(draft.form_data.uploadedFilesMetadata);
+        if (draft.formData.uploadedFilesMetadata) {
+          setUploadedFilesMetadata(draft.formData.uploadedFilesMetadata);
         }
-        if (draft.form_data.hasCoApplicant !== undefined) {
-          setHasCoApplicant(draft.form_data.hasCoApplicant);
+        if (draft.formData.hasCoApplicant !== undefined) {
+          setHasCoApplicant(draft.formData.hasCoApplicant);
         }
-        if (draft.form_data.hasGuarantor !== undefined) {
-          setHasGuarantor(draft.form_data.hasGuarantor);
+        if (draft.formData.hasGuarantor !== undefined) {
+          setHasGuarantor(draft.formData.hasGuarantor);
         }
-        if (draft.form_data.webhookResponses) {
-          setWebhookResponses(draft.form_data.webhookResponses);
+        if (draft.formData.webhookResponses) {
+          setWebhookResponses(draft.formData.webhookResponses);
         }
         
         // Reset form with draft data - use rawFormValues if available
-        if (draft.form_data.rawFormValues) {
-          form.reset(draft.form_data.rawFormValues);
-        } else if (draft.form_data.formValues) {
-          form.reset(draft.form_data.formValues);
+        if (draft.formData.rawFormValues) {
+          form.reset(draft.formData.rawFormValues);
+        } else if (draft.formData.formValues) {
+          form.reset(draft.formData.formValues);
         }
       }
     },
@@ -1056,146 +1056,12 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
         applicantCity: formValues.applicantCity || formData.applicant?.city,
         applicantState: formValues.applicantState || formData.applicant?.state,
         applicantZip: formValues.applicantZip || formData.applicant?.zip,
-        applicantLengthAtAddressYears: formData.applicant?.lengthAtAddressYears,
-        applicantLengthAtAddressMonths: formData.applicant?.lengthAtAddressMonths,
-        applicantLandlordName: formData.applicant?.landlordName,
-        applicantLandlordAddressLine1: formData.applicant?.landlordAddressLine1,
-        applicantLandlordAddressLine2: formData.applicant?.landlordAddressLine2,
-        applicantLandlordCity: formData.applicant?.landlordCity,
-        applicantLandlordState: formData.applicant?.landlordState,
-        applicantLandlordZipCode: formData.applicant?.landlordZipCode,
-        applicantLandlordPhone: formData.applicant?.landlordPhone,
-        applicantLandlordEmail: formData.applicant?.landlordEmail,
-        applicantCurrentRent: formData.applicant?.currentRent,
-        applicantReasonForMoving: formData.applicant?.reasonForMoving,
-        applicantEmploymentType: formData.applicant?.employmentType,
-        applicantPosition: formData.applicant?.position,
-        applicantStartDate: safeDateToISO(formData.applicant?.startDate),
-        
-        // Flags
-        hasCoApplicant,
-        hasGuarantor,
-        
-        // Co-Applicant (if exists)
-        ...(hasCoApplicant && formData.coApplicant ? {
-          coApplicantName: formData.coApplicant?.name,
-          coApplicantRelationship: formData.coApplicant?.relationship,
-          coApplicantDob: safeDateToISO(formData.coApplicant?.dob),
-          coApplicantSsn: formData.coApplicant?.ssn,
-          coApplicantPhone: formatPhoneForPayload(formData.coApplicant?.phone),
-          coApplicantEmail: formData.coApplicant?.email,
-          coApplicantLicense: formData.coApplicant?.license,
-          coApplicantLicenseState: formData.coApplicant?.licenseState,
-          coApplicantCity: formData.coApplicant?.city,
-          coApplicantState: formData.coApplicant?.state,
-          coApplicantZip: formData.coApplicant?.zip,
-          coApplicantLengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears,
-          coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths,
-          coApplicantLandlordName: formData.coApplicant?.landlordName,
-          coApplicantLandlordAddressLine1: formData.coApplicant?.landlordAddressLine1,
-          coApplicantLandlordAddressLine2: formData.coApplicant?.landlordAddressLine2,
-          coApplicantLandlordCity: formData.coApplicant?.landlordCity,
-          coApplicantLandlordState: formData.coApplicant?.landlordState,
-          coApplicantLandlordZipCode: formData.coApplicant?.landlordZipCode,
-          coApplicantLandlordPhone: formData.coApplicant?.landlordPhone,
-          coApplicantLandlordEmail: formData.coApplicant?.landlordEmail,
-          coApplicantCurrentRent: formData.coApplicant?.currentRent,
-          coApplicantReasonForMoving: formData.coApplicant?.reasonForMoving,
-          coApplicantEmploymentType: formData.coApplicant?.employmentType,
-          coApplicantPosition: formData.coApplicant?.position,
-          coApplicantStartDate: safeDateToISO(formData.coApplicant?.startDate),
-        } : {}),
-        
-        // Guarantor (if exists)
-        ...(hasGuarantor && formData.guarantor ? {
-          guarantorName: formData.guarantor?.name,
-          guarantorRelationship: formData.guarantor?.relationship,
-          guarantorDob: safeDateToISO(formData.guarantor?.dob),
-          guarantorSsn: formData.guarantor?.ssn,
-          guarantorPhone: formatPhoneForPayload(formData.guarantor?.phone),
-          guarantorEmail: formData.guarantor?.email,
-          guarantorLicense: formData.guarantor?.license,
-          guarantorLicenseState: formData.guarantor?.licenseState,
-          guarantorAddress: formData.guarantor?.address,
-          guarantorCity: formData.guarantor?.city,
-          guarantorState: formData.guarantor?.state,
-          guarantorZip: formData.guarantor?.zip,
-          guarantorLengthAtAddressYears: formData.guarantor?.lengthAtAddressYears,
-          guarantorLengthAtAddressMonths: formData.guarantor?.lengthAtAddressMonths,
-          guarantorLandlordName: formData.guarantor?.landlordName,
-          guarantorLandlordAddressLine1: formData.guarantor?.landlordAddressLine1,
-          guarantorLandlordAddressLine2: formData.guarantor?.landlordAddressLine2,
-          guarantorLandlordCity: formData.guarantor?.landlordCity,
-          guarantorLandlordState: formData.guarantor?.landlordState,
-          guarantorLandlordZipCode: formData.guarantor?.landlordZipCode,
-          guarantorLandlordPhone: formData.guarantor?.landlordPhone,
-          guarantorLandlordEmail: formData.guarantor?.landlordEmail,
-          guarantorCurrentRent: formData.guarantor?.currentRent,
-          guarantorReasonForMoving: formData.guarantor?.reasonForMoving,
-          guarantorEmploymentType: formData.guarantor?.employmentType,
-          guarantorPosition: formData.guarantor?.position,
-          guarantorStartDate: safeDateToISO(formData.guarantor?.startDate),
-        } : {}),
-        
-        // Other Occupants
-        otherOccupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any) => ({
-          name: occupant.name,
-          relationship: occupant.relationship,
-          dob: occupant.dob,
-          ssn: occupant.ssn,
-          license: occupant.license,
-          age: occupant.age,
-          ssnDocument: occupant.ssnDocument ? "UPLOADED" : null,
-          ssnEncryptedDocument: occupant.ssnEncryptedDocument ? "UPLOADED" : null
-        })),
-        
-        // Signatures
-        signatures: {
-          applicant: signatures.applicant ? "SIGNED" : null,
-          coApplicant: signatures.coApplicant ? "SIGNED" : null,
-          guarantor: signatures.guarantor ? "SIGNED" : null,
-        },
-        signatureTimestamps,
-        
-        // Bank Information
-        bankInformation: {
-          applicant: {
-            bankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
-              bankName: record.bankName,
-              accountType: record.accountType
-            })),
-            totalBankRecords: formData.applicant?.bankRecords?.length || 0,
-            hasBankRecords: !!(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0)
-          },
-          coApplicant: hasCoApplicant ? {
-            bankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
-              bankName: record.bankName,
-              accountType: record.accountType
-            })),
-            totalBankRecords: formData.coApplicant?.bankRecords?.length || 0,
-            hasBankRecords: !!(formData.coApplicant?.bankRecords && formData.coApplicant.bankRecords.length > 0)
-          } : null,
-          guarantor: hasGuarantor ? {
-            bankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
-              bankName: record.bankName,
-              accountType: record.accountType
-            })),
-            totalBankRecords: formData.guarantor?.bankRecords?.length || 0,
-            hasBankRecords: !!(formData.guarantor?.bankRecords && formData.guarantor.bankRecords.length > 0)
-          } : null,
-        },
-        
-        // Documents with webhook URLs
-        documents: {
-          applicant: {},
-          coApplicant: {},
-          guarantor: {},
-          otherOccupants: {}
-        },
         
         // Store the raw form data for restoration
         rawFormData: formData,
         rawFormValues: formValues,
+        signatures,
+        documents,
         encryptedDocuments,
         uploadedDocuments,
         // OPTIMIZED: Only store essential metadata for draft, full metadata will be sent on submit
@@ -1211,6 +1077,8 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
               }))
             ])
           ) : {},
+        hasCoApplicant,
+        hasGuarantor,
         currentStep,
       };
 
@@ -3288,25 +3156,29 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
                       applicantState: formValues.applicantState || formData.applicant?.state,
                       applicantZip: formValues.applicantZip || formData.applicant?.zip,
                       
-                              // Store the raw form data for restoration
-        rawFormData: formData,
-        rawFormValues: formValues,
-        encryptedDocuments,
-        uploadedDocuments,
-        // OPTIMIZED: Only store essential metadata for draft, full metadata will be sent on submit
-        uploadedFilesMetadata: Object.keys(uploadedFilesMetadata).length > 0 ? 
-          Object.fromEntries(
-            Object.entries(uploadedFilesMetadata).map(([key, files]) => [
-              key, 
-              files.map(file => ({
-                file_name: file.file_name,
-                file_size: file.file_size,
-                mime_type: file.mime_type,
-                upload_date: file.upload_date
-              }))
-            ])
-          ) : {},
-        currentStep,
+                      // Store the raw form data for restoration
+                      rawFormData: formData,
+                      rawFormValues: formValues,
+                      signatures,
+                      documents,
+                      encryptedDocuments,
+                      uploadedDocuments,
+                      // OPTIMIZED: Only store essential metadata for draft, full metadata will be sent on submit
+                      uploadedFilesMetadata: Object.keys(uploadedFilesMetadata).length > 0 ? 
+                        Object.fromEntries(
+                          Object.entries(uploadedFilesMetadata).map(([key, files]) => [
+                            key, 
+                            files.map(file => ({
+                              file_name: file.file_name,
+                              file_size: file.file_size,
+                              mime_type: file.mime_type,
+                              upload_date: file.upload_date
+                            }))
+                          ])
+                        ) : {},
+                      hasCoApplicant,
+                      hasGuarantor,
+                      currentStep,
                       webhookResponses: {
                         ...webhookResponses,
                         [documentType]: response

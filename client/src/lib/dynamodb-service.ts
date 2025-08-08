@@ -20,13 +20,7 @@ export interface UploadedDocument {
 
 export interface DraftData {
   applicantId: string;
-  formData?: {
-    uploadedFiles?: {
-      [sectionName: string]: UploadedDocument[];
-    };
-    [key: string]: any;
-  };
-  form_data?: {
+  formData: {
     uploadedFiles?: {
       [sectionName: string]: UploadedDocument[];
     };
