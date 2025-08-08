@@ -10,6 +10,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import RentalApplicationPage from "@/pages/rental-application";
 import MondayApplicationPage from "@/pages/monday-application";
 import MissingDocumentsPage from "@/pages/missing-documents";
+import MaintenancePage from "@/pages/maintenance";
 import ApplicationsPage from "@/pages/applications";
 import LoginPage from "@/pages/login";
 import TestAuthPage from "@/pages/test-auth";
@@ -88,6 +89,13 @@ function Router() {
           </AppLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/maintenance">
+        <ProtectedRoute>
+          <AppLayout>
+            <MaintenancePage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/applications">
         <ProtectedRoute>
           <AppLayout>
@@ -129,7 +137,7 @@ function Router() {
         {isAuthenticated ? (
           <ProtectedRoute>
             <AppLayout>
-              <ApplicationsPage />
+              <RentalApplicationPage />
             </AppLayout>
           </ProtectedRoute>
         ) : (

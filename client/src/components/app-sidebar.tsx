@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { 
   Home, 
   FileText, 
-  ClipboardList, 
+  Wrench,
   Lock, 
   LogOut,
   User,
@@ -47,11 +47,6 @@ export function AppSidebar() {
 
   const navigationItems = [
     {
-      title: "My Applications",
-      url: "/applications",
-      icon: ClipboardList,
-    },
-    {
       title: "Start New Application",
       url: "/application",
       icon: FileText,
@@ -61,14 +56,23 @@ export function AppSidebar() {
       url: "/missing-documents",
       icon: FileText,
     },
+    {
+      title: "Maintenance",
+      url: "/maintenance",
+      icon: Wrench,
+    },
   ];
 
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2">
-          <Home className="h-6 w-6 text-blue-600" />
-          <span className="font-semibold">Rental Apps</span>
+        <div className="flex items-center justify-center px-2">
+          <img 
+            src="https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/image+(1).png" 
+            alt="Logo" 
+            className="h-12 w-40 object-contain"
+            style={{ width: '10rem' }}
+          />
         </div>
       </SidebarHeader>
       

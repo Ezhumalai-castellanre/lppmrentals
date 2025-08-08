@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, Home, Lock, FileText, ClipboardList, TestTube } from 'lucide-react';
+import { LogOut, Home, Lock, FileText, TestTube } from 'lucide-react';
 import LogoutButton from './logout-button';
 import { useLocation } from 'wouter';
 
@@ -30,7 +30,12 @@ const NavHeader: React.FC = () => {
     <header className="bg-white border-b border-gray-200 px-4 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Home className="h-6 w-6 text-blue-600" />
+          <img 
+            src="https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/image+(1).png" 
+            alt="Logo" 
+            className="h-10 w-40 object-contain"
+            style={{ width: '10rem' }}
+          />
           <h1 className="text-xl font-semibold text-gray-900">
             Rental Applications
           </h1>
@@ -40,21 +45,21 @@ const NavHeader: React.FC = () => {
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => setLocation('/applications')}
-            className="flex items-center space-x-2"
-          >
-            <ClipboardList className="h-4 w-4" />
-            <span>My Applications</span>
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm"
             onClick={() => setLocation('/missing-documents')}
             className="flex items-center space-x-2"
           >
             <FileText className="h-4 w-4" />
             <span>Missing Documents</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setLocation('/maintenance')}
+            className="flex items-center space-x-2"
+          >
+            <Wrench className="h-4 w-4" />
+            <span>Maintenance</span>
           </Button>
           
           <Button 

@@ -235,6 +235,7 @@ export function ApplicationForm() {
     file_name: string;
     section_name: string;
     documents?: string;
+    file_url?: string;
   }[]>([]);
 
   // Add state for webhook responses
@@ -2849,11 +2850,62 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
                 onWebhookResponse={(documentType, response) => {
                   console.log('Webhook response received:', documentType, response);
                   
+                  // Extract file URL from webhook response
+                  let fileUrl = '';
+                  if (response) {
+                    try {
+                      // Try to parse as JSON first
+                      const responseJson = JSON.parse(response);
+                      if (responseJson && typeof responseJson === 'string') {
+                        fileUrl = responseJson;
+                      } else if (responseJson && responseJson.url) {
+                        fileUrl = responseJson.url;
+                      } else if (responseJson && responseJson.body) {
+                        fileUrl = responseJson.body;
+                      }
+                    } catch (parseError) {
+                      // If not JSON, treat the entire response as the URL
+                      fileUrl = response.trim();
+                    }
+                  }
+                  
+                  console.log('📄 Extracted file URL from webhook response:', fileUrl);
+                  
                   // Store the webhook response (S3 URL)
                   setWebhookResponses((prev: any) => ({
                     ...prev,
                     [documentType]: response,
                   }));
+                  
+                  // Update uploadedDocuments with the file URL
+                  if (fileUrl) {
+                    setUploadedDocuments(prev => {
+                      const safePrev = Array.isArray(prev) ? prev : [];
+                      // Find and update the document with the file URL
+                      const updatedDocs = safePrev.map(doc => {
+                        if (doc.section_name === documentType || doc.documents === documentType) {
+                          return {
+                            ...doc,
+                            file_url: fileUrl
+                          };
+                        }
+                        return doc;
+                      });
+                      
+                      // If no existing document found, add a new one
+                      if (!updatedDocs.some(doc => doc.section_name === documentType || doc.documents === documentType)) {
+                        updatedDocs.push({
+                          reference_id: `${Date.now()}-${documentType}`,
+                          file_name: documentType,
+                          section_name: documentType,
+                          documents: documentType,
+                          file_url: fileUrl
+                        });
+                      }
+                      
+                      return updatedDocs;
+                    });
+                  }
                   
                   // Save draft immediately after successful webhook response
                   if (user?.applicantId && response) {
@@ -3467,10 +3519,64 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
         const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicant', documentType, encryptedFiles);
         const coApplicantWebhookResponse = (documentType: string, response: any) => {
           console.log('Co-applicant webhook response received:', documentType, response);
+          
+          // Extract file URL from webhook response
+          let fileUrl = '';
+          if (response) {
+            try {
+              // Try to parse as JSON first
+              const responseJson = JSON.parse(response);
+              if (responseJson && typeof responseJson === 'string') {
+                fileUrl = responseJson;
+              } else if (responseJson && responseJson.url) {
+                fileUrl = responseJson.url;
+              } else if (responseJson && responseJson.body) {
+                fileUrl = responseJson.body;
+              }
+            } catch (parseError) {
+              // If not JSON, treat the entire response as the URL
+              fileUrl = response.trim();
+            }
+          }
+          
+          console.log('📄 Extracted co-applicant file URL from webhook response:', fileUrl);
+          
           setWebhookResponses((prev: any) => ({
             ...prev,
             [`coApplicant_${documentType}`]: response,
           }));
+          
+          // Update uploadedDocuments with the file URL
+          if (fileUrl) {
+            setUploadedDocuments(prev => {
+              const safePrev = Array.isArray(prev) ? prev : [];
+              const sectionKey = `coApplicant_${documentType}`;
+              
+              // Find and update the document with the file URL
+              const updatedDocs = safePrev.map(doc => {
+                if (doc.section_name === sectionKey || doc.documents === documentType) {
+                  return {
+                    ...doc,
+                    file_url: fileUrl
+                  };
+                }
+                return doc;
+              });
+              
+              // If no existing document found, add a new one
+              if (!updatedDocs.some(doc => doc.section_name === sectionKey || doc.documents === documentType)) {
+                updatedDocs.push({
+                  reference_id: `${Date.now()}-${sectionKey}`,
+                  file_name: documentType,
+                  section_name: sectionKey,
+                  documents: documentType,
+                  file_url: fileUrl
+                });
+              }
+              
+              return updatedDocs;
+            });
+          }
         };
         return (
           hasCoApplicant ? (
@@ -4132,10 +4238,64 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
         const guarantorEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('guarantor', documentType, encryptedFiles);
         const guarantorWebhookResponse = (documentType: string, response: any) => {
           console.log('Guarantor webhook response received:', documentType, response);
+          
+          // Extract file URL from webhook response
+          let fileUrl = '';
+          if (response) {
+            try {
+              // Try to parse as JSON first
+              const responseJson = JSON.parse(response);
+              if (responseJson && typeof responseJson === 'string') {
+                fileUrl = responseJson;
+              } else if (responseJson && responseJson.url) {
+                fileUrl = responseJson.url;
+              } else if (responseJson && responseJson.body) {
+                fileUrl = responseJson.body;
+              }
+            } catch (parseError) {
+              // If not JSON, treat the entire response as the URL
+              fileUrl = response.trim();
+            }
+          }
+          
+          console.log('📄 Extracted guarantor file URL from webhook response:', fileUrl);
+          
           setWebhookResponses((prev: any) => ({
             ...prev,
             [`guarantor_${documentType}`]: response,
           }));
+          
+          // Update uploadedDocuments with the file URL
+          if (fileUrl) {
+            setUploadedDocuments(prev => {
+              const safePrev = Array.isArray(prev) ? prev : [];
+              const sectionKey = `guarantor_${documentType}`;
+              
+              // Find and update the document with the file URL
+              const updatedDocs = safePrev.map(doc => {
+                if (doc.section_name === sectionKey || doc.documents === documentType) {
+                  return {
+                    ...doc,
+                    file_url: fileUrl
+                  };
+                }
+                return doc;
+              });
+              
+              // If no existing document found, add a new one
+              if (!updatedDocs.some(doc => doc.section_name === sectionKey || doc.documents === documentType)) {
+                updatedDocs.push({
+                  reference_id: `${Date.now()}-${sectionKey}`,
+                  file_name: documentType,
+                  section_name: sectionKey,
+                  documents: documentType,
+                  file_url: fileUrl
+                });
+              }
+              
+              return updatedDocs;
+            });
+          }
         };
         return (
           <Card className="form-section border-l-4 border-l-green-500">
