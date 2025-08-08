@@ -28,6 +28,7 @@ interface SupportingDocumentsProps {
     documents?: Record<string, File[]>;
     webhookResponses?: Record<string, any>;
     encryptedDocuments?: {
+      applicant?: Record<string, any[]>;
       guarantor?: Record<string, any[]>;
       coApplicant?: Record<string, any[]>;
     };
@@ -35,6 +36,7 @@ interface SupportingDocumentsProps {
     coApplicant?: { employmentType?: string };
     guarantor?: { employmentType?: string };
     otherOccupants?: any[];
+    uploadedFilesMetadata?: Record<string, any[]>;
   };
   onDocumentChange: (documentType: string, files: File[]) => void;
   onEncryptedDocumentChange?: (documentType: string, encryptedFiles: EncryptedFile[]) => void;
@@ -156,6 +158,67 @@ export const SupportingDocuments = ({
       };
     }
     
+    // Check for uploaded documents from draft data
+    const uploadedFilesMetadata = formData.uploadedFilesMetadata;
+    if (uploadedFilesMetadata) {
+      // Check for documents in uploadedFilesMetadata
+      const uploadedFiles = uploadedFilesMetadata[documentId];
+      if (uploadedFiles && Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+        return {
+          status: "uploaded",
+          count: uploadedFiles.length
+        };
+      }
+      
+      // Check for documents with person prefix (e.g., applicant_photo_id, guarantor_photo_id)
+      const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_'];
+      for (const prefix of personPrefixes) {
+        const prefixedDocumentId = prefix + documentId;
+        const prefixedFiles = uploadedFilesMetadata[prefixedDocumentId];
+        if (prefixedFiles && Array.isArray(prefixedFiles) && prefixedFiles.length > 0) {
+          return {
+            status: "uploaded",
+            count: prefixedFiles.length
+          };
+        }
+      }
+    }
+    
+    // Check for encrypted documents from draft data
+    const encryptedDocuments = formData.encryptedDocuments;
+    if (encryptedDocuments) {
+      // Check for documents with person prefix in encryptedDocuments
+      if (encryptedDocuments.applicant && encryptedDocuments.applicant[documentId]) {
+        const files = encryptedDocuments.applicant[documentId];
+        if (Array.isArray(files) && files.length > 0) {
+          return {
+            status: "uploaded",
+            count: files.length
+          };
+        }
+      }
+      
+      if (encryptedDocuments.coApplicant && encryptedDocuments.coApplicant[documentId]) {
+        const files = encryptedDocuments.coApplicant[documentId];
+        if (Array.isArray(files) && files.length > 0) {
+          return {
+            status: "uploaded",
+            count: files.length
+          };
+        }
+      }
+      
+      if (encryptedDocuments.guarantor && encryptedDocuments.guarantor[documentId]) {
+        const files = encryptedDocuments.guarantor[documentId];
+        if (Array.isArray(files) && files.length > 0) {
+          return {
+            status: "uploaded",
+            count: files.length
+          };
+        }
+      }
+    }
+    
     // Fall back to checking actual files
     if (documents.length > 0) {
       return {
@@ -265,7 +328,7 @@ export const SupportingDocuments = ({
                       {docStatus.status === "uploaded" ? (
                         <div className="flex items-center gap-1 text-green-600">
                           <CheckCircle className="h-4 w-4" />
-                          <span className="text-xs">{docStatus.count} file(s)</span>
+                          <span className="text-xs font-medium">Already Uploaded ({docStatus.count} file{docStatus.count > 1 ? 's' : ''})</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 text-orange-600">
@@ -275,6 +338,19 @@ export const SupportingDocuments = ({
                       )}
                     </div>
                   </div>
+                  
+                  {/* Show uploaded files info if available */}
+                  {docStatus.status === "uploaded" && (
+                    <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                      <div className="flex items-center gap-2 text-green-800">
+                        <CheckCircle className="h-4 w-4" />
+                        <span className="text-sm font-medium">Document uploaded successfully</span>
+                      </div>
+                      <p className="text-xs text-green-700 mt-1">
+                        {docStatus.count} file{docStatus.count > 1 ? 's' : ''} uploaded from draft
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <FileUpload
                       onFileChange={(files) => onDocumentChange(document.id, files)}
