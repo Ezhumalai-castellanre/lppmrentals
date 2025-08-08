@@ -20,7 +20,13 @@ export interface UploadedDocument {
 
 export interface DraftData {
   applicantId: string;
-  formData: {
+  form_data?: {
+    uploadedFiles?: {
+      [sectionName: string]: UploadedDocument[];
+    };
+    [key: string]: any;
+  };
+  formData?: {
     uploadedFiles?: {
       [sectionName: string]: UploadedDocument[];
     };
@@ -46,7 +52,7 @@ export class DynamoDBService {
         },
         body: JSON.stringify({
           applicantId,
-          formData,
+          form_data: formData,
           currentStep,
           isComplete,
         }),
@@ -84,9 +90,10 @@ export class DynamoDBService {
 
       const result = await response.json();
       
-      if (result.draft) {
+      // Handle new response structure where draft data is returned directly
+      if (result && (result.form_data || result.formData)) {
         console.log('✅ Draft loaded successfully for applicantId:', applicantId);
-        return result.draft as DraftData;
+        return result as DraftData;
       } else {
         console.log('ℹ️ No draft found for applicantId:', applicantId);
         return null;
