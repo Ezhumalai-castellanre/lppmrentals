@@ -1,6 +1,6 @@
-const { saveDraft } = require('./dynamodb-service.js');
+import { saveDraft } from './dynamodb-service.js';
 
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
   console.log('🔄 Save draft function called');
   console.log('📋 Event:', JSON.stringify(event, null, 2));
   

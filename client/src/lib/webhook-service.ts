@@ -624,13 +624,32 @@ export class WebhookService {
     referenceId: string,
     applicationId: string,
     zoneinfo?: string,
-    uploadedFilesMetadata?: {
-      [key: string]: {
-        file_name: string;
-        file_size: number;
-        mime_type: string;
-        upload_date: string;
-      }[];
+    uploadedFiles?: {
+      supporting_w9_forms?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      supporting_photo_id?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      supporting_social_security?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      supporting_bank_statement?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      supporting_tax_returns?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      supporting_employment_letter?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      supporting_pay_stubs?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      supporting_credit_report?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      coApplicant_w9_forms?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      coApplicant_photo_id?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      coApplicant_social_security?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      coApplicant_bank_statement?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      coApplicant_tax_returns?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      coApplicant_employment_letter?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      coApplicant_pay_stubs?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      coApplicant_credit_report?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      guarantor_w9_forms?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      guarantor_photo_id?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      guarantor_social_security?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      guarantor_bank_statement?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      guarantor_tax_returns?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      guarantor_employment_letter?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      guarantor_pay_stubs?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      guarantor_credit_report?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+      other_occupants_identity?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
     }
   ): Promise<{ success: boolean; error?: string }> {
     // Create a unique submission ID
@@ -649,46 +668,42 @@ export class WebhookService {
       // Clean the form data to remove sensitive information
       const cleanFormData = cleanObject({ ...formData });
       
-      // Convert uploadedFilesMetadata to the expected webhook format
-      const uploadedFiles = {
-        supporting_w9_forms: uploadedFilesMetadata?.supporting_w9_forms || [],
-        supporting_photo_id: uploadedFilesMetadata?.supporting_photo_id || [],
-        supporting_social_security: uploadedFilesMetadata?.supporting_social_security || [],
-        supporting_bank_statement: uploadedFilesMetadata?.supporting_bank_statement || [],
-        supporting_tax_returns: uploadedFilesMetadata?.supporting_tax_returns || [],
-        supporting_employment_letter: uploadedFilesMetadata?.supporting_employment_letter || [],
-        supporting_pay_stubs: uploadedFilesMetadata?.supporting_pay_stubs || [],
-        supporting_credit_report: uploadedFilesMetadata?.supporting_credit_report || [],
-        coApplicant_w9_forms: uploadedFilesMetadata?.coApplicant_w9_forms || [],
-        coApplicant_photo_id: uploadedFilesMetadata?.coApplicant_photo_id || [],
-        coApplicant_social_security: uploadedFilesMetadata?.coApplicant_social_security || [],
-        coApplicant_bank_statement: uploadedFilesMetadata?.coApplicant_bank_statement || [],
-        coApplicant_tax_returns: uploadedFilesMetadata?.coApplicant_tax_returns || [],
-        coApplicant_employment_letter: uploadedFilesMetadata?.coApplicant_employment_letter || [],
-        coApplicant_pay_stubs: uploadedFilesMetadata?.coApplicant_pay_stubs || [],
-        coApplicant_credit_report: uploadedFilesMetadata?.coApplicant_credit_report || [],
-        guarantor_w9_forms: uploadedFilesMetadata?.guarantor_w9_forms || [],
-        guarantor_photo_id: uploadedFilesMetadata?.guarantor_photo_id || [],
-        guarantor_social_security: uploadedFilesMetadata?.guarantor_social_security || [],
-        guarantor_bank_statement: uploadedFilesMetadata?.guarantor_bank_statement || [],
-        guarantor_tax_returns: uploadedFilesMetadata?.guarantor_tax_returns || [],
-        guarantor_employment_letter: uploadedFilesMetadata?.guarantor_employment_letter || [],
-        guarantor_pay_stubs: uploadedFilesMetadata?.guarantor_pay_stubs || [],
-        guarantor_credit_report: uploadedFilesMetadata?.guarantor_credit_report || [],
-        other_occupants_identity: uploadedFilesMetadata?.other_occupants_identity || []
-      };
-      
       // Format data for external webhook
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: zoneinfo || applicationId,
         form_data: cleanFormData,
-        uploaded_files: uploadedFiles,
+        uploaded_files: {
+          supporting_w9_forms: uploadedFiles?.supporting_w9_forms || [],
+          supporting_photo_id: uploadedFiles?.supporting_photo_id || [],
+          supporting_social_security: uploadedFiles?.supporting_social_security || [],
+          supporting_bank_statement: uploadedFiles?.supporting_bank_statement || [],
+          supporting_tax_returns: uploadedFiles?.supporting_tax_returns || [],
+          supporting_employment_letter: uploadedFiles?.supporting_employment_letter || [],
+          supporting_pay_stubs: uploadedFiles?.supporting_pay_stubs || [],
+          supporting_credit_report: uploadedFiles?.supporting_credit_report || [],
+          coApplicant_w9_forms: uploadedFiles?.coApplicant_w9_forms || [],
+          coApplicant_photo_id: uploadedFiles?.coApplicant_photo_id || [],
+          coApplicant_social_security: uploadedFiles?.coApplicant_social_security || [],
+          coApplicant_bank_statement: uploadedFiles?.coApplicant_bank_statement || [],
+          coApplicant_tax_returns: uploadedFiles?.coApplicant_tax_returns || [],
+          coApplicant_employment_letter: uploadedFiles?.coApplicant_employment_letter || [],
+          coApplicant_pay_stubs: uploadedFiles?.coApplicant_pay_stubs || [],
+          coApplicant_credit_report: uploadedFiles?.coApplicant_credit_report || [],
+          guarantor_w9_forms: uploadedFiles?.guarantor_w9_forms || [],
+          guarantor_photo_id: uploadedFiles?.guarantor_photo_id || [],
+          guarantor_social_security: uploadedFiles?.guarantor_social_security || [],
+          guarantor_bank_statement: uploadedFiles?.guarantor_bank_statement || [],
+          guarantor_tax_returns: uploadedFiles?.guarantor_tax_returns || [],
+          guarantor_employment_letter: uploadedFiles?.guarantor_employment_letter || [],
+          guarantor_pay_stubs: uploadedFiles?.guarantor_pay_stubs || [],
+          guarantor_credit_report: uploadedFiles?.guarantor_credit_report || [],
+          other_occupants_identity: uploadedFiles?.other_occupants_identity || []
+        },
         submission_type: 'form_data'
       };
 
       console.log(`Sending form data to external webhook for application ${applicationId}`);
-      console.log('📁 Uploaded files metadata keys:', Object.keys(uploadedFilesMetadata || {}));
       
       // Log payload size for debugging
       const payloadSize = JSON.stringify(webhookData).length;
