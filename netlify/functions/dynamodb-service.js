@@ -272,7 +272,8 @@ async function loadDraft(applicantId) {
       }
     };
     
-    const result = await client.get(params).promise();
+    const getCommand = new GetCommand(params);
+    const result = await docClient.send(getCommand);
     
     if (!result.Item) {
       console.log('❌ No draft found for applicantId:', applicantId);
