@@ -559,7 +559,7 @@ export class WebhookService {
             // Clean the draft data to remove any sensitive information
             const cleanDraftData = cleanObject(draftData);
             
-            await DynamoDBService.saveDraft(applicationId, cleanDraftData.formData, cleanDraftData.currentStep, cleanDraftData.isComplete);
+            await DynamoDBService.saveDraft(applicationId, cleanDraftData.form_data || cleanDraftData.formData, cleanDraftData.currentStep, cleanDraftData.isComplete);
             console.log('✅ Webhook response saved to DynamoDB for file:', file.name);
           } else {
             console.warn('⚠️ No applicationId provided, skipping DynamoDB save');

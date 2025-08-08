@@ -129,7 +129,7 @@ export function useDraft(options: UseDraftOptions = {}) {
     try {
       const draftData: DraftData = {
         applicantId: user.applicantId,
-        formData,
+        form_data: formData,
         currentStep,
         lastSaved: new Date().toISOString(),
         isComplete,
