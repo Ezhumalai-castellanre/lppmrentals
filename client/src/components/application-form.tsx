@@ -22,7 +22,7 @@ import { ResetPDFGenerator } from "@/lib/pdf-generator-reset";
 import { Download, FileText, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useDraft } from "@/hooks/use-draft";
+
 import ApplicationInstructions from "./application-instructions";
 import { useRef } from "react";
 import { useLocation } from "wouter";
@@ -204,71 +204,7 @@ export function ApplicationForm() {
   // Read selected rental from sessionStorage
   const [selectedRental, setSelectedRental] = useState<any>(null);
 
-  // Draft functionality
-  const {
-    isLoading: isDraftLoading,
-    isSaving: isDraftSaving,
-    lastSaved,
-    hasUnsavedChanges,
-    currentDraft,
-    loadDraft,
-    saveDraft,
-    updateFormData: updateDraftFormData,
-    deleteDraft,
-    clearUnsavedChanges,
-  } = useDraft({
-    autoSaveInterval: 30000, // 30 seconds
-    enableAutoSave: true,
-    onDraftLoaded: (draft) => {
-      // Restore form data from draft
-      if (draft.formData) {
-        // Restore raw form data if available
-        if (draft.formData.rawFormData) {
-          setFormData(draft.formData.rawFormData);
-        } else {
-          setFormData(draft.formData);
-        }
-        
-        setCurrentStep(draft.currentStep);
-        
-        // Restore other state
-        if (draft.formData.signatures) {
-          setSignatures(draft.formData.signatures);
-        }
-        if (draft.formData.documents) {
-          setDocuments(draft.formData.documents);
-        }
-        if (draft.formData.encryptedDocuments) {
-          setEncryptedDocuments(draft.formData.encryptedDocuments);
-        }
-        if (draft.formData.uploadedDocuments) {
-          setUploadedDocuments(draft.formData.uploadedDocuments);
-        }
-        if (draft.formData.uploadedFilesMetadata) {
-          setUploadedFilesMetadata(draft.formData.uploadedFilesMetadata);
-        }
-        if (draft.formData.hasCoApplicant !== undefined) {
-          setHasCoApplicant(draft.formData.hasCoApplicant);
-        }
-        if (draft.formData.hasGuarantor !== undefined) {
-          setHasGuarantor(draft.formData.hasGuarantor);
-        }
-        if (draft.formData.webhookResponses) {
-          setWebhookResponses(draft.formData.webhookResponses);
-        }
-        
-        // Reset form with draft data - use rawFormValues if available
-        if (draft.formData.rawFormValues) {
-          form.reset(draft.formData.rawFormValues);
-        } else if (draft.formData.formValues) {
-          form.reset(draft.formData.formValues);
-        }
-      }
-    },
-    onDraftSaved: (draft) => {
-      console.log('Draft saved successfully:', draft);
-    },
-  });
+
 
 
 
@@ -308,8 +244,7 @@ export function ApplicationForm() {
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(true);
   const [welcomeMessage, setWelcomeMessage] = useState('');
   
-  // Draft banner state
-  const [showDraftBanner, setShowDraftBanner] = useState(true);
+
 
   // Monday.com API state
   const [units, setUnits] = useState<UnitItem[]>([]);
@@ -651,7 +586,7 @@ export function ApplicationForm() {
         currentStep,
       };
       
-      updateDraftFormData(mappedFormData);
+
       
       return newFormData;
     });
@@ -942,78 +877,6 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
       e.stopPropagation();
     }
     
-    // Save draft before moving to next step
-    try {
-      const safeDateToISO = (dateValue: any): string | null => {
-        if (!dateValue) return null;
-        try {
-          const date = new Date(dateValue);
-          if (isNaN(date.getTime())) {
-            console.warn('Invalid date value:', dateValue);
-            return null;
-          }
-          return date.toISOString();
-        } catch (error) {
-          console.warn('Error converting date to ISO:', dateValue, error);
-          return null;
-        }
-      };
-
-      const formValues = form.getValues();
-      
-      // Create mapped form data with proper field mapping
-      const mappedFormData = {
-        // Application Info
-        buildingAddress: formValues.buildingAddress || formData.application?.buildingAddress,
-        apartmentNumber: formValues.apartmentNumber || formData.application?.apartmentNumber,
-        moveInDate: safeDateToISO(formValues.moveInDate || formData.application?.moveInDate),
-        monthlyRent: formValues.monthlyRent || formData.application?.monthlyRent,
-        apartmentType: formValues.apartmentType || formData.application?.apartmentType,
-        howDidYouHear: formValues.howDidYouHear || formData.application?.howDidYouHear,
-        howDidYouHearOther: formValues.howDidYouHearOther || formData.application?.howDidYouHearOther,
-        
-        // Primary Applicant
-        applicantName: formValues.applicantName || formData.applicant?.name,
-        applicantDob: safeDateToISO(formValues.applicantDob || formData.applicant?.dob),
-        applicantSsn: formData.applicant?.ssn || formValues.applicantSsn,
-        applicantPhone: formatPhoneForPayload(formData.applicant?.phone || formValues.applicantPhone),
-        applicantEmail: formValues.applicantEmail || formData.applicant?.email,
-        applicantLicense: formData.applicant?.license || formValues.applicantLicense,
-        applicantLicenseState: formData.applicant?.licenseState || formValues.applicantLicenseState,
-        applicantAddress: formValues.applicantAddress || formData.applicant?.address,
-        applicantCity: formValues.applicantCity || formData.applicant?.city,
-        applicantState: formValues.applicantState || formData.applicant?.state,
-        applicantZip: formValues.applicantZip || formData.applicant?.zip,
-        
-        // Store the raw form data for restoration
-        rawFormData: formData,
-        rawFormValues: formValues,
-        signatures,
-        documents,
-        encryptedDocuments,
-        uploadedDocuments,
-        uploadedFilesMetadata,
-        hasCoApplicant,
-        hasGuarantor,
-        currentStep,
-      };
-
-      await saveDraft(
-        {
-          applicantId: user?.applicantId,
-          form_data: mappedFormData,
-          currentStep,
-          lastSaved: new Date().toISOString(),
-          isComplete: false
-        }, 
-        currentStep, 
-        false, 
-        false
-      ); // Don't show toast for auto-save
-    } catch (error) {
-      console.error('Error auto-saving draft:', error);
-    }
-    
     setCurrentStep((prev) => getNextAllowedStep(prev, 1));
   };
 
@@ -1023,90 +886,6 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
     if (e) {
       e.preventDefault();
       e.stopPropagation();
-    }
-    
-    // Save draft before moving to previous step
-    try {
-      const safeDateToISO = (dateValue: any): string | null => {
-        if (!dateValue) return null;
-        try {
-          const date = new Date(dateValue);
-          if (isNaN(date.getTime())) {
-            console.warn('Invalid date value:', dateValue);
-            return null;
-          }
-          return date.toISOString();
-        } catch (error) {
-          console.warn('Error converting date to ISO:', dateValue, error);
-          return null;
-        }
-      };
-
-      const formValues = form.getValues();
-      
-      // Create mapped form data with proper field mapping
-      const mappedFormData = {
-        // Application Info
-        buildingAddress: formValues.buildingAddress || formData.application?.buildingAddress,
-        apartmentNumber: formValues.apartmentNumber || formData.application?.apartmentNumber,
-        moveInDate: safeDateToISO(formValues.moveInDate || formData.application?.moveInDate),
-        monthlyRent: formValues.monthlyRent || formData.application?.monthlyRent,
-        apartmentType: formValues.apartmentType || formData.application?.apartmentType,
-        howDidYouHear: formValues.howDidYouHear || formData.application?.howDidYouHear,
-        howDidYouHearOther: formValues.howDidYouHearOther || formData.application?.howDidYouHearOther,
-        
-        // Primary Applicant
-        applicantName: formValues.applicantName || formData.applicant?.name,
-        applicantDob: safeDateToISO(formValues.applicantDob || formData.applicant?.dob),
-        applicantSsn: formData.applicant?.ssn || formValues.applicantSsn,
-        applicantPhone: formatPhoneForPayload(formData.applicant?.phone || formValues.applicantPhone),
-        applicantEmail: formValues.applicantEmail || formData.applicant?.email,
-        applicantLicense: formData.applicant?.license || formValues.applicantLicense,
-        applicantLicenseState: formData.applicant?.licenseState || formValues.applicantLicenseState,
-        applicantAddress: formValues.applicantAddress || formData.applicant?.address,
-        applicantCity: formValues.applicantCity || formData.applicant?.city,
-        applicantState: formValues.applicantState || formData.applicant?.state,
-        applicantZip: formValues.applicantZip || formData.applicant?.zip,
-        
-        // Store the raw form data for restoration
-        rawFormData: formData,
-        rawFormValues: formValues,
-        signatures,
-        documents,
-        encryptedDocuments,
-        uploadedDocuments,
-        // OPTIMIZED: Only store essential metadata for draft, full metadata will be sent on submit
-        uploadedFilesMetadata: Object.keys(uploadedFilesMetadata).length > 0 ? 
-          Object.fromEntries(
-            Object.entries(uploadedFilesMetadata).map(([key, files]) => [
-              key, 
-              files.map(file => ({
-                file_name: file.file_name,
-                file_size: file.file_size,
-                mime_type: file.mime_type,
-                upload_date: file.upload_date
-              }))
-            ])
-          ) : {},
-        hasCoApplicant,
-        hasGuarantor,
-        currentStep,
-      };
-
-      await saveDraft(
-        {
-          applicantId: user?.applicantId,
-          form_data: mappedFormData,
-          currentStep,
-          lastSaved: new Date().toISOString(),
-          isComplete: false
-        }, 
-        currentStep, 
-        false, 
-        false
-      ); // Don't show toast for auto-save
-    } catch (error) {
-      console.error('Error auto-saving draft:', error);
     }
     
     setCurrentStep((prev) => getNextAllowedStep(prev, -1));
@@ -4583,51 +4362,7 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
         </div>
       )}
 
-      {/* Draft Restoration Banner */}
-      {currentDraft && showDraftBanner && (
-        <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <Save className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-green-900 font-medium">Draft Restored</p>
-                <p className="text-green-700 text-sm">
-                  Your application has been restored from your last saved draft. You're on step {currentDraft.currentStep + 1}.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={async () => {
-                  try {
-                    await deleteDraft();
-                    setShowDraftBanner(false);
-                    toast({
-                      title: 'Draft Deleted',
-                      description: 'Your draft has been deleted. Starting fresh.',
-                    });
-                  } catch (error) {
-                    console.error('Error deleting draft:', error);
-                  }
-                }}
-                className="text-green-600 hover:text-green-800 text-sm font-medium"
-              >
-                Start Fresh
-              </button>
-              <button
-                onClick={() => setShowDraftBanner(false)}
-                className="text-green-400 hover:text-green-600 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Header with Navigation */}
       <div className="w-full max-w-4xl mx-auto px-3 py-4 sm:px-4 sm:py-8">
@@ -5006,41 +4741,9 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
                       }
                     };
 
-                    await saveDraft(
-                      {
-                        applicantId: user?.applicantId,
-                        form_data: mappedFormData,
-                        currentStep,
-                        lastSaved: new Date().toISOString(),
-                        isComplete: false
-                      }, 
-                      currentStep, 
-                      false, 
-                      false
-                    ); // Don't show toast for auto-save
-                  } catch (error) {
-                    console.error('Error saving draft:', error);
-                  }
-                }}
-                  disabled={isDraftSaving}
-                  className="flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2"
-                >
-                  <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  {isDraftSaving ? (
-                    <span className="hidden sm:inline">Saving...</span>
-                  ) : (
-                    <span className="hidden sm:inline">Save Draft</span>
-                  )}
-                </Button>
-              </div>
 
               <div className="flex flex-col items-center text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 <div>Step {currentStep + 1} of {STEPS.length}</div>
-                {lastSaved && (
-                  <div className="text-xs text-gray-500">
-                    Last saved: {new Date(lastSaved).toLocaleTimeString()}
-                  </div>
-                )}
               </div>
 
               {currentStep === STEPS.length - 1 ? (

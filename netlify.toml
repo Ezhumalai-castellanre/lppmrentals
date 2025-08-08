@@ -36,20 +36,7 @@
   to = "/.netlify/functions/test-schema"
   status = 200
 
-[[redirects]]
-  from = "/api/save-draft"
-  to = "/.netlify/functions/save-draft"
-  status = 200
 
-[[redirects]]
-  from = "/api/load-draft"
-  to = "/.netlify/functions/load-draft"
-  status = 200
-
-[[redirects]]
-  from = "/api/delete-draft"
-  to = "/.netlify/functions/delete-draft"
-  status = 200
 
 [[redirects]]
   from = "/api/*"
