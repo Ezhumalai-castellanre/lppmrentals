@@ -32,8 +32,25 @@ export const handler = async (event, context) => {
 
   try {
     console.log('📥 Parsing request body...');
-    const { applicantId, formData, currentStep, isComplete = false } = JSON.parse(event.body);
+    const requestBody = JSON.parse(event.body);
     console.log('✅ Request parsed successfully');
+
+    // Handle new structure with form_data container
+    let applicantId, formData, currentStep, isComplete;
+    
+    if (requestBody.form_data) {
+      // New structure with form_data container
+      applicantId = requestBody.applicantId;
+      formData = requestBody.form_data;
+      currentStep = requestBody.currentStep;
+      isComplete = requestBody.isComplete || false;
+    } else {
+      // Legacy structure - backward compatibility
+      applicantId = requestBody.applicantId;
+      formData = requestBody.formData;
+      currentStep = requestBody.currentStep;
+      isComplete = requestBody.isComplete || false;
+    }
 
     if (!applicantId) {
       console.log('❌ Missing applicantId');
