@@ -1,8 +1,11 @@
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { FileUpload } from "./ui/file-upload";
 import { Badge } from "./ui/badge";
-import { CheckCircle, AlertCircle, FileText, DollarSign, Building, User, CreditCard, Shield, UserCheck } from "lucide-react";
+import { CheckCircle, AlertCircle, FileText, DollarSign, Building, User, CreditCard, Shield, UserCheck, Building2, Briefcase, GraduationCap, Eye, Download, X } from "lucide-react";
 import { type EncryptedFile } from "@/lib/file-encryption";
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 
 interface DocumentInfo {
   id: string;
@@ -25,7 +28,12 @@ interface DocumentStatus {
 
 interface SupportingDocumentsProps {
   formData: {
-    documents?: Record<string, File[]>;
+    documents?: {
+      applicant?: Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      coApplicant?: Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      guarantor?: Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      otherOccupants?: Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+    };
     webhookResponses?: Record<string, any>;
     encryptedDocuments?: {
       applicant?: Record<string, any[]>;
@@ -63,6 +71,18 @@ export const SupportingDocuments = ({
   showOnlyCoApplicant = false,
   showOnlyGuarantor = false
 }: SupportingDocumentsProps): JSX.Element => {
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    url: string;
+    filename: string;
+  }>({
+    isOpen: false,
+    title: '',
+    url: '',
+    filename: ''
+  });
+
   const requiredDocuments: CategoryInfo[] = [
     {
       category: "Identity Documents",
@@ -233,6 +253,73 @@ export const SupportingDocuments = ({
     };
   };
 
+  const getUploadedDocuments = (documentId: string) => {
+    const documents = formData.documents;
+    if (!documents) return [];
+
+    // Check for documents in the new structure with webhookbodyUrl
+    const uploadedDocs: Array<{ filename: string; webhookbodyUrl: string }> = [];
+    
+    // Check applicant documents
+    if (documents.applicant) {
+      const applicantDocs = documents.applicant as Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      if (applicantDocs[documentId]) {
+        uploadedDocs.push(...applicantDocs[documentId]);
+      }
+    }
+    
+    // Check co-applicant documents
+    if (documents.coApplicant) {
+      const coApplicantDocs = documents.coApplicant as Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      if (coApplicantDocs[documentId]) {
+        uploadedDocs.push(...coApplicantDocs[documentId]);
+      }
+    }
+    
+    // Check guarantor documents
+    if (documents.guarantor) {
+      const guarantorDocs = documents.guarantor as Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      if (guarantorDocs[documentId]) {
+        uploadedDocs.push(...guarantorDocs[documentId]);
+      }
+    }
+    
+    // Check other occupants documents
+    if (documents.otherOccupants) {
+      const otherOccupantsDocs = documents.otherOccupants as Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      Object.entries(otherOccupantsDocs).forEach(([key, files]) => {
+        if (key.includes(documentId) && Array.isArray(files)) {
+          uploadedDocs.push(...files);
+        }
+      });
+    }
+
+    return uploadedDocs;
+  };
+
+  const handlePreviewDocument = (filename: string, webhookbodyUrl: string, documentName: string) => {
+    setPreviewModal({
+      isOpen: true,
+      title: documentName,
+      url: webhookbodyUrl,
+      filename: filename
+    });
+  };
+
+  const handleDownloadDocument = (webhookbodyUrl: string, filename: string) => {
+    const link = document.createElement('a');
+    link.href = webhookbodyUrl;
+    link.download = filename;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleClosePreview = () => {
+    setPreviewModal(prev => ({ ...prev, isOpen: false }));
+  };
+
   // Determine employment type for applicant, co-applicant, and guarantor
   const applicantEmploymentType = formData?.applicant?.employmentType;
   const coApplicantEmploymentType = formData?.coApplicant?.employmentType;
@@ -349,6 +436,47 @@ export const SupportingDocuments = ({
                       <p className="text-xs text-green-700 mt-1">
                         {docStatus.count} file{docStatus.count > 1 ? 's' : ''} uploaded from draft
                       </p>
+                      
+                      {/* Show uploaded documents with preview/download options */}
+                      {(() => {
+                        const uploadedDocs = getUploadedDocuments(document.id);
+                        if (uploadedDocs.length > 0) {
+                          return (
+                            <div className="mt-3 space-y-2">
+                              <p className="text-xs font-medium text-green-800">Uploaded Files:</p>
+                              {uploadedDocs.map((doc, index) => (
+                                <div key={index} className="flex items-center justify-between bg-white rounded border p-2">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-green-600" />
+                                    <span className="text-xs text-gray-700">{doc.filename}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handlePreviewDocument(doc.filename, doc.webhookbodyUrl, document.name)}
+                                      className="h-6 px-2 text-xs"
+                                    >
+                                      <Eye className="h-3 w-3 mr-1" />
+                                      Preview
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDownloadDocument(doc.webhookbodyUrl, doc.filename)}
+                                      className="h-6 px-2 text-xs"
+                                    >
+                                      <Download className="h-3 w-3 mr-1" />
+                                      Download
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   )}
                   <div>
@@ -392,6 +520,31 @@ export const SupportingDocuments = ({
           </div>
         </div>
       ))}
+
+      <Dialog open={previewModal.isOpen} onOpenChange={handleClosePreview}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{previewModal.title}</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={handleClosePreview}>
+              <X className="h-4 w-4 mr-2" /> Close
+            </Button>
+            <Button onClick={() => handleDownloadDocument(previewModal.url, previewModal.filename)}>
+              <Download className="h-4 w-4 mr-2" /> Download
+            </Button>
+            <Button onClick={() => handlePreviewDocument(previewModal.filename, previewModal.url, previewModal.title)}>
+              <Eye className="h-4 w-4 mr-2" /> Preview
+            </Button>
+          </div>
+          {previewModal.url && (
+            <iframe
+              src={previewModal.url}
+              style={{ width: '100%', height: 'calc(100vh - 250px)', border: 'none' }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
