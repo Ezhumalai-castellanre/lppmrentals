@@ -3219,7 +3219,18 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
                     };
                     
                     // Save draft with webhook response
-                    saveDraft(mappedFormData, currentStep, false, false);
+                    saveDraft(
+                      {
+                        applicantId: user?.applicantId,
+                        form_data: mappedFormData,
+                        currentStep,
+                        lastSaved: new Date().toISOString(),
+                        isComplete: false
+                      }, 
+                      currentStep, 
+                      false, 
+                      false
+                    );
                     console.log(`✅ Draft saved with webhook response for ${documentType}: ${response}`);
                   }
                 }}
