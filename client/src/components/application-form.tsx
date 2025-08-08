@@ -998,7 +998,18 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
         currentStep,
       };
 
-      await saveDraft(mappedFormData, currentStep, false, false); // Don't show toast for auto-save
+      await saveDraft(
+        {
+          applicantId: user?.applicantId,
+          form_data: mappedFormData,
+          currentStep,
+          lastSaved: new Date().toISOString(),
+          isComplete: false
+        }, 
+        currentStep, 
+        false, 
+        false
+      ); // Don't show toast for auto-save
     } catch (error) {
       console.error('Error auto-saving draft:', error);
     }
@@ -1082,7 +1093,18 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
         currentStep,
       };
 
-      await saveDraft(mappedFormData, currentStep, false, false); // Don't show toast for auto-save
+      await saveDraft(
+        {
+          applicantId: user?.applicantId,
+          form_data: mappedFormData,
+          currentStep,
+          lastSaved: new Date().toISOString(),
+          isComplete: false
+        }, 
+        currentStep, 
+        false, 
+        false
+      ); // Don't show toast for auto-save
     } catch (error) {
       console.error('Error auto-saving draft:', error);
     }
@@ -1191,7 +1213,18 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
         currentStep,
       };
 
-      await saveDraft(mappedFormData, currentStep, false, false); // Don't show toast for auto-save
+      await saveDraft(
+        {
+          applicantId: user?.applicantId,
+          form_data: mappedFormData,
+          currentStep,
+          lastSaved: new Date().toISOString(),
+          isComplete: false
+        }, 
+        currentStep, 
+        false, 
+        false
+      ); // Don't show toast for auto-save
     } catch (error) {
       console.error('Error auto-saving draft:', error);
     }
@@ -4715,33 +4748,265 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
                       applicantCity: formValues.applicantCity || formData.applicant?.city,
                       applicantState: formValues.applicantState || formData.applicant?.state,
                       applicantZip: formValues.applicantZip || formData.applicant?.zip,
+                      applicantLengthAtAddressYears: formData.applicant?.lengthAtAddressYears,
+                      applicantLengthAtAddressMonths: formData.applicant?.lengthAtAddressMonths,
+                      applicantLandlordName: formData.applicant?.landlordName,
+                      applicantLandlordAddressLine1: formData.applicant?.landlordAddressLine1,
+                      applicantLandlordAddressLine2: formData.applicant?.landlordAddressLine2,
+                      applicantLandlordCity: formData.applicant?.landlordCity,
+                      applicantLandlordState: formData.applicant?.landlordState,
+                      applicantLandlordZipCode: formData.applicant?.landlordZipCode,
+                      applicantLandlordPhone: formData.applicant?.landlordPhone,
+                      applicantLandlordEmail: formData.applicant?.landlordEmail,
+                      applicantCurrentRent: formData.applicant?.currentRent,
+                      applicantReasonForMoving: formData.applicant?.reasonForMoving,
+                      applicantEmploymentType: formData.applicant?.employmentType,
+                      applicantPosition: formData.applicant?.position,
+                      applicantStartDate: safeDateToISO(formData.applicant?.startDate),
                       
-                      // Store the raw form data for restoration
-                      rawFormData: formData,
-                      rawFormValues: formValues,
-                      signatures,
-                      documents,
-                      encryptedDocuments,
-                      uploadedDocuments,
-                      // OPTIMIZED: Only store essential metadata for draft, full metadata will be sent on submit
-                      uploadedFilesMetadata: Object.keys(uploadedFilesMetadata).length > 0 ? 
-                        Object.fromEntries(
-                          Object.entries(uploadedFilesMetadata).map(([key, files]) => [
-                            key, 
-                            files.map(file => ({
-                              file_name: file.file_name,
-                              file_size: file.file_size,
-                              mime_type: file.mime_type,
-                              upload_date: file.upload_date
-                            }))
-                          ])
-                        ) : {},
-                      hasCoApplicant,
-                      hasGuarantor,
-                      currentStep,
+                      // Co-Applicant Information
+                      hasCoApplicant: hasCoApplicant,
+                      hasGuarantor: hasGuarantor,
+                      coApplicantName: formData.coApplicant?.name,
+                      coApplicantRelationship: formData.coApplicant?.relationship,
+                      coApplicantDob: safeDateToISO(formData.coApplicant?.dob),
+                      coApplicantSsn: formData.coApplicant?.ssn,
+                      coApplicantPhone: formatPhoneForPayload(formData.coApplicant?.phone),
+                      coApplicantEmail: formData.coApplicant?.email,
+                      coApplicantLicense: formData.coApplicant?.license,
+                      coApplicantLicenseState: formData.coApplicant?.licenseState,
+                      coApplicantCity: formData.coApplicant?.city,
+                      coApplicantState: formData.coApplicant?.state,
+                      coApplicantZip: formData.coApplicant?.zip,
+                      coApplicantLengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears,
+                      coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths,
+                      coApplicantLandlordName: formData.coApplicant?.landlordName,
+                      coApplicantLandlordAddressLine1: formData.coApplicant?.landlordAddressLine1,
+                      coApplicantLandlordAddressLine2: formData.coApplicant?.landlordAddressLine2,
+                      coApplicantLandlordCity: formData.coApplicant?.landlordCity,
+                      coApplicantLandlordState: formData.coApplicant?.landlordState,
+                      coApplicantLandlordZipCode: formData.coApplicant?.landlordZipCode,
+                      coApplicantLandlordPhone: formData.coApplicant?.landlordPhone,
+                      coApplicantLandlordEmail: formData.coApplicant?.landlordEmail,
+                      coApplicantCurrentRent: formData.coApplicant?.currentRent,
+                      coApplicantReasonForMoving: formData.coApplicant?.reasonForMoving,
+                      coApplicantEmploymentType: formData.coApplicant?.employmentType,
+                      coApplicantPosition: formData.coApplicant?.position,
+                      coApplicantStartDate: safeDateToISO(formData.coApplicant?.startDate),
+                      
+                      // Guarantor Information
+                      guarantorName: formData.guarantor?.name,
+                      guarantorRelationship: formData.guarantor?.relationship,
+                      guarantorDob: safeDateToISO(formData.guarantor?.dob),
+                      guarantorSsn: formData.guarantor?.ssn,
+                      guarantorPhone: formatPhoneForPayload(formData.guarantor?.phone),
+                      guarantorEmail: formData.guarantor?.email,
+                      guarantorLicense: formData.guarantor?.license,
+                      guarantorLicenseState: formData.guarantor?.licenseState,
+                      guarantorAddress: formData.guarantor?.address,
+                      guarantorCity: formData.guarantor?.city,
+                      guarantorState: formData.guarantor?.state,
+                      guarantorZip: formData.guarantor?.zip,
+                      guarantorLengthAtAddressYears: formData.guarantor?.lengthAtAddressYears,
+                      guarantorLengthAtAddressMonths: formData.guarantor?.lengthAtAddressMonths,
+                      guarantorLandlordName: formData.guarantor?.landlordName,
+                      guarantorLandlordAddressLine1: formData.guarantor?.landlordAddressLine1,
+                      guarantorLandlordAddressLine2: formData.guarantor?.landlordAddressLine2,
+                      guarantorLandlordCity: formData.guarantor?.landlordCity,
+                      guarantorLandlordState: formData.guarantor?.landlordState,
+                      guarantorLandlordZipCode: formData.guarantor?.landlordZipCode,
+                      guarantorLandlordPhone: formData.guarantor?.landlordPhone,
+                      guarantorLandlordEmail: formData.guarantor?.landlordEmail,
+                      guarantorCurrentRent: formData.guarantor?.currentRent,
+                      guarantorReasonForMoving: formData.guarantor?.reasonForMoving,
+                      guarantorEmploymentType: formData.guarantor?.employmentType,
+                      guarantorPosition: formData.guarantor?.position,
+                      guarantorStartDate: safeDateToISO(formData.guarantor?.startDate),
+                      
+                      // Other Occupants
+                      otherOccupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any) => ({
+                        name: occupant.name,
+                        relationship: occupant.relationship,
+                        dob: occupant.dob,
+                        ssn: occupant.ssn,
+                        license: occupant.license,
+                        age: occupant.age,
+                        ssnDocument: occupant.ssnDocument ? "UPLOADED" : null,
+                        ssnEncryptedDocument: occupant.ssnEncryptedDocument ? "UPLOADED" : null
+                      })),
+                      
+                      // Signatures
+                      signatures: {
+                        applicant: signatures.applicant ? "SIGNED" : null,
+                        coApplicant: signatures.coApplicant ? "SIGNED" : null,
+                        guarantor: signatures.guarantor ? "SIGNED" : null,
+                      },
+                      signatureTimestamps: signatureTimestamps,
+                      
+                      // Bank Information
+                      bankInformation: {
+                        applicant: {
+                          bankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
+                            bankName: record.bankName,
+                            accountType: record.accountType
+                          })),
+                          totalBankRecords: formData.applicant?.bankRecords?.length || 0,
+                          hasBankRecords: !!(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0)
+                        },
+                        coApplicant: hasCoApplicant ? {
+                          bankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
+                            bankName: record.bankName,
+                            accountType: record.accountType
+                          })),
+                          totalBankRecords: formData.coApplicant?.bankRecords?.length || 0,
+                          hasBankRecords: !!(formData.coApplicant?.bankRecords && formData.coApplicant.bankRecords.length > 0)
+                        } : null,
+                        guarantor: hasGuarantor ? {
+                          bankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
+                            bankName: record.bankName,
+                            accountType: record.accountType
+                          })),
+                          totalBankRecords: formData.guarantor?.bankRecords?.length || 0,
+                          hasBankRecords: !!(formData.guarantor?.bankRecords && formData.guarantor.bankRecords.length > 0)
+                        } : null,
+                        summary: {
+                          totalPeople: 1 + (hasCoApplicant ? 1 : 0) + (hasGuarantor ? 1 : 0),
+                          totalBankRecords: (formData.applicant?.bankRecords?.length || 0) + 
+                                           (hasCoApplicant ? (formData.coApplicant?.bankRecords?.length || 0) : 0) + 
+                                           (hasGuarantor ? (formData.guarantor?.bankRecords?.length || 0) : 0),
+                          peopleWithBankRecords: [
+                            ...(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0 ? ['applicant'] : []),
+                            ...(hasCoApplicant && formData.coApplicant?.bankRecords && formData.coApplicant.bankRecords.length > 0 ? ['coApplicant'] : []),
+                            ...(hasGuarantor && formData.guarantor?.bankRecords && formData.guarantor.bankRecords.length > 0 ? ['guarantor'] : [])
+                          ]
+                        }
+                      },
+                      
+                      // Documents with webhook URLs
+                      documents: {
+                        applicant: {
+                          photo_id: encryptedDocuments.applicant?.photo_id?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          social_security: encryptedDocuments.applicant?.social_security?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          w9_forms: encryptedDocuments.applicant?.w9_forms?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          employment_letter: encryptedDocuments.applicant?.employment_letter?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          pay_stubs: encryptedDocuments.applicant?.pay_stubs?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          tax_returns: encryptedDocuments.applicant?.tax_returns?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          bank_statement: encryptedDocuments.applicant?.bank_statement?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          credit_report: encryptedDocuments.applicant?.credit_report?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || []
+                        },
+                        coApplicant: {
+                          photo_id: encryptedDocuments.coApplicant?.photo_id?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          social_security: encryptedDocuments.coApplicant?.social_security?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          w9_forms: encryptedDocuments.coApplicant?.w9_forms?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          employment_letter: encryptedDocuments.coApplicant?.employment_letter?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          pay_stubs: encryptedDocuments.coApplicant?.pay_stubs?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          tax_returns: encryptedDocuments.coApplicant?.tax_returns?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          bank_statement: encryptedDocuments.coApplicant?.bank_statement?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          credit_report: encryptedDocuments.coApplicant?.credit_report?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || []
+                        },
+                        guarantor: {
+                          photo_id: encryptedDocuments.guarantor?.photo_id?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          social_security: encryptedDocuments.guarantor?.social_security?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          w9_forms: encryptedDocuments.guarantor?.w9_forms?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          employment_letter: encryptedDocuments.guarantor?.employment_letter?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          pay_stubs: encryptedDocuments.guarantor?.pay_stubs?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          tax_returns: encryptedDocuments.guarantor?.tax_returns?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          bank_statement: encryptedDocuments.guarantor?.bank_statement?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || [],
+                          credit_report: encryptedDocuments.guarantor?.credit_report?.map((file: any) => ({
+                            filename: file.filename,
+                            webhookbodyUrl: file.fileUrl
+                          })) || []
+                        },
+                        otherOccupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any, index: number) => ({
+                          [`social_security${index + 1}`]: occupant.ssnEncryptedDocument ? [{
+                            filename: occupant.ssnEncryptedDocument.filename,
+                            webhookbodyUrl: occupant.ssnEncryptedDocument.fileUrl
+                          }] : []
+                        })).reduce((acc: any, curr: any) => ({ ...acc, ...curr }), {})
+                      }
                     };
 
-                    await saveDraft(mappedFormData, currentStep, false, true);
+                    await saveDraft(
+                      {
+                        applicantId: user?.applicantId,
+                        form_data: mappedFormData,
+                        currentStep,
+                        lastSaved: new Date().toISOString(),
+                        isComplete: false
+                      }, 
+                      currentStep, 
+                      false, 
+                      false
+                    ); // Don't show toast for auto-save
                   } catch (error) {
                     console.error('Error saving draft:', error);
                   }
