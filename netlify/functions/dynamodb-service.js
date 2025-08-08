@@ -246,7 +246,7 @@ async function saveDraft(applicantId, formData, currentStep, isComplete = false)
       TableName: 'DraftSaved',
       Item: {
         applicantId: draftData.applicantId,
-        formData: compressedData.formData,
+        form_data: compressedData.formData, // Changed from formData to form_data
         currentStep: compressedData.currentStep,
         lastSaved: compressedData.lastSaved,
         isComplete: compressedData.isComplete
@@ -304,7 +304,7 @@ async function loadDraft(applicantId) {
     // Return the draft data in the new structure format
     return {
       applicantId: result.Item.applicantId,
-      form_data: result.Item.formData,
+      form_data: result.Item.form_data || result.Item.formData, // Support both new and legacy keys
       currentStep: result.Item.currentStep,
       lastSaved: result.Item.lastSaved,
       isComplete: result.Item.isComplete
