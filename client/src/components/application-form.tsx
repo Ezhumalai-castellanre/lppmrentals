@@ -937,77 +937,6 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
     }
     
     // Save draft before jumping to step
-    try {
-      const safeDateToISO = (dateValue: any): string | null => {
-        if (!dateValue) return null;
-        try {
-          const date = new Date(dateValue);
-          if (isNaN(date.getTime())) {
-            console.warn('Invalid date value:', dateValue);
-            return null;
-          }
-          return date.toISOString();
-        } catch (error) {
-          console.warn('Error converting date to ISO:', dateValue, error);
-          return null;
-        }
-      };
-
-      const formValues = form.getValues();
-      
-      // Create mapped form data with proper field mapping
-      const mappedFormData = {
-        // Application Info
-        buildingAddress: formValues.buildingAddress || formData.application?.buildingAddress,
-        apartmentNumber: formValues.apartmentNumber || formData.application?.apartmentNumber,
-        moveInDate: safeDateToISO(formValues.moveInDate || formData.application?.moveInDate),
-        monthlyRent: formValues.monthlyRent || formData.application?.monthlyRent,
-        apartmentType: formValues.apartmentType || formData.application?.apartmentType,
-        howDidYouHear: formValues.howDidYouHear || formData.application?.howDidYouHear,
-        howDidYouHearOther: formValues.howDidYouHearOther || formData.application?.howDidYouHearOther,
-        
-        // Primary Applicant
-        applicantName: formValues.applicantName || formData.applicant?.name,
-        applicantDob: safeDateToISO(formValues.applicantDob || formData.applicant?.dob),
-        applicantSsn: formData.applicant?.ssn || formValues.applicantSsn,
-        applicantPhone: formatPhoneForPayload(formData.applicant?.phone || formValues.applicantPhone),
-        applicantEmail: formValues.applicantEmail || formData.applicant?.email,
-        applicantLicense: formData.applicant?.license || formValues.applicantLicense,
-        applicantLicenseState: formData.applicant?.licenseState || formValues.applicantLicenseState,
-        applicantAddress: formValues.applicantAddress || formData.applicant?.address,
-        applicantCity: formValues.applicantCity || formData.applicant?.city,
-        applicantState: formValues.applicantState || formData.applicant?.state,
-        applicantZip: formValues.applicantZip || formData.applicant?.zip,
-        
-        // Store the raw form data for restoration
-        rawFormData: formData,
-        rawFormValues: formValues,
-        signatures,
-        documents,
-        encryptedDocuments,
-        uploadedDocuments,
-        uploadedFilesMetadata,
-        hasCoApplicant,
-        hasGuarantor,
-        currentStep,
-      };
-
-      await saveDraft(
-        {
-          applicantId: user?.applicantId,
-          form_data: mappedFormData,
-          currentStep,
-          lastSaved: new Date().toISOString(),
-          isComplete: false
-        }, 
-        currentStep, 
-        false, 
-        false
-      ); // Don't show toast for auto-save
-    } catch (error) {
-      console.error('Error auto-saving draft:', error);
-    }
-    
     setCurrentStep(step);
   };
 
@@ -2997,20 +2926,7 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
                       }
                     };
                     
-                    // Save draft with webhook response
-                    saveDraft(
-                      {
-                        applicantId: user?.applicantId,
-                        form_data: mappedFormData,
-                        currentStep,
-                        lastSaved: new Date().toISOString(),
-                        isComplete: false
-                      }, 
-                      currentStep, 
-                      false, 
-                      false
-                    );
-                    console.log(`✅ Draft saved with webhook response for ${documentType}: ${response}`);
+                    console.log(`✅ Webhook response received for ${documentType}: ${response}`);
                   }
                 }}
                 onEncryptedDocumentChange={(documentType, encryptedFiles) => {
@@ -4431,6 +4347,12 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
             <div className="form-container">
               {renderStep()}
             </div>
+          </form>
+        </Form>
+      </div>
+    </div>
+  );
+}
 
             {/* Navigation Buttons */}
             <div className="flex justify-between items-center pt-4 sm:pt-6">
@@ -4741,44 +4663,90 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
                       }
                     };
 
+                    // Submit the application
+                    const response = await fetch('/.netlify/functions/submit-application', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify(mappedFormData),
+                    });
 
-              <div className="flex flex-col items-center text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                <div>Step {currentStep + 1} of {STEPS.length}</div>
-              </div>
+                    if (!response.ok) {
+                      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                    }
 
-              {currentStep === STEPS.length - 1 ? (
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <span className="hidden sm:inline">Submitting...</span>
-                      <span className="sm:hidden">Submitting...</span>
-                    </>
+                    const result = await response.json();
+                    console.log('✅ Application submitted successfully:', result);
+
+                    toast({
+                      title: 'Application Submitted',
+                      description: 'Your rental application has been submitted successfully!',
+                    });
+
+                    // Redirect to success page or dashboard
+                    setLocation('/applications');
+                  } catch (error) {
+                    console.error('❌ Error submitting application:', error);
+                    toast({
+                      title: 'Submission Failed',
+                      description: error instanceof Error ? error.message : 'Failed to submit application. Please try again.',
+                      variant: 'destructive',
+                    });
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <Button
+                    type="button"
+                    onClick={(e) => prevStep(e)}
+                    disabled={currentStep === 0}
+                    className="flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2"
+                  >
+                    <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Previous</span>
+                    <span className="sm:hidden">Prev</span>
+                  </Button>
+
+                  <div className="flex flex-col items-center text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                    <div>Step {currentStep + 1} of {STEPS.length}</div>
+                  </div>
+
+                  {currentStep === STEPS.length - 1 ? (
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <span className="hidden sm:inline">Submitting...</span>
+                          <span className="sm:hidden">Submitting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="hidden sm:inline">Submit Application</span>
+                          <span className="sm:hidden">Submit</span>
+                        </>
+                      )}
+                    </Button>
                   ) : (
-                    <>
-                      <span className="hidden sm:inline">Submit Application</span>
-                      <span className="sm:hidden">Submit</span>
-                    </>
+                    <Button
+                      type="button"
+                      onClick={(e) => nextStep(e)}
+                      className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 sm:px-6 py-2"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <span className="sm:hidden">Next</span>
+                      <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
+                    </Button>
                   )}
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={(e) => nextStep(e)}
-                  className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 sm:px-6 py-2"
-                >
-                  <span className="hidden sm:inline">Next</span>
-                  <span className="sm:hidden">Next</span>
-                  <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
-                </Button>
-              )}
-            </div>
-          </form>
-        </Form>
-      </div>
-    </div>
-  );
-}
+                </div>
+              </form>
+            </Form>
+          </div>
+        </div>
+      );
+    }
