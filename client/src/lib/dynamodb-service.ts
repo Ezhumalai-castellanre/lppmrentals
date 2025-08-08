@@ -58,12 +58,33 @@ export class DynamoDBService {
         }),
       });
 
+      console.log('📊 Response status:', response.status);
+      console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP ${response.status}`);
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+          const responseText = await response.text();
+          console.error('Raw response:', responseText);
+          errorMessage = `HTTP ${response.status}: ${responseText || 'Empty response'}`;
+        }
+        throw new Error(errorMessage);
       }
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (parseError) {
+        console.error('Failed to parse success response:', parseError);
+        const responseText = await response.text();
+        console.error('Raw response:', responseText);
+        throw new Error('Invalid JSON response from server');
+      }
+
       console.log('✅ Draft saved successfully for applicantId:', applicantId);
     } catch (error) {
       console.error('❌ Error saving draft:', error);

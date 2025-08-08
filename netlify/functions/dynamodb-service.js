@@ -223,6 +223,13 @@ async function saveDraft(applicantId, formData, currentStep, isComplete = false)
       };
     }
     
+    console.log('📊 Draft data structure:', {
+      hasFormData: !!draftData.formData,
+      hasFormDataKeys: draftData.formData ? Object.keys(draftData.formData) : [],
+      currentStep: draftData.currentStep,
+      isComplete: draftData.isComplete
+    });
+    
     // Validate the draft data
     if (!validateDraftData(draftData)) {
       throw new Error('Invalid draft data structure');
@@ -231,6 +238,8 @@ async function saveDraft(applicantId, formData, currentStep, isComplete = false)
     // Clean and compress the data
     const cleanedData = cleanData(draftData);
     const compressedData = compressData(cleanedData);
+    
+    console.log('📊 Final data size:', JSON.stringify(compressedData).length, 'characters');
     
     // Save to DynamoDB
     const params = {
@@ -245,8 +254,17 @@ async function saveDraft(applicantId, formData, currentStep, isComplete = false)
     };
     
     console.log('💾 Saving to DynamoDB with params:', JSON.stringify(params, null, 2));
-    const putCommand = new PutCommand(params);
-    await docClient.send(putCommand);
+    
+    try {
+      const putCommand = new PutCommand(params);
+      await docClient.send(putCommand);
+      console.log('✅ DynamoDB put operation successful');
+    } catch (dynamoError) {
+      console.error('❌ DynamoDB error:', dynamoError);
+      console.error('❌ DynamoDB error code:', dynamoError.code);
+      console.error('❌ DynamoDB error message:', dynamoError.message);
+      throw new Error(`DynamoDB error: ${dynamoError.code} - ${dynamoError.message}`);
+    }
     
     console.log('✅ Draft saved successfully for applicantId:', draftData.applicantId);
     return {
@@ -257,6 +275,7 @@ async function saveDraft(applicantId, formData, currentStep, isComplete = false)
     };
   } catch (error) {
     console.error('❌ Error saving draft:', error);
+    console.error('❌ Error stack:', error.stack);
     throw new Error(`Failed to save draft: ${error.message}`);
   }
 }
