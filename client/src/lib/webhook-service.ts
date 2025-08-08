@@ -501,8 +501,8 @@ export class WebhookService {
             }
 
             // Extract existing webhook URLs and metadata
-            const existingWebhookUrls = existingDraft?.formData?.webhookResponses || {};
-            const existingMetadata = existingDraft?.formData?.uploadedFilesMetadata || {};
+            const existingWebhookUrls = existingDraft?.form_data?.webhookResponses || {};
+            const existingMetadata = existingDraft?.form_data?.uploadedFilesMetadata || {};
 
             // Determine document category based on section name
             const getDocumentCategory = (section: string) => {
@@ -524,8 +524,8 @@ export class WebhookService {
             // Prepare the new draft data with organized sections
             const draftData = {
               applicantId: applicationId,
-              formData: {
-                ...existingDraft?.formData,
+              form_data: {
+                ...existingDraft?.form_data,
                 // Store webhook URLs organized by applicant type
                 webhookResponses: {
                   ...existingWebhookUrls,

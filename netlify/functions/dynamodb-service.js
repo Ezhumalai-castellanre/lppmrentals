@@ -135,7 +135,7 @@ function compressData(data, maxSize = 350000) { // 350KB to leave room for metad
       lastSaved: data.lastSaved,
       isComplete: data.isComplete,
       // Keep only basic form structure without large data
-      formData: {
+      form_data: {
         applicant: data.applicant ? {
           firstName: data.applicant.firstName,
           lastName: data.applicant.lastName,
@@ -207,7 +207,7 @@ async function saveDraft(applicantId, formData, currentStep, isComplete = false)
       // New structure with form_data container
       draftData = {
         applicantId: formData.applicantId || applicantId,
-        formData: formData.form_data,
+        form_data: formData.form_data,
         currentStep: formData.currentStep || currentStep,
         lastSaved: formData.lastSaved || new Date().toISOString(),
         isComplete: formData.isComplete || isComplete
@@ -216,7 +216,7 @@ async function saveDraft(applicantId, formData, currentStep, isComplete = false)
       // Legacy structure - backward compatibility
       draftData = {
         applicantId: applicantId,
-        formData: formData,
+        form_data: formData,
         currentStep: currentStep,
         lastSaved: new Date().toISOString(),
         isComplete: isComplete
@@ -224,8 +224,8 @@ async function saveDraft(applicantId, formData, currentStep, isComplete = false)
     }
     
     console.log('📊 Draft data structure:', {
-      hasFormData: !!draftData.formData,
-      hasFormDataKeys: draftData.formData ? Object.keys(draftData.formData) : [],
+      hasFormData: !!draftData.form_data,
+      hasFormDataKeys: draftData.form_data ? Object.keys(draftData.form_data) : [],
       currentStep: draftData.currentStep,
       isComplete: draftData.isComplete
     });
@@ -246,7 +246,7 @@ async function saveDraft(applicantId, formData, currentStep, isComplete = false)
       TableName: 'DraftSaved',
       Item: {
         applicantId: draftData.applicantId,
-        form_data: compressedData.formData, // Changed from formData to form_data
+        form_data: compressedData.form_data, // Changed from formData to form_data
         currentStep: compressedData.currentStep,
         lastSaved: compressedData.lastSaved,
         isComplete: compressedData.isComplete
