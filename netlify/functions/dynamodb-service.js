@@ -1,11 +1,20 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, GetCommand, DeleteCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+
+// DynamoDB Configuration
+const TABLE_NAME = 'DraftSaved';
+
+// Size Limitation Strategy:
+// DynamoDB has a 400KB item size limit. This service implements aggressive compression:
+// 1. Remove large data fields (encryptedDocuments, signatures, webhookResponses, etc.)
+// 2. Truncate large strings to 200 characters
+// 3. If still too large, save only essential metadata
+// 4. Future improvement: Consider using S3 for large document data and storing only references
 
 // AWS Configuration from environment variables
 const AWS_REGION = process.env.VITE_AWS_DYNAMODB_REGION || 'us-east-1';
 const AWS_ACCESS_KEY_ID = process.env.VITE_AWS_DYNAMODB_ACCESS_KEY_ID || 'AKIA35BCK6ZHZC4EWVHT';
 const AWS_SECRET_ACCESS_KEY = process.env.VITE_AWS_DYNAMODB_SECRET_ACCESS_KEY || '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';
-const TABLE_NAME = process.env.VITE_AWS_DYNAMODB_TABLE_NAME || 'DraftSaved';
 
 // Log configuration for debugging
 console.log('🔧 DynamoDB Configuration:', {
@@ -59,6 +68,164 @@ function cleanData(data) {
   return data;
 }
 
+// Compress large data by removing unnecessary fields and truncating large strings
+function compressData(data, maxSize = 350000) { // 350KB to leave room for metadata
+  const jsonString = JSON.stringify(data);
+  console.log('📊 Data size before compression:', jsonString.length, 'characters');
+  
+  if (jsonString.length <= maxSize) {
+    return data;
+  }
+  
+  console.log('⚠️ Data too large, compressing...');
+  
+  // Create a compressed version by removing large fields
+  const compressed = { ...data };
+  
+  // Remove uploaded files data as it's the largest contributor
+  if (compressed.uploadedFiles) {
+    console.log('🗑️ Removing uploadedFiles data to reduce size');
+    delete compressed.uploadedFiles;
+  }
+  
+  // Remove webhook responses which can be large
+  if (compressed.webhookResponses) {
+    console.log('🗑️ Removing webhookResponses data to reduce size');
+    delete compressed.webhookResponses;
+  }
+  
+  // Remove encrypted documents which are very large
+  if (compressed.encryptedDocuments) {
+    console.log('🗑️ Removing encryptedDocuments data to reduce size');
+    delete compressed.encryptedDocuments;
+  }
+  
+  // Remove uploaded documents metadata
+  if (compressed.uploadedDocuments) {
+    console.log('🗑️ Removing uploadedDocuments data to reduce size');
+    delete compressed.uploadedDocuments;
+  }
+  
+  // Remove uploaded files metadata
+  if (compressed.uploadedFilesMetadata) {
+    console.log('🗑️ Removing uploadedFilesMetadata data to reduce size');
+    delete compressed.uploadedFilesMetadata;
+  }
+  
+  // Remove signatures which can be large base64 strings
+  if (compressed.signatures) {
+    console.log('🗑️ Removing signatures data to reduce size');
+    delete compressed.signatures;
+  }
+  
+  // Remove signature timestamps
+  if (compressed.signatureTimestamps) {
+    console.log('🗑️ Removing signatureTimestamps data to reduce size');
+    delete compressed.signatureTimestamps;
+  }
+  
+  // Remove documents array
+  if (compressed.documents) {
+    console.log('🗑️ Removing documents data to reduce size');
+    delete compressed.documents;
+  }
+  
+  // Remove raw form data which can be large
+  if (compressed.rawFormData) {
+    console.log('🗑️ Removing rawFormData to reduce size');
+    delete compressed.rawFormData;
+  }
+  
+  // Remove raw form values
+  if (compressed.rawFormValues) {
+    console.log('🗑️ Removing rawFormValues to reduce size');
+    delete compressed.rawFormValues;
+  }
+  
+  // Truncate large string fields
+  const truncateLargeStrings = (obj) => {
+    for (const [key, value] of Object.entries(obj)) {
+      if (typeof value === 'string' && value.length > 500) {
+        console.log(`✂️ Truncating large string field: ${key} (${value.length} chars)`);
+        obj[key] = value.substring(0, 200) + '... [truncated]';
+      } else if (typeof value === 'object' && value !== null) {
+        truncateLargeStrings(value);
+      }
+    }
+  };
+  
+  truncateLargeStrings(compressed);
+  
+  const compressedJson = JSON.stringify(compressed);
+  console.log('📊 Data size after compression:', compressedJson.length, 'characters');
+  
+  if (compressedJson.length > maxSize) {
+    console.log('⚠️ Data still too large after compression, saving minimal data');
+    // Save only essential fields
+    return {
+      applicantId: data.applicantId,
+      currentStep: data.currentStep,
+      lastSaved: data.lastSaved,
+      isComplete: data.isComplete,
+      // Keep only basic form structure without large data
+      formData: {
+        applicant: data.applicant ? {
+          firstName: data.applicant.firstName,
+          lastName: data.applicant.lastName,
+          email: data.applicant.email,
+          phone: data.applicant.phone,
+          // Remove large fields
+        } : null,
+        coApplicant: data.coApplicant ? {
+          firstName: data.coApplicant.firstName,
+          lastName: data.coApplicant.lastName,
+          email: data.coApplicant.email,
+          phone: data.coApplicant.phone,
+          // Remove large fields
+        } : null,
+        guarantor: data.guarantor ? {
+          firstName: data.guarantor.firstName,
+          lastName: data.guarantor.lastName,
+          email: data.guarantor.email,
+          phone: data.guarantor.phone,
+          // Remove large fields
+        } : null,
+        // Keep basic property info
+        property: data.property ? {
+          address: data.property.address,
+          unit: data.property.unit,
+          // Remove large fields
+        } : null,
+        // Keep essential flags
+        hasCoApplicant: data.hasCoApplicant,
+        hasGuarantor: data.hasGuarantor,
+      }
+    };
+  }
+  
+  // If still too large, save only the absolute minimum
+  const minimalData = {
+    applicantId: data.applicantId,
+    currentStep: data.currentStep,
+    lastSaved: data.lastSaved,
+    isComplete: data.isComplete,
+    formData: {
+      hasCoApplicant: data.hasCoApplicant || false,
+      hasGuarantor: data.hasGuarantor || false,
+    }
+  };
+  
+  const minimalJson = JSON.stringify(minimalData);
+  console.log('📊 Minimal data size:', minimalJson.length, 'characters');
+  
+  if (minimalJson.length > maxSize) {
+    console.error('❌ Even minimal data is too large:', minimalJson.length, 'characters');
+    throw new Error('Item size has exceeded the maximum allowed size');
+  }
+  
+  return minimalData;
+}
+
 // Validate draft data before saving
 function validateDraftData(draftData) {
   if (!draftData.applicantId || typeof draftData.applicantId !== 'string') {
@@ -95,13 +262,25 @@ async function saveDraft(applicantId, formData, currentStep, isComplete = false)
     
     console.log('🧹 Cleaned form data size:', JSON.stringify(cleanedFormData).length, 'characters');
     
+    // Compress data if it's too large for DynamoDB
+    const compressedFormData = compressData(cleanedFormData);
+    
     const draftData = {
       applicantId,
-      formData: cleanedFormData,
+      formData: compressedFormData,
       currentStep,
       lastSaved: new Date().toISOString(),
       isComplete,
     };
+
+    // Check final size before saving
+    const finalSize = JSON.stringify(draftData).length;
+    console.log('📊 Final draft data size:', finalSize, 'characters');
+    
+    if (finalSize > 400000) { // DynamoDB limit is 400KB
+      console.error('❌ Draft data still too large after compression:', finalSize, 'characters');
+      throw new Error('Item size has exceeded the maximum allowed size');
+    }
 
     // Validate the draft data before saving
     if (!validateDraftData(draftData)) {
@@ -197,10 +376,12 @@ async function getDraftMetadata(applicantId) {
   }
 }
 
-export {
+module.exports = {
   saveDraft,
   loadDraft,
   deleteDraft,
   draftExists,
   getDraftMetadata,
+  compressData,
+  cleanData,
 }; 
