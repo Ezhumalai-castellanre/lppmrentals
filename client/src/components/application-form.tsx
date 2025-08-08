@@ -1753,8 +1753,22 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
       const apiEndpoint = '/api';
       console.log('Making request to:', window.location.origin + apiEndpoint + '/submit-application');
       
+      // Extract basic user info for identification
+      const userInfo = {
+        name: serverOptimizedData.applicantName,
+        email: serverOptimizedData.applicantEmail,
+        phone: serverOptimizedData.applicantPhone,
+        applicationType: 'rental'
+      };
+
+      // Validate user info
+      if (!userInfo.name || !userInfo.email) {
+        throw new Error('Name and email are required for submission.');
+      }
+
       const requestBody = {
-        applicationData: serverOptimizedData
+        applicationData: serverOptimizedData,
+        userInfo: userInfo
       };
       
       // Log request body size instead of full content
