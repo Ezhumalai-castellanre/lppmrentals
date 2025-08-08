@@ -9,6 +9,8 @@ import { WebhookService } from "@/lib/webhook-service";
 interface FileUploadProps {
   onFileChange: (files: File[]) => void;
   onEncryptedFilesChange?: (encryptedFiles: EncryptedFile[]) => void;
+  onWebhookResponse?: (response: any) => void;
+  initialWebhookResponse?: any;
   accept?: string;
   multiple?: boolean;
   maxFiles?: number;
@@ -24,11 +26,14 @@ interface FileUploadProps {
   applicationId?: string;
   applicantId?: string;
   zoneinfo?: string;
+  commentId?: string; // Added for document tracking
 }
 
 export function FileUpload({
   onFileChange,
   onEncryptedFilesChange,
+  onWebhookResponse,
+  initialWebhookResponse,
   accept = ".pdf,.jpg,.jpeg,.png",
   multiple = false,
   maxFiles = multiple ? 10 : 1,
@@ -43,11 +48,18 @@ export function FileUpload({
   enableWebhook = false,
   applicationId,
   applicantId,
-  zoneinfo
+  zoneinfo,
+  commentId
 }: FileUploadProps) {
+  // Show previously uploaded files if we have an initial webhook response
+  const hasInitialResponse = initialWebhookResponse && (
+    (typeof initialWebhookResponse === 'string' && initialWebhookResponse.trim()) ||
+    (typeof initialWebhookResponse === 'object' && initialWebhookResponse.body)
+  );
   const [files, setFiles] = useState<File[]>([]);
   const [encryptedFiles, setEncryptedFiles] = useState<EncryptedFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [webhookResponse, setWebhookResponse] = useState<any>(null);
   const [error, setError] = useState<string>("");
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ [key: string]: 'uploading' | 'success' | 'error' }>({});
@@ -72,69 +84,56 @@ export function FileUpload({
   };
 
   const handleFiles = useCallback(async (newFiles: FileList | File[]) => {
-    console.log('FileUpload handleFiles called:', {
-      filesCount: newFiles.length,
-      sectionName,
-      enableWebhook,
-      referenceId,
-      enableEncryption
-    });
-    
-    setError("");
-    setIsEncrypting(true);
-    
     try {
-      const fileArray = Array.from(newFiles);
+      setIsEncrypting(true);
+      setError("");
+
+      const filesArray = Array.from(newFiles);
       const validFiles: File[] = [];
-      
-      for (const file of fileArray) {
-        const error = validateFile(file);
-        if (error) {
-          setError(error);
-          setIsEncrypting(false);
-          return;
-        }
-        validFiles.push(file);
-      }
-      
-      if (files.length + validFiles.length > maxFiles) {
-        setError(`Maximum ${maxFiles} file(s) allowed.`);
-        setIsEncrypting(false);
-        return;
-      }
-      
-      const updatedFiles = multiple ? [...files, ...validFiles] : validFiles;
-      setFiles(updatedFiles);
-      onFileChange(updatedFiles);
-      
-      // Encrypt files if encryption is enabled
-      if (enableEncryption && onEncryptedFilesChange) {
-        try {
-          const encrypted = await encryptFiles(validFiles);
-          const updatedEncryptedFiles = multiple 
-            ? [...encryptedFiles, ...encrypted] 
-            : encrypted;
-          
-          setEncryptedFiles(updatedEncryptedFiles);
-          onEncryptedFilesChange(updatedEncryptedFiles);
-        } catch (encryptError) {
-          setError(`Failed to encrypt files: ${encryptError}`);
+      const invalidFiles: string[] = [];
+
+      // Validate files
+      for (const file of filesArray) {
+        const validationError = validateFile(file);
+        if (validationError) {
+          invalidFiles.push(`${file.name}: ${validationError}`);
+        } else {
+          validFiles.push(file);
         }
       }
 
-      // Send files to webhook immediately if enabled
-      console.log('FileUpload webhook check:', { enableWebhook, referenceId, sectionName, applicationId, applicantId });
-      
-      // Special debugging for guarantor documents
-      if (sectionName && sectionName.startsWith('guarantor_')) {
-        console.log('🎯 GUARANTOR FileUpload processing:', {
-          enableWebhook,
-          referenceId,
-          sectionName,
-          applicationId,
-          filesCount: validFiles.length,
-          fileNames: validFiles.map(f => f.name)
-        });
+      if (invalidFiles.length > 0) {
+        setError(`Invalid files: ${invalidFiles.join(', ')}`);
+        return;
+      }
+
+      if (validFiles.length === 0) {
+        setError('No valid files to upload');
+        return;
+      }
+
+      // Allow additional uploads even if we have existing files
+      if (initialWebhookResponse && typeof initialWebhookResponse === 'string' && initialWebhookResponse.trim()) {
+        console.log(`✅ Section ${sectionName} has existing files, allowing additional uploads`);
+        console.log(`🔗 Existing S3 URL: ${initialWebhookResponse}`);
+        // Don't block the upload, just log that we have existing files
+      }
+
+      // Update files state
+      const updatedFiles = multiple ? [...files, ...validFiles] : validFiles;
+      setFiles(updatedFiles);
+      onFileChange(updatedFiles);
+
+      // Handle encryption if enabled
+      if (enableEncryption && onEncryptedFilesChange) {
+        const encryptedFilesArray = await encryptFiles(validFiles);
+
+        const updatedEncryptedFiles = multiple 
+          ? [...encryptedFiles, ...encryptedFilesArray]
+          : encryptedFilesArray;
+        
+        setEncryptedFiles(updatedEncryptedFiles);
+        onEncryptedFilesChange(updatedEncryptedFiles);
       }
       
       if (enableWebhook && referenceId && sectionName) {
@@ -147,6 +146,13 @@ export function FileUpload({
             if (result.success) {
               setUploadStatus(prev => ({ ...prev, [fileKey]: 'success' }));
               console.log(`✅ Webhook upload successful for ${file.name}`);
+              
+              // Store the S3 URL from the webhook response
+              if (result.body) {
+                setWebhookResponse(result.body);
+                onWebhookResponse?.(result.body);
+                console.log(`🔗 S3 URL stored: ${result.body}`);
+              }
             } else {
               setUploadStatus(prev => ({ ...prev, [fileKey]: 'error' }));
               console.error(`❌ Webhook upload failed for ${file.name}:`, result.error);
@@ -167,7 +173,7 @@ export function FileUpload({
     } finally {
       setIsEncrypting(false);
     }
-  }, [files, encryptedFiles, multiple, maxFiles, onFileChange, onEncryptedFilesChange, enableEncryption, enableWebhook, referenceId, sectionName, applicationId, applicantId, zoneinfo]);
+  }, [files, encryptedFiles, multiple, maxFiles, onFileChange, onEncryptedFilesChange, enableEncryption, enableWebhook, referenceId, sectionName, applicationId, applicantId, zoneinfo, initialWebhookResponse]);
 
   const removeFile = (index: number) => {
     const updatedFiles = files.filter((_, i) => i !== index);
@@ -217,6 +223,38 @@ export function FileUpload({
 
   return (
     <div className={cn("space-y-4", className)}>
+      {/* Show previously uploaded files if we have an initial webhook response */}
+      {hasInitialResponse && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-3">
+          <div className="flex items-center gap-2 text-green-800">
+            <CheckCircle className="w-4 h-4" />
+            <span className="text-sm font-medium">Document uploaded successfully</span>
+          </div>
+          <p className="text-xs text-green-700 mt-1">1 file uploaded from draft</p>
+          <div className="mt-2">
+            <div className="flex items-center text-sm text-green-600">
+              <CheckCircle className="w-4 h-4 mr-2" />
+              <span>Previously uploaded</span>
+              <input 
+                type="hidden"
+                name={`webhook_response_${sectionName}`}
+                value={typeof initialWebhookResponse === 'string' ? initialWebhookResponse : initialWebhookResponse.body || JSON.stringify(initialWebhookResponse)}
+                data-document-type={sectionName}
+                data-comment-id={commentId}
+              />
+            </div>
+          </div>
+          <input 
+            type="hidden"
+            name={`webhook_response_${sectionName}`}
+            data-document-type={sectionName}
+            data-document-name={documentName || label}
+            value={typeof initialWebhookResponse === 'string' ? initialWebhookResponse : initialWebhookResponse.body || JSON.stringify(initialWebhookResponse)}
+          />
+        </div>
+      )}
+
+      {/* Upload Area - Always show, even after successful uploads */}
       <div
         className={cn(
           "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
@@ -247,7 +285,9 @@ export function FileUpload({
         ) : (
           <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
         )}
-        <p className="text-sm font-medium text-gray-700">{label}</p>
+        <p className="text-sm font-medium text-gray-700">
+          {hasInitialResponse ? `Upload Additional ${label}` : label}
+        </p>
         {description && <p className="text-xs text-gray-500">{description}</p>}
         <p className="text-xs text-gray-500 mt-1">
           Max {maxFiles} file{maxFiles > 1 ? 's' : ''}, {maxSize}MB each • {accept.replace(/\./g, '').toUpperCase()}
@@ -334,6 +374,18 @@ export function FileUpload({
             );
           })}
         </div>
+      )}
+      
+      {/* Hidden input for webhook response */}
+      {webhookResponse && (
+        <input 
+          type="hidden"
+          name={`webhook_response_${sectionName}`}
+          value={webhookResponse}
+          data-document-type={sectionName}
+          data-file-type="s3-url"
+          data-comment-id={commentId}
+        />
       )}
     </div>
   );

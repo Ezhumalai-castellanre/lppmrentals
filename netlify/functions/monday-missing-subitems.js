@@ -14,13 +14,13 @@ export const handler = async (event, context) => {
   const preflightResponse = handlePreflight(event);
   if (preflightResponse) return preflightResponse;
 
-  // Support GET method only
-  if (event.httpMethod !== 'GET') {
+  // Support GET and POST methods
+  if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
     return createCorsResponse(405, { error: 'Method not allowed' });
   }
 
   try {
-    // Extract applicant ID from path parameters
+    // Extract applicant ID from path parameters or request body
     let applicantId = event.pathParameters?.applicantId;
     
     // If pathParameters is not available, try to extract from the path
@@ -36,14 +36,33 @@ export const handler = async (event, context) => {
       }
     }
     
+    // For POST requests, also check the request body
+    if (!applicantId && event.httpMethod === 'POST' && event.body) {
+      try {
+        const body = JSON.parse(event.body);
+        applicantId = body.applicantId;
+        console.log('Extracted applicantId from POST body:', applicantId);
+      } catch (parseError) {
+        console.error('Failed to parse POST body:', parseError);
+      }
+    }
+    
     if (!applicantId) {
-      console.error('No applicant ID found in path:', event.path);
+      console.error('No applicant ID found in path or body:', {
+        path: event.path,
+        rawPath: event.rawPath,
+        pathParameters: event.pathParameters,
+        httpMethod: event.httpMethod,
+        hasBody: !!event.body
+      });
       return createCorsResponse(400, { 
         error: 'Applicant ID is required',
         debug: {
           path: event.path,
           rawPath: event.rawPath,
-          pathParameters: event.pathParameters
+          pathParameters: event.pathParameters,
+          httpMethod: event.httpMethod,
+          hasBody: !!event.body
         }
       });
     }

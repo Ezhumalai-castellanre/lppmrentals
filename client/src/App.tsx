@@ -5,35 +5,111 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import ProtectedRoute from "@/components/protected-route";
-import NavHeader from "@/components/nav-header";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 import RentalApplicationPage from "@/pages/rental-application";
+import MondayApplicationPage from "@/pages/monday-application";
 import MissingDocumentsPage from "@/pages/missing-documents";
-import MaintenanceRequestPage from "@/pages/maintenance-request";
+import MaintenancePage from "@/pages/maintenance";
+import ApplicationsPage from "@/pages/applications";
 import LoginPage from "@/pages/login";
 import TestAuthPage from "@/pages/test-auth";
-import TestDbPage from "@/pages/test-db";
-import TestLppmSignupPage from "@/pages/test-lppm-signup";
+import TestApplicationsPage from "@/pages/test-applications";
 import ChangePasswordPage from "@/pages/change-password";
+import LandingPage from "@/pages/landing";
 import NotFound from "@/pages/not-found";
+import VacantUnitsTest from "@/components/vacant-units-test";
+import AvailableRentalsPage from "@/pages/available-rentals";
+import { Button } from "@/components/ui/button";
+import { Save } from "lucide-react";
 import "./lib/aws-config";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
   
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: '#f2f8fe' }}>
+        <main>
+          {children}
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f2f8fe' }}>
-      {isAuthenticated && <NavHeader />}
-      <main className={isAuthenticated ? "lg:pl-64" : ""}>
-        {children}
+    <SidebarProvider>
+      <AppSidebar />
+      <main className="flex-1">
+        <div className="flex h-16 items-center gap-2 border-b bg-background px-4">
+          <SidebarTrigger />
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-semibold">Rental Applications</h1>
+          </div>
+        </div>
+        <div className="flex-1 p-4" style={{ backgroundColor: '#f2f8fe' }}>
+          {children}
+        </div>
       </main>
-    </div>
+    </SidebarProvider>
   );
 }
 
 function Router() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
+      
+      {/* Available Rentals route - Only for NON-authenticated users */}
+      <Route path="/available-rentals">
+        {!isAuthenticated ? (
+          <AvailableRentalsPage />
+        ) : (
+          <LandingPage />
+        )}
+      </Route>
+      
+      {/* Protected Routes - Only for authenticated users */}
+      <Route path="/application">
+        <ProtectedRoute>
+          <AppLayout>
+            <RentalApplicationPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/monday-application">
+        <MondayApplicationPage />
+      </Route>
+      <Route path="/missing-documents">
+        <ProtectedRoute>
+          <AppLayout>
+            <MissingDocumentsPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/maintenance">
+        <ProtectedRoute>
+          <AppLayout>
+            <MaintenancePage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/applications">
+        <ProtectedRoute>
+          <AppLayout>
+            <ApplicationsPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/test-applications">
+        <ProtectedRoute>
+          <AppLayout>
+            <TestApplicationsPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/test-auth">
         <ProtectedRoute>
           <AppLayout>
@@ -41,17 +117,10 @@ function Router() {
           </AppLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/test-db">
+      <Route path="/vacant-units-test">
         <ProtectedRoute>
           <AppLayout>
-            <TestDbPage />
-          </AppLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/test-lppm-signup">
-        <ProtectedRoute>
-          <AppLayout>
-            <TestLppmSignupPage />
+            <VacantUnitsTest />
           </AppLayout>
         </ProtectedRoute>
       </Route>
@@ -62,27 +131,20 @@ function Router() {
           </AppLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/missing-documents">
-        <ProtectedRoute>
-          <AppLayout>
-            <MissingDocumentsPage />
-          </AppLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/maintenance-request">
-        <ProtectedRoute>
-          <AppLayout>
-            <MaintenanceRequestPage />
-          </AppLayout>
-        </ProtectedRoute>
-      </Route>
+      
+      {/* Root route - Conditional based on authentication */}
       <Route path="/">
-        <ProtectedRoute>
-          <AppLayout>
-            <RentalApplicationPage />
-          </AppLayout>
-        </ProtectedRoute>
+        {isAuthenticated ? (
+          <ProtectedRoute>
+            <AppLayout>
+              <RentalApplicationPage />
+            </AppLayout>
+          </ProtectedRoute>
+        ) : (
+          <LandingPage />
+        )}
       </Route>
+      
       <Route component={NotFound} />
     </Switch>
   );

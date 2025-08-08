@@ -19,15 +19,17 @@ import { SupportingDocuments } from "./supporting-documents";
 import { PDFGenerator } from "@/lib/pdf-generator";
 import { EnhancedPDFGenerator } from "@/lib/pdf-generator-enhanced";
 import { ResetPDFGenerator } from "@/lib/pdf-generator-reset";
-import { Download, FileText, Save, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search } from "lucide-react";
+import { Download, FileText, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+
 import ApplicationInstructions from "./application-instructions";
 import { useRef } from "react";
 import { useLocation } from "wouter";
 import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "@/lib/file-encryption";
 import { WebhookService } from "@/lib/webhook-service";
 import { MondayApiService, type UnitItem } from "@/lib/monday-api";
+
 
 import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "@/components/ui/validated-input";
 import { StateCitySelector, StateSelector, CitySelector } from "@/components/ui/state-city-selector";
@@ -198,6 +200,15 @@ export function ApplicationForm() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+
+  // Read selected rental from sessionStorage
+  const [selectedRental, setSelectedRental] = useState<any>(null);
+
+
+
+
+
+
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<any>({
     application: {},
@@ -224,11 +235,17 @@ export function ApplicationForm() {
     file_name: string;
     section_name: string;
     documents?: string;
+    file_url?: string;
   }[]>([]);
+
+  // Add state for webhook responses
+  const [webhookResponses, setWebhookResponses] = useState<Record<string, any>>({});
 
   // Welcome message state
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(true);
   const [welcomeMessage, setWelcomeMessage] = useState('');
+  
+
 
   // Monday.com API state
   const [units, setUnits] = useState<UnitItem[]>([]);
@@ -268,6 +285,8 @@ export function ApplicationForm() {
       return () => clearTimeout(timer);
     }
   }, [user]);
+
+
 
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
@@ -337,14 +356,241 @@ export function ApplicationForm() {
     mode: "onChange", // Enable real-time validation
   });
 
+  // Read selected rental from sessionStorage and pre-populate form
+  useEffect(() => {
+    const storedRental = sessionStorage.getItem('selectedRental');
+    if (storedRental) {
+      try {
+        const rental = JSON.parse(storedRental);
+        setSelectedRental(rental);
+        console.log('Loaded selected rental:', rental);
+        
+        // Pre-populate form with rental data
+        if (rental) {
+          form.setValue('buildingAddress', rental.propertyName || '');
+          form.setValue('apartmentNumber', rental.name || '');
+          form.setValue('apartmentType', rental.unitType || '');
+          form.setValue('monthlyRent', rental.monthlyRent ? parseFloat(rental.monthlyRent) : undefined);
+        }
+      } catch (error) {
+        console.error('Error parsing selected rental:', error);
+      }
+    }
+  }, [form]);
+
+  // Update form fields when formData is loaded from draft
+  useEffect(() => {
+    if (formData && Object.keys(formData).length > 0) {
+      console.log('🔄 Updating form fields from formData:', formData);
+      
+      // Helper function to safely convert string dates to Date objects
+      const toValidDate = (dateValue: any): Date | undefined => {
+        if (!dateValue) return undefined;
+        try {
+          const date = new Date(dateValue);
+          return isNaN(date.getTime()) ? undefined : date;
+        } catch {
+          return undefined;
+        }
+      };
+
+      // Update application fields
+      if (formData.application) {
+        console.log('📋 Application data found:', formData.application);
+        
+        if (formData.application.buildingAddress) {
+          console.log('🏢 Setting buildingAddress:', formData.application.buildingAddress);
+          form.setValue('buildingAddress', formData.application.buildingAddress);
+        }
+        if (formData.application.apartmentNumber) {
+          console.log('🏠 Setting apartmentNumber:', formData.application.apartmentNumber);
+          form.setValue('apartmentNumber', formData.application.apartmentNumber);
+        }
+        if (formData.application.moveInDate) {
+          console.log('📅 Setting moveInDate:', formData.application.moveInDate);
+          const moveInDate = toValidDate(formData.application.moveInDate);
+          if (moveInDate) {
+            form.setValue('moveInDate', moveInDate);
+          }
+        }
+        if (formData.application.monthlyRent !== undefined) {
+          console.log('💰 Setting monthlyRent:', formData.application.monthlyRent);
+          form.setValue('monthlyRent', formData.application.monthlyRent);
+        }
+        if (formData.application.apartmentType) {
+          console.log('🏘️ Setting apartmentType:', formData.application.apartmentType);
+          form.setValue('apartmentType', formData.application.apartmentType);
+        }
+        if (formData.application.howDidYouHear) {
+          form.setValue('howDidYouHear', formData.application.howDidYouHear);
+        }
+        if (formData.application.howDidYouHearOther) {
+          form.setValue('howDidYouHearOther', formData.application.howDidYouHearOther);
+        }
+      }
+
+      // Update applicant fields
+      if (formData.applicant) {
+        if (formData.applicant.name) {
+          form.setValue('applicantName', formData.applicant.name);
+        }
+        if (formData.applicant.dob) {
+          const applicantDob = toValidDate(formData.applicant.dob);
+          if (applicantDob) {
+            form.setValue('applicantDob', applicantDob);
+          }
+        }
+        if (formData.applicant.ssn) {
+          form.setValue('applicantSsn', formData.applicant.ssn);
+        }
+        if (formData.applicant.phone) {
+          form.setValue('applicantPhone', formData.applicant.phone);
+        }
+        if (formData.applicant.email) {
+          form.setValue('applicantEmail', formData.applicant.email);
+        }
+        if (formData.applicant.license) {
+          form.setValue('applicantLicense', formData.applicant.license);
+        }
+        if (formData.applicant.licenseState) {
+          form.setValue('applicantLicenseState', formData.applicant.licenseState);
+        }
+        if (formData.applicant.address) {
+          form.setValue('applicantAddress', formData.applicant.address);
+        }
+        if (formData.applicant.city) {
+          form.setValue('applicantCity', formData.applicant.city);
+        }
+        if (formData.applicant.state) {
+          form.setValue('applicantState', formData.applicant.state);
+        }
+        if (formData.applicant.zip) {
+          form.setValue('applicantZip', formData.applicant.zip);
+        }
+      }
+
+      // Update co-applicant fields if they exist
+      if (formData.coApplicant) {
+        if (formData.coApplicant.ssn) {
+          form.setValue('coApplicantSsn', formData.coApplicant.ssn);
+        }
+        if (formData.coApplicant.phone) {
+          form.setValue('coApplicantPhone', formData.coApplicant.phone);
+        }
+        if (formData.coApplicant.email) {
+          form.setValue('coApplicantEmail', formData.coApplicant.email);
+        }
+        if (formData.coApplicant.license) {
+          form.setValue('coApplicantLicense', formData.coApplicant.license);
+        }
+        if (formData.coApplicant.zip) {
+          form.setValue('coApplicantZip', formData.coApplicant.zip);
+        }
+      }
+
+      // Update guarantor fields if they exist
+      if (formData.guarantor) {
+        if (formData.guarantor.ssn) {
+          form.setValue('guarantorSsn', formData.guarantor.ssn);
+        }
+        if (formData.guarantor.phone) {
+          form.setValue('guarantorPhone', formData.guarantor.phone);
+        }
+        if (formData.guarantor.email) {
+          form.setValue('guarantorEmail', formData.guarantor.email);
+        }
+        if (formData.guarantor.license) {
+          form.setValue('guarantorLicense', formData.guarantor.license);
+        }
+        if (formData.guarantor.zip) {
+          form.setValue('guarantorZip', formData.guarantor.zip);
+        }
+      }
+
+      // Update building and apartment selection if available
+      if (formData.application?.buildingAddress && units.length > 0) {
+        setSelectedBuilding(formData.application.buildingAddress);
+        const unitsForBuilding = MondayApiService.getUnitsByBuilding(units, formData.application.buildingAddress);
+        setAvailableApartments(unitsForBuilding);
+        
+        if (formData.application.apartmentNumber) {
+          const selectedApartment = unitsForBuilding.find(unit => unit.name === formData.application.apartmentNumber);
+          setSelectedUnit(selectedApartment || null);
+        }
+      }
+    }
+  }, [formData, form, units]);
+
   const updateFormData = (section: string, field: string, value: any) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value,
-      },
-    }));
+    setFormData((prev: any) => {
+      const newFormData = {
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [field]: value,
+        },
+      };
+      
+      // Update draft with new form data using proper mapping
+      const safeDateToISO = (dateValue: any): string | null => {
+        if (!dateValue) return null;
+        try {
+          const date = new Date(dateValue);
+          if (isNaN(date.getTime())) {
+            console.warn('Invalid date value:', dateValue);
+            return null;
+          }
+          return date.toISOString();
+        } catch (error) {
+          console.warn('Error converting date to ISO:', dateValue, error);
+          return null;
+        }
+      };
+
+      const formValues = form.getValues();
+      
+      // Create mapped form data with proper field mapping
+      const mappedFormData = {
+        // Application Info
+        buildingAddress: formValues.buildingAddress || newFormData.application?.buildingAddress,
+        apartmentNumber: formValues.apartmentNumber || newFormData.application?.apartmentNumber,
+        moveInDate: safeDateToISO(formValues.moveInDate || newFormData.application?.moveInDate),
+        monthlyRent: formValues.monthlyRent || newFormData.application?.monthlyRent,
+        apartmentType: formValues.apartmentType || newFormData.application?.apartmentType,
+        howDidYouHear: formValues.howDidYouHear || newFormData.application?.howDidYouHear,
+        howDidYouHearOther: formValues.howDidYouHearOther || newFormData.application?.howDidYouHearOther,
+        
+        // Primary Applicant
+        applicantName: formValues.applicantName || newFormData.applicant?.name,
+        applicantDob: safeDateToISO(formValues.applicantDob || newFormData.applicant?.dob),
+        applicantSsn: newFormData.applicant?.ssn || formValues.applicantSsn,
+        applicantPhone: formatPhoneForPayload(newFormData.applicant?.phone || formValues.applicantPhone),
+        applicantEmail: formValues.applicantEmail || newFormData.applicant?.email,
+        applicantLicense: newFormData.applicant?.license || formValues.applicantLicense,
+        applicantLicenseState: newFormData.applicant?.licenseState || formValues.applicantLicenseState,
+        applicantAddress: formValues.applicantAddress || newFormData.applicant?.address,
+        applicantCity: formValues.applicantCity || newFormData.applicant?.city,
+        applicantState: formValues.applicantState || newFormData.applicant?.state,
+        applicantZip: formValues.applicantZip || newFormData.applicant?.zip,
+        
+        // Store the raw form data for restoration
+        rawFormData: newFormData,
+        rawFormValues: formValues,
+        signatures,
+        documents,
+        encryptedDocuments,
+        uploadedDocuments,
+        uploadedFilesMetadata,
+        webhookResponses,
+        hasCoApplicant,
+        hasGuarantor,
+        currentStep,
+      };
+      
+
+      
+      return newFormData;
+    });
   };
 
   // Handle building selection
@@ -370,7 +616,9 @@ export function ApplicationForm() {
 
   // Handle apartment selection
   const handleApartmentSelect = (apartmentName: string) => {
+    console.log('🏠 handleApartmentSelect called with:', apartmentName);
     const selectedApartment = availableApartments.find(unit => unit.name === apartmentName);
+    console.log('🏠 selectedApartment:', selectedApartment);
     setSelectedUnit(selectedApartment || null);
     
     // Update form data
@@ -379,6 +627,11 @@ export function ApplicationForm() {
     updateFormData('application', 'monthlyRent', selectedApartment?.monthlyRent || undefined);
     
     // Update form fields
+    console.log('🏠 Setting form values:');
+    console.log('- apartmentNumber:', apartmentName);
+    console.log('- apartmentType:', selectedApartment?.unitType || '');
+    console.log('- monthlyRent:', selectedApartment?.monthlyRent || undefined);
+    
     form.setValue('apartmentNumber', apartmentName);
     form.setValue('apartmentType', selectedApartment?.unitType || '');
     form.setValue('monthlyRent', selectedApartment?.monthlyRent || undefined);
@@ -394,7 +647,19 @@ export function ApplicationForm() {
     }));
   };
 
-  const handleEncryptedDocumentChange = (person: string, documentType: string, encryptedFiles: EncryptedFile[]) => {
+  // Handler to attach webhook file URL to encrypted file
+const handleWebhookFileUrl = (person: string, documentType: string, fileUrl: string, fileName: string) => {
+  setEncryptedDocuments((prev: any) => {
+    const updated = { ...prev };
+    if (!updated[person] || !updated[person][documentType]) return prev;
+    updated[person][documentType] = updated[person][documentType].map((file: any) =>
+      file.filename === fileName ? { ...file, fileUrl } : file
+    );
+    return updated;
+  });
+};
+
+const handleEncryptedDocumentChange = (person: string, documentType: string, encryptedFiles: EncryptedFile[]) => {
     console.log('handleEncryptedDocumentChange called:', { person, documentType, encryptedFilesCount: encryptedFiles.length });
     
     // Special debugging for guarantor documents
@@ -417,11 +682,13 @@ export function ApplicationForm() {
 
     // Track uploadedDocuments for webhook
     const sectionKey = `${person}_${documentType}`;
+    // Map docs and include file_url if present on the file
     const docs = encryptedFiles.map(file => ({
       reference_id: file.uploadDate + '-' + file.filename, // or use a better unique id if available
       file_name: file.filename,
       section_name: sectionKey,
-      documents: documentType // <-- Now included
+      documents: documentType, // <-- Now included
+      file_url: file.fileUrl || '' // Use fileUrl if present, else blank
     }));
     setUploadedDocuments(prev => {
       // Ensure prev is always an array
@@ -431,7 +698,7 @@ export function ApplicationForm() {
       return [...filtered, ...docs];
     });
 
-    // Track uploaded files metadata for webhook
+    // Track uploaded files metadata for webhook - OPTIMIZED VERSION
     const filesMetadata = encryptedFiles.map(file => ({
       file_name: file.filename,
       file_size: file.originalSize,
@@ -439,10 +706,23 @@ export function ApplicationForm() {
       upload_date: file.uploadDate
     }));
 
-    setUploadedFilesMetadata(prev => ({
-      ...prev,
-      [sectionKey]: filesMetadata
-    }));
+    setUploadedFilesMetadata(prev => {
+      const newMetadata = {
+        ...prev,
+        [sectionKey]: filesMetadata
+      };
+      
+      // Log metadata size for debugging
+      const metadataSize = JSON.stringify(newMetadata).length;
+      console.log(`📊 UploadedFilesMetadata size: ${metadataSize} characters for section ${sectionKey}`);
+      
+      // If metadata is getting too large, log a warning
+      if (metadataSize > 50000) { // 50KB warning threshold
+        console.warn(`⚠️ UploadedFilesMetadata is getting large: ${metadataSize} characters`);
+      }
+      
+      return newMetadata;
+    });
   };
 
   const handleSignatureChange = (person: string, signature: string) => {
@@ -545,21 +825,7 @@ export function ApplicationForm() {
     }
   };
 
-  const saveDraft = () => {
-    localStorage.setItem('rentalApplicationDraft', JSON.stringify({
-      formData,
-      signatures,
-      hasCoApplicant,
-      hasGuarantor,
-      sameAddressGuarantor,
-      currentStep,
-    }));
 
-    toast({
-      title: "Draft Saved",
-      description: "Your application has been saved as a draft.",
-    });
-  };
 
   // Clear webhook cache when starting fresh
   const clearWebhookCache = () => {
@@ -604,28 +870,30 @@ export function ApplicationForm() {
   }
 
   // --- Update nextStep and prevStep to use the helper ---
-  const nextStep = (e?: React.MouseEvent) => {
+  const nextStep = async (e?: React.MouseEvent) => {
     console.log('🔄 Next step clicked - Current step:', currentStep);
     // Prevent form submission
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
+    
     setCurrentStep((prev) => getNextAllowedStep(prev, 1));
   };
 
-  const prevStep = (e?: React.MouseEvent) => {
+  const prevStep = async (e?: React.MouseEvent) => {
     console.log('🔄 Previous step clicked - Current step:', currentStep);
     // Prevent form submission
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
+    
     setCurrentStep((prev) => getNextAllowedStep(prev, -1));
   };
 
   // --- Update goToStep to block manual access to co-applicant/guarantor docs if not allowed ---
-  const goToStep = (step: number, e?: React.MouseEvent) => {
+  const goToStep = async (step: number, e?: React.MouseEvent) => {
     // Prevent form submission
     if (e) {
       e.preventDefault();
@@ -668,686 +936,326 @@ export function ApplicationForm() {
       });
       return;
     }
+    
+    // Save draft before jumping to step
     setCurrentStep(step);
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const onSubmit = async (data: ApplicationFormData) => {
-    console.log('🚀 FORM SUBMISSION TRIGGERED - Current Step:', currentStep);
-    
-    // Prevent form submission if not on the final step
-    if (currentStep !== STEPS.length - 1) {
-      console.log('⚠️ Form submission prevented - not on final step');
-      return;
-    }
-    
-    // Special check for Guarantor Documents step (step 11)
-    if (currentStep === 11) {
-      console.log('⚠️ Form submission prevented - on Guarantor Documents step');
-      return;
-    }
-    
-    // Prevent multiple submissions
-    if (isSubmitting) {
-      console.log('⚠️ Form submission already in progress, ignoring duplicate submission');
-      return;
-    }
-
+    console.log('🚀 Form submission started');
     setIsSubmitting(true);
-    console.log("🚀 === COMPLETE FORM SUBMISSION DATA ===");
-    console.log("📋 FORM DATA (React Hook Form):");
-    console.log(JSON.stringify(data, null, 2));
-    
-    console.log("📊 FORM STATE:");
-    console.log("- Is Valid:", form.formState.isValid);
-    console.log("- Is Dirty:", form.formState.isDirty);
-    console.log("- Is Submitting:", form.formState.isSubmitting);
-    console.log("- Validation Errors:", form.formState.errors);
-    
-    console.log("🗂️ FORM DATA STATE (Internal State):");
-    console.log(JSON.stringify(formData, null, 2));
-    
-    console.log("📝 SIGNATURES:");
-    console.log(JSON.stringify(signatures, null, 2));
-    
-    console.log("📁 UPLOADED DOCUMENTS:");
-    console.log(JSON.stringify(uploadedDocuments, null, 2));
-    
-    console.log("🔐 ENCRYPTED DOCUMENTS: (Removed from server request)");
-    console.log("Count:", Object.keys(encryptedDocuments).length);
-    console.log("Guarantor documents:", encryptedDocuments.guarantor);
-    console.log("Applicant documents:", encryptedDocuments.applicant);
-    console.log("Co-applicant documents:", encryptedDocuments.coApplicant);
-    
-    console.log("📋 UPLOADED FILES METADATA:");
-    console.log(JSON.stringify(uploadedFilesMetadata, null, 2));
-    
-    console.log("🏦 BANK RECORDS:");
-    console.log("- Applicant Bank Records:", formData.applicant?.bankRecords);
-    console.log("- Co-Applicant Bank Records:", formData.coApplicant?.bankRecords);
-    console.log("- Guarantor Bank Records:", formData.guarantor?.bankRecords);
-    
-    console.log("👥 OTHER OCCUPANTS:");
-    console.log("formData.occupants:", formData.occupants);
-    console.log("formData.otherOccupants:", formData.otherOccupants);
-    console.log("Final otherOccupants:", formData.occupants || formData.otherOccupants || []);
-    console.log("Occupants with SSN documents:", formData.occupants?.map((occ: any) => ({
-      name: occ.name,
-      ssnDocument: occ.ssnDocument ? 'UPLOADED' : 'NULL',
-      ssnEncryptedDocument: occ.ssnEncryptedDocument ? 'UPLOADED' : 'NULL'
-    })));
-    
-    console.log("⚖️ LEGAL QUESTIONS:");
-    console.log("- Landlord Tenant Legal Action:", formData.legalQuestions?.landlordTenantLegalAction);
-    console.log("- Landlord Tenant Legal Action Explanation:", formData.legalQuestions?.landlordTenantLegalActionExplanation);
-    console.log("- Broken Lease:", formData.legalQuestions?.brokenLease);
-    console.log("- Broken Lease Explanation:", formData.legalQuestions?.brokenLeaseExplanation);
-    
-    console.log("📅 DATE FIELDS:");
-    console.log("- Move In Date (Form):", data.moveInDate);
-    console.log("- Move In Date (State):", formData.application?.moveInDate);
-    console.log("- Applicant DOB (Form):", data.applicantDob);
-    console.log("- Applicant DOB (State):", formData.applicant?.dob);
-    console.log("- Co-Applicant DOB (State):", formData.coApplicant?.dob);
-    console.log("- Guarantor DOB (State):", formData.guarantor?.dob);
-    
-    console.log("📞 PHONE NUMBERS:");
-    console.log("- Applicant Phone:", formData.applicant?.phone);
-    console.log("- Co-Applicant Phone:", formData.coApplicant?.phone);
-    console.log("- Guarantor Phone:", formData.guarantor?.phone);
-    
-    console.log("📧 EMAILS:");
-    console.log("- Applicant Email:", data.applicantEmail);
-    console.log("- Co-Applicant Email:", formData.coApplicant?.email);
-    console.log("- Guarantor Email:", formData.guarantor?.email);
-    
-    console.log("🏠 ADDRESSES:");
-    console.log("- Applicant Address:", {
-      address: data.applicantAddress,
-      city: data.applicantCity,
-      state: data.applicantState,
-      zip: data.applicantZip
-    });
-    console.log("- Co-Applicant Address:", {
-      address: formData.coApplicant?.address,
-      city: formData.coApplicant?.city,
-      state: formData.coApplicant?.state,
-      zip: formData.coApplicant?.zip
-    });
-    console.log("- Guarantor Address:", {
-      address: formData.guarantor?.address,
-      city: formData.guarantor?.city,
-      state: formData.guarantor?.state,
-      zip: formData.guarantor?.zip
-    });
-    
-    console.log("💼 EMPLOYMENT:");
-    console.log("- Applicant Employment:", {
-      type: formData.applicant?.employmentType,
-      employer: formData.applicant?.employerName,
-      address: formData.applicant?.employerAddress,
-      city: formData.applicant?.employerCity,
-      state: formData.applicant?.employerState,
-      zip: formData.applicant?.employerZip,
-      phone: formData.applicant?.employerPhone,
-      position: formData.applicant?.position,
-      startDate: formData.applicant?.startDate,
-      salary: formData.applicant?.salary
-    });
-    console.log("- Co-Applicant Employment:", {
-      type: formData.coApplicant?.employmentType,
-      employer: formData.coApplicant?.employerName,
-      address: formData.coApplicant?.employerAddress,
-      city: formData.coApplicant?.employerCity,
-      state: formData.coApplicant?.employerState,
-      zip: formData.coApplicant?.employerZip,
-      phone: formData.coApplicant?.employerPhone,
-      position: formData.coApplicant?.position,
-      startDate: formData.coApplicant?.startDate,
-      salary: formData.coApplicant?.salary
-    });
-    console.log("- Guarantor Employment:", {
-      type: formData.guarantor?.employmentType,
-      employer: formData.guarantor?.employerName,
-      address: formData.guarantor?.employerAddress,
-      city: formData.guarantor?.employerCity,
-      state: formData.guarantor?.employerState,
-      zip: formData.guarantor?.employerZip,
-      phone: formData.guarantor?.employerPhone,
-      position: formData.guarantor?.position,
-      startDate: formData.guarantor?.startDate,
-      salary: formData.guarantor?.salary
-    });
-    
-    console.log("🏠 LANDLORD INFO:");
-    console.log("- Applicant Landlord:", {
-      name: formData.applicant?.landlordName,
-      address1: formData.applicant?.landlordAddressLine1,
-      address2: formData.applicant?.landlordAddressLine2,
-      city: formData.applicant?.landlordCity,
-      state: formData.applicant?.landlordState,
-      zip: formData.applicant?.landlordZipCode,
-      phone: formData.applicant?.landlordPhone,
-      email: formData.applicant?.landlordEmail,
-      currentRent: formData.applicant?.currentRent,
-      reasonForMoving: formData.applicant?.reasonForMoving
-    });
-    console.log("- Co-Applicant Landlord:", {
-      name: formData.coApplicant?.landlordName,
-      address1: formData.coApplicant?.landlordAddressLine1,
-      address2: formData.coApplicant?.landlordAddressLine2,
-      city: formData.coApplicant?.landlordCity,
-      state: formData.coApplicant?.landlordState,
-      zip: formData.coApplicant?.landlordZipCode,
-      phone: formData.coApplicant?.landlordPhone,
-      email: formData.coApplicant?.landlordEmail,
-      currentRent: formData.coApplicant?.currentRent,
-      reasonForMoving: formData.coApplicant?.reasonForMoving
-    });
-    console.log("- Guarantor Landlord:", {
-      name: formData.guarantor?.landlordName,
-      address1: formData.guarantor?.landlordAddressLine1,
-      address2: formData.guarantor?.landlordAddressLine2,
-      city: formData.guarantor?.landlordCity,
-      state: formData.guarantor?.landlordState,
-      zip: formData.guarantor?.landlordZipCode,
-      phone: formData.guarantor?.landlordPhone,
-      email: formData.guarantor?.landlordEmail,
-      currentRent: formData.guarantor?.currentRent,
-      reasonForMoving: formData.guarantor?.reasonForMoving
-    });
-    
-    console.log("📊 DATA SUMMARY:");
-    console.log("- Application Info Fields:", Object.keys(data).filter(k => k.includes('building') || k.includes('apartment') || k.includes('moveIn') || k.includes('monthly') || k.includes('howDid')).length);
-    console.log("- Primary Applicant Fields:", Object.keys(data).filter(k => k.startsWith('applicant')).length);
-    console.log("- Co-Applicant Fields:", Object.keys(formData.coApplicant || {}).length);
-    console.log("- Guarantor Fields:", Object.keys(formData.guarantor || {}).length);
-    console.log("- Other Occupants Count:", formData.otherOccupants?.length || 0);
-    console.log("- Documents Count:", (uploadedDocuments || []).length);
-    console.log("- Encrypted Documents Count:", Object.keys(encryptedDocuments).length, "(Not sent to server)");
-    console.log("- Signatures Count:", Object.keys(signatures).length);
-    
-    console.log("=== END COMPLETE FORM DATA ===");
-    
-    // Check if user is authenticated and has applicantId
-    if (!user?.applicantId) {
-      console.log("❌ User not authenticated or missing applicantId");
-      console.log("🔍 User object:", user);
-      console.log("🔍 User applicantId:", user?.applicantId);
-      toast({
-        title: 'Authentication Required',
-        description: 'Please sign in to submit your application. If you are already signed in, please try refreshing the page.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Use the applicantId (could be temporary for development)
-    const currentApplicantId = user.applicantId;
-    console.log("✅ Using applicantId:", currentApplicantId);
-
-    // ✅ FIX: Trigger form validation before checking validity
-    console.log("🔍 Triggering form validation...");
-    const isValid = await form.trigger();
-    console.log("✅ Form validation result:", isValid);
-    console.log("✅ Updated form errors:", form.formState.errors);
-    
-    if (!isValid) {
-      console.log("❌ Form validation failed");
-      toast({
-        title: 'Form validation failed',
-        description: 'Please check all required fields and try again.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    // Ensure all required fields are present and valid
-    const requiredFields: (keyof ApplicationFormData)[] = [
-      'buildingAddress',
-      'apartmentNumber',
-      'moveInDate',
-      'monthlyRent',
-      'apartmentType',
-      'applicantName',
-      'applicantDob',
-      'applicantEmail',
-      'applicantAddress',
-      'applicantCity',
-      'applicantState',
-      'applicantZip',
-    ];
-    let missingFields = [];
-    for (const field of requiredFields) {
-      if (
-        data[field] === undefined ||
-        data[field] === null ||
-        (typeof data[field] === 'string' && data[field].trim() === '') ||
-        (field === 'applicantDob' && !data[field]) ||
-        (field === 'moveInDate' && !data[field])
-      ) {
-        missingFields.push(field);
-      }
-    }
-    // Email format check
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.applicantEmail || '')) {
-      missingFields.push('applicantEmail');
-    }
-    if (missingFields.length > 0) {
-      toast({
-        title: 'Missing or invalid fields',
-        description: `Please fill out: ${missingFields.join(', ')}`,
-        variant: 'destructive',
-      });
-      return;
-    }
-
     
     try {
-      console.log("Submitting application:", { ...data, formData, signatures });
-      console.log("Uploaded files metadata:", uploadedFilesMetadata);
+      // ENSURE FULL METADATA IS AVAILABLE FOR WEBHOOK
+      // The full uploadedFilesMetadata should be sent via webhook, not stored in draft
+      console.log('📊 Full uploadedFilesMetadata for webhook:', JSON.stringify(uploadedFilesMetadata, null, 2));
+      
+             console.log('🚀 === COMPLETE FORM SUBMISSION DATA ===' );
+      console.log("📋 FORM DATA (React Hook Form):");
+      console.log(JSON.stringify(data, null, 2));
+      
+      console.log("📊 FORM STATE:");
+      console.log("- Is Valid:", form.formState.isValid);
+      console.log("- Is Dirty:", form.formState.isDirty);
+      console.log("- Is Submitting:", form.formState.isSubmitting);
+      console.log("- Validation Errors:", form.formState.errors);
+      
+      console.log("🗂️ FORM DATA STATE (Internal State):");
+      console.log(JSON.stringify(formData, null, 2));
+      
+      console.log("📝 SIGNATURES:");
+      console.log(JSON.stringify(signatures, null, 2));
+      
+      console.log("�� UPLOADED DOCUMENTS:");
+      console.log(JSON.stringify(uploadedDocuments, null, 2));
+      
+      console.log("🔐 ENCRYPTED DOCUMENTS: (Removed from server request)");
+      console.log("Count:", Object.keys(encryptedDocuments).length);
+      console.log("Guarantor documents:", encryptedDocuments.guarantor);
+      console.log("Applicant documents:", encryptedDocuments.applicant);
+      console.log("Co-applicant documents:", encryptedDocuments.coApplicant);
+      
+      console.log("📋 UPLOADED FILES METADATA:");
+      console.log(JSON.stringify(uploadedFilesMetadata, null, 2));
+      
+      console.log("🏦 BANK RECORDS:");
+      console.log("- Applicant Bank Records:", formData.applicant?.bankRecords);
+      console.log("- Co-Applicant Bank Records:", formData.coApplicant?.bankRecords);
+      console.log("- Guarantor Bank Records:", formData.guarantor?.bankRecords);
+      
+      console.log("👥 OTHER OCCUPANTS:");
+      console.log("formData.occupants:", formData.occupants);
+      console.log("formData.otherOccupants:", formData.otherOccupants);
+      console.log("Final otherOccupants:", formData.occupants || formData.otherOccupants || []);
+      console.log("Occupants with SSN documents:", formData.occupants?.map((occ: any) => ({
+        name: occ.name,
+        ssnDocument: occ.ssnDocument ? 'UPLOADED' : 'NULL',
+        ssnEncryptedDocument: occ.ssnEncryptedDocument ? 'UPLOADED' : 'NULL'
+      })));
+      
+      console.log("⚖️ LEGAL QUESTIONS:");
+      console.log("- Landlord Tenant Legal Action:", formData.legalQuestions?.landlordTenantLegalAction);
+      console.log("- Landlord Tenant Legal Action Explanation:", formData.legalQuestions?.landlordTenantLegalActionExplanation);
+      console.log("- Broken Lease:", formData.legalQuestions?.brokenLease);
+      console.log("- Broken Lease Explanation:", formData.legalQuestions?.brokenLeaseExplanation);
+      
+      console.log("📅 DATE FIELDS:");
+      console.log("- Move In Date (Form):", data.moveInDate);
+      console.log("- Move In Date (State):", formData.application?.moveInDate);
+      console.log("- Applicant DOB (Form):", data.applicantDob);
+      console.log("- Applicant DOB (State):", formData.applicant?.dob);
+      console.log("- Co-Applicant DOB (State):", formData.coApplicant?.dob);
+      console.log("- Guarantor DOB (State):", formData.guarantor?.dob);
+      
+      console.log("📞 PHONE NUMBERS:");
+      console.log("- Applicant Phone:", formData.applicant?.phone);
+      console.log("- Co-Applicant Phone:", formData.coApplicant?.phone);
+      console.log("- Guarantor Phone:", formData.guarantor?.phone);
+      
+      console.log("📧 EMAILS:");
+      console.log("- Applicant Email:", data.applicantEmail);
+      console.log("- Co-Applicant Email:", formData.coApplicant?.email);
+      console.log("- Guarantor Email:", formData.guarantor?.email);
+      
+      console.log("🏠 ADDRESSES:");
+      console.log("- Applicant Address:", {
+        address: data.applicantAddress,
+        city: data.applicantCity,
+        state: data.applicantState,
+        zip: data.applicantZip
+      });
+      console.log("- Co-Applicant Address:", {
+        address: formData.coApplicant?.address,
+        city: formData.coApplicant?.city,
+        state: formData.coApplicant?.state,
+        zip: formData.coApplicant?.zip
+      });
+      console.log("- Guarantor Address:", {
+        address: formData.guarantor?.address,
+        city: formData.guarantor?.city,
+        state: formData.guarantor?.state,
+        zip: formData.guarantor?.zip
+      });
+      
+      console.log("💼 EMPLOYMENT:");
+      console.log("- Applicant Employment:", {
+        type: formData.applicant?.employmentType,
+        employer: formData.applicant?.employerName,
+        address: formData.applicant?.employerAddress,
+        city: formData.applicant?.employerCity,
+        state: formData.applicant?.employerState,
+        zip: formData.applicant?.employerZip,
+        phone: formData.applicant?.employerPhone,
+        position: formData.applicant?.position,
+        startDate: formData.applicant?.startDate,
+        salary: formData.applicant?.salary
+      });
+      console.log("- Co-Applicant Employment:", {
+        type: formData.coApplicant?.employmentType,
+        employer: formData.coApplicant?.employerName,
+        address: formData.coApplicant?.employerAddress,
+        city: formData.coApplicant?.employerCity,
+        state: formData.coApplicant?.employerState,
+        zip: formData.coApplicant?.employerZip,
+        phone: formData.coApplicant?.employerPhone,
+        position: formData.coApplicant?.position,
+        startDate: formData.coApplicant?.startDate,
+        salary: formData.coApplicant?.salary
+      });
+      console.log("- Guarantor Employment:", {
+        type: formData.guarantor?.employmentType,
+        employer: formData.guarantor?.employerName,
+        address: formData.guarantor?.employerAddress,
+        city: formData.guarantor?.employerCity,
+        state: formData.guarantor?.employerState,
+        zip: formData.guarantor?.employerZip,
+        phone: formData.guarantor?.employerPhone,
+        position: formData.guarantor?.position,
+        startDate: formData.guarantor?.startDate,
+        salary: formData.guarantor?.salary
+      });
+      
+      console.log("🏠 LANDLORD INFO:");
+      console.log("- Applicant Landlord:", {
+        name: formData.applicant?.landlordName,
+        address1: formData.applicant?.landlordAddressLine1,
+        address2: formData.applicant?.landlordAddressLine2,
+        city: formData.applicant?.landlordCity,
+        state: formData.applicant?.landlordState,
+        zip: formData.applicant?.landlordZipCode,
+        phone: formData.applicant?.landlordPhone,
+        email: formData.applicant?.landlordEmail,
+        currentRent: formData.applicant?.currentRent,
+        reasonForMoving: formData.applicant?.reasonForMoving
+      });
+      console.log("- Co-Applicant Landlord:", {
+        name: formData.coApplicant?.landlordName,
+        address1: formData.coApplicant?.landlordAddressLine1,
+        address2: formData.coApplicant?.landlordAddressLine2,
+        city: formData.coApplicant?.landlordCity,
+        state: formData.coApplicant?.landlordState,
+        zip: formData.coApplicant?.landlordZipCode,
+        phone: formData.coApplicant?.landlordPhone,
+        email: formData.coApplicant?.landlordEmail,
+        currentRent: formData.coApplicant?.currentRent,
+        reasonForMoving: formData.coApplicant?.reasonForMoving
+      });
+      console.log("- Guarantor Landlord:", {
+        name: formData.guarantor?.landlordName,
+        address1: formData.guarantor?.landlordAddressLine1,
+        address2: formData.guarantor?.landlordAddressLine2,
+        city: formData.guarantor?.landlordCity,
+        state: formData.guarantor?.landlordState,
+        zip: formData.guarantor?.landlordZipCode,
+        phone: formData.guarantor?.landlordPhone,
+        email: formData.guarantor?.landlordEmail,
+        currentRent: formData.guarantor?.currentRent,
+        reasonForMoving: formData.guarantor?.reasonForMoving
+      });
+      
+      console.log("📊 DATA SUMMARY:");
+      console.log("- Application Info Fields:", Object.keys(data).filter(k => k.includes('building') || k.includes('apartment') || k.includes('moveIn') || k.includes('monthly') || k.includes('howDid')).length);
+      console.log("- Primary Applicant Fields:", Object.keys(data).filter(k => k.startsWith('applicant')).length);
+      console.log("- Co-Applicant Fields:", Object.keys(formData.coApplicant || {}).length);
+      console.log("- Guarantor Fields:", Object.keys(formData.guarantor || {}).length);
+      console.log("- Other Occupants Count:", formData.otherOccupants?.length || 0);
+      console.log("- Documents Count:", (uploadedDocuments || []).length);
+      console.log("- Encrypted Documents Count:", Object.keys(encryptedDocuments).length, "(Not sent to server)");
+      console.log("- Signatures Count:", Object.keys(signatures).length);
+      
+      console.log("=== END COMPLETE FORM DATA ===");
+      
+      // Check if user is authenticated and has applicantId
+      if (!user?.applicantId) {
+        console.log("❌ User not authenticated or missing applicantId");
+        console.log("🔍 User object:", user);
+        console.log("🔍 User applicantId:", user?.applicantId);
+        toast({
+          title: 'Authentication Required',
+          description: 'Please sign in to submit your application. If you are already signed in, please try refreshing the page.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-      // Helper function to safely convert date to ISO string
-      const safeDateToISO = (dateValue: any): string | null => {
-        if (!dateValue) return null;
-        try {
-          const date = new Date(dateValue);
-          if (isNaN(date.getTime())) {
-            console.warn('Invalid date value:', dateValue);
+             // Use the applicantId (could be temporary for development)
+       console.log("✅ Using applicantId:", user.applicantId);
+
+      // ✅ FIX: Trigger form validation before checking validity
+      console.log("🔍 Triggering form validation...");
+      const isValid = await form.trigger();
+      console.log("✅ Form validation result:", isValid);
+      console.log("✅ Updated form errors:", form.formState.errors);
+      
+      if (!isValid) {
+        console.log("❌ Form validation failed");
+        toast({
+          title: 'Form validation failed',
+          description: 'Please check all required fields and try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Ensure all required fields are present and valid
+      const requiredFields: (keyof ApplicationFormData)[] = [
+        'buildingAddress',
+        'apartmentNumber',
+        'moveInDate',
+        'monthlyRent',
+        'apartmentType',
+        'applicantName',
+        'applicantDob',
+        'applicantEmail',
+        'applicantAddress',
+        'applicantCity',
+        'applicantState',
+        'applicantZip',
+      ];
+      let missingFields = [];
+      for (const field of requiredFields) {
+        if (
+          data[field] === undefined ||
+          data[field] === null ||
+          (typeof data[field] === 'string' && data[field].trim() === '') ||
+          (field === 'applicantDob' && !data[field]) ||
+          (field === 'moveInDate' && !data[field])
+        ) {
+          missingFields.push(field);
+        }
+      }
+      // Email format check
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(data.applicantEmail || '')) {
+        missingFields.push('applicantEmail');
+      }
+      if (missingFields.length > 0) {
+        toast({
+          title: 'Missing or invalid fields',
+          description: `Please fill out: ${missingFields.join(', ')}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      
+      try {
+        console.log("Submitting application:", { ...data, formData, signatures });
+        console.log("Uploaded files metadata:", uploadedFilesMetadata);
+
+        // Helper function to safely convert date to ISO string
+        const safeDateToISO = (dateValue: any): string | null => {
+          if (!dateValue) return null;
+          try {
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) {
+              console.warn('Invalid date value:', dateValue);
+              return null;
+            }
+            return date.toISOString();
+          } catch (error) {
+            console.warn('Error converting date to ISO:', dateValue, error);
             return null;
           }
-          return date.toISOString();
-        } catch (error) {
-          console.warn('Error converting date to ISO:', dateValue, error);
-          return null;
-        }
-      };
+        };
 
-      // Create COMPLETE form data structure for server submission (same as webhook)
-      const completeServerData = {
-        // Application Info
-        buildingAddress: data.buildingAddress || formData.application?.buildingAddress,
-        apartmentNumber: data.apartmentNumber || formData.application?.apartmentNumber,
-        moveInDate: safeDateToISO(data.moveInDate || formData.application?.moveInDate),
-        monthlyRent: data.monthlyRent || formData.application?.monthlyRent,
-        apartmentType: data.apartmentType || formData.application?.apartmentType,
-        howDidYouHear: data.howDidYouHear || formData.application?.howDidYouHear,
-        howDidYouHearOther: data.howDidYouHearOther || formData.application?.howDidYouHearOther,
-        
-        // Primary Applicant - Complete data
-        applicantName: data.applicantName || formData.applicant?.name,
-        applicantDob: safeDateToISO(data.applicantDob || formData.applicant?.dob),
-        applicantSsn: formData.applicant?.ssn || data.applicantSsn,
-        applicantPhone: formatPhoneForPayload(formData.applicant?.phone || data.applicantPhone),
-        applicantEmail: data.applicantEmail || formData.applicant?.email,
-        applicantLicense: formData.applicant?.license || data.applicantLicense,
-        applicantLicenseState: formData.applicant?.licenseState || data.applicantLicenseState,
-        applicantAddress: data.applicantAddress || formData.applicant?.address,
-        applicantCity: data.applicantCity || formData.applicant?.city,
-        applicantState: data.applicantState || formData.applicant?.state,
-        applicantZip: data.applicantZip || formData.applicant?.zip,
-        applicantLengthAtAddressYears: formData.applicant?.lengthAtAddressYears || data.applicantLengthAtAddressYears,
-        applicantLengthAtAddressMonths: formData.applicant?.lengthAtAddressMonths || data.applicantLengthAtAddressMonths,
-        applicantLandlordName: formData.applicant?.landlordName || data.applicantLandlordName,
-        applicantLandlordAddressLine1: formData.applicant?.landlordAddressLine1 || data.applicantLandlordAddressLine1,
-        applicantLandlordAddressLine2: formData.applicant?.landlordAddressLine2 || data.applicantLandlordAddressLine2,
-        applicantLandlordCity: formData.applicant?.landlordCity || data.applicantLandlordCity,
-        applicantLandlordState: formData.applicant?.landlordState || data.applicantLandlordState,
-        applicantLandlordZipCode: formData.applicant?.landlordZipCode || data.applicantLandlordZipCode,
-        applicantLandlordPhone: formData.applicant?.landlordPhone || data.applicantLandlordPhone,
-        applicantLandlordEmail: formData.applicant?.landlordEmail || data.applicantLandlordEmail,
-        applicantCurrentRent: formData.applicant?.currentRent || data.applicantCurrentRent,
-        applicantReasonForMoving: formData.applicant?.reasonForMoving || data.applicantReasonForMoving,
-        
-        // Applicant Employment & Financial Info
-        applicantEmploymentType: formData.applicant?.employmentType,
-        applicantEmployerName: formData.applicant?.employerName,
-        applicantEmployerAddress: formData.applicant?.employerAddress,
-        applicantEmployerCity: formData.applicant?.employerCity,
-        applicantEmployerState: formData.applicant?.employerState,
-        applicantEmployerZip: formData.applicant?.employerZip,
-        applicantEmployerPhone: formData.applicant?.employerPhone,
-        applicantPosition: formData.applicant?.position,
-        applicantStartDate: safeDateToISO(formData.applicant?.startDate),
-        applicantSalary: formData.applicant?.salary,
-        applicantBankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
-          bankName: record.bankName,
-          accountType: record.accountType
-        })),
-        
-        // Flags
-        hasCoApplicant: hasCoApplicant,
-        hasGuarantor: hasGuarantor,
-        
-        // Co-Applicant - Complete data (if exists)
-        ...(hasCoApplicant && formData.coApplicant ? {
-          coApplicantName: formData.coApplicant?.name,
-          coApplicantRelationship: formData.coApplicant?.relationship,
-          coApplicantDob: safeDateToISO(formData.coApplicant?.dob),
-          coApplicantSsn: formData.coApplicant?.ssn || data.coApplicantSsn,
-          coApplicantPhone: formatPhoneForPayload(formData.coApplicant?.phone || data.coApplicantPhone),
-          coApplicantEmail: formData.coApplicant?.email || data.coApplicantEmail,
-          coApplicantLicense: formData.coApplicant?.license || data.coApplicantLicense,
-          coApplicantLicenseState: formData.coApplicant?.licenseState,
-          coApplicantAddress: formData.coApplicant?.address,
-          coApplicantCity: formData.coApplicant?.city,
-          coApplicantState: formData.coApplicant?.state,
-          coApplicantZip: formData.coApplicant?.zip || data.coApplicantZip,
-          coApplicantLengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears,
-          coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths,
-          coApplicantLandlordName: formData.coApplicant?.landlordName,
-          coApplicantLandlordAddressLine1: formData.coApplicant?.landlordAddressLine1,
-          coApplicantLandlordAddressLine2: formData.coApplicant?.landlordAddressLine2,
-          coApplicantLandlordCity: formData.coApplicant?.landlordCity,
-          coApplicantLandlordState: formData.coApplicant?.landlordState,
-          coApplicantLandlordZipCode: formData.coApplicant?.landlordZipCode || data.coApplicantLandlordZipCode,
-          coApplicantLandlordPhone: formData.coApplicant?.landlordPhone || data.coApplicantLandlordPhone,
-          coApplicantLandlordEmail: formData.coApplicant?.landlordEmail || data.coApplicantLandlordEmail,
-          coApplicantCurrentRent: formData.coApplicant?.currentRent,
-          coApplicantReasonForMoving: formData.coApplicant?.reasonForMoving,
-          coApplicantEmploymentType: formData.coApplicant?.employmentType,
-          coApplicantEmployerName: formData.coApplicant?.employerName,
-          coApplicantEmployerAddress: formData.coApplicant?.employerAddress,
-          coApplicantEmployerCity: formData.coApplicant?.employerCity,
-          coApplicantEmployerState: formData.coApplicant?.employerState,
-          coApplicantEmployerZip: formData.coApplicant?.employerZip,
-          coApplicantEmployerPhone: formData.coApplicant?.employerPhone,
-          coApplicantPosition: formData.coApplicant?.position,
-          coApplicantStartDate: safeDateToISO(formData.coApplicant?.startDate),
-          coApplicantSalary: formData.coApplicant?.salary,
-          coApplicantBankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
-            bankName: record.bankName,
-            accountType: record.accountType
-          })),
-        } : {}),
-        
-        // Guarantor - Complete data (if exists)
-        ...(hasGuarantor && formData.guarantor ? {
-          guarantorName: formData.guarantor?.name,
-          guarantorRelationship: formData.guarantor?.relationship,
-          guarantorDob: safeDateToISO(formData.guarantor?.dob),
-          guarantorSsn: formData.guarantor?.ssn || data.guarantorSsn,
-          guarantorPhone: formatPhoneForPayload(formData.guarantor?.phone || data.guarantorPhone),
-          guarantorEmail: formData.guarantor?.email || data.guarantorEmail,
-          guarantorLicense: formData.guarantor?.license || data.guarantorLicense,
-          guarantorLicenseState: formData.guarantor?.licenseState,
-          guarantorAddress: formData.guarantor?.address,
-          guarantorCity: formData.guarantor?.city,
-          guarantorState: formData.guarantor?.state,
-          guarantorZip: formData.guarantor?.zip || data.guarantorZip,
-          guarantorLengthAtAddressYears: formData.guarantor?.lengthAtAddressYears,
-          guarantorLengthAtAddressMonths: formData.guarantor?.lengthAtAddressMonths,
-          guarantorLandlordName: formData.guarantor?.landlordName,
-          guarantorLandlordAddressLine1: formData.guarantor?.landlordAddressLine1,
-          guarantorLandlordAddressLine2: formData.guarantor?.landlordAddressLine2,
-          guarantorLandlordCity: formData.guarantor?.landlordCity,
-          guarantorLandlordState: formData.guarantor?.landlordState,
-          guarantorLandlordZipCode: formData.guarantor?.landlordZipCode || data.guarantorLandlordZipCode,
-          guarantorLandlordPhone: formData.guarantor?.landlordPhone || data.guarantorLandlordPhone,
-          guarantorLandlordEmail: formData.guarantor?.landlordEmail || data.guarantorLandlordEmail,
-          guarantorCurrentRent: formData.guarantor?.currentRent,
-          guarantorReasonForMoving: formData.guarantor?.reasonForMoving,
-          guarantorEmploymentType: formData.guarantor?.employmentType,
-          guarantorEmployerName: formData.guarantor?.employerName,
-          guarantorEmployerAddress: formData.guarantor?.employerAddress,
-          guarantorEmployerCity: formData.guarantor?.employerCity,
-          guarantorEmployerState: formData.guarantor?.employerState,
-          guarantorEmployerZip: formData.guarantor?.employerZip,
-          guarantorEmployerPhone: formData.guarantor?.employerPhone,
-          guarantorPosition: formData.guarantor?.position,
-          guarantorStartDate: safeDateToISO(formData.guarantor?.startDate),
-          guarantorSalary: formData.guarantor?.salary,
-          guarantorBankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
-            bankName: record.bankName,
-            accountType: record.accountType
-          })),
-        } : {}),
-        
-        // Other Occupants (optimized to exclude large document data)
-        otherOccupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any) => ({
-          name: occupant.name,
-          relationship: occupant.relationship,
-          dob: occupant.dob,
-          ssn: occupant.ssn,
-          license: occupant.license,
-          age: occupant.age,
-          // Remove large document data - will be sent via webhook
-          ssnDocument: occupant.ssnDocument ? "UPLOADED" : null,
-          ssnEncryptedDocument: occupant.ssnEncryptedDocument ? "UPLOADED" : null
-        })),
-        
-        // Legal Questions
-        landlordTenantLegalAction: formData.legalQuestions?.landlordTenantLegalAction,
-        landlordTenantLegalActionExplanation: formData.legalQuestions?.landlordTenantLegalActionExplanation,
-        brokenLease: formData.legalQuestions?.brokenLease,
-        brokenLeaseExplanation: formData.legalQuestions?.brokenLeaseExplanation,
-        
-        // Signatures (optimized to avoid large base64 data)
-        signatures: {
-          applicant: signatures.applicant ? "SIGNED" : null,
-          coApplicant: signatures.coApplicant ? "SIGNED" : null,
-          guarantor: signatures.guarantor ? "SIGNED" : null,
-        },
-        
-        documents: uploadedDocuments.map(doc => ({
-          reference_id: doc.reference_id,
-          file_name: doc.file_name,
-          section_name: doc.section_name,
-          documents: doc.documents // This should just be the document type, not the encrypted data
-        })),
-      };
-
-      console.log("🔍 COMPLETE SERVER DATA BEING SENT:");
-      console.log(JSON.stringify(completeServerData, null, 2));
-      
-      console.log('📊 Complete server data structure created (same as webhook)');
-        console.log('🔍 Debug - uploadedDocuments type:', typeof uploadedDocuments);
-        console.log('🔍 Debug - uploadedDocuments is array:', Array.isArray(uploadedDocuments));
-        console.log('🔍 Debug - uploadedDocuments value:', uploadedDocuments);
-      
-      // Create a server-optimized version with only document metadata
-      const serverOptimizedData = {
-        ...completeServerData,
-        // Add applicantId from authenticated user
-        applicantId: currentApplicantId,
-        // Completely remove encrypted documents from server request - they will be sent via webhook
-        encryptedDocuments: undefined,
-        // Remove uploadedFilesMetadata from server request - files are sent via webhook
-        uploadedFilesMetadata: undefined
-      };
-      
-      // Log payload size for debugging
-      const payloadSize = JSON.stringify(completeServerData).length;
-      const optimizedPayloadSize = JSON.stringify(serverOptimizedData).length;
-      console.log(`📊 Original server data size: ${Math.round(payloadSize/1024)}KB`);
-      console.log(`📊 Optimized server data size: ${Math.round(optimizedPayloadSize/1024)}KB`);
-      console.log(`📊 Size reduction: ${Math.round((payloadSize - optimizedPayloadSize)/1024)}KB`);
-      console.log(`📊 Size reduction percentage: ${Math.round(((payloadSize - optimizedPayloadSize) / payloadSize) * 100)}%`);
-      
-      // Debug: Check what's making the payload large
-      if (payloadSize > 100 * 1024) { // If larger than 100KB
-        console.log('🔍 Large payload detected, analyzing...');
-        console.log(`📊 Total payload size: ${Math.round(payloadSize/1024)}KB`);
-        
-        // Sort fields by size to identify the largest contributors
-        const fieldSizes: { key: string; size: number; sizeKB: number }[] = [];
-        
-        Object.keys(completeServerData).forEach(key => {
-          try {
-            const fieldValue = (completeServerData as any)[key];
-            if (fieldValue !== undefined && fieldValue !== null) {
-              const fieldSize = JSON.stringify(fieldValue).length;
-              if (fieldSize > 1024) { // If field is larger than 1KB
-                fieldSizes.push({
-                  key,
-                  size: fieldSize,
-                  sizeKB: Math.round(fieldSize/1024)
-                });
-                console.log(`⚠️ Large field: ${key} = ${Math.round(fieldSize/1024)}KB`);
-                
-                // If it's an object, check its properties
-                if (typeof fieldValue === 'object' && fieldValue !== null) {
-                  Object.keys(fieldValue).forEach(subKey => {
-                    try {
-                      const subValue = fieldValue[subKey];
-                      if (subValue !== undefined && subValue !== null) {
-                        const subSize = JSON.stringify(subValue).length;
-                        if (subSize > 100) { // If sub-field is larger than 100 bytes
-                          console.log(`  ⚠️ Large sub-field: ${key}.${subKey} = ${Math.round(subSize/1024)}KB`);
-                          // If it's a string and looks like base64, log its length
-                          if (typeof subValue === 'string' && subValue.length > 1000) {
-                            console.log(`    📝 Large string detected: ${subKey} length = ${subValue.length} characters`);
-                            if (subValue.startsWith('data:')) {
-                              console.log(`    📝 This appears to be a data URL (base64 encoded)`);
-                            }
-                          }
-                        }
-                      }
-                    } catch (subError) {
-                      console.log(`  ⚠️ Error analyzing sub-field ${key}.${subKey}:`, subError);
-                    }
-                  });
-                }
-              }
-            }
-          } catch (error) {
-            console.log(`⚠️ Error analyzing field ${key}:`, error);
-          }
-        });
-        
-        // Sort and display the largest fields
-        fieldSizes.sort((a, b) => b.size - a.size);
-        console.log('📊 Top 5 largest fields:');
-        fieldSizes.slice(0, 5).forEach((field, index) => {
-          console.log(`  ${index + 1}. ${field.key}: ${field.sizeKB}KB`);
-        });
-      }
-      
-      // Additional debugging for the optimized data
-      console.log('🔍 Optimized data analysis:');
-      console.log('  - documents:', serverOptimizedData.documents);
-      console.log('  - signatures:', serverOptimizedData.signatures);
-      console.log('  - uploadedFilesMetadata: REMOVED (sent via webhook)');
-      
-      console.log('SSN Debug:');
-      console.log('  - formData.applicant.ssn:', formData.applicant?.ssn);
-      console.log('  - data.applicantSsn:', data.applicantSsn);
-      console.log('  - serverOptimizedData.applicantSsn:', serverOptimizedData.applicantSsn);
-      console.log('Date fields debug:');
-      console.log('  - applicantDob (raw):', data.applicantDob);
-      console.log('  - applicantDob (raw type):', typeof data.applicantDob);
-      console.log('  - applicantDob (raw instanceof Date):', data.applicantDob instanceof Date);
-      console.log('  - applicantDob (optimized):', serverOptimizedData.applicantDob);
-      console.log('  - moveInDate (raw):', data.moveInDate);
-      console.log('  - moveInDate (raw type):', typeof data.moveInDate);
-      console.log('  - moveInDate (raw instanceof Date):', data.moveInDate instanceof Date);
-      console.log('  - moveInDate (optimized):', serverOptimizedData.moveInDate);
-      console.log('Current window location:', window.location.href);
-      
-      // Use the regular API endpoint for local development
-      const apiEndpoint = '/api';
-      console.log('Making request to:', window.location.origin + apiEndpoint + '/submit-application');
-      
-      const requestBody = {
-        applicationData: serverOptimizedData
-      };
-      
-      // Log request body size instead of full content
-      const requestBodySize = JSON.stringify(requestBody).length;
-      console.log(`📊 Request body size: ${Math.round(requestBodySize/1024)}KB`);
-      console.log(`📊 Request body size in MB: ${Math.round(requestBodySize/(1024*1024)*100)/100}MB`);
-      console.log('Request body structure:', Object.keys(requestBody));
-      
-      // Validate required fields before submission
-      if (!serverOptimizedData.applicantDob) {
-        throw new Error('Date of birth is required. Please select your date of birth.');
-      }
-      if (!serverOptimizedData.moveInDate) {
-        throw new Error('Move-in date is required. Please select your move-in date.');
-      }
-      if (!serverOptimizedData.applicantName || serverOptimizedData.applicantName.trim() === '') {
-        throw new Error('Full name is required. Please enter your full name.');
-      }
-      
-      // Create AbortController for submission timeout
-      const submissionController = new AbortController();
-      const submissionTimeoutId = setTimeout(() => submissionController.abort(), 45000); // 45 second timeout
-      
-      const submissionResponse = await fetch(apiEndpoint + '/submit-application', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-        signal: submissionController.signal
-      });
-
-      clearTimeout(submissionTimeoutId);
-
-      if (!submissionResponse.ok) {
-        const errorText = await submissionResponse.text();
-        console.error('Submission response error:', submissionResponse.status, submissionResponse.statusText);
-        console.error('Error response body:', errorText);
-        
-        // Handle specific error cases
-        if (submissionResponse.status === 413) {
-          throw new Error('Application data is too large. Please reduce file sizes and try again.');
-        } else if (submissionResponse.status === 504) {
-          throw new Error('Submission timed out. Please try again with smaller files or fewer files at once.');
-        } else {
-          throw new Error(`Submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
-        }
-      }
-
-      const submissionResult = await submissionResponse.json();
-      console.log('✅ === SERVER SUBMISSION RESULT ===');
-      console.log('📤 Data sent to server:', JSON.stringify(requestBody, null, 2));
-      console.log('📥 Server response:', JSON.stringify(submissionResult, null, 2));
-      console.log('🔗 Application ID:', submissionResult.application_id);
-      console.log('🔗 Reference ID:', submissionResult.reference_id);
-      console.log('=== END SERVER SUBMISSION ===');
-
-      // Note: Encrypted data and files are now sent separately via webhooks
-      console.log('Application submitted successfully. Files and encrypted data sent via webhooks.');
-
-      // On form submit, send complete form data, application_id, and uploadedDocuments to the webhook
-      try {
-        // Create complete webhook payload with ALL data
-        const completeWebhookData = {
+        // Create COMPLETE form data structure for server submission (same as webhook)
+        const completeServerData = {
           // Application Info
-          buildingAddress: data.buildingAddress,
-          apartmentNumber: data.apartmentNumber,
+          buildingAddress: data.buildingAddress || formData.application?.buildingAddress,
+          apartmentNumber: data.apartmentNumber || formData.application?.apartmentNumber,
           moveInDate: safeDateToISO(data.moveInDate || formData.application?.moveInDate),
-          monthlyRent: data.monthlyRent,
-          apartmentType: data.apartmentType,
-          howDidYouHear: data.howDidYouHear,
+          monthlyRent: data.monthlyRent || formData.application?.monthlyRent,
+          apartmentType: data.apartmentType || formData.application?.apartmentType,
+          howDidYouHear: data.howDidYouHear || formData.application?.howDidYouHear,
+          howDidYouHearOther: data.howDidYouHearOther || formData.application?.howDidYouHearOther,
           
           // Primary Applicant - Complete data
-          applicantName: data.applicantName,
+          applicantName: data.applicantName || formData.applicant?.name,
           applicantDob: safeDateToISO(data.applicantDob || formData.applicant?.dob),
-          applicantSsn: formData.applicant?.ssn && formData.applicant.ssn.trim() !== '' ? formData.applicant.ssn : null,
-          applicantPhone: formatPhoneForPayload(formData.applicant?.phone),
-          applicantEmail: data.applicantEmail,
+          applicantSsn: formData.applicant?.ssn || data.applicantSsn,
+          applicantPhone: formatPhoneForPayload(formData.applicant?.phone || data.applicantPhone),
+          applicantEmail: data.applicantEmail || formData.applicant?.email,
           applicantLicense: formData.applicant?.license || data.applicantLicense,
           applicantLicenseState: formData.applicant?.licenseState || data.applicantLicenseState,
-          applicantAddress: data.applicantAddress,
-          applicantCity: data.applicantCity,
-          applicantState: data.applicantState,
-          applicantZip: data.applicantZip,
-          applicantLengthAtAddressYears: formData.applicant?.lengthAtAddressYears,
-          applicantLengthAtAddressMonths: formData.applicant?.lengthAtAddressMonths,
-          applicantLandlordName: formData.applicant?.landlordName,
-          applicantLandlordAddressLine1: formData.applicant?.landlordAddressLine1,
-          applicantLandlordAddressLine2: formData.applicant?.landlordAddressLine2,
-          applicantLandlordCity: formData.applicant?.landlordCity,
-          applicantLandlordState: formData.applicant?.landlordState,
-          applicantLandlordZipCode: formData.applicant?.landlordZipCode,
-          applicantLandlordPhone: formData.applicant?.landlordPhone,
-          applicantLandlordEmail: formData.applicant?.landlordEmail,
-          applicantCurrentRent: formData.applicant?.currentRent,
-          applicantReasonForMoving: formData.applicant?.reasonForMoving,
+          applicantAddress: data.applicantAddress || formData.applicant?.address,
+          applicantCity: data.applicantCity || formData.applicant?.city,
+          applicantState: data.applicantState || formData.applicant?.state,
+          applicantZip: data.applicantZip || formData.applicant?.zip,
+          applicantLengthAtAddressYears: formData.applicant?.lengthAtAddressYears || data.applicantLengthAtAddressYears,
+          applicantLengthAtAddressMonths: formData.applicant?.lengthAtAddressMonths || data.applicantLengthAtAddressMonths,
+          applicantLandlordName: formData.applicant?.landlordName || data.applicantLandlordName,
+          applicantLandlordAddressLine1: formData.applicant?.landlordAddressLine1 || data.applicantLandlordAddressLine1,
+          applicantLandlordAddressLine2: formData.applicant?.landlordAddressLine2 || data.applicantLandlordAddressLine2,
+          applicantLandlordCity: formData.applicant?.landlordCity || data.applicantLandlordCity,
+          applicantLandlordState: formData.applicant?.landlordState || data.applicantLandlordState,
+          applicantLandlordZipCode: formData.applicant?.landlordZipCode || data.applicantLandlordZipCode,
+          applicantLandlordPhone: formData.applicant?.landlordPhone || data.applicantLandlordPhone,
+          applicantLandlordEmail: formData.applicant?.landlordEmail || data.applicantLandlordEmail,
+          applicantCurrentRent: formData.applicant?.currentRent || data.applicantCurrentRent,
+          applicantReasonForMoving: formData.applicant?.reasonForMoving || data.applicantReasonForMoving,
           
           // Applicant Employment & Financial Info
           applicantEmploymentType: formData.applicant?.employmentType,
@@ -1453,7 +1361,7 @@ export function ApplicationForm() {
             })),
           } : {}),
           
-          // Other Occupants - Complete data (optimized to exclude large document data)
+          // Other Occupants (optimized to exclude large document data)
           otherOccupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any) => ({
             name: occupant.name,
             relationship: occupant.relationship,
@@ -1478,135 +1386,525 @@ export function ApplicationForm() {
             coApplicant: signatures.coApplicant ? "SIGNED" : null,
             guarantor: signatures.guarantor ? "SIGNED" : null,
           },
-          signatureTimestamps: signatureTimestamps,
           
-
-          
-          // Bank Information List
-          bankInformation: {
-            applicant: {
-              bankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
-                bankName: record.bankName,
-                accountType: record.accountType
-              })),
-              totalBankRecords: formData.applicant?.bankRecords?.length || 0,
-              hasBankRecords: !!(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0)
-            },
-            coApplicant: hasCoApplicant ? {
-              bankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
-                bankName: record.bankName,
-                accountType: record.accountType
-              })),
-              totalBankRecords: formData.coApplicant?.bankRecords?.length || 0,
-              hasBankRecords: !!(formData.coApplicant?.bankRecords && formData.coApplicant.bankRecords.length > 0)
-            } : null,
-            guarantor: hasGuarantor ? {
-              bankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
-                bankName: record.bankName,
-                accountType: record.accountType
-              })),
-              totalBankRecords: formData.guarantor?.bankRecords?.length || 0,
-              hasBankRecords: !!(formData.guarantor?.bankRecords && formData.guarantor.bankRecords.length > 0)
-            } : null,
-            summary: {
-              totalPeople: 1 + (hasCoApplicant ? 1 : 0) + (hasGuarantor ? 1 : 0),
-              totalBankRecords: (formData.applicant?.bankRecords?.length || 0) + 
-                               (hasCoApplicant ? (formData.coApplicant?.bankRecords?.length || 0) : 0) + 
-                               (hasGuarantor ? (formData.guarantor?.bankRecords?.length || 0) : 0),
-              peopleWithBankRecords: [
-                ...(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0 ? ['applicant'] : []),
-                ...(hasCoApplicant && formData.coApplicant?.bankRecords && formData.coApplicant.bankRecords.length > 0 ? ['coApplicant'] : []),
-                ...(hasGuarantor && formData.guarantor?.bankRecords && formData.guarantor.bankRecords.length > 0 ? ['guarantor'] : [])
-              ]
-            }
-          },
-          
-          // Application IDs
-          application_id: user?.applicantId || 'unknown',
-          reference_id: referenceId,
-          
-
+          documents: uploadedDocuments.map(doc => ({
+            reference_id: doc.reference_id,
+            file_name: doc.file_name,
+            section_name: doc.section_name,
+            documents: doc.documents // This should just be the document type, not the encrypted data
+          })),
         };
 
-        const webhookPayload = completeWebhookData;
-
-        // Check payload size before sending
-        const payloadSize = JSON.stringify(webhookPayload).length;
-        const payloadSizeMB = Math.round(payloadSize / (1024 * 1024) * 100) / 100;
-        console.log(`📦 Raw webhook payload size: ${payloadSizeMB}MB`);
+        console.log("🔍 COMPLETE SERVER DATA BEING SENT:");
+        console.log(JSON.stringify(completeServerData, null, 2));
         
-        if (payloadSize > 10 * 1024 * 1024) { // 10MB limit
-          console.warn('⚠️ Raw webhook payload is very large:', payloadSizeMB, 'MB');
-          console.warn('⚠️ Large data will be cleaned by webhook service');
+        console.log('📊 Complete server data structure created (same as webhook)');
+          console.log('🔍 Debug - uploadedDocuments type:', typeof uploadedDocuments);
+          console.log('🔍 Debug - uploadedDocuments is array:', Array.isArray(uploadedDocuments));
+          console.log('🔍 Debug - uploadedDocuments value:', uploadedDocuments);
+        
+                 // Create a server-optimized version with only document metadata
+         const serverOptimizedData = {
+           ...completeServerData,
+           // Add applicantId from authenticated user
+           applicantId: user.applicantId,
+           // Completely remove encrypted documents from server request - they will be sent via webhook
+           encryptedDocuments: undefined,
+           // Remove uploadedFilesMetadata from server request - files are sent via webhook
+           uploadedFilesMetadata: undefined
+         };
+        
+        // Log payload size for debugging
+        const payloadSize = JSON.stringify(completeServerData).length;
+        const optimizedPayloadSize = JSON.stringify(serverOptimizedData).length;
+        console.log(`📊 Original server data size: ${Math.round(payloadSize/1024)}KB`);
+        console.log(`📊 Optimized server data size: ${Math.round(optimizedPayloadSize/1024)}KB`);
+        console.log(`📊 Size reduction: ${Math.round((payloadSize - optimizedPayloadSize)/1024)}KB`);
+        console.log(`📊 Size reduction percentage: ${Math.round(((payloadSize - optimizedPayloadSize) / payloadSize) * 100)}%`);
+        
+        // Debug: Check what's making the payload large
+        if (payloadSize > 100 * 1024) { // If larger than 100KB
+          console.log('🔍 Large payload detected, analyzing...');
+          console.log(`📊 Total payload size: ${Math.round(payloadSize/1024)}KB`);
+          
+          // Sort fields by size to identify the largest contributors
+          const fieldSizes: { key: string; size: number; sizeKB: number }[] = [];
+          
+          Object.keys(completeServerData).forEach(key => {
+            try {
+              const fieldValue = (completeServerData as any)[key];
+              if (fieldValue !== undefined && fieldValue !== null) {
+                const fieldSize = JSON.stringify(fieldValue).length;
+                if (fieldSize > 1024) { // If field is larger than 1KB
+                  fieldSizes.push({
+                    key,
+                    size: fieldSize,
+                    sizeKB: Math.round(fieldSize/1024)
+                  });
+                  console.log(`⚠️ Large field: ${key} = ${Math.round(fieldSize/1024)}KB`);
+                  
+                  // If it's an object, check its properties
+                  if (typeof fieldValue === 'object' && fieldValue !== null) {
+                    Object.keys(fieldValue).forEach(subKey => {
+                      try {
+                        const subValue = fieldValue[subKey];
+                        if (subValue !== undefined && subValue !== null) {
+                          const subSize = JSON.stringify(subValue).length;
+                          if (subSize > 100) { // If sub-field is larger than 100 bytes
+                            console.log(`  ⚠️ Large sub-field: ${key}.${subKey} = ${Math.round(subSize/1024)}KB`);
+                            // If it's a string and looks like base64, log its length
+                            if (typeof subValue === 'string' && subValue.length > 1000) {
+                              console.log(`    📝 Large string detected: ${subKey} length = ${subValue.length} characters`);
+                              if (subValue.startsWith('data:')) {
+                                console.log(`    📝 This appears to be a data URL (base64 encoded)`);
+                              }
+                            }
+                          }
+                        }
+                      } catch (subError) {
+                        console.log(`  ⚠️ Error analyzing sub-field ${key}.${subKey}:`, subError);
+                      }
+                    });
+                  }
+                }
+              }
+            } catch (error) {
+              console.log(`⚠️ Error analyzing field ${key}:`, error);
+            }
+          });
+          
+          // Sort and display the largest fields
+          fieldSizes.sort((a, b) => b.size - a.size);
+          console.log('📊 Top 5 largest fields:');
+          fieldSizes.slice(0, 5).forEach((field, index) => {
+            console.log(`  ${index + 1}. ${field.key}: ${field.sizeKB}KB`);
+          });
+        }
+        
+        // Additional debugging for the optimized data
+        console.log('🔍 Optimized data analysis:');
+        console.log('  - documents:', serverOptimizedData.documents);
+        console.log('  - signatures:', serverOptimizedData.signatures);
+        console.log('  - uploadedFilesMetadata: REMOVED (sent via webhook)');
+        
+        console.log('SSN Debug:');
+        console.log('  - formData.applicant.ssn:', formData.applicant?.ssn);
+        console.log('  - data.applicantSsn:', data.applicantSsn);
+        console.log('  - serverOptimizedData.applicantSsn:', serverOptimizedData.applicantSsn);
+        console.log('Date fields debug:');
+        console.log('  - applicantDob (raw):', data.applicantDob);
+        console.log('  - applicantDob (raw type):', typeof data.applicantDob);
+        console.log('  - applicantDob (raw instanceof Date):', data.applicantDob instanceof Date);
+        console.log('  - applicantDob (optimized):', serverOptimizedData.applicantDob);
+        console.log('  - moveInDate (raw):', data.moveInDate);
+        console.log('  - moveInDate (raw type):', typeof data.moveInDate);
+        console.log('  - moveInDate (raw instanceof Date):', data.moveInDate instanceof Date);
+        console.log('  - moveInDate (optimized):', serverOptimizedData.moveInDate);
+        console.log('Current window location:', window.location.href);
+        
+        // Use the regular API endpoint for local development
+        const apiEndpoint = '/api';
+        console.log('Making request to:', window.location.origin + apiEndpoint + '/submit-application');
+        
+        // Extract basic user info for identification
+        const userInfo = {
+          name: serverOptimizedData.applicantName,
+          email: serverOptimizedData.applicantEmail,
+          phone: serverOptimizedData.applicantPhone,
+          applicationType: 'rental'
+        };
+
+        // Validate user info
+        if (!userInfo.name || !userInfo.email) {
+          throw new Error('Name and email are required for submission.');
         }
 
-        console.log('=== WEBHOOK PAYLOAD DEBUG ===');
-        console.log('✅ Complete Webhook Structure:');
-        console.log('  - reference_id:', webhookPayload.reference_id);
-        console.log('  - application_id:', webhookPayload.application_id);
-        console.log('  - form_data: [Complete application data]');
-        console.log('  - uploaded_files: [Complete files metadata]');
-        console.log('  - submission_type: form_data');
-        console.log('');
-        console.log('📊 Data Verification:');
-        console.log('  - Applicant SSN:', webhookPayload.applicantSsn);
-        console.log('  - Other Occupants Count:', webhookPayload.otherOccupants?.length || 0);
-        console.log('  - Bank Records - Applicant:', webhookPayload.applicantBankRecords?.length || 0);
-        console.log('  - Bank Records - Co-Applicant:', webhookPayload.coApplicantBankRecords?.length || 0);
-        console.log('  - Bank Records - Guarantor:', webhookPayload.guarantorBankRecords?.length || 0);
-        console.log('  - Legal Questions:', {
-          landlordTenantLegalAction: webhookPayload.landlordTenantLegalAction,
-          brokenLease: webhookPayload.brokenLease
+        const requestBody = {
+          applicationData: serverOptimizedData,
+          userInfo: userInfo
+        };
+        
+        // Log request body size instead of full content
+        const requestBodySize = JSON.stringify(requestBody).length;
+        console.log(`📊 Request body size: ${Math.round(requestBodySize/1024)}KB`);
+        console.log(`📊 Request body size in MB: ${Math.round(requestBodySize/(1024*1024)*100)/100}MB`);
+        console.log('Request body structure:', Object.keys(requestBody));
+        
+        // Validate required fields before submission
+        if (!serverOptimizedData.applicantDob) {
+          throw new Error('Date of birth is required. Please select your date of birth.');
+        }
+        if (!serverOptimizedData.moveInDate) {
+          throw new Error('Move-in date is required. Please select your move-in date.');
+        }
+        if (!serverOptimizedData.applicantName || serverOptimizedData.applicantName.trim() === '') {
+          throw new Error('Full name is required. Please enter your full name.');
+        }
+        
+        // Create AbortController for submission timeout
+        const submissionController = new AbortController();
+        const submissionTimeoutId = setTimeout(() => submissionController.abort(), 45000); // 45 second timeout
+        
+        const submissionResponse = await fetch(apiEndpoint + '/submit-application', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          signal: submissionController.signal
         });
-        console.log('  - Signatures:', Object.keys(webhookPayload.signatures || {}));
-        console.log('  - Bank Information:', {
-          applicantBankRecords: webhookPayload.bankInformation?.applicant?.totalBankRecords || 0,
-          coApplicantBankRecords: webhookPayload.bankInformation?.coApplicant?.totalBankRecords || 0,
-          guarantorBankRecords: webhookPayload.bankInformation?.guarantor?.totalBankRecords || 0,
-          totalBankRecords: webhookPayload.bankInformation?.summary?.totalBankRecords || 0
-        });
-        console.log('  - Uploaded Documents Count:', (uploadedDocuments || []).length);
-        console.log('=== END WEBHOOK PAYLOAD DEBUG ===');
 
+        clearTimeout(submissionTimeoutId);
 
-        // Send the complete webhook data exactly as specified
-        console.log('🌐 === WEBHOOK SUBMISSION ===');
-        console.log('📤 Webhook payload being sent:', JSON.stringify(webhookPayload, null, 2));
-        console.log('🔗 Reference ID:', referenceId);
-        console.log('🔗 Application ID:', user?.applicantId);
-        
-        // Send form data to webhook
-        const webhookResult = await WebhookService.sendFormDataToWebhook(
-          webhookPayload,
-          referenceId,
-          user?.applicantId || 'unknown',
-          user?.zoneinfo,
-          uploadedFilesMetadata
-        );
-        
-        console.log('📥 Webhook response:', JSON.stringify(webhookResult, null, 2));
-        console.log('=== END WEBHOOK SUBMISSION ===');
-        
-        if (webhookResult.success) {
-          toast({
-            title: "Application Submitted & Sent",
-            description: "Your rental application has been submitted and sent to the webhook successfully.",
-          });
+        if (!submissionResponse.ok) {
+          const errorText = await submissionResponse.text();
+          console.error('Submission response error:', submissionResponse.status, submissionResponse.statusText);
+          console.error('Error response body:', errorText);
+          
+          // Handle specific error cases
+          if (submissionResponse.status === 413) {
+            throw new Error('Application data is too large. Please reduce file sizes and try again.');
+          } else if (submissionResponse.status === 504) {
+            throw new Error('Submission timed out. Please try again with smaller files or fewer files at once.');
           } else {
+            throw new Error(`Submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
+          }
+        }
+
+        const submissionResult = await submissionResponse.json();
+        console.log('✅ === SERVER SUBMISSION RESULT ===');
+        console.log('📤 Data sent to server:', JSON.stringify(requestBody, null, 2));
+        console.log('📥 Server response:', JSON.stringify(submissionResult, null, 2));
+        console.log('🔗 Application ID:', submissionResult.application_id);
+        console.log('🔗 Reference ID:', submissionResult.reference_id);
+        console.log('=== END SERVER SUBMISSION ===');
+
+        // Note: Encrypted data and files are now sent separately via webhooks
+        console.log('Application submitted successfully. Files and encrypted data sent via webhooks.');
+
+        // On form submit, send complete form data, application_id, and uploadedDocuments to the webhook
+        try {
+          // Create complete webhook payload with ALL data
+          const completeWebhookData = {
+            // Application Info
+            buildingAddress: data.buildingAddress,
+            apartmentNumber: data.apartmentNumber,
+            moveInDate: safeDateToISO(data.moveInDate || formData.application?.moveInDate),
+            monthlyRent: data.monthlyRent,
+            apartmentType: data.apartmentType,
+            howDidYouHear: data.howDidYouHear,
+            
+            // Primary Applicant - Complete data
+            applicantName: data.applicantName,
+            applicantDob: safeDateToISO(data.applicantDob || formData.applicant?.dob),
+            applicantSsn: formData.applicant?.ssn && formData.applicant.ssn.trim() !== '' ? formData.applicant.ssn : null,
+            applicantPhone: formatPhoneForPayload(formData.applicant?.phone),
+            applicantEmail: data.applicantEmail,
+            applicantLicense: formData.applicant?.license || data.applicantLicense,
+            applicantLicenseState: formData.applicant?.licenseState || data.applicantLicenseState,
+            applicantAddress: data.applicantAddress,
+            applicantCity: data.applicantCity,
+            applicantState: data.applicantState,
+            applicantZip: data.applicantZip,
+            applicantLengthAtAddressYears: formData.applicant?.lengthAtAddressYears,
+            applicantLengthAtAddressMonths: formData.applicant?.lengthAtAddressMonths,
+            applicantLandlordName: formData.applicant?.landlordName,
+            applicantLandlordAddressLine1: formData.applicant?.landlordAddressLine1,
+            applicantLandlordAddressLine2: formData.applicant?.landlordAddressLine2,
+            applicantLandlordCity: formData.applicant?.landlordCity,
+            applicantLandlordState: formData.applicant?.landlordState,
+            applicantLandlordZipCode: formData.applicant?.landlordZipCode,
+            applicantLandlordPhone: formData.applicant?.landlordPhone,
+            applicantLandlordEmail: formData.applicant?.landlordEmail,
+            applicantCurrentRent: formData.applicant?.currentRent,
+            applicantReasonForMoving: formData.applicant?.reasonForMoving,
+            
+            // Applicant Employment & Financial Info
+            applicantEmploymentType: formData.applicant?.employmentType,
+            applicantEmployerName: formData.applicant?.employerName,
+            applicantEmployerAddress: formData.applicant?.employerAddress,
+            applicantEmployerCity: formData.applicant?.employerCity,
+            applicantEmployerState: formData.applicant?.employerState,
+            applicantEmployerZip: formData.applicant?.employerZip,
+            applicantEmployerPhone: formData.applicant?.employerPhone,
+            applicantPosition: formData.applicant?.position,
+            applicantStartDate: safeDateToISO(formData.applicant?.startDate),
+            applicantSalary: formData.applicant?.salary,
+            applicantBankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
+              bankName: record.bankName,
+              accountType: record.accountType
+            })),
+            
+            // Flags
+            hasCoApplicant: hasCoApplicant,
+            hasGuarantor: hasGuarantor,
+            
+            // Co-Applicant - Complete data (if exists)
+            ...(hasCoApplicant && formData.coApplicant ? {
+              coApplicantName: formData.coApplicant?.name,
+              coApplicantRelationship: formData.coApplicant?.relationship,
+              coApplicantDob: safeDateToISO(formData.coApplicant?.dob),
+              coApplicantSsn: formData.coApplicant?.ssn || data.coApplicantSsn,
+              coApplicantPhone: formatPhoneForPayload(formData.coApplicant?.phone || data.coApplicantPhone),
+              coApplicantEmail: formData.coApplicant?.email || data.coApplicantEmail,
+              coApplicantLicense: formData.coApplicant?.license || data.coApplicantLicense,
+              coApplicantLicenseState: formData.coApplicant?.licenseState,
+              coApplicantAddress: formData.coApplicant?.address,
+              coApplicantCity: formData.coApplicant?.city,
+              coApplicantState: formData.coApplicant?.state,
+              coApplicantZip: formData.coApplicant?.zip || data.coApplicantZip,
+              coApplicantLengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears,
+              coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths,
+              coApplicantLandlordName: formData.coApplicant?.landlordName,
+              coApplicantLandlordAddressLine1: formData.coApplicant?.landlordAddressLine1,
+              coApplicantLandlordAddressLine2: formData.coApplicant?.landlordAddressLine2,
+              coApplicantLandlordCity: formData.coApplicant?.landlordCity,
+              coApplicantLandlordState: formData.coApplicant?.landlordState,
+              coApplicantLandlordZipCode: formData.coApplicant?.landlordZipCode || data.coApplicantLandlordZipCode,
+              coApplicantLandlordPhone: formData.coApplicant?.landlordPhone || data.coApplicantLandlordPhone,
+              coApplicantLandlordEmail: formData.coApplicant?.landlordEmail || data.coApplicantLandlordEmail,
+              coApplicantCurrentRent: formData.coApplicant?.currentRent,
+              coApplicantReasonForMoving: formData.coApplicant?.reasonForMoving,
+              coApplicantEmploymentType: formData.coApplicant?.employmentType,
+              coApplicantEmployerName: formData.coApplicant?.employerName,
+              coApplicantEmployerAddress: formData.coApplicant?.employerAddress,
+              coApplicantEmployerCity: formData.coApplicant?.employerCity,
+              coApplicantEmployerState: formData.coApplicant?.employerState,
+              coApplicantEmployerZip: formData.coApplicant?.employerZip,
+              coApplicantEmployerPhone: formData.coApplicant?.employerPhone,
+              coApplicantPosition: formData.coApplicant?.position,
+              coApplicantStartDate: safeDateToISO(formData.coApplicant?.startDate),
+              coApplicantSalary: formData.coApplicant?.salary,
+              coApplicantBankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
+                bankName: record.bankName,
+                accountType: record.accountType
+              })),
+            } : {}),
+            
+            // Guarantor - Complete data (if exists)
+            ...(hasGuarantor && formData.guarantor ? {
+              guarantorName: formData.guarantor?.name,
+              guarantorRelationship: formData.guarantor?.relationship,
+              guarantorDob: safeDateToISO(formData.guarantor?.dob),
+              guarantorSsn: formData.guarantor?.ssn || data.guarantorSsn,
+              guarantorPhone: formatPhoneForPayload(formData.guarantor?.phone || data.guarantorPhone),
+              guarantorEmail: formData.guarantor?.email || data.guarantorEmail,
+              guarantorLicense: formData.guarantor?.license || data.guarantorLicense,
+              guarantorLicenseState: formData.guarantor?.licenseState,
+              guarantorAddress: formData.guarantor?.address,
+              guarantorCity: formData.guarantor?.city,
+              guarantorState: formData.guarantor?.state,
+              guarantorZip: formData.guarantor?.zip || data.guarantorZip,
+              guarantorLengthAtAddressYears: formData.guarantor?.lengthAtAddressYears,
+              guarantorLengthAtAddressMonths: formData.guarantor?.lengthAtAddressMonths,
+              guarantorLandlordName: formData.guarantor?.landlordName,
+              guarantorLandlordAddressLine1: formData.guarantor?.landlordAddressLine1,
+              guarantorLandlordAddressLine2: formData.guarantor?.landlordAddressLine2,
+              guarantorLandlordCity: formData.guarantor?.landlordCity,
+              guarantorLandlordState: formData.guarantor?.landlordState,
+              guarantorLandlordZipCode: formData.guarantor?.landlordZipCode || data.guarantorLandlordZipCode,
+              guarantorLandlordPhone: formData.guarantor?.landlordPhone || data.guarantorLandlordPhone,
+              guarantorLandlordEmail: formData.guarantor?.landlordEmail || data.guarantorLandlordEmail,
+              guarantorCurrentRent: formData.guarantor?.currentRent,
+              guarantorReasonForMoving: formData.guarantor?.reasonForMoving,
+              guarantorEmploymentType: formData.guarantor?.employmentType,
+              guarantorEmployerName: formData.guarantor?.employerName,
+              guarantorEmployerAddress: formData.guarantor?.employerAddress,
+              guarantorEmployerCity: formData.guarantor?.employerCity,
+              guarantorEmployerState: formData.guarantor?.employerState,
+              guarantorEmployerZip: formData.guarantor?.employerZip,
+              guarantorEmployerPhone: formData.guarantor?.employerPhone,
+              guarantorPosition: formData.guarantor?.position,
+              guarantorStartDate: safeDateToISO(formData.guarantor?.startDate),
+              guarantorSalary: formData.guarantor?.salary,
+              guarantorBankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
+                bankName: record.bankName,
+                accountType: record.accountType
+              })),
+            } : {}),
+            
+            // Other Occupants - Complete data (optimized to exclude large document data)
+            otherOccupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any) => ({
+              name: occupant.name,
+              relationship: occupant.relationship,
+              dob: occupant.dob,
+              ssn: occupant.ssn,
+              license: occupant.license,
+              age: occupant.age,
+              // Remove large document data - will be sent via webhook
+              ssnDocument: occupant.ssnDocument ? "UPLOADED" : null,
+              ssnEncryptedDocument: occupant.ssnEncryptedDocument ? "UPLOADED" : null
+            })),
+            
+            // Legal Questions
+            landlordTenantLegalAction: formData.legalQuestions?.landlordTenantLegalAction,
+            landlordTenantLegalActionExplanation: formData.legalQuestions?.landlordTenantLegalActionExplanation,
+            brokenLease: formData.legalQuestions?.brokenLease,
+            brokenLeaseExplanation: formData.legalQuestions?.brokenLeaseExplanation,
+            
+            // Signatures (optimized to avoid large base64 data)
+            signatures: {
+              applicant: signatures.applicant ? "SIGNED" : null,
+              coApplicant: signatures.coApplicant ? "SIGNED" : null,
+              guarantor: signatures.guarantor ? "SIGNED" : null,
+            },
+            signatureTimestamps: signatureTimestamps,
+            
+
+            
+            // Bank Information List
+            bankInformation: {
+              applicant: {
+                bankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
+                  bankName: record.bankName,
+                  accountType: record.accountType
+                })),
+                totalBankRecords: formData.applicant?.bankRecords?.length || 0,
+                hasBankRecords: !!(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0)
+              },
+              coApplicant: hasCoApplicant ? {
+                bankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
+                  bankName: record.bankName,
+                  accountType: record.accountType
+                })),
+                totalBankRecords: formData.coApplicant?.bankRecords?.length || 0,
+                hasBankRecords: !!(formData.coApplicant?.bankRecords && formData.coApplicant.bankRecords.length > 0)
+              } : null,
+              guarantor: hasGuarantor ? {
+                bankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
+                  bankName: record.bankName,
+                  accountType: record.accountType
+                })),
+                totalBankRecords: formData.guarantor?.bankRecords?.length || 0,
+                hasBankRecords: !!(formData.guarantor?.bankRecords && formData.guarantor.bankRecords.length > 0)
+              } : null,
+              summary: {
+                totalPeople: 1 + (hasCoApplicant ? 1 : 0) + (hasGuarantor ? 1 : 0),
+                totalBankRecords: (formData.applicant?.bankRecords?.length || 0) + 
+                                 (hasCoApplicant ? (formData.coApplicant?.bankRecords?.length || 0) : 0) + 
+                                 (hasGuarantor ? (formData.guarantor?.bankRecords?.length || 0) : 0),
+                peopleWithBankRecords: [
+                  ...(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0 ? ['applicant'] : []),
+                  ...(hasCoApplicant && formData.coApplicant?.bankRecords && formData.coApplicant.bankRecords.length > 0 ? ['coApplicant'] : []),
+                  ...(hasGuarantor && formData.guarantor?.bankRecords && formData.guarantor.bankRecords.length > 0 ? ['guarantor'] : [])
+                ]
+              }
+            },
+            
+            // Application IDs
+            application_id: user?.applicantId || 'unknown',
+            reference_id: referenceId,
+            
+            // Webhook responses for uploaded documents
+            webhookResponses: webhookResponses,
+
+          };
+
+          const webhookPayload = completeWebhookData;
+
+          // Check payload size before sending
+          const payloadSize = JSON.stringify(webhookPayload).length;
+          const payloadSizeMB = Math.round(payloadSize / (1024 * 1024) * 100) / 100;
+          console.log(`📦 Raw webhook payload size: ${payloadSizeMB}MB`);
+          
+          if (payloadSize > 10 * 1024 * 1024) { // 10MB limit
+            console.warn('⚠️ Raw webhook payload is very large:', payloadSizeMB, 'MB');
+            console.warn('⚠️ Large data will be cleaned by webhook service');
+          }
+
+          console.log('=== WEBHOOK PAYLOAD DEBUG ===');
+          console.log('✅ Complete Webhook Structure:');
+          console.log('  - reference_id:', webhookPayload.reference_id);
+          console.log('  - application_id:', webhookPayload.application_id);
+          console.log('  - form_data: [Complete application data]');
+          console.log('  - uploaded_files: [Complete files metadata]');
+          console.log('  - submission_type: form_data');
+          console.log('');
+          console.log('📊 Data Verification:');
+          console.log('  - Applicant SSN:', webhookPayload.applicantSsn);
+          console.log('  - Other Occupants Count:', webhookPayload.otherOccupants?.length || 0);
+          console.log('  - Bank Records - Applicant:', webhookPayload.applicantBankRecords?.length || 0);
+          console.log('  - Bank Records - Co-Applicant:', webhookPayload.coApplicantBankRecords?.length || 0);
+          console.log('  - Bank Records - Guarantor:', webhookPayload.guarantorBankRecords?.length || 0);
+          console.log('  - Legal Questions:', {
+            landlordTenantLegalAction: webhookPayload.landlordTenantLegalAction,
+            brokenLease: webhookPayload.brokenLease
+          });
+          console.log('  - Signatures:', Object.keys(webhookPayload.signatures || {}));
+          console.log('  - Bank Information:', {
+            applicantBankRecords: webhookPayload.bankInformation?.applicant?.totalBankRecords || 0,
+            coApplicantBankRecords: webhookPayload.bankInformation?.coApplicant?.totalBankRecords || 0,
+            guarantorBankRecords: webhookPayload.bankInformation?.guarantor?.totalBankRecords || 0,
+            totalBankRecords: webhookPayload.bankInformation?.summary?.totalBankRecords || 0
+          });
+          console.log('  - Uploaded Documents Count:', (uploadedDocuments || []).length);
+          console.log('=== END WEBHOOK PAYLOAD DEBUG ===');
+
+
+          // Send the complete webhook data exactly as specified
+          console.log('🌐 === WEBHOOK SUBMISSION ===');
+          console.log('📤 Webhook payload being sent:', JSON.stringify(webhookPayload, null, 2));
+          console.log('🔗 Reference ID:', referenceId);
+          console.log('🔗 Application ID:', user?.applicantId);
+          
+          // Send form data to webhook
+          const webhookResult = await WebhookService.sendFormDataToWebhook(
+            webhookPayload,
+            referenceId,
+            user?.applicantId || 'unknown',
+            user?.zoneinfo,
+            uploadedFilesMetadata
+          );
+          
+          console.log('📥 Webhook response:', JSON.stringify(webhookResult, null, 2));
+          console.log('=== END WEBHOOK SUBMISSION ===');
+          
+          if (webhookResult.success) {
+            toast({
+              title: "Application Submitted & Sent",
+              description: "Your rental application has been submitted and sent to the webhook successfully.",
+            });
+            } else {
+            toast({
+              title: "Application Submitted",
+              description: "Your rental application has been submitted, but webhook delivery failed.",
+            });
+          }
+        } catch (webhookError) {
+          console.error('Webhook error:', webhookError);
           toast({
             title: "Application Submitted",
-            description: "Your rental application has been submitted, but webhook delivery failed.",
+              description: "Your rental application has been submitted, but webhook delivery failed.",
           });
         }
-      } catch (webhookError) {
-        console.error('Webhook error:', webhookError);
-      toast({
-        title: "Application Submitted",
-          description: "Your rental application has been submitted, but webhook delivery failed.",
-      });
-      }
 
-      generatePDF();
+        generatePDF();
+      } catch (error) {
+        console.error('Failed to submit application:', error);
+        
+        let errorMessage = "Failed to submit application. Please try again.";
+        
+        // Handle specific error types
+        if (error instanceof Error) {
+          if (error.name === 'AbortError') {
+            errorMessage = "Submission timed out. Please try again with smaller files or fewer files at once.";
+          } else if (error.message.includes('413')) {
+            errorMessage = "Application data is too large. Please reduce file sizes and try again.";
+          } else if (error.message.includes('504')) {
+            errorMessage = "Submission timed out. Please try again with smaller files or fewer files at once.";
+          } else {
+            errorMessage = error.message;
+          }
+        }
+        
+        toast({
+          title: "Submission Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
     } catch (error) {
       console.error('Failed to submit application:', error);
       
@@ -1630,8 +1928,6 @@ export function ApplicationForm() {
         description: errorMessage,
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -1697,6 +1993,55 @@ export function ApplicationForm() {
       }
     }
   }, [formData.applicant?.dob, form]);
+
+  // Ensure moveInDate in formData and react-hook-form stay in sync for DatePicker display
+  useEffect(() => {
+    const formValue = form.watch('moveInDate');
+    const stateValue = formData.application?.moveInDate;
+    console.log('📅 moveInDate sync check - formValue:', formValue, 'stateValue:', stateValue);
+    if (stateValue && (!formValue || (formValue instanceof Date && stateValue instanceof Date && formValue.getTime() !== stateValue.getTime()))) {
+      // Only set if different and stateValue is a valid Date
+      if (stateValue instanceof Date && !isNaN(stateValue.getTime())) {
+        console.log('📅 Setting moveInDate from Date object:', stateValue);
+        form.setValue('moveInDate', stateValue);
+      } else if (typeof stateValue === 'string' || typeof stateValue === 'number') {
+        const parsed = new Date(stateValue);
+        if (!isNaN(parsed.getTime())) {
+          console.log('📅 Setting moveInDate from parsed string/number:', parsed);
+          form.setValue('moveInDate', parsed);
+        }
+      }
+    }
+  }, [formData.application?.moveInDate, form]);
+
+  // Ensure apartmentNumber in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('apartmentNumber');
+    const stateValue = formData.application?.apartmentNumber;
+    console.log('🏠 apartmentNumber sync check - formValue:', formValue, 'stateValue:', stateValue);
+    if (stateValue && formValue !== stateValue) {
+      console.log('🏠 Setting apartmentNumber:', stateValue);
+      form.setValue('apartmentNumber', stateValue);
+    }
+  }, [formData.application?.apartmentNumber, form]);
+
+  // Ensure monthlyRent in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('monthlyRent');
+    const stateValue = formData.application?.monthlyRent;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('monthlyRent', stateValue);
+    }
+  }, [formData.application?.monthlyRent, form]);
+
+  // Ensure apartmentType in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('apartmentType');
+    const stateValue = formData.application?.apartmentType;
+    if (stateValue && formValue !== stateValue) {
+      form.setValue('apartmentType', stateValue);
+    }
+  }, [formData.application?.apartmentType, form]);
 
   // Refactor renderStep to accept a stepIdx argument
   const renderStep = (stepIdx = currentStep) => {
@@ -1802,6 +2147,8 @@ export function ApplicationForm() {
                     </FormItem>
                   )}
                 />
+
+
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1817,7 +2164,7 @@ export function ApplicationForm() {
                           placeholder="0.00"
                           {...field}
                           className="input-field"
-                          value={formData.application?.monthlyRent?.toString() || ''}
+                          value={field.value?.toString() || formData.application?.monthlyRent?.toString() || ''}
                           disabled
                         />
                       </FormControl>
@@ -1838,7 +2185,7 @@ export function ApplicationForm() {
                           {...field}
                           className="input-field bg-gray-50"
                           readOnly
-                          value={selectedUnit?.unitType || field.value}
+                          value={field.value || selectedUnit?.unitType || ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -2490,12 +2837,149 @@ export function ApplicationForm() {
             </CardHeader>
             <CardContent>
               <SupportingDocuments 
-                formData={formData}
+                formData={{
+                  ...formData,
+                  webhookResponses
+                }}
                 onDocumentChange={(documentType, files) => {
                   setDocuments((prev: any) => ({
                     ...prev,
                     [documentType]: files,
                   }));
+                }}
+                onWebhookResponse={(documentType, response) => {
+                  console.log('Webhook response received:', documentType, response);
+                  
+                  // Extract file URL from webhook response
+                  let fileUrl = '';
+                  if (response) {
+                    try {
+                      // Try to parse as JSON first
+                      const responseJson = JSON.parse(response);
+                      if (responseJson && typeof responseJson === 'string') {
+                        fileUrl = responseJson;
+                      } else if (responseJson && responseJson.url) {
+                        fileUrl = responseJson.url;
+                      } else if (responseJson && responseJson.body) {
+                        fileUrl = responseJson.body;
+                      }
+                    } catch (parseError) {
+                      // If not JSON, treat the entire response as the URL
+                      fileUrl = response.trim();
+                    }
+                  }
+                  
+                  console.log('📄 Extracted file URL from webhook response:', fileUrl);
+                  
+                  // Store the webhook response (S3 URL)
+                  setWebhookResponses((prev: any) => ({
+                    ...prev,
+                    [documentType]: response,
+                  }));
+                  
+                  // Update uploadedDocuments with the file URL
+                  if (fileUrl) {
+                    setUploadedDocuments(prev => {
+                      const safePrev = Array.isArray(prev) ? prev : [];
+                      // Find and update the document with the file URL
+                      const updatedDocs = safePrev.map(doc => {
+                        if (doc.section_name === documentType || doc.documents === documentType) {
+                          return {
+                            ...doc,
+                            file_url: fileUrl
+                          };
+                        }
+                        return doc;
+                      });
+                      
+                      // If no existing document found, add a new one
+                      if (!updatedDocs.some(doc => doc.section_name === documentType || doc.documents === documentType)) {
+                        updatedDocs.push({
+                          reference_id: `${Date.now()}-${documentType}`,
+                          file_name: documentType,
+                          section_name: documentType,
+                          documents: documentType,
+                          file_url: fileUrl
+                        });
+                      }
+                      
+                      return updatedDocs;
+                    });
+                  }
+                  
+                  // Save draft immediately after successful webhook response
+                  if (user?.applicantId && response) {
+                    const formValues = form.getValues();
+                    const safeDateToISO = (dateValue: any): string | null => {
+                      if (!dateValue) return null;
+                      try {
+                        const date = new Date(dateValue);
+                        if (isNaN(date.getTime())) {
+                          console.warn('Invalid date value:', dateValue);
+                          return null;
+                        }
+                        return date.toISOString();
+                      } catch (error) {
+                        console.warn('Error converting date to ISO:', dateValue, error);
+                        return null;
+                      }
+                    };
+                    
+                    // Create mapped form data with webhook response
+                    const mappedFormData = {
+                      // Application Info
+                      buildingAddress: formValues.buildingAddress || formData.application?.buildingAddress,
+                      apartmentNumber: formValues.apartmentNumber || formData.application?.apartmentNumber,
+                      moveInDate: safeDateToISO(formValues.moveInDate || formData.application?.moveInDate),
+                      monthlyRent: formValues.monthlyRent || formData.application?.monthlyRent,
+                      apartmentType: formValues.apartmentType || formData.application?.apartmentType,
+                      howDidYouHear: formValues.howDidYouHear || formData.application?.howDidYouHear,
+                      howDidYouHearOther: formValues.howDidYouHearOther || formData.application?.howDidYouHearOther,
+                      
+                      // Primary Applicant
+                      applicantName: formValues.applicantName || formData.applicant?.name,
+                      applicantDob: safeDateToISO(formValues.applicantDob || formData.applicant?.dob),
+                      applicantSsn: formData.applicant?.ssn || formValues.applicantSsn,
+                      applicantPhone: formatPhoneForPayload(formData.applicant?.phone || formValues.applicantPhone),
+                      applicantEmail: formValues.applicantEmail || formData.applicant?.email,
+                      applicantLicense: formData.applicant?.license || formValues.applicantLicense,
+                      applicantLicenseState: formData.applicant?.licenseState || formValues.applicantLicenseState,
+                      applicantAddress: formValues.applicantAddress || formData.applicant?.address,
+                      applicantCity: formValues.applicantCity || formData.applicant?.city,
+                      applicantState: formValues.applicantState || formData.applicant?.state,
+                      applicantZip: formValues.applicantZip || formData.applicant?.zip,
+                      
+                      // Store the raw form data for restoration
+                      rawFormData: formData,
+                      rawFormValues: formValues,
+                      signatures,
+                      documents,
+                      encryptedDocuments,
+                      uploadedDocuments,
+                      // OPTIMIZED: Only store essential metadata for draft, full metadata will be sent on submit
+                      uploadedFilesMetadata: Object.keys(uploadedFilesMetadata).length > 0 ? 
+                        Object.fromEntries(
+                          Object.entries(uploadedFilesMetadata).map(([key, files]) => [
+                            key, 
+                            files.map(file => ({
+                              file_name: file.file_name,
+                              file_size: file.file_size,
+                              mime_type: file.mime_type,
+                              upload_date: file.upload_date
+                            }))
+                          ])
+                        ) : {},
+                      hasCoApplicant,
+                      hasGuarantor,
+                      currentStep,
+                      webhookResponses: {
+                        ...webhookResponses,
+                        [documentType]: response
+                      }
+                    };
+                    
+                    console.log(`✅ Webhook response received for ${documentType}: ${response}`);
+                  }
                 }}
                 onEncryptedDocumentChange={(documentType, encryptedFiles) => {
                   console.log('Encrypted document change:', documentType, encryptedFiles);
@@ -2524,7 +3008,7 @@ export function ApplicationForm() {
                     return [...filtered, ...docs];
                   });
 
-                  // Track uploaded files metadata for webhook
+                  // Track uploaded files metadata for webhook - OPTIMIZED VERSION
                   const filesMetadata = encryptedFiles.map(file => ({
                     file_name: file.filename,
                     file_size: file.originalSize,
@@ -2532,10 +3016,23 @@ export function ApplicationForm() {
                     upload_date: file.uploadDate
                   }));
 
-                  setUploadedFilesMetadata(prev => ({
-                    ...prev,
-                    [sectionKey]: filesMetadata
-                  }));
+                  setUploadedFilesMetadata(prev => {
+                    const newMetadata = {
+                      ...prev,
+                      [sectionKey]: filesMetadata
+                    };
+                    
+                    // Log metadata size for debugging
+                    const metadataSize = JSON.stringify(newMetadata).length;
+                    console.log(`📊 UploadedFilesMetadata size: ${metadataSize} characters for section ${sectionKey}`);
+                    
+                    // If metadata is getting too large, log a warning
+                    if (metadataSize > 50000) { // 50KB warning threshold
+                      console.warn(`⚠️ UploadedFilesMetadata is getting large: ${metadataSize} characters`);
+                    }
+                    
+                    return newMetadata;
+                  });
                 }}
                 referenceId={referenceId}
                 enableWebhook={true}
@@ -3020,6 +3517,67 @@ export function ApplicationForm() {
         // Wrapper functions for SupportingDocuments to match expected signature
         const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicant', documentType, files);
         const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicant', documentType, encryptedFiles);
+        const coApplicantWebhookResponse = (documentType: string, response: any) => {
+          console.log('Co-applicant webhook response received:', documentType, response);
+          
+          // Extract file URL from webhook response
+          let fileUrl = '';
+          if (response) {
+            try {
+              // Try to parse as JSON first
+              const responseJson = JSON.parse(response);
+              if (responseJson && typeof responseJson === 'string') {
+                fileUrl = responseJson;
+              } else if (responseJson && responseJson.url) {
+                fileUrl = responseJson.url;
+              } else if (responseJson && responseJson.body) {
+                fileUrl = responseJson.body;
+              }
+            } catch (parseError) {
+              // If not JSON, treat the entire response as the URL
+              fileUrl = response.trim();
+            }
+          }
+          
+          console.log('📄 Extracted co-applicant file URL from webhook response:', fileUrl);
+          
+          setWebhookResponses((prev: any) => ({
+            ...prev,
+            [`coApplicant_${documentType}`]: response,
+          }));
+          
+          // Update uploadedDocuments with the file URL
+          if (fileUrl) {
+            setUploadedDocuments(prev => {
+              const safePrev = Array.isArray(prev) ? prev : [];
+              const sectionKey = `coApplicant_${documentType}`;
+              
+              // Find and update the document with the file URL
+              const updatedDocs = safePrev.map(doc => {
+                if (doc.section_name === sectionKey || doc.documents === documentType) {
+                  return {
+                    ...doc,
+                    file_url: fileUrl
+                  };
+                }
+                return doc;
+              });
+              
+              // If no existing document found, add a new one
+              if (!updatedDocs.some(doc => doc.section_name === sectionKey || doc.documents === documentType)) {
+                updatedDocs.push({
+                  reference_id: `${Date.now()}-${sectionKey}`,
+                  file_name: documentType,
+                  section_name: sectionKey,
+                  documents: documentType,
+                  file_url: fileUrl
+                });
+              }
+              
+              return updatedDocs;
+            });
+          }
+        };
         return (
           hasCoApplicant ? (
             <Card className="form-section border-l-4 border-l-green-500">
@@ -3031,9 +3589,17 @@ export function ApplicationForm() {
               </CardHeader>
               <CardContent>
                 <SupportingDocuments
-                  formData={formData}
+                  formData={{
+                    ...formData,
+                    webhookResponses: Object.fromEntries(
+                      Object.entries(webhookResponses)
+                        .filter(([key]) => key.startsWith('coApplicant_'))
+                        .map(([key, value]) => [key.replace('coApplicant_', ''), value])
+                    )
+                  }}
                   onDocumentChange={coApplicantDocumentChange}
                   onEncryptedDocumentChange={coApplicantEncryptedDocumentChange}
+                  onWebhookResponse={coApplicantWebhookResponse}
                   referenceId={referenceId}
                   enableWebhook={true}
                   applicationId={user?.applicantId || 'unknown'}
@@ -3636,9 +4202,9 @@ export function ApplicationForm() {
       case 11:
         if (!formData.guarantor?.employmentType) {
           return (
-            <Card className="form-section">
+            <Card className="form-section border-l-4 border-l-green-500">
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                   <FolderOpen className="w-5 h-5 mr-2" />
                   Guarantor Documents
                 </CardTitle>
@@ -3667,62 +4233,100 @@ export function ApplicationForm() {
             </Card>
           );
         }
-        return (
-          <SupportingDocuments
-            formData={formData}
-            onDocumentChange={(documentType, files) => {
-              setDocuments((prev: any) => ({
-                ...prev,
-                [documentType]: files,
-              }));
-            }}
-            onEncryptedDocumentChange={(documentType, encryptedFiles) => {
-              console.log('🚀 GUARANTOR ENCRYPTED DOCUMENT CHANGE:', {
-                documentType,
-                encryptedFilesCount: encryptedFiles.length,
-                encryptedFiles: encryptedFiles.map(f => ({ filename: f.filename, size: f.encryptedData.length }))
-              });
-              setEncryptedDocuments((prev: any) => ({
-                ...prev,
-                guarantor: {
-                  ...prev.guarantor,
-                  [documentType]: encryptedFiles,
-                },
-              }));
-
-              // Track uploadedDocuments for webhook
+        // Wrapper functions for SupportingDocuments to match expected signature
+        const guarantorDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('guarantor', documentType, files);
+        const guarantorEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('guarantor', documentType, encryptedFiles);
+        const guarantorWebhookResponse = (documentType: string, response: any) => {
+          console.log('Guarantor webhook response received:', documentType, response);
+          
+          // Extract file URL from webhook response
+          let fileUrl = '';
+          if (response) {
+            try {
+              // Try to parse as JSON first
+              const responseJson = JSON.parse(response);
+              if (responseJson && typeof responseJson === 'string') {
+                fileUrl = responseJson;
+              } else if (responseJson && responseJson.url) {
+                fileUrl = responseJson.url;
+              } else if (responseJson && responseJson.body) {
+                fileUrl = responseJson.body;
+              }
+            } catch (parseError) {
+              // If not JSON, treat the entire response as the URL
+              fileUrl = response.trim();
+            }
+          }
+          
+          console.log('📄 Extracted guarantor file URL from webhook response:', fileUrl);
+          
+          setWebhookResponses((prev: any) => ({
+            ...prev,
+            [`guarantor_${documentType}`]: response,
+          }));
+          
+          // Update uploadedDocuments with the file URL
+          if (fileUrl) {
+            setUploadedDocuments(prev => {
+              const safePrev = Array.isArray(prev) ? prev : [];
               const sectionKey = `guarantor_${documentType}`;
-              const docs = encryptedFiles.map(file => ({
-                reference_id: file.uploadDate + '-' + file.filename,
-                file_name: file.filename,
-                section_name: sectionKey,
-                documents: documentType
-              }));
-              setUploadedDocuments(prev => {
-                // Ensure prev is always an array
-                const safePrev = Array.isArray(prev) ? prev : [];
-                const filtered = safePrev.filter(doc => doc.section_name !== sectionKey);
-                return [...filtered, ...docs];
+              
+              // Find and update the document with the file URL
+              const updatedDocs = safePrev.map(doc => {
+                if (doc.section_name === sectionKey || doc.documents === documentType) {
+                  return {
+                    ...doc,
+                    file_url: fileUrl
+                  };
+                }
+                return doc;
               });
-
-              // Track uploaded files metadata for webhook
-              const filesMetadata = encryptedFiles.map(file => ({
-                file_name: file.filename,
-                file_size: file.originalSize,
-                mime_type: file.mimeType,
-                upload_date: file.uploadDate
-              }));
-
-              setUploadedFilesMetadata(prev => ({
-                ...prev,
-                [sectionKey]: filesMetadata
-              }));
-            }}
-            referenceId={referenceId}
-            enableWebhook={true}
-            applicationId={user?.applicantId || 'unknown'}
-            showOnlyGuarantor={true}
-          />
+              
+              // If no existing document found, add a new one
+              if (!updatedDocs.some(doc => doc.section_name === sectionKey || doc.documents === documentType)) {
+                updatedDocs.push({
+                  reference_id: `${Date.now()}-${sectionKey}`,
+                  file_name: documentType,
+                  section_name: sectionKey,
+                  documents: documentType,
+                  file_url: fileUrl
+                });
+              }
+              
+              return updatedDocs;
+            });
+          }
+        };
+        return (
+          <Card className="form-section border-l-4 border-l-green-500">
+            <CardHeader>
+              <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                <FolderOpen className="w-5 h-5 mr-2" />
+                Guarantor Documents
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SupportingDocuments
+                formData={{
+                  ...formData,
+                  webhookResponses: Object.fromEntries(
+                    Object.entries(webhookResponses)
+                      .filter(([key]) => key.startsWith('guarantor_'))
+                      .map(([key, value]) => [key.replace('guarantor_', ''), value])
+                  )
+                }}
+                onDocumentChange={guarantorDocumentChange}
+                onEncryptedDocumentChange={guarantorEncryptedDocumentChange}
+                onWebhookResponse={guarantorWebhookResponse}
+                referenceId={referenceId}
+                enableWebhook={true}
+                applicationId={user?.applicantId || 'unknown'}
+                applicantId={user?.id}
+                zoneinfo={user?.zoneinfo}
+                showOnlyGuarantor={true}
+              />
+            </CardContent>
+          </Card>
         );
 
       case 12:
@@ -3787,22 +4391,7 @@ export function ApplicationForm() {
     return undefined;
   }
 
-  // On mount, if loading draft from localStorage, always convert dob to Date
-  useEffect(() => {
-    const draft = localStorage.getItem('rentalApplicationDraft');
-    if (draft) {
-      try {
-        const parsed = JSON.parse(draft);
-        if (parsed?.formData?.applicant?.dob) {
-          parsed.formData.applicant.dob = toValidDate(parsed.formData.applicant.dob);
-        }
-        setFormData(parsed.formData || {});
-        // ... set other state as needed
-      } catch (e) {
-        console.warn('Failed to parse draft:', e);
-      }
-    }
-  }, []);
+
 
   // Enhanced sync effect for applicantDob
   useEffect(() => {
@@ -3853,14 +4442,12 @@ export function ApplicationForm() {
       <div className="w-full max-w-4xl mx-auto px-3 py-4 sm:px-4 sm:py-8">
         <div className="mb-4 sm:mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-              LLPM Rental Application
-            </h1>
-            
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                Rental Application
+              </h1>
+            </div>
           </div>
-          
-          {/* Debug component - remove in production */}
-
           
           {/* Progress Steps */}
           <div className="flex items-center justify-between mb-2 sm:mb-4 overflow-x-auto">
@@ -3895,12 +4482,7 @@ export function ApplicationForm() {
               );
             })}
           </div>
-          {/* Step title and progress indicator removed */}
         </div>
-
-
-
-        {/* Action Buttons - Removed */}
 
         <Form {...form}>
           <form 
@@ -3919,52 +4501,51 @@ export function ApplicationForm() {
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex justify-between items-center pt-4 sm:pt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={(e) => prevStep(e)}
-                disabled={currentStep === 0}
-                className="flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2"
-              >
-                <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Previous</span>
-                <span className="sm:hidden">Prev</span>
-              </Button>
-
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                Step {currentStep + 1} of {STEPS.length}
+            <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+              <div className="flex items-center space-x-4">
+                {currentStep > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={prevStep}
+                    className="flex items-center space-x-2"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Previous</span>
+                  </Button>
+                )}
               </div>
-
-              {currentStep === STEPS.length - 1 ? (
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <span className="hidden sm:inline">Submitting...</span>
-                      <span className="sm:hidden">Submitting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="hidden sm:inline">Submit Application</span>
-                      <span className="sm:hidden">Submit</span>
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={(e) => nextStep(e)}
-                  className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 sm:px-6 py-2"
-                >
-                  <span className="hidden sm:inline">Next</span>
-                  <span className="sm:hidden">Next</span>
-                  <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
-                </Button>
-              )}
+              
+              <div className="flex items-center space-x-4">
+                {currentStep < STEPS.length - 1 ? (
+                  <Button
+                    type="button"
+                    onClick={nextStep}
+                    className="flex items-center space-x-2"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex items-center space-x-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Submitting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>Submit Application</span>
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
           </form>
         </Form>

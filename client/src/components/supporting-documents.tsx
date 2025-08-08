@@ -1,13 +1,54 @@
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { FileUpload } from "./ui/file-upload";
 import { Badge } from "./ui/badge";
-import { CheckCircle, AlertCircle, FileText, DollarSign, Building, User, CreditCard, Shield, UserCheck } from "lucide-react";
+import { CheckCircle, AlertCircle, FileText, DollarSign, Building, User, CreditCard, Shield, UserCheck, Building2, Briefcase, GraduationCap, Eye, Download, X } from "lucide-react";
 import { type EncryptedFile } from "@/lib/file-encryption";
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+
+interface DocumentInfo {
+  id: string;
+  name: string;
+  required: boolean;
+  acceptedTypes: string;
+  multiple?: boolean;
+}
+
+interface CategoryInfo {
+  category: string;
+  icon: JSX.Element;
+  documents: DocumentInfo[];
+}
+
+interface DocumentStatus {
+  status: "uploaded" | "pending";
+  count: number;
+}
 
 interface SupportingDocumentsProps {
-  formData: any;
+  formData: {
+    documents?: {
+      applicant?: Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      coApplicant?: Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      guarantor?: Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      otherOccupants?: Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+    };
+    webhookResponses?: Record<string, any>;
+    encryptedDocuments?: {
+      applicant?: Record<string, any[]>;
+      guarantor?: Record<string, any[]>;
+      coApplicant?: Record<string, any[]>;
+    };
+    applicant?: { employmentType?: string };
+    coApplicant?: { employmentType?: string };
+    guarantor?: { employmentType?: string };
+    otherOccupants?: any[];
+    uploadedFilesMetadata?: Record<string, any[]>;
+  };
   onDocumentChange: (documentType: string, files: File[]) => void;
   onEncryptedDocumentChange?: (documentType: string, encryptedFiles: EncryptedFile[]) => void;
+  onWebhookResponse?: (documentType: string, response: any) => void;
   referenceId?: string;
   enableWebhook?: boolean;
   applicationId?: string;
@@ -17,15 +58,32 @@ interface SupportingDocumentsProps {
   showOnlyGuarantor?: boolean;
 }
 
-export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDocumentChange, referenceId, enableWebhook, applicationId, applicantId, zoneinfo, showOnlyCoApplicant = false, showOnlyGuarantor = false }: SupportingDocumentsProps) {
-  console.log('🔍 SupportingDocuments rendered:', {
-    showOnlyGuarantor,
-    showOnlyCoApplicant,
-    guarantorEmploymentType: formData?.guarantor?.employmentType,
-    guarantorDocuments: formData?.encryptedDocuments?.guarantor,
-    coApplicantDocuments: formData?.encryptedDocuments?.coApplicant
+export const SupportingDocuments = ({
+  formData,
+  onDocumentChange,
+  onEncryptedDocumentChange,
+  onWebhookResponse,
+  referenceId,
+  enableWebhook,
+  applicationId,
+  applicantId,
+  zoneinfo,
+  showOnlyCoApplicant = false,
+  showOnlyGuarantor = false
+}: SupportingDocumentsProps): JSX.Element => {
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    url: string;
+    filename: string;
+  }>({
+    isOpen: false,
+    title: '',
+    url: '',
+    filename: ''
   });
-  const requiredDocuments = [
+
+  const requiredDocuments: CategoryInfo[] = [
     {
       category: "Identity Documents",
       icon: <User className="h-4 w-4" />,
@@ -51,7 +109,7 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
       ]
     },
     {
-      category: "Employment Verification",
+      category: "Employment Documents",
       icon: <Building className="h-4 w-4" />,
       documents: [
         {
@@ -77,26 +135,19 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
           id: "tax_returns",
           name: "Tax Returns (Previous Year)",
           required: true,
-          acceptedTypes: ".jpg,.jpeg,.png,.pdf",
-          multiple: true
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         },
         {
-          id: "bank_statement",
+          id: "bank_statements",
           name: "Bank Statements",
           required: true,
           acceptedTypes: ".jpg,.jpeg,.png,.pdf",
           multiple: true
-        }
-      ]
-    },
-    {
-      category: "Self-Employed Documents",
-      icon: <FileText className="h-4 w-4" />,
-      documents: [
+        },
         {
           id: "accountant_letter",
           name: "Accountant Letter",
-          required: false,
+          required: true,
           acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         }
       ]
@@ -108,43 +159,213 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
         {
           id: "credit_report",
           name: "Credit Report",
-          required: true, // Now required
+          required: true,
           acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         }
       ]
     }
   ];
 
-  // Determine employment type for applicant and co-applicant
+  const getDocumentStatus = (documentId: string): DocumentStatus => {
+    const documents = formData.documents?.[documentId] || [];
+    const webhookResponse = formData.webhookResponses?.[documentId];
+    
+    // Check if we have a webhook response (S3 URL) indicating successful upload
+    if (webhookResponse && typeof webhookResponse === 'string' && webhookResponse.trim()) {
+      return {
+        status: "uploaded",
+        count: 1 // We have a successful upload
+      };
+    }
+    
+    // Check for uploaded documents from draft data
+    const uploadedFilesMetadata = formData.uploadedFilesMetadata;
+    if (uploadedFilesMetadata) {
+      // Check for documents in uploadedFilesMetadata
+      const uploadedFiles = uploadedFilesMetadata[documentId];
+      if (uploadedFiles && Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+        return {
+          status: "uploaded",
+          count: uploadedFiles.length
+        };
+      }
+      
+      // Check for documents with person prefix (e.g., applicant_photo_id, guarantor_photo_id)
+      const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_'];
+      for (const prefix of personPrefixes) {
+        const prefixedDocumentId = prefix + documentId;
+        const prefixedFiles = uploadedFilesMetadata[prefixedDocumentId];
+        if (prefixedFiles && Array.isArray(prefixedFiles) && prefixedFiles.length > 0) {
+          return {
+            status: "uploaded",
+            count: prefixedFiles.length
+          };
+        }
+      }
+    }
+    
+    // Check for encrypted documents from draft data
+    const encryptedDocuments = formData.encryptedDocuments;
+    if (encryptedDocuments) {
+      // Check for documents with person prefix in encryptedDocuments
+      if (encryptedDocuments.applicant && encryptedDocuments.applicant[documentId]) {
+        const files = encryptedDocuments.applicant[documentId];
+        if (Array.isArray(files) && files.length > 0) {
+          return {
+            status: "uploaded",
+            count: files.length
+          };
+        }
+      }
+      
+      if (encryptedDocuments.coApplicant && encryptedDocuments.coApplicant[documentId]) {
+        const files = encryptedDocuments.coApplicant[documentId];
+        if (Array.isArray(files) && files.length > 0) {
+          return {
+            status: "uploaded",
+            count: files.length
+          };
+        }
+      }
+      
+      if (encryptedDocuments.guarantor && encryptedDocuments.guarantor[documentId]) {
+        const files = encryptedDocuments.guarantor[documentId];
+        if (Array.isArray(files) && files.length > 0) {
+          return {
+            status: "uploaded",
+            count: files.length
+          };
+        }
+      }
+    }
+    
+    // Fall back to checking actual files
+    if (documents.length > 0) {
+      return {
+        status: "uploaded",
+        count: documents.length
+      };
+    }
+    
+    return {
+      status: "pending",
+      count: 0
+    };
+  };
+
+  const getUploadedDocuments = (documentId: string) => {
+    const documents = formData.documents;
+    if (!documents) return [];
+
+    // Check for documents in the new structure with webhookbodyUrl
+    const uploadedDocs: Array<{ filename: string; webhookbodyUrl: string }> = [];
+    
+    // Check applicant documents
+    if (documents.applicant) {
+      const applicantDocs = documents.applicant as Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      if (applicantDocs[documentId]) {
+        uploadedDocs.push(...applicantDocs[documentId]);
+      }
+    }
+    
+    // Check co-applicant documents
+    if (documents.coApplicant) {
+      const coApplicantDocs = documents.coApplicant as Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      if (coApplicantDocs[documentId]) {
+        uploadedDocs.push(...coApplicantDocs[documentId]);
+      }
+    }
+    
+    // Check guarantor documents
+    if (documents.guarantor) {
+      const guarantorDocs = documents.guarantor as Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      if (guarantorDocs[documentId]) {
+        uploadedDocs.push(...guarantorDocs[documentId]);
+      }
+    }
+    
+    // Check other occupants documents
+    if (documents.otherOccupants) {
+      const otherOccupantsDocs = documents.otherOccupants as Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
+      Object.entries(otherOccupantsDocs).forEach(([key, files]) => {
+        if (key.includes(documentId) && Array.isArray(files)) {
+          uploadedDocs.push(...files);
+        }
+      });
+    }
+
+    return uploadedDocs;
+  };
+
+  const handlePreviewDocument = (filename: string, webhookbodyUrl: string, documentName: string) => {
+    setPreviewModal({
+      isOpen: true,
+      title: documentName,
+      url: webhookbodyUrl,
+      filename: filename
+    });
+  };
+
+  const handleDownloadDocument = (webhookbodyUrl: string, filename: string) => {
+    const link = document.createElement('a');
+    link.href = webhookbodyUrl;
+    link.download = filename;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleClosePreview = () => {
+    setPreviewModal(prev => ({ ...prev, isOpen: false }));
+  };
+
+  // Determine employment type for applicant, co-applicant, and guarantor
   const applicantEmploymentType = formData?.applicant?.employmentType;
   const coApplicantEmploymentType = formData?.coApplicant?.employmentType;
+  const guarantorEmploymentType = formData?.guarantor?.employmentType;
 
-  // Helper to get allowed categories for a given employment type
-  function allowedCategoriesForType(type: string | undefined) {
-    if (!type) return new Set(requiredDocuments.map(c => c.category));
-    if (type === 'salaried' || type === 'employed') {
-      // Hide Self-Employed Documents
-      return new Set(requiredDocuments.map(c => c.category).filter(cat => cat !== 'Self-Employed Documents'));
-    }
-    if (type === 'self-employed') {
-      // Hide Employment Verification
-      return new Set(requiredDocuments.map(c => c.category).filter(cat => cat !== 'Employment Verification'));
-    }
-    if (["unemployed", "retired", "student"].includes(type)) {
-      return new Set(requiredDocuments.map(c => c.category).filter(cat => cat !== 'Employment Verification' && cat !== 'Self-Employed Documents'));
-    }
-    return new Set(requiredDocuments.map(c => c.category));
+  // Helper to filter documents based on employment type
+  function filterDocumentsByEmploymentType(documents: CategoryInfo[], employmentType: string | undefined) {
+    if (!employmentType) return documents;
+    
+    return documents.map(category => ({
+      ...category,
+      documents: category.documents.filter(document => {
+        // For salaried/employed: show Employment Letter, hide Accountant Letter
+        if (employmentType === 'salaried' || employmentType === 'employed') {
+          return document.id !== 'accountant_letter';
+        }
+        
+        // For self-employed: show Financial Documents, hide Employment Documents
+        if (employmentType === 'self-employed') {
+          return category.category !== 'Employment Documents';
+        }
+        
+        // For other employment types: show all documents
+        if (["unemployed", "retired", "student"].includes(employmentType)) {
+          return true;
+        }
+        
+        return true;
+      })
+    })).filter(category => category.documents.length > 0); // Remove empty categories
   }
 
-  // Compute allowed categories (union if both applicant and co-applicant)
-  let allowedCategories = allowedCategoriesForType(applicantEmploymentType);
-  if (coApplicantEmploymentType) {
-    const coAllowed = allowedCategoriesForType(coApplicantEmploymentType);
-    allowedCategories = new Set(Array.from(allowedCategories).concat(Array.from(coAllowed)));
+  // Determine which employment type to use based on the section being displayed
+  let relevantEmploymentType: string | undefined;
+  
+  if (showOnlyCoApplicant) {
+    relevantEmploymentType = coApplicantEmploymentType;
+  } else if (showOnlyGuarantor) {
+    relevantEmploymentType = guarantorEmploymentType;
+  } else {
+    // For supporting documents section, use applicant employment type
+    relevantEmploymentType = applicantEmploymentType;
   }
 
-  // Filter requiredDocuments based on allowed categories
-  const filteredDocuments = requiredDocuments.filter((category) => allowedCategories.has(category.category));
+  // Filter documents based on the relevant employment type
+  const filteredDocuments = filterDocumentsByEmploymentType(requiredDocuments, relevantEmploymentType);
 
   // Add Other Occupant Documents category if there are other occupants
   const otherOccupants = Array.isArray(formData?.otherOccupants) ? formData.otherOccupants : [];
@@ -164,367 +385,166 @@ export function SupportingDocuments({ formData, onDocumentChange, onEncryptedDoc
     });
   }
 
-  // Note: Guarantor documents are shown in a separate section below, not mixed in with main documents
-
-  // Co-Applicant Documents logic
-  let coApplicantDocuments: any[] = [];
-  if (formData?.coApplicant && formData.coApplicant.employmentType) {
-    const coAllowedCategories = allowedCategoriesForType(formData.coApplicant.employmentType);
-    coApplicantDocuments = requiredDocuments.filter((category) => coAllowedCategories.has(category.category));
-  }
-
-  // Guarantor Documents logic - Only for dedicated guarantor section
-  let guarantorDocuments: any[] = [];
-  if (formData?.guarantor && formData.guarantor.employmentType) {
-    const guarAllowedCategories = allowedCategoriesForType(formData.guarantor.employmentType);
-    guarantorDocuments = requiredDocuments.filter((category) => guarAllowedCategories.has(category.category));
-  } else {
-    guarantorDocuments = []; // Don't show guarantor documents if no employment type
-  }
-
-  const getDocumentStatus = (documentId: string) => {
-    // Check for regular documents
-    const files = formData.documents?.[documentId];
-    if (files && files.length > 0) {
-      return { status: "uploaded", count: files.length };
-    }
-    
-    // Check for encrypted documents (for guarantor, co-applicant, etc.)
-    if (showOnlyGuarantor && formData.encryptedDocuments?.guarantor?.[documentId]) {
-      const encryptedFiles = formData.encryptedDocuments.guarantor[documentId];
-      return { status: "uploaded", count: encryptedFiles.length };
-    }
-    
-    if (showOnlyCoApplicant && formData.encryptedDocuments?.coApplicant?.[documentId]) {
-      const encryptedFiles = formData.encryptedDocuments.coApplicant[documentId];
-      return { status: "uploaded", count: encryptedFiles.length };
-    }
-    
-    return { status: "pending", count: 0 };
-  };
-
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle className="text-lg font-medium">
-          {showOnlyCoApplicant
-            ? 'Co-Applicant Documents'
-            : showOnlyGuarantor
-            ? 'Guarantor Documents'
-            : 'Supporting Documents'}
-        </CardTitle>
-        <div className="bg-green-50 p-3 rounded-lg">
-          <p className="text-sm text-green-800">
-            <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
-          </p>
-        </div>
-        <div className="bg-blue-50 p-3 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <span className="font-medium">📁 File Upload Limits:</span>
-          </p>
-          <div className="text-xs text-blue-700 mt-1 space-y-1">
-            <p>• <strong>Single file documents:</strong> Driver's License, Social Security Card, W9 Form, Employment Letter, Accountant Letter, Credit Report</p>
-            <p>• <strong>Multiple file documents:</strong> Pay Stubs, Tax Returns, Bank Statements (up to 5 files each)</p>
-            <p>• <strong>File size limit:</strong> 10MB per file • <strong>Accepted formats:</strong> JPG, PNG, PDF</p>
+    <div className="space-y-6">
+      {filteredDocumentsWithOccupants.map((category) => (
+        <div key={category.category} className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b">
+            {category.icon}
+            <h3 className="font-medium text-gray-800">{category.category}</h3>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Only show co-applicant section if showOnlyCoApplicant is true */}
-        {showOnlyCoApplicant ? (
-          coApplicantDocuments.length > 0 && (
-            <div className="space-y-6 mt-8">
-              <div className="flex items-center gap-2 pb-2 border-b">
-                <UserCheck className="h-4 w-4" />
-                <h3 className="font-medium text-gray-800">Co-Applicant Documents</h3>
-              </div>
-              {coApplicantDocuments.map((category) => (
-                <div key={category.category} className="space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b">
-                    {category.icon}
-                    <h4 className="font-medium text-gray-800">{category.category}</h4>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    {category.documents.map((document: any) => {
-                      const docStatus = getDocumentStatus(document.id);
-                      return (
-                        <div key={document.id} className="border rounded-lg p-4 space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-medium text-gray-900">{document.name}</h4>
-                                {document.required && (
-                                  <Badge variant="destructive" className="text-xs">Required</Badge>
-                                )}
-                                {!document.required && (
-                                  <Badge variant="secondary" className="text-xs">Optional</Badge>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {docStatus.status === "uploaded" ? (
-                                <div className="flex items-center gap-1 text-green-600">
-                                  <CheckCircle className="h-4 w-4" />
-                                  <span className="text-xs">{docStatus.count} file(s)</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1 text-orange-600">
-                                  <AlertCircle className="h-4 w-4" />
-                                  <span className="text-xs">Pending</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <FileUpload
-                            onFileChange={(files) => onDocumentChange(document.id, files)}
-                            onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
-                            accept={document.acceptedTypes}
-                            multiple={document.multiple || false}
-                            maxFiles={document.multiple ? 5 : 1}
-                            maxSize={10}
-                            label={`Upload ${document.name}`}
-                            className="mt-2"
-                            enableEncryption={true}
-                            referenceId={referenceId}
-                            sectionName={`coapplicant_${document.id}`}
-                            documentName={document.name}
-                            enableWebhook={enableWebhook}
-                            applicationId={applicationId}
-                            zoneinfo={zoneinfo}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
-        ) : showOnlyGuarantor ? (
-          guarantorDocuments.length > 0 && (
-            <div className="space-y-6 mt-8">
-              <div className="flex items-center gap-2 pb-2 border-b">
-                <Shield className="h-4 w-4" />
-                <h3 className="font-medium text-gray-800">Guarantor Documents</h3>
-              </div>
-              {guarantorDocuments.map((category) => (
-                <div key={category.category} className="space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b">
-                    {category.icon}
-                    <h4 className="font-medium text-gray-800">{category.category}</h4>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    {category.documents.map((document: any) => {
-                      const docStatus = getDocumentStatus(document.id);
-                      return (
-                        <div key={document.id} className="border rounded-lg p-4 space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-medium text-gray-900">{document.name}</h4>
-                                {document.required && (
-                                  <Badge variant="destructive" className="text-xs">Required</Badge>
-                                )}
-                                {!document.required && (
-                                  <Badge variant="secondary" className="text-xs">Optional</Badge>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {docStatus.status === "uploaded" ? (
-                                <div className="flex items-center gap-1 text-green-600">
-                                  <CheckCircle className="h-4 w-4" />
-                                  <span className="text-xs">{docStatus.count} file(s)</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1 text-orange-600">
-                                  <AlertCircle className="h-4 w-4" />
-                                  <span className="text-xs">Pending</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <FileUpload
-                            onFileChange={(files) => onDocumentChange(document.id, files)}
-                            onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
-                            accept={document.acceptedTypes}
-                            multiple={document.multiple || false}
-                            maxFiles={document.multiple ? 5 : 1}
-                            maxSize={10}
-                            label={`Upload ${document.name}`}
-                            className="mt-2"
-                            enableEncryption={true}
-                            referenceId={referenceId}
-                            sectionName={`guarantor_${document.id}`}
-                            documentName={document.name}
-                            enableWebhook={enableWebhook}
-                            applicationId={applicationId}
-                            zoneinfo={zoneinfo}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
-        ) : (
-          <>
-            {filteredDocumentsWithOccupants.map((category) => (
-              <div key={category.category} className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                  {category.icon}
-                  <h3 className="font-medium text-gray-800">{category.category}</h3>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-4">
-                  {category.documents.map((document) => {
-                    const docStatus = getDocumentStatus(document.id);
-                    return (
-                      <div key={document.id} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-medium text-gray-900">{document.name}</h4>
-                              {document.required && (
-                                <Badge variant="destructive" className="text-xs">Required</Badge>
-                              )}
-                              {!document.required && (
-                                <Badge variant="secondary" className="text-xs">Optional</Badge>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {docStatus.status === "uploaded" ? (
-                              <div className="flex items-center gap-1 text-green-600">
-                                <CheckCircle className="h-4 w-4" />
-                                <span className="text-xs">{docStatus.count} file(s)</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1 text-orange-600">
-                                <AlertCircle className="h-4 w-4" />
-                                <span className="text-xs">Pending</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <FileUpload
-                          onFileChange={(files) => onDocumentChange(document.id, files)}
-                          onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
-                          accept={document.acceptedTypes}
-                          multiple={document.multiple || false}
-                          maxFiles={document.multiple ? 5 : 1}
-                          maxSize={10}
-                          label={`Upload ${document.name}`}
-                          className="mt-2"
-                          enableEncryption={true}
-                          referenceId={referenceId}
-                          sectionName={`supporting_${document.id}`}
-                          documentName={document.name}
-                          enableWebhook={enableWebhook}
-                          applicationId={applicationId}
-                          userAttributes={zoneinfo}
-                        />
-                        {document.id === 'w9_forms' && (
-                          <a
-                            href="https://www.dropbox.com/scl/fi/oy8nea1nx6k199m5ylpym/fw9-2.pdf?rlkey=ot7y1x1qno3gpwed7lozkpqcv&e=1&st=fd7a1cgj&dl=0"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 underline text-xs mt-1 block"
-                          >
-                            View Sample W9 Form
-                          </a>
+          
+          <div className="grid grid-cols-1 gap-4">
+            {category.documents.map((document) => {
+              const docStatus = getDocumentStatus(document.id);
+              return (
+                <div key={document.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium text-gray-900">{document.name}</h4>
+                        {document.required && (
+                          <Badge variant="destructive" className="text-xs">Required</Badge>
+                        )}
+                        {!document.required && (
+                          <Badge variant="secondary" className="text-xs">Optional</Badge>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-            {/* Co-Applicant Documents Section */}
-            {coApplicantDocuments.length > 0 && (
-              <div className="space-y-6 mt-8">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                  <UserCheck className="h-4 w-4" />
-                  <h3 className="font-medium text-gray-800">Co-Applicant Documents</h3>
-                </div>
-                {coApplicantDocuments.map((category) => (
-                  <div key={category.category} className="space-y-4">
-                    <div className="flex items-center gap-2 pb-2 border-b">
-                      {category.icon}
-                      <h4 className="font-medium text-gray-800">{category.category}</h4>
                     </div>
-                    <div className="grid grid-cols-1 gap-4">
-                      {category.documents.map((document: any) => {
-                        const docStatus = getDocumentStatus(document.id);
-                        return (
-                          <div key={document.id} className="border rounded-lg p-4 space-y-3">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-medium text-gray-900">{document.name}</h4>
-                                  {document.required && (
-                                    <Badge variant="destructive" className="text-xs">Required</Badge>
-                                  )}
-                                  {!document.required && (
-                                    <Badge variant="secondary" className="text-xs">Optional</Badge>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {docStatus.status === "uploaded" ? (
-                                  <div className="flex items-center gap-1 text-green-600">
-                                    <CheckCircle className="h-4 w-4" />
-                                    <span className="text-xs">{docStatus.count} file(s)</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1 text-orange-600">
-                                    <AlertCircle className="h-4 w-4" />
-                                    <span className="text-xs">Pending</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <FileUpload
-                              onFileChange={(files) => onDocumentChange(document.id, files)}
-                              onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
-                              accept={document.acceptedTypes}
-                              multiple={document.multiple || false}
-                              maxFiles={document.multiple ? 5 : 1}
-                              maxSize={10}
-                              label={`Upload ${document.name}`}
-                              className="mt-2"
-                              enableEncryption={true}
-                              referenceId={referenceId}
-                              sectionName={`coapplicant_${document.id}`}
-                              documentName={document.name}
-                              enableWebhook={enableWebhook}
-                              applicationId={applicationId}
-                              zoneinfo={zoneinfo}
-                            />
-                          </div>
-                        );
-                      })}
+                    <div className="flex items-center gap-2">
+                      {docStatus.status === "uploaded" ? (
+                        <div className="flex items-center gap-1 text-green-600">
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="text-xs font-medium">Already Uploaded ({docStatus.count} file{docStatus.count > 1 ? 's' : ''})</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-orange-600">
+                          <AlertCircle className="h-4 w-4" />
+                          <span className="text-xs">Pending</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-                        {/* Note: Guarantor documents are shown in a separate dedicated section (step 11) */}
-          </>
-        )}
-        <div className="bg-yellow-50 p-4 rounded-lg">
-          <h4 className="font-medium text-yellow-900 mb-2">Important Notes:</h4>
-          <ul className="text-sm text-yellow-800 space-y-1">
-            <li>• Documents must be current and legible</li>
-            <li>• Corporate applicants require additional documentation</li>
-            <li>• Self-employed applicants need accountant verification</li>
-            <li>• Incomplete applications will delay processing</li>
-          </ul>
+                  
+                  {/* Show uploaded files info if available */}
+                  {docStatus.status === "uploaded" && (
+                    <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                      <div className="flex items-center gap-2 text-green-800">
+                        <CheckCircle className="h-4 w-4" />
+                        <span className="text-sm font-medium">Document uploaded successfully</span>
+                      </div>
+                      <p className="text-xs text-green-700 mt-1">
+                        {docStatus.count} file{docStatus.count > 1 ? 's' : ''} uploaded from draft
+                      </p>
+                      
+                      {/* Show uploaded documents with preview/download options */}
+                      {(() => {
+                        const uploadedDocs = getUploadedDocuments(document.id);
+                        if (uploadedDocs.length > 0) {
+                          return (
+                            <div className="mt-3 space-y-2">
+                              <p className="text-xs font-medium text-green-800">Uploaded Files:</p>
+                              {uploadedDocs.map((doc, index) => (
+                                <div key={index} className="flex items-center justify-between bg-white rounded border p-2">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-green-600" />
+                                    <span className="text-xs text-gray-700">{doc.filename}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handlePreviewDocument(doc.filename, doc.webhookbodyUrl, document.name)}
+                                      className="h-6 px-2 text-xs"
+                                    >
+                                      <Eye className="h-3 w-3 mr-1" />
+                                      Preview
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDownloadDocument(doc.webhookbodyUrl, doc.filename)}
+                                      className="h-6 px-2 text-xs"
+                                    >
+                                      <Download className="h-3 w-3 mr-1" />
+                                      Download
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
+                  <div>
+                    <FileUpload
+                      onFileChange={(files) => onDocumentChange(document.id, files)}
+                      onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
+                      onWebhookResponse={(response) => onWebhookResponse?.(document.id, response)}
+                      initialWebhookResponse={formData.webhookResponses?.[document.id]}
+                      accept={document.acceptedTypes}
+                      multiple={document.multiple || false}
+                      maxFiles={document.multiple ? 4 : 1}
+                      maxSize={10}
+                      label={`Upload ${document.name}`}
+                      className="mt-2"
+                      enableEncryption={true}
+                      referenceId={referenceId}
+                      sectionName={document.id}
+                      documentName={document.name}
+                      enableWebhook={enableWebhook}
+                      applicationId={applicationId}
+                      zoneinfo={zoneinfo}
+                      commentId={document.id}
+                    />
+                    {/* Hidden input field for webhook response data */}
+                    {formData.webhookResponses?.[document.id] && (
+                      <input 
+                        type="hidden"
+                        name={`webhook_response_${document.id}`}
+                        value={typeof formData.webhookResponses[document.id] === 'string' 
+                          ? formData.webhookResponses[document.id]
+                          : JSON.stringify(formData.webhookResponses[document.id])
+                        }
+                        data-document-type={document.id}
+                        data-document-name={document.name}
+                      />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      ))}
+
+      <Dialog open={previewModal.isOpen} onOpenChange={handleClosePreview}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{previewModal.title}</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={handleClosePreview}>
+              <X className="h-4 w-4 mr-2" /> Close
+            </Button>
+            <Button onClick={() => handleDownloadDocument(previewModal.url, previewModal.filename)}>
+              <Download className="h-4 w-4 mr-2" /> Download
+            </Button>
+            <Button onClick={() => handlePreviewDocument(previewModal.filename, previewModal.url, previewModal.title)}>
+              <Eye className="h-4 w-4 mr-2" /> Preview
+            </Button>
+          </div>
+          {previewModal.url && (
+            <iframe
+              src={previewModal.url}
+              style={{ width: '100%', height: 'calc(100vh - 250px)', border: 'none' }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
-}
+};

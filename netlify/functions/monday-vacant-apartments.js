@@ -11,21 +11,18 @@ export const handler = async (event, context) => {
 
   try {
     const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN || "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjUzOTcyMTg4NCwiYWFpIjoxMSwidWlkIjo3ODE3NzU4NCwiaWFkIjoiMjAyNS0wNy0xNlQxMjowMDowOC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NTUxNjQ0NSwicmduIjoidXNlMSJ9.s43_kjRmv-QaZ92LYdRlEvrq9CYqxKhh3XXpR-8nhKU";
-    const BOARD_ID = process.env.MONDAY_BOARD_ID || "8740450373";
+    const BOARD_ID = process.env.MONDAY_BOARD_ID || "9769934634";
 
     const query = `
       query {
         boards(ids: [${BOARD_ID}]) {
-          items_page(query_params: {
-            rules: [
-              { column_id: "color_mkp7fmq4", compare_value: "Vacant", operator: contains_terms }
-            ]
-          }) {
+          items_page(limit: 100) {
             items {
               id
               name
-              column_values(ids: ["color_mkp7xdce", "color_mkp77nrv", "color_mkp7fmq4"]) {
+              column_values {
                 id
+                value
                 text
               }
             }
@@ -50,13 +47,31 @@ export const handler = async (event, context) => {
     const result = await response.json();
     const items = result?.data?.boards?.[0]?.items_page?.items ?? [];
 
-    const units = items.map((item) => ({
-      id: item.id,
-      name: item.name,
-      propertyName: item.column_values.find((c) => c.id === "color_mkp7xdce")?.text || "",
-      unitType: item.column_values.find((c) => c.id === "color_mkp77nrv")?.text || "",
-      status: item.column_values.find((c) => c.id === "color_mkp7fmq4")?.text || ""
-    }));
+    const units = items.map((item) => {
+      // Extract first image from subitems
+      let imageUrl = "";
+      if (item.subitems && item.subitems.length > 0) {
+        const firstSubitem = item.subitems[0];
+        const linkCol = firstSubitem.column_values.find((c) => c.id === "link_mktkw42r");
+        if (linkCol && linkCol.value) {
+          try {
+            const linkData = JSON.parse(linkCol.value);
+            imageUrl = linkData.url;
+          } catch (e) {
+            console.log('Error parsing link column value:', e);
+          }
+        }
+      }
+
+      return {
+        id: item.id,
+        name: item.name,
+        propertyName: item.column_values.find((c) => c.id === "text_mktkkbsb")?.text || "", // Address column
+        unitType: item.column_values.find((c) => c.id === "color_mktkdvc5")?.text || "", // Unit Type column
+        status: item.column_values.find((c) => c.id === "color_mktk40b8")?.text || "", // Marketing column as status
+        imageUrl: imageUrl
+      };
+    });
 
     return createCorsResponse(200, { units });
 

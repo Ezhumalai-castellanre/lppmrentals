@@ -1,7 +1,7 @@
 import { createCorsResponse, handlePreflight } from './utils.js';
 
 export const handler = async (event, context) => {
-  console.log('Monday units function called with:', {
+  console.log('Monday vacant units function called with:', {
     path: event.path,
     httpMethod: event.httpMethod,
     queryStringParameters: event.queryStringParameters
@@ -20,37 +20,36 @@ export const handler = async (event, context) => {
     const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN || "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjUzOTcyMTg4NCwiYWFpIjoxMSwidWlkIjo3ODE3NzU4NCwiaWFkIjoiMjAyNS0wNy0xNlQxMjowMDowOC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NTUxNjQ0NSwicmduIjoidXNlMSJ9.s43_kjRmv-QaZ92LYdRlEvrq9CYqxKhh3XXpR-8nhKU";
     const BOARD_ID = process.env.MONDAY_BOARD_ID || "9769934634";
 
-    console.log('Fetching from Monday.com with token:', MONDAY_API_TOKEN ? 'Present' : 'Missing');
+    console.log('Fetching vacant units from Monday.com with token:', MONDAY_API_TOKEN ? 'Present' : 'Missing');
     console.log('Board ID:', BOARD_ID);
 
-  
-      const query = `
-  query {
-    boards(ids: [${BOARD_ID}]) {
-      items_page(limit: 100) {
-        items {
-          id
-          name
-          column_values {
-            id
-            value
-            text
-          }
-          subitems {
-            id
-            name
-            column_values {
+    // Query to get all items without filters
+    const query = `
+      query {
+        boards(ids: [${BOARD_ID}]) {
+          items_page(limit: 100) {
+            items {
               id
-              value
-              text
+              name
+              column_values {
+                id
+                value
+                text
+              }
+              subitems {
+                id
+                name
+                column_values {
+                  id
+                  value
+                  text
+                }
+              }
             }
           }
         }
       }
-    }
-  }
-`;
-
+    `;
 
     const response = await fetch('https://api.monday.com/v2', {
       method: 'POST',
@@ -69,6 +68,7 @@ export const handler = async (event, context) => {
     const result = await response.json();
     console.log('Monday API response:', JSON.stringify(result, null, 2));
     const items = result?.data?.boards?.[0]?.items_page?.items ?? [];
+    
     // Debug: Print all column IDs and values for each item
     items.forEach((item, idx) => {
       console.log(`Item #${idx + 1} (${item.name}):`);
@@ -100,9 +100,16 @@ export const handler = async (event, context) => {
         }).filter(Boolean);
       }
 
-      // Extract amenities
+      // Extract amenities (long_text_mktkpv9y)
       const amenitiesCol = item.column_values.find(col => col.id === "long_text_mktkpv9y");
       const amenities = amenitiesCol ? amenitiesCol.text : "";
+
+      // Filter subitems by vacant status as requested
+      const filteredSubitems = item.subitems.filter(sub =>
+        sub.column_values.find(cv =>
+          cv.id === "color_mkp7fmq4" && cv.text === "Vacant"
+        )
+      );
 
       return {
         id: item.id,
@@ -112,19 +119,26 @@ export const handler = async (event, context) => {
         status: item.column_values.find((col) => col.id === "color_mktk40b8")?.text || "", // Marketing column as status
         monthlyRent: item.column_values.find((col) => col.id === "numeric_mktkj4pm")?.text || "", // Rent column
         amenities: amenities,
-        images: images
+        images: images,
+        vacantSubitems: filteredSubitems.map(sub => ({
+          id: sub.id,
+          name: sub.name,
+          status: sub.column_values.find(cv => cv.id === "status")?.label || 
+                  sub.column_values.find(cv => cv.id === "status")?.text || "",
+          applicantType: sub.column_values.find(cv => cv.id === "color_mksyqx5h")?.text || ""
+        }))
       };
     });
 
-    console.log('Returning units:', units.length);
+    console.log('Returning vacant units:', units.length);
     return createCorsResponse(200, { units });
 
   } catch (error) {
     console.error('Monday API proxy error:', error);
     
     return createCorsResponse(500, { 
-      error: "Failed to fetch units from Monday.com",
+      error: "Failed to fetch vacant units from Monday.com",
       details: error.message 
     });
   }
-}; 
+};

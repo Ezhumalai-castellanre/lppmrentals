@@ -1,3 +1,5 @@
+import DynamoDBService from './dynamodb-service';
+
 export interface FileUploadWebhookData {
   reference_id: string;
   file_name: string;
@@ -5,6 +7,7 @@ export interface FileUploadWebhookData {
   document_name: string;
   file_base64: string;
   application_id: string;
+  comment_id?: string;
 }
 
 export interface FormDataWebhookData {
@@ -175,9 +178,160 @@ export interface PDFWebhookData {
   submission_type: 'pdf_generation';
 }
 
+// Helper function to extract URL from webhook response
+const extractWebhookUrl = (response: any, category?: string, sectionName?: string): string | null => {
+  if (!response) return null;
+  
+  // If response is a string URL, return it directly
+  if (typeof response === 'string' && response.startsWith('http')) {
+    return response;
+  }
+
+  try {
+    // If response is a JSON string, parse it
+    const parsed = typeof response === 'string' ? JSON.parse(response) : response;
+    
+    // If we have category and section info, try to extract from nested structure
+    if (category && sectionName) {
+      const categoryData = parsed[category];
+      if (categoryData && typeof categoryData === 'object') {
+        const sectionUrl = categoryData[sectionName];
+        if (typeof sectionUrl === 'string' && sectionUrl.startsWith('http')) {
+          return sectionUrl;
+        }
+      }
+    }
+    
+    // Check various possible locations of the URL
+    if (typeof parsed === 'string' && parsed.startsWith('http')) {
+      return parsed;
+    } else if (parsed.body && typeof parsed.body === 'string' && parsed.body.startsWith('http')) {
+      return parsed.body;
+    } else if (parsed.url && typeof parsed.url === 'string' && parsed.url.startsWith('http')) {
+      return parsed.url;
+    }
+
+    // Try to find URL in nested structure
+    if (typeof parsed === 'object') {
+      for (const key in parsed) {
+        if (typeof parsed[key] === 'object') {
+          const nestedUrl = extractWebhookUrl(parsed[key]);
+          if (nestedUrl) return nestedUrl;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to parse webhook response:', e);
+  }
+  
+  return null;
+};
+
+// Helper function to clean sensitive data from objects while preserving webhook URLs
+const cleanObject = (obj: any) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  
+  const fieldsToRemove = [
+    'documents',
+    'encryptedDocuments',
+    'uploaded_documents',
+    'applicantBankRecords',
+    'coApplicantBankRecords',
+    'guarantorBankRecords',
+    'guarantor.encryptedDocuments',
+    'coApplicant.encryptedDocuments',
+    'applicant.encryptedDocuments'
+  ];
+
+  // Create a map of webhook responses organized by applicant type
+  const webhookUrls: Record<string, Record<string, string>> = {
+    applicant: {},
+    coApplicant: {},
+    guarantor: {}
+  };
+
+  if (obj.webhookResponses) {
+    // Handle both flat and nested webhook responses
+    Object.entries(obj.webhookResponses).forEach(([key, value]) => {
+      if (typeof value === 'object' && value !== null) {
+        // Handle nested structure
+        if (key === 'applicant' || key === 'coApplicant' || key === 'guarantor') {
+          Object.entries(value as Record<string, any>).forEach(([sectionName, sectionValue]) => {
+            const url = extractWebhookUrl(sectionValue, key, sectionName);
+            if (url) {
+              webhookUrls[key][sectionName] = url;
+              
+              // Update metadata if it exists
+              if (obj.uploadedFilesMetadata?.[key]?.[sectionName]) {
+                obj.uploadedFilesMetadata[key][sectionName].webhook_body = url;
+                delete obj.uploadedFilesMetadata[key][sectionName].webhook_status_code;
+              }
+            }
+          });
+        }
+      } else {
+        // Handle flat structure
+        const category = key.startsWith('coApplicant_') ? 'coApplicant' :
+                        key.startsWith('guarantor_') ? 'guarantor' : 'applicant';
+        const baseName = key.replace(/^(coApplicant_|guarantor_)/, '');
+        const url = extractWebhookUrl(value);
+        if (url) {
+          webhookUrls[category][baseName] = url;
+          
+          // Update metadata if it exists
+          if (obj.uploadedFilesMetadata?.[category]?.[baseName]) {
+            obj.uploadedFilesMetadata[category][baseName].webhook_body = url;
+            delete obj.uploadedFilesMetadata[category][baseName].webhook_status_code;
+          }
+        }
+      }
+    });
+  }
+
+  // Deep clean the object
+  const cleaned = { ...obj };
+  fieldsToRemove.forEach(field => {
+    const parts = field.split('.');
+    let current = cleaned;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (current[parts[i]] && typeof current[parts[i]] === 'object') {
+        current = current[parts[i]];
+      } else {
+        break;
+      }
+    }
+    delete current[parts[parts.length - 1]];
+  });
+
+  // Update webhook responses with organized structure
+  if (cleaned.webhookResponses) {
+    cleaned.webhookResponses = webhookUrls;
+  }
+
+  // Organize uploadedFilesMetadata by applicant type if it exists
+  if (cleaned.uploadedFilesMetadata) {
+    const organizedMetadata: Record<string, Record<string, any>> = {
+      applicant: {},
+      coApplicant: {},
+      guarantor: {}
+    };
+
+    Object.entries(cleaned.uploadedFilesMetadata).forEach(([key, value]) => {
+      const category = key.startsWith('coApplicant_') ? 'coApplicant' :
+                      key.startsWith('guarantor_') ? 'guarantor' : 'applicant';
+      const baseName = key.replace(/^(coApplicant_|guarantor_)/, '');
+      organizedMetadata[category][baseName] = value;
+    });
+
+    cleaned.uploadedFilesMetadata = organizedMetadata;
+  }
+
+  return cleaned;
+};
+
 export class WebhookService {
   private static readonly FILE_WEBHOOK_URL = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
-  private static readonly FORM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk'; // Use external webhook for form data
+  private static readonly FORM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
   
   // Track ongoing submissions to prevent duplicates
   private static ongoingSubmissions = new Set<string>();
@@ -197,8 +351,9 @@ export class WebhookService {
     sectionName: string,
     documentName: string,
     applicationId?: string,
-    zoneinfo?: string
-  ): Promise<{ success: boolean; error?: string }> {
+    zoneinfo?: string,
+    commentId?: string
+  ): Promise<{ success: boolean; error?: string; body?: string }> {
     // Create a unique key for this file upload
     const fileUploadKey = `${referenceId}-${sectionName}-${file.name}-${file.size}`;
     
@@ -217,69 +372,124 @@ export class WebhookService {
     // Add to ongoing uploads
     this.ongoingFileUploads.add(fileUploadKey);
     
+    const startTime = Date.now();
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    
+    console.log(`🚀 Starting file upload to webhook: ${file.name} (${fileSizeMB}MB)`);
+    console.log(`📋 Upload details:`, {
+      referenceId,
+      sectionName,
+      documentName,
+      applicationId,
+      zoneinfo
+    });
+
+    // Convert file to base64
+    let fileBase64: string;
     try {
-      // Convert file to base64
-      const base64 = await this.fileToBase64(file);
-      
-      const webhookData: FileUploadWebhookData = {
-        reference_id: referenceId,
-        file_name: file.name,
-        section_name: sectionName,
-        document_name: documentName,
-        file_base64: base64,
-        application_id: zoneinfo || applicationId || 'unknown',
+      fileBase64 = await this.fileToBase64(file);
+      console.log(`✅ File converted to base64: ${file.name}`);
+    } catch (error) {
+      console.error(`❌ Error converting file to base64: ${file.name}`, error);
+      this.ongoingFileUploads.delete(fileUploadKey);
+      return { success: false, error: 'Failed to convert file to base64' };
+    }
+
+    // Prepare webhook data
+    const webhookData: FileUploadWebhookData = {
+      reference_id: referenceId,
+      file_name: file.name,
+      section_name: sectionName,
+      document_name: documentName,
+      file_base64: fileBase64,
+      application_id: applicationId || '',
+      comment_id: commentId
+    };
+
+    console.log(`📤 Sending file to webhook: ${file.name}`);
+    console.log(`📊 Payload size: ${(JSON.stringify(webhookData).length / 1024).toFixed(2)}KB`);
+
+    // Set up timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+    try {
+      const response = await fetch(this.FILE_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookData),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      // Log response details
+      console.log(`📥 Webhook response received for ${file.name}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
+      // Get response body
+      const responseBody = await response.text();
+      console.log(`📄 Response body:`, responseBody);
+
+      // Parse response details
+      const responseDetails = {
+        url: this.FILE_WEBHOOK_URL,
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        body: responseBody
       };
 
-      console.log(`Sending file ${file.name} to webhook for section ${sectionName} (Document: ${documentName})`);
-      
-      // Special logging for Guarantor documents
-      if (sectionName.startsWith('guarantor_')) {
-        console.log('🚀 GUARANTOR DOCUMENT UPLOAD:', {
-          file_name: file.name,
-          section_name: sectionName,
-          reference_id: referenceId,
-          application_id: applicationId,
-          file_size: file.size,
-          mime_type: file.type
-        });
-      }
-
-      // Check file size before sending
-      const fileSizeMB = Math.round(file.size / (1024 * 1024) * 100) / 100;
-      console.log(`📦 File size: ${fileSizeMB}MB`);
-      
-      if (fileSizeMB > 10) {
-        console.warn('⚠️ Large file detected:', fileSizeMB, 'MB');
-      }
-
-      const startTime = Date.now();
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for file uploads
-      
+      // Extract S3 URL from response body
+      let extractedUrl: string | null = null;
       try {
-        const response = await fetch(this.FILE_WEBHOOK_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(webhookData),
-          signal: controller.signal,
-        });
-        
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Webhook failed:', response.status, errorText);
-          
-          // Add to failed uploads to prevent retries
-          this.failedUploads.add(fileUploadKey);
-          
-          return {
-            success: false,
-            error: `Webhook failed: ${response.status} - ${errorText}`
-          };
+        // Try to parse as JSON first
+        const responseJson = JSON.parse(responseBody);
+        if (responseJson && typeof responseJson === 'string') {
+          extractedUrl = responseJson;
+        } else if (responseJson && responseJson.url) {
+          extractedUrl = responseJson.url;
+        } else if (responseJson && responseJson.body) {
+          extractedUrl = responseJson.body;
         }
+      } catch (parseError) {
+        // If not JSON, treat the entire response as the URL
+        console.log('⚠️ Response is not JSON, treating as direct URL');
+        extractedUrl = responseBody.trim();
+      }
+
+      console.log(`🔗 Extracted URL:`, extractedUrl);
+
+      if (response.ok) {
+        console.log('=== WEBHOOK SUCCESS LOG ===');
+        console.log(`✅ File ${file.name} uploaded successfully`);
+        console.log(`📊 File size: ${fileSizeMB}MB`);
+        console.log(`🔗 S3 URL: ${extractedUrl}`);
+        console.log(`📋 Section: ${sectionName}`);
+        console.log(`📄 Document: ${documentName}`);
+        console.log(`🆔 Reference ID: ${referenceId}`);
+        console.log(`🆔 Application ID: ${applicationId}`);
+        console.log(`🌍 Zoneinfo: ${zoneinfo}`);
+        console.log(`📊 Response time: ${Date.now() - startTime}ms`);
+        console.log(`📄 Full response:`, responseDetails);
+        
+        // Try to parse response as JSON for additional details
+        try {
+          const responseJson = JSON.parse(responseBody);
+          console.log(`📋 Parsed response JSON:`, responseJson);
+        } catch (parseError) {
+          console.log('⚠️ Could not parse response as JSON:', parseError);
+          console.log('📄 Raw response body:', responseBody);
+        }
+        
+        console.log('=== END WEBHOOK SUCCESS LOG ===');
+        
+
 
         const responseTime = Date.now() - startTime;
         console.log(`✅ File ${file.name} sent to webhook successfully in ${responseTime}ms`);
@@ -288,40 +498,44 @@ export class WebhookService {
         // Remove from ongoing uploads on success
         this.ongoingFileUploads.delete(fileUploadKey);
         
-        return { success: true };
-
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
+        return { 
+          success: true, 
+          body: extractedUrl || responseBody 
+        };
+      } else {
+        const errorText = await response.text();
+        console.error('Webhook failed:', response.status, errorText);
         
-        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          console.error('File webhook request timed out after 60 seconds');
-          this.failedUploads.add(fileUploadKey);
-          return {
-            success: false,
-            error: 'File webhook request timed out'
-          };
-        }
-        
-        console.error('Error sending file to webhook:', fetchError);
+        // Add to failed uploads to prevent retries
         this.failedUploads.add(fileUploadKey);
         
         return {
           success: false,
-          error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
+          error: `Webhook failed: ${response.status} - ${errorText}`
         };
       }
 
-    } catch (error) {
-      console.error('Error in sendFileToWebhook:', error);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        console.error('File webhook request timed out after 60 seconds');
+        this.failedUploads.add(fileUploadKey);
+        this.ongoingFileUploads.delete(fileUploadKey);
+        return {
+          success: false,
+          error: 'File webhook request timed out'
+        };
+      }
+      
+      console.error('Error sending file to webhook:', fetchError);
       this.failedUploads.add(fileUploadKey);
+      this.ongoingFileUploads.delete(fileUploadKey);
       
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
       };
-    } finally {
-      // Remove from ongoing uploads
-      this.ongoingFileUploads.delete(fileUploadKey);
     }
   }
 
@@ -374,16 +588,8 @@ export class WebhookService {
     this.ongoingSubmissions.add(submissionId);
     
     try {
-      // Create a clean form data object without large file content
-      const cleanFormData = { ...formData };
-      
-      // Remove large data that could cause payload size issues
-      delete cleanFormData.documents;
-      delete cleanFormData.encryptedDocuments;
-      delete cleanFormData.uploaded_documents;
-      delete cleanFormData.applicantBankRecords;
-      delete cleanFormData.coApplicantBankRecords;
-      delete cleanFormData.guarantorBankRecords;
+      // Clean the form data to remove sensitive information
+      const cleanFormData = cleanObject({ ...formData });
       
       // Format data for external webhook
       const webhookData: FormDataWebhookData = {
@@ -425,14 +631,14 @@ export class WebhookService {
       // Log payload size for debugging
       const payloadSize = JSON.stringify(webhookData).length;
       const payloadSizeMB = Math.round(payloadSize / (1024 * 1024) * 100) / 100;
-      console.log(`📦 Webhook payload size: ${payloadSizeMB}MB`);
       
-      if (payloadSize > 5 * 1024 * 1024) { // 5MB limit
-        console.warn('⚠️ Webhook payload is large:', payloadSizeMB, 'MB');
+      console.log(`📊 Form data payload size: ${payloadSizeMB}MB`);
+      
+      if (payloadSizeMB > 5) {
+        console.warn('⚠️ Large form data payload detected:', payloadSizeMB, 'MB');
       }
 
       const startTime = Date.now();
-
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
@@ -446,7 +652,7 @@ export class WebhookService {
           signal: controller.signal,
         });
         
-                clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -489,9 +695,7 @@ export class WebhookService {
       }
 
     } catch (error) {
-      console.error('Error in sendFormDataToNetlify:', error);
-      
-      // Remove from ongoing submissions
+      console.error('Error in sendFormDataToWebhook:', error);
       this.ongoingSubmissions.delete(submissionId);
       
       return {
@@ -502,7 +706,7 @@ export class WebhookService {
   }
 
   /**
-   * Sends PDF generation to the webhook
+   * Sends PDF to webhook
    */
   static async sendPDFToWebhook(
     pdfBase64: string,
@@ -521,66 +725,31 @@ export class WebhookService {
         submission_type: 'pdf_generation'
       };
 
-      console.log(`Sending PDF to webhook for application ${applicationId}`);
+      console.log(`Sending PDF to webhook: ${fileName}`);
+      console.log(`PDF size: ${Math.round(pdfBase64.length / 1024)} KB`);
 
-      // Check PDF size before sending
-      const pdfSizeMB = Math.round(pdfBase64.length / (1024 * 1024) * 100) / 100;
-      console.log(`📦 PDF size: ${pdfSizeMB}MB`);
-      
-      if (pdfSizeMB > 10) {
-        console.warn('⚠️ Large PDF detected:', pdfSizeMB, 'MB');
-      }
-
-      const startTime = Date.now();
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for PDFs
-      
-      try {
-        const response = await fetch(this.FILE_WEBHOOK_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(webhookData),
-          signal: controller.signal,
-        });
-        
-        clearTimeout(timeoutId);
+      const response = await fetch(this.FILE_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookData),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Webhook failed:', response.status, errorText);
+        console.error('PDF webhook failed:', response.status, errorText);
         return {
           success: false,
-          error: `Webhook failed: ${response.status} - ${errorText}`
+          error: `PDF webhook failed: ${response.status} - ${errorText}`
         };
       }
 
-      const responseTime = Date.now() - startTime;
-      console.log(`✅ PDF sent to webhook successfully in ${responseTime}ms`);
-      console.log(`📊 PDF Performance: ${pdfSizeMB}MB PDF, ${responseTime}ms response time`);
+      console.log('✅ PDF sent to webhook successfully');
       return { success: true };
 
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        
-        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          console.error('PDF webhook request timed out after 45 seconds');
-          return {
-            success: false,
-            error: 'PDF webhook request timed out'
-          };
-        }
-        
-        console.error('Error sending PDF to webhook:', fetchError);
-        return {
-          success: false,
-          error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
-        };
-      }
-
     } catch (error) {
-      console.error('Error in sendPDFToWebhook:', error);
+      console.error('Error sending PDF to webhook:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -589,7 +758,7 @@ export class WebhookService {
   }
 
   /**
-   * Converts a file to base64 string
+   * Converts a file to base64
    */
   private static fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {

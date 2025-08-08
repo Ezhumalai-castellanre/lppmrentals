@@ -116,13 +116,25 @@ export default function MissingDocumentsPage() {
       const apiId = user.zoneinfo;
       console.log(`🔍 Using API ID: "${apiId}" for API call`);
       console.log(`🔍 User zoneinfo: "${user.zoneinfo}"`);
-      console.log(`🔍 Final API endpoint: "/api/monday/missing-subitems/${apiId}"`);
+      // Determine if we're in development or production
+      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const endpoint = isDevelopment 
+        ? `/api/monday/missing-subitems/${apiId}`
+        : `/.netlify/functions/monday-missing-subitems`;
+      
+      console.log(`🔍 Final API endpoint: "${endpoint}"`);
       
       // Get all possible formats for the applicant ID
       const searchFormats = getAllApplicantIdFormats(apiId);
       console.log(`🔍 Searching for applicant ID "${apiId}" with formats:`, searchFormats);
       
-      const response = await fetch(`/api/monday/missing-subitems/${apiId}`);
+      const response = await fetch(endpoint, {
+        method: isDevelopment ? 'GET' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: isDevelopment ? undefined : JSON.stringify({ applicantId: apiId })
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -395,25 +407,7 @@ export default function MissingDocumentsPage() {
             <p className="text-gray-600 mb-4">
               Track and manage missing documents for rental applications
             </p>
-            {user?.zoneinfo && (
-              <div className="bg-green-50 p-4 rounded-lg max-w-2xl mx-auto mb-4">
-                <p className="text-sm text-green-800">
-                  <span className="font-medium">👤 User ID:</span> {user.zoneinfo}
-                </p>
-                <p className="text-sm text-green-700 mt-1">
-                  <span className="font-medium">📝 Applicant ID:</span> {applicantId}
-                </p>
-                <p className="text-sm text-green-700 mt-1">
-                  <span className="font-medium">🔍 API Call:</span> /api/monday/missing-subitems/{user.zoneinfo}
-                </p>
-              </div>
-            )}
-            <div className="bg-blue-50 p-4 rounded-lg max-w-2xl mx-auto">
-              <p className="text-sm text-blue-800">
-                <span className="font-medium">📤 Upload Feature:</span> You can now upload missing documents directly from this page. 
-                All files are encrypted and securely transmitted to complete your application.
-              </p>
-            </div>
+
           </div>
         </div>
 
@@ -501,13 +495,7 @@ export default function MissingDocumentsPage() {
           </Alert>
         )}
 
-        {/* Success Message */}
-        {successMessage && (
-          <Alert className="mb-6 border-green-200 bg-green-50">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
-          </Alert>
-        )}
+        {/* Success Message - Removed */}
 
         {/* Results */}
         {searched && !loading && (

@@ -104,7 +104,7 @@ This will start both your frontend and the Netlify functions locally.
 
 ### File Storage
 
-- For production, consider using a cloud storage service (AWS S3, Cloudinary, etc.)
+- For production, consider using a cloud storage service (Cloudinary, etc.)
 - Update the file upload functions to use cloud storage instead of local file system
 
 ## Performance Optimization

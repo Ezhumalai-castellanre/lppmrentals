@@ -36,6 +36,8 @@
   to = "/.netlify/functions/test-schema"
   status = 200
 
+
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"

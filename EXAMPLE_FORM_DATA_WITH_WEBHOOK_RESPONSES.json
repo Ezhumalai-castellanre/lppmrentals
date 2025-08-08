@@ -1,0 +1,657 @@
+{
+  "application": {
+    "buildingAddress": "123 Main Street",
+    "apartmentNumber": "Apt 4B",
+    "moveInDate": "2025-02-01T00:00:00.000Z",
+    "monthlyRent": 2500,
+    "apartmentType": "2 Bedroom",
+    "howDidYouHear": "Online",
+    "howDidYouHearOther": ""
+  },
+  "applicant": {
+    "name": "John Doe",
+    "dob": "1990-05-15T00:00:00.000Z",
+    "ssn": "123-45-6789",
+    "phone": "(555) 123-4567",
+    "email": "john.doe@email.com",
+    "license": "DL123456789",
+    "licenseState": "CA",
+    "address": "456 Oak Avenue",
+    "city": "Los Angeles",
+    "state": "CA",
+    "zip": "90210",
+    "employmentType": "Full-time"
+  },
+  "coApplicant": {
+    "name": "Jane Doe",
+    "dob": "1992-08-20T00:00:00.000Z",
+    "ssn": "987-65-4321",
+    "phone": "(555) 987-6543",
+    "email": "jane.doe@email.com",
+    "license": "DL987654321",
+    "licenseState": "CA",
+    "address": "456 Oak Avenue",
+    "city": "Los Angeles",
+    "state": "CA",
+    "zip": "90210",
+    "employmentType": "Part-time"
+  },
+  "guarantor": {
+    "name": "Robert Smith",
+    "dob": "1965-03-10T00:00:00.000Z",
+    "ssn": "111-22-3333",
+    "phone": "(555) 111-2222",
+    "email": "robert.smith@email.com",
+    "license": "DL111222333",
+    "licenseState": "CA",
+    "address": "789 Pine Street",
+    "city": "San Francisco",
+    "state": "CA",
+    "zip": "94102",
+    "employmentType": "Self-employed"
+  },
+  "occupants": [
+    {
+      "name": "Child Doe",
+      "relationship": "Daughter",
+      "dob": "2015-12-25T00:00:00.000Z",
+      "ssn": "444-55-6666",
+      "age": 9
+    }
+  ],
+  "signatures": {
+    "applicant": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+    "coApplicant": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+    "guarantor": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+  },
+  "signatureTimestamps": {
+    "applicant": "2025-01-15T10:30:00.000Z",
+    "coApplicant": "2025-01-15T10:35:00.000Z",
+    "guarantor": "2025-01-15T10:40:00.000Z"
+  },
+  "documents": {
+    "photo_id": [],
+    "social_security": [],
+    "w9_forms": [],
+    "employment_letter": [],
+    "pay_stubs": [],
+    "tax_returns": [],
+    "bank_statement": [],
+    "credit_report": []
+  },
+  "encryptedDocuments": {
+    "applicant": {
+      "photo_id": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "drivers_license_john_doe.pdf",
+          "originalSize": 245760,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:25:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/drivers_license_john_doe.pdf"
+        }
+      ],
+      "social_security": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "ssn_card_john_doe.pdf",
+          "originalSize": 156789,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:26:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/ssn_card_john_doe.pdf"
+        }
+      ],
+      "w9_forms": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "w9_form_john_doe.pdf",
+          "originalSize": 345678,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:27:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/w9_form_john_doe.pdf"
+        }
+      ],
+      "employment_letter": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "employment_letter_john_doe.pdf",
+          "originalSize": 234567,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:28:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/employment_letter_john_doe.pdf"
+        }
+      ],
+      "pay_stubs": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "pay_stub_jan_2025_john_doe.pdf",
+          "originalSize": 189234,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:29:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/pay_stub_jan_2025_john_doe.pdf"
+        }
+      ],
+      "tax_returns": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "tax_return_2024_john_doe.pdf",
+          "originalSize": 456789,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:30:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/tax_return_2024_john_doe.pdf"
+        }
+      ],
+      "bank_statement": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "bank_statement_jan_2025_john_doe.pdf",
+          "originalSize": 567890,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:31:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/bank_statement_jan_2025_john_doe.pdf"
+        }
+      ],
+      "credit_report": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "credit_report_john_doe.pdf",
+          "originalSize": 678901,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:32:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/credit_report_john_doe.pdf"
+        }
+      ]
+    },
+    "coApplicant": {
+      "photo_id": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "drivers_license_jane_doe.pdf",
+          "originalSize": 234567,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:33:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/drivers_license_jane_doe.pdf"
+        }
+      ],
+      "social_security": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "ssn_card_jane_doe.pdf",
+          "originalSize": 145678,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:34:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/ssn_card_jane_doe.pdf"
+        }
+      ],
+      "w9_forms": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "w9_form_jane_doe.pdf",
+          "originalSize": 334567,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:35:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/w9_form_jane_doe.pdf"
+        }
+      ],
+      "employment_letter": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "employment_letter_jane_doe.pdf",
+          "originalSize": 223456,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:36:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/employment_letter_jane_doe.pdf"
+        }
+      ],
+      "pay_stubs": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "pay_stub_jan_2025_jane_doe.pdf",
+          "originalSize": 178234,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:37:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/pay_stub_jan_2025_jane_doe.pdf"
+        }
+      ],
+      "tax_returns": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "tax_return_2024_jane_doe.pdf",
+          "originalSize": 445678,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:38:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/tax_return_2024_jane_doe.pdf"
+        }
+      ],
+      "bank_statement": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "bank_statement_jan_2025_jane_doe.pdf",
+          "originalSize": 556789,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:39:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/bank_statement_jan_2025_jane_doe.pdf"
+        }
+      ],
+      "credit_report": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "credit_report_jane_doe.pdf",
+          "originalSize": 667890,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:40:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/credit_report_jane_doe.pdf"
+        }
+      ]
+    },
+    "guarantor": {
+      "photo_id": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "drivers_license_robert_smith.pdf",
+          "originalSize": 223456,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:41:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/drivers_license_robert_smith.pdf"
+        }
+      ],
+      "social_security": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "ssn_card_robert_smith.pdf",
+          "originalSize": 134567,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:42:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/ssn_card_robert_smith.pdf"
+        }
+      ],
+      "w9_forms": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "w9_form_robert_smith.pdf",
+          "originalSize": 323456,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:43:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/w9_form_robert_smith.pdf"
+        }
+      ],
+      "employment_letter": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "employment_letter_robert_smith.pdf",
+          "originalSize": 212345,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:44:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/employment_letter_robert_smith.pdf"
+        }
+      ],
+      "pay_stubs": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "pay_stub_jan_2025_robert_smith.pdf",
+          "originalSize": 167234,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:45:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/pay_stub_jan_2025_robert_smith.pdf"
+        }
+      ],
+      "tax_returns": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "tax_return_2024_robert_smith.pdf",
+          "originalSize": 434567,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:46:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/tax_return_2024_robert_smith.pdf"
+        }
+      ],
+      "bank_statement": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "bank_statement_jan_2025_robert_smith.pdf",
+          "originalSize": 545678,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:47:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/bank_statement_jan_2025_robert_smith.pdf"
+        }
+      ],
+      "credit_report": [
+        {
+          "encryptedData": "U2FsdGVkX1+...",
+          "filename": "credit_report_robert_smith.pdf",
+          "originalSize": 656789,
+          "mimeType": "application/pdf",
+          "uploadDate": "2025-01-15T10:48:00.000Z",
+          "fileUrl": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/credit_report_robert_smith.pdf"
+        }
+      ]
+    }
+  },
+  "uploadedDocuments": [
+    {
+      "reference_id": "app_1705334400000_abc123",
+      "file_name": "drivers_license_john_doe.pdf",
+      "section_name": "applicant_photo_id",
+      "documents": "photo_id"
+    },
+    {
+      "reference_id": "app_1705334400000_def456",
+      "file_name": "ssn_card_john_doe.pdf",
+      "section_name": "applicant_social_security",
+      "documents": "social_security"
+    },
+    {
+      "reference_id": "app_1705334400000_ghi789",
+      "file_name": "w9_form_john_doe.pdf",
+      "section_name": "applicant_w9_forms",
+      "documents": "w9_forms"
+    }
+  ],
+  "uploadedFilesMetadata": {
+    "applicant_photo_id": [
+      {
+        "file_name": "drivers_license_john_doe.pdf",
+        "file_size": 245760,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:25:00.000Z"
+      }
+    ],
+    "applicant_social_security": [
+      {
+        "file_name": "ssn_card_john_doe.pdf",
+        "file_size": 156789,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:26:00.000Z"
+      }
+    ],
+    "applicant_w9_forms": [
+      {
+        "file_name": "w9_form_john_doe.pdf",
+        "file_size": 345678,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:27:00.000Z"
+      }
+    ],
+    "applicant_employment_letter": [
+      {
+        "file_name": "employment_letter_john_doe.pdf",
+        "file_size": 234567,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:28:00.000Z"
+      }
+    ],
+    "applicant_pay_stubs": [
+      {
+        "file_name": "pay_stub_jan_2025_john_doe.pdf",
+        "file_size": 189234,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:29:00.000Z"
+      }
+    ],
+    "applicant_tax_returns": [
+      {
+        "file_name": "tax_return_2024_john_doe.pdf",
+        "file_size": 456789,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:30:00.000Z"
+      }
+    ],
+    "applicant_bank_statement": [
+      {
+        "file_name": "bank_statement_jan_2025_john_doe.pdf",
+        "file_size": 567890,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:31:00.000Z"
+      }
+    ],
+    "applicant_credit_report": [
+      {
+        "file_name": "credit_report_john_doe.pdf",
+        "file_size": 678901,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:32:00.000Z"
+      }
+    ],
+    "coApplicant_photo_id": [
+      {
+        "file_name": "drivers_license_jane_doe.pdf",
+        "file_size": 234567,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:33:00.000Z"
+      }
+    ],
+    "coApplicant_social_security": [
+      {
+        "file_name": "ssn_card_jane_doe.pdf",
+        "file_size": 145678,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:34:00.000Z"
+      }
+    ],
+    "coApplicant_w9_forms": [
+      {
+        "file_name": "w9_form_jane_doe.pdf",
+        "file_size": 334567,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:35:00.000Z"
+      }
+    ],
+    "coApplicant_employment_letter": [
+      {
+        "file_name": "employment_letter_jane_doe.pdf",
+        "file_size": 223456,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:36:00.000Z"
+      }
+    ],
+    "coApplicant_pay_stubs": [
+      {
+        "file_name": "pay_stub_jan_2025_jane_doe.pdf",
+        "file_size": 178234,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:37:00.000Z"
+      }
+    ],
+    "coApplicant_tax_returns": [
+      {
+        "file_name": "tax_return_2024_jane_doe.pdf",
+        "file_size": 445678,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:38:00.000Z"
+      }
+    ],
+    "coApplicant_bank_statement": [
+      {
+        "file_name": "bank_statement_jan_2025_jane_doe.pdf",
+        "file_size": 556789,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:39:00.000Z"
+      }
+    ],
+    "coApplicant_credit_report": [
+      {
+        "file_name": "credit_report_jane_doe.pdf",
+        "file_size": 667890,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:40:00.000Z"
+      }
+    ],
+    "guarantor_photo_id": [
+      {
+        "file_name": "drivers_license_robert_smith.pdf",
+        "file_size": 223456,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:41:00.000Z"
+      }
+    ],
+    "guarantor_social_security": [
+      {
+        "file_name": "ssn_card_robert_smith.pdf",
+        "file_size": 134567,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:42:00.000Z"
+      }
+    ],
+    "guarantor_w9_forms": [
+      {
+        "file_name": "w9_form_robert_smith.pdf",
+        "file_size": 323456,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:43:00.000Z"
+      }
+    ],
+    "guarantor_employment_letter": [
+      {
+        "file_name": "employment_letter_robert_smith.pdf",
+        "file_size": 212345,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:44:00.000Z"
+      }
+    ],
+    "guarantor_pay_stubs": [
+      {
+        "file_name": "pay_stub_jan_2025_robert_smith.pdf",
+        "file_size": 167234,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:45:00.000Z"
+      }
+    ],
+    "guarantor_tax_returns": [
+      {
+        "file_name": "tax_return_2024_robert_smith.pdf",
+        "file_size": 434567,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:46:00.000Z"
+      }
+    ],
+    "guarantor_bank_statement": [
+      {
+        "file_name": "bank_statement_jan_2025_robert_smith.pdf",
+        "file_size": 545678,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:47:00.000Z"
+      }
+    ],
+    "guarantor_credit_report": [
+      {
+        "file_name": "credit_report_robert_smith.pdf",
+        "file_size": 656789,
+        "mime_type": "application/pdf",
+        "upload_date": "2025-01-15T10:48:00.000Z"
+      }
+    ]
+  },
+  "webhookResponses": {
+    "photo_id": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/drivers_license_john_doe.pdf",
+    "social_security": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/ssn_card_john_doe.pdf",
+    "w9_forms": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/w9_form_john_doe.pdf",
+    "employment_letter": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/employment_letter_john_doe.pdf",
+    "pay_stubs": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/pay_stub_jan_2025_john_doe.pdf",
+    "tax_returns": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/tax_return_2024_john_doe.pdf",
+    "bank_statement": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/bank_statement_jan_2025_john_doe.pdf",
+    "credit_report": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/credit_report_john_doe.pdf",
+    "coApplicant_photo_id": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/drivers_license_jane_doe.pdf",
+    "coApplicant_social_security": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/ssn_card_jane_doe.pdf",
+    "coApplicant_w9_forms": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/w9_form_jane_doe.pdf",
+    "coApplicant_employment_letter": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/employment_letter_jane_doe.pdf",
+    "coApplicant_pay_stubs": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/pay_stub_jan_2025_jane_doe.pdf",
+    "coApplicant_tax_returns": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/tax_return_2024_jane_doe.pdf",
+    "coApplicant_bank_statement": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/bank_statement_jan_2025_jane_doe.pdf",
+    "coApplicant_credit_report": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/credit_report_jane_doe.pdf",
+    "guarantor_photo_id": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/drivers_license_robert_smith.pdf",
+    "guarantor_social_security": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/ssn_card_robert_smith.pdf",
+    "guarantor_w9_forms": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/w9_form_robert_smith.pdf",
+    "guarantor_employment_letter": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/employment_letter_robert_smith.pdf",
+    "guarantor_pay_stubs": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/pay_stub_jan_2025_robert_smith.pdf",
+    "guarantor_tax_returns": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/tax_return_2024_robert_smith.pdf",
+    "guarantor_bank_statement": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/bank_statement_jan_2025_robert_smith.pdf",
+    "guarantor_credit_report": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/LPPM-20250115-12345/credit_report_robert_smith.pdf"
+  },
+  "hasCoApplicant": true,
+  "hasGuarantor": true,
+  "currentStep": 4,
+  "rawFormData": {
+    "application": {
+      "buildingAddress": "123 Main Street",
+      "apartmentNumber": "Apt 4B",
+      "moveInDate": "2025-02-01T00:00:00.000Z",
+      "monthlyRent": 2500,
+      "apartmentType": "2 Bedroom",
+      "howDidYouHear": "Online",
+      "howDidYouHearOther": ""
+    },
+    "applicant": {
+      "name": "John Doe",
+      "dob": "1990-05-15T00:00:00.000Z",
+      "ssn": "123-45-6789",
+      "phone": "(555) 123-4567",
+      "email": "john.doe@email.com",
+      "license": "DL123456789",
+      "licenseState": "CA",
+      "address": "456 Oak Avenue",
+      "city": "Los Angeles",
+      "state": "CA",
+      "zip": "90210",
+      "employmentType": "Full-time"
+    },
+    "coApplicant": {
+      "name": "Jane Doe",
+      "dob": "1992-08-20T00:00:00.000Z",
+      "ssn": "987-65-4321",
+      "phone": "(555) 987-6543",
+      "email": "jane.doe@email.com",
+      "license": "DL987654321",
+      "licenseState": "CA",
+      "address": "456 Oak Avenue",
+      "city": "Los Angeles",
+      "state": "CA",
+      "zip": "90210",
+      "employmentType": "Part-time"
+    },
+    "guarantor": {
+      "name": "Robert Smith",
+      "dob": "1965-03-10T00:00:00.000Z",
+      "ssn": "111-22-3333",
+      "phone": "(555) 111-2222",
+      "email": "robert.smith@email.com",
+      "license": "DL111222333",
+      "licenseState": "CA",
+      "address": "789 Pine Street",
+      "city": "San Francisco",
+      "state": "CA",
+      "zip": "94102",
+      "employmentType": "Self-employed"
+    },
+    "occupants": [
+      {
+        "name": "Child Doe",
+        "relationship": "Daughter",
+        "dob": "2015-12-25T00:00:00.000Z",
+        "ssn": "444-55-6666",
+        "age": 9
+      }
+    ]
+  },
+  "rawFormValues": {
+    "buildingAddress": "123 Main Street",
+    "apartmentNumber": "Apt 4B",
+    "moveInDate": "2025-02-01T00:00:00.000Z",
+    "monthlyRent": 2500,
+    "apartmentType": "2 Bedroom",
+    "howDidYouHear": "Online",
+    "howDidYouHearOther": "",
+    "applicantName": "John Doe",
+    "applicantDob": "1990-05-15T00:00:00.000Z",
+    "applicantSsn": "123-45-6789",
+    "applicantPhone": "(555) 123-4567",
+    "applicantEmail": "john.doe@email.com",
+    "applicantLicense": "DL123456789",
+    "applicantLicenseState": "CA",
+    "applicantAddress": "456 Oak Avenue",
+    "applicantCity": "Los Angeles",
+    "applicantState": "CA",
+    "applicantZip": "90210",
+    "hasCoApplicant": true,
+    "hasGuarantor": true
+  }
+}
