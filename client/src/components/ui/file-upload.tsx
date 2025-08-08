@@ -51,24 +51,11 @@ export function FileUpload({
   zoneinfo,
   commentId
 }: FileUploadProps) {
-  // Don't show the uploader if we have an initial webhook response
-  if (initialWebhookResponse) {
-    return (
-      <div className={cn("space-y-4", className)}>
-        <div className="flex items-center text-sm text-green-600">
-          <CheckCircle className="w-4 h-4 mr-2" />
-          <span>Previously uploaded</span>
-          <input 
-            type="hidden"
-            name={`webhook_response_${sectionName}`}
-            value={initialWebhookResponse.body || JSON.stringify(initialWebhookResponse)}
-            data-document-type={sectionName}
-            data-comment-id={commentId}
-          />
-        </div>
-      </div>
-    );
-  }
+  // Show previously uploaded files if we have an initial webhook response
+  const hasInitialResponse = initialWebhookResponse && (
+    (typeof initialWebhookResponse === 'string' && initialWebhookResponse.trim()) ||
+    (typeof initialWebhookResponse === 'object' && initialWebhookResponse.body)
+  );
   const [files, setFiles] = useState<File[]>([]);
   const [encryptedFiles, setEncryptedFiles] = useState<EncryptedFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
@@ -125,12 +112,11 @@ export function FileUpload({
         return;
       }
 
-      // Check if we already have a successful webhook response for this section
+      // Allow additional uploads even if we have existing files
       if (initialWebhookResponse && typeof initialWebhookResponse === 'string' && initialWebhookResponse.trim()) {
-        console.log(`✅ Section ${sectionName} already has uploaded files, skipping upload`);
+        console.log(`✅ Section ${sectionName} has existing files, allowing additional uploads`);
         console.log(`🔗 Existing S3 URL: ${initialWebhookResponse}`);
-        setError('Files have already been uploaded for this section. Please remove existing files first.');
-        return;
+        // Don't block the upload, just log that we have existing files
       }
 
       // Update files state
@@ -237,6 +223,38 @@ export function FileUpload({
 
   return (
     <div className={cn("space-y-4", className)}>
+      {/* Show previously uploaded files if we have an initial webhook response */}
+      {hasInitialResponse && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-3">
+          <div className="flex items-center gap-2 text-green-800">
+            <CheckCircle className="w-4 h-4" />
+            <span className="text-sm font-medium">Document uploaded successfully</span>
+          </div>
+          <p className="text-xs text-green-700 mt-1">1 file uploaded from draft</p>
+          <div className="mt-2">
+            <div className="flex items-center text-sm text-green-600">
+              <CheckCircle className="w-4 h-4 mr-2" />
+              <span>Previously uploaded</span>
+              <input 
+                type="hidden"
+                name={`webhook_response_${sectionName}`}
+                value={typeof initialWebhookResponse === 'string' ? initialWebhookResponse : initialWebhookResponse.body || JSON.stringify(initialWebhookResponse)}
+                data-document-type={sectionName}
+                data-comment-id={commentId}
+              />
+            </div>
+          </div>
+          <input 
+            type="hidden"
+            name={`webhook_response_${sectionName}`}
+            data-document-type={sectionName}
+            data-document-name={documentName || label}
+            value={typeof initialWebhookResponse === 'string' ? initialWebhookResponse : initialWebhookResponse.body || JSON.stringify(initialWebhookResponse)}
+          />
+        </div>
+      )}
+
+      {/* Upload Area - Always show, even after successful uploads */}
       <div
         className={cn(
           "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
@@ -267,7 +285,9 @@ export function FileUpload({
         ) : (
           <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
         )}
-        <p className="text-sm font-medium text-gray-700">{label}</p>
+        <p className="text-sm font-medium text-gray-700">
+          {hasInitialResponse ? `Upload Additional ${label}` : label}
+        </p>
         {description && <p className="text-xs text-gray-500">{description}</p>}
         <p className="text-xs text-gray-500 mt-1">
           Max {maxFiles} file{maxFiles > 1 ? 's' : ''}, {maxSize}MB each • {accept.replace(/\./g, '').toUpperCase()}
@@ -366,14 +386,6 @@ export function FileUpload({
           data-file-type="s3-url"
           data-comment-id={commentId}
         />
-      )}
-      
-      {/* Show "Previously Uploaded" message if initial response exists */}
-      {initialWebhookResponse && (
-        <div className="mt-2 flex items-center text-sm text-green-600">
-          <CheckCircle className="w-4 h-4 mr-2" />
-          <span>Previously uploaded</span>
-        </div>
       )}
     </div>
   );
