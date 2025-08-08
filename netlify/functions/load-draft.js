@@ -1,6 +1,6 @@
-import { loadDraft } from './dynamodb-service.js';
+const { loadDraft } = require('./dynamodb-service.js');
 
-export const handler = async (event, context) => {
+exports.handler = async (event, context) => {
   console.log('🔄 Load draft function called');
   console.log('📋 Event:', JSON.stringify(event, null, 2));
   
@@ -31,9 +31,8 @@ export const handler = async (event, context) => {
   }
 
   try {
-    console.log('📥 Parsing query parameters...');
-    const { applicantId } = event.queryStringParameters || {};
-    console.log('✅ Query parameters parsed');
+    const applicantId = event.queryStringParameters?.applicantId;
+    console.log('📥 Applicant ID from query params:', applicantId);
 
     if (!applicantId) {
       console.log('❌ Missing applicantId');
