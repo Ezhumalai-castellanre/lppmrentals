@@ -106,10 +106,70 @@ function compressData(data, maxSize = 350000) { // 350KB to leave room for metad
     delete compressed.uploadedDocuments;
   }
   
-  // Remove uploaded files metadata
+  // Preserve uploadedFilesMetadata for Co-Applicant and Guarantor documents
+  // but remove other large metadata to stay within size limits
   if (compressed.uploadedFilesMetadata) {
-    console.log('🗑️ Removing uploadedFilesMetadata data to reduce size');
-    delete compressed.uploadedFilesMetadata;
+    console.log('📁 Preserving uploadedFilesMetadata for Co-Applicant and Guarantor documents');
+    
+    // Keep only essential metadata for Co-Applicant and Guarantor
+    const preservedMetadata = {};
+    
+    // Preserve Co-Applicant document metadata
+    if (compressed.uploadedFilesMetadata.coApplicant_photo_id) {
+      preservedMetadata.coApplicant_photo_id = compressed.uploadedFilesMetadata.coApplicant_photo_id;
+    }
+    if (compressed.uploadedFilesMetadata.coApplicant_social_security) {
+      preservedMetadata.coApplicant_social_security = compressed.uploadedFilesMetadata.coApplicant_social_security;
+    }
+    if (compressed.uploadedFilesMetadata.coApplicant_w9_forms) {
+      preservedMetadata.coApplicant_w9_forms = compressed.uploadedFilesMetadata.coApplicant_w9_forms;
+    }
+    if (compressed.uploadedFilesMetadata.coApplicant_employment_letter) {
+      preservedMetadata.coApplicant_employment_letter = compressed.uploadedFilesMetadata.coApplicant_employment_letter;
+    }
+    if (compressed.uploadedFilesMetadata.coApplicant_pay_stubs) {
+      preservedMetadata.coApplicant_pay_stubs = compressed.uploadedFilesMetadata.coApplicant_pay_stubs;
+    }
+    if (compressed.uploadedFilesMetadata.coApplicant_tax_returns) {
+      preservedMetadata.coApplicant_tax_returns = compressed.uploadedFilesMetadata.coApplicant_tax_returns;
+    }
+    if (compressed.uploadedFilesMetadata.coApplicant_bank_statement) {
+      preservedMetadata.coApplicant_bank_statement = compressed.uploadedFilesMetadata.coApplicant_bank_statement;
+    }
+    if (compressed.uploadedFilesMetadata.coApplicant_credit_report) {
+      preservedMetadata.coApplicant_credit_report = compressed.uploadedFilesMetadata.coApplicant_credit_report;
+    }
+    
+    // Preserve Guarantor document metadata
+    if (compressed.uploadedFilesMetadata.guarantor_photo_id) {
+      preservedMetadata.guarantor_photo_id = compressed.uploadedFilesMetadata.guarantor_photo_id;
+    }
+    if (compressed.uploadedFilesMetadata.guarantor_social_security) {
+      preservedMetadata.guarantor_social_security = compressed.uploadedFilesMetadata.guarantor_social_security;
+    }
+    if (compressed.uploadedFilesMetadata.guarantor_w9_forms) {
+      preservedMetadata.guarantor_w9_forms = compressed.uploadedFilesMetadata.guarantor_w9_forms;
+    }
+    if (compressed.uploadedFilesMetadata.guarantor_employment_letter) {
+      preservedMetadata.guarantor_employment_letter = compressed.uploadedFilesMetadata.guarantor_employment_letter;
+    }
+    if (compressed.uploadedFilesMetadata.guarantor_pay_stubs) {
+      preservedMetadata.guarantor_pay_stubs = compressed.uploadedFilesMetadata.guarantor_pay_stubs;
+    }
+    if (compressed.uploadedFilesMetadata.guarantor_tax_returns) {
+      preservedMetadata.guarantor_tax_returns = compressed.uploadedFilesMetadata.guarantor_tax_returns;
+    }
+    if (compressed.uploadedFilesMetadata.guarantor_bank_statement) {
+      preservedMetadata.guarantor_bank_statement = compressed.uploadedFilesMetadata.guarantor_bank_statement;
+    }
+    if (compressed.uploadedFilesMetadata.guarantor_credit_report) {
+      preservedMetadata.guarantor_credit_report = compressed.uploadedFilesMetadata.guarantor_credit_report;
+    }
+    
+    // Replace the full metadata with only the preserved Co-Applicant and Guarantor metadata
+    compressed.uploadedFilesMetadata = preservedMetadata;
+    
+    console.log('✅ Preserved Co-Applicant and Guarantor document metadata');
   }
   
   // Remove signatures which can be large base64 strings
@@ -199,6 +259,26 @@ function compressData(data, maxSize = 350000) { // 350KB to leave room for metad
         // Keep essential flags
         hasCoApplicant: data.hasCoApplicant,
         hasGuarantor: data.hasGuarantor,
+        // Preserve Co-Applicant and Guarantor document metadata
+        uploadedFilesMetadata: data.uploadedFilesMetadata ? {
+          // Only preserve Co-Applicant and Guarantor metadata
+          ...(data.uploadedFilesMetadata.coApplicant_photo_id && { coApplicant_photo_id: data.uploadedFilesMetadata.coApplicant_photo_id }),
+          ...(data.uploadedFilesMetadata.coApplicant_social_security && { coApplicant_social_security: data.uploadedFilesMetadata.coApplicant_social_security }),
+          ...(data.uploadedFilesMetadata.coApplicant_w9_forms && { coApplicant_w9_forms: data.uploadedFilesMetadata.coApplicant_w9_forms }),
+          ...(data.uploadedFilesMetadata.coApplicant_employment_letter && { coApplicant_employment_letter: data.uploadedFilesMetadata.coApplicant_employment_letter }),
+          ...(data.uploadedFilesMetadata.coApplicant_pay_stubs && { coApplicant_pay_stubs: data.uploadedFilesMetadata.coApplicant_pay_stubs }),
+          ...(data.uploadedFilesMetadata.coApplicant_tax_returns && { coApplicant_tax_returns: data.uploadedFilesMetadata.coApplicant_tax_returns }),
+          ...(data.uploadedFilesMetadata.coApplicant_bank_statement && { coApplicant_bank_statement: data.uploadedFilesMetadata.coApplicant_bank_statement }),
+          ...(data.uploadedFilesMetadata.coApplicant_credit_report && { coApplicant_credit_report: data.uploadedFilesMetadata.coApplicant_credit_report }),
+          ...(data.uploadedFilesMetadata.guarantor_photo_id && { guarantor_photo_id: data.uploadedFilesMetadata.guarantor_photo_id }),
+          ...(data.uploadedFilesMetadata.guarantor_social_security && { guarantor_social_security: data.uploadedFilesMetadata.guarantor_social_security }),
+          ...(data.uploadedFilesMetadata.guarantor_w9_forms && { guarantor_w9_forms: data.uploadedFilesMetadata.guarantor_w9_forms }),
+          ...(data.uploadedFilesMetadata.guarantor_employment_letter && { guarantor_employment_letter: data.uploadedFilesMetadata.guarantor_employment_letter }),
+          ...(data.uploadedFilesMetadata.guarantor_pay_stubs && { guarantor_pay_stubs: data.uploadedFilesMetadata.guarantor_pay_stubs }),
+          ...(data.uploadedFilesMetadata.guarantor_tax_returns && { guarantor_tax_returns: data.uploadedFilesMetadata.guarantor_tax_returns }),
+          ...(data.uploadedFilesMetadata.guarantor_bank_statement && { guarantor_bank_statement: data.uploadedFilesMetadata.guarantor_bank_statement }),
+          ...(data.uploadedFilesMetadata.guarantor_credit_report && { guarantor_credit_report: data.uploadedFilesMetadata.guarantor_credit_report }),
+        } : null,
       }
     };
   }
@@ -212,6 +292,26 @@ function compressData(data, maxSize = 350000) { // 350KB to leave room for metad
     formData: {
       hasCoApplicant: data.hasCoApplicant || false,
       hasGuarantor: data.hasGuarantor || false,
+      // Preserve Co-Applicant and Guarantor document metadata even in minimal mode
+      uploadedFilesMetadata: data.uploadedFilesMetadata ? {
+        // Only preserve Co-Applicant and Guarantor metadata
+        ...(data.uploadedFilesMetadata.coApplicant_photo_id && { coApplicant_photo_id: data.uploadedFilesMetadata.coApplicant_photo_id }),
+        ...(data.uploadedFilesMetadata.coApplicant_social_security && { coApplicant_social_security: data.uploadedFilesMetadata.coApplicant_social_security }),
+        ...(data.uploadedFilesMetadata.coApplicant_w9_forms && { coApplicant_w9_forms: data.uploadedFilesMetadata.coApplicant_w9_forms }),
+        ...(data.uploadedFilesMetadata.coApplicant_employment_letter && { coApplicant_employment_letter: data.uploadedFilesMetadata.coApplicant_employment_letter }),
+        ...(data.uploadedFilesMetadata.coApplicant_pay_stubs && { coApplicant_pay_stubs: data.uploadedFilesMetadata.coApplicant_pay_stubs }),
+        ...(data.uploadedFilesMetadata.coApplicant_tax_returns && { coApplicant_tax_returns: data.uploadedFilesMetadata.coApplicant_tax_returns }),
+        ...(data.uploadedFilesMetadata.coApplicant_bank_statement && { coApplicant_bank_statement: data.uploadedFilesMetadata.coApplicant_bank_statement }),
+        ...(data.uploadedFilesMetadata.coApplicant_credit_report && { coApplicant_credit_report: data.uploadedFilesMetadata.coApplicant_credit_report }),
+        ...(data.uploadedFilesMetadata.guarantor_photo_id && { guarantor_photo_id: data.uploadedFilesMetadata.guarantor_photo_id }),
+        ...(data.uploadedFilesMetadata.guarantor_social_security && { guarantor_social_security: data.uploadedFilesMetadata.guarantor_social_security }),
+        ...(data.uploadedFilesMetadata.guarantor_w9_forms && { guarantor_w9_forms: data.uploadedFilesMetadata.guarantor_w9_forms }),
+        ...(data.uploadedFilesMetadata.guarantor_employment_letter && { guarantor_employment_letter: data.uploadedFilesMetadata.guarantor_employment_letter }),
+        ...(data.uploadedFilesMetadata.guarantor_pay_stubs && { guarantor_pay_stubs: data.uploadedFilesMetadata.guarantor_pay_stubs }),
+        ...(data.uploadedFilesMetadata.guarantor_tax_returns && { guarantor_tax_returns: data.uploadedFilesMetadata.guarantor_tax_returns }),
+        ...(data.uploadedFilesMetadata.guarantor_bank_statement && { guarantor_bank_statement: data.uploadedFilesMetadata.guarantor_bank_statement }),
+        ...(data.uploadedFilesMetadata.guarantor_credit_report && { guarantor_credit_report: data.uploadedFilesMetadata.guarantor_credit_report }),
+      } : null,
     }
   };
   
