@@ -350,6 +350,31 @@ export function ApplicationForm() {
     mode: "onChange", // Enable real-time validation
   });
 
+  // Helper function to get current user's zoneinfo (source of truth for LPPM numbers)
+  const getCurrentUserZoneinfo = useCallback(() => {
+    return user?.zoneinfo || user?.applicantId;
+  }, [user?.zoneinfo, user?.applicantId]);
+
+  // Ensure form data always uses current user's zoneinfo
+  useEffect(() => {
+    const currentUserZoneinfo = getCurrentUserZoneinfo();
+    
+    if (currentUserZoneinfo) {
+      setFormData((prevData: any) => {
+        // Only update if the values are different
+        if (prevData.application_id !== currentUserZoneinfo || prevData.applicantId !== currentUserZoneinfo) {
+          console.log(`🔄 useEffect: Forcing form data update to use current user zoneinfo '${currentUserZoneinfo}'`);
+          return {
+            ...prevData,
+            application_id: currentUserZoneinfo,
+            applicantId: currentUserZoneinfo
+          };
+        }
+        return prevData;
+      });
+    }
+  }, [getCurrentUserZoneinfo]);
+
   // Load draft data from DynamoDB
   const loadDraftData = useCallback(async (applicationId: string) => {
     try {
@@ -371,11 +396,33 @@ export function ApplicationForm() {
               console.log('✅ Parsed form data from JSON string:', parsedFormData);
               
               // Clean up the parsed data to ensure consistency
-              if (parsedFormData.application_id) {
-                // Remove the old application_id field and ensure applicantId is set
-                delete parsedFormData.application_id;
-                parsedFormData.applicantId = draftData.applicantId;
+              // Always use the current user's zoneinfo/applicantId, not the stored draft data
+              const currentUserZoneinfo = getCurrentUserZoneinfo();
+              
+              console.log('🔍 Form data cleaning - Current user zoneinfo:', currentUserZoneinfo);
+              console.log('🔍 Form data before cleaning:', {
+                application_id: parsedFormData.application_id,
+                applicantId: parsedFormData.applicantId
+              });
+              
+              // ALWAYS update application_id to current user's zoneinfo (overwrite any draft data)
+              if (currentUserZoneinfo) {
+                const oldApplicationId = parsedFormData.application_id;
+                parsedFormData.application_id = currentUserZoneinfo;
+                console.log(`🔄 FORCED UPDATE: application_id changed from '${oldApplicationId}' to '${currentUserZoneinfo}'`);
               }
+              
+              // ALWAYS update applicantId to current user's zoneinfo (overwrite any draft data)
+              if (currentUserZoneinfo) {
+                const oldApplicantId = parsedFormData.applicantId;
+                parsedFormData.applicantId = currentUserZoneinfo;
+                console.log(`🔄 FORCED UPDATE: applicantId changed from '${oldApplicantId}' to '${currentUserZoneinfo}'`);
+              }
+              
+              console.log('🔍 Form data after cleaning:', {
+                application_id: parsedFormData.application_id,
+                applicantId: parsedFormData.applicantId
+              });
               
               // Ensure all required sections exist
               parsedFormData.application = parsedFormData.application || {};
@@ -812,41 +859,52 @@ export function ApplicationForm() {
 
   // Save draft to DynamoDB function
   const saveDraftToDynamoDB = useCallback(async () => {
-    if (!user?.applicantId) {
-      console.log('⚠️ No applicantId available, skipping draft save');
+    const currentUserZoneinfo = getCurrentUserZoneinfo();
+    
+    if (!currentUserZoneinfo) {
+      console.log('⚠️ No zoneinfo/applicantId available, skipping draft save');
       return;
     }
 
-    if (!user.applicantId.trim()) {
-      console.log('⚠️ Empty applicantId, skipping draft save');
+    if (!currentUserZoneinfo.trim()) {
+      console.log('⚠️ Empty zoneinfo/applicantId, skipping draft save');
       return;
     }
 
     try {
       // Get the latest form data from state
       const currentFormData = formData;
-              // Clean up the form data before saving to remove empty values and ensure consistency
-        const cleanedFormData = cleanFormDataForStorage(currentFormData);
-        
-        const enhancedFormDataSnapshot = {
-          ...cleanedFormData,
-          applicantId: user.applicantId,
-          // Remove the old application_id field to avoid confusion
-          webhookSummary: getWebhookSummary()
-        };
+      
+      // Clean up the form data before saving to remove empty values and ensure consistency
+      const cleanedFormData = cleanFormDataForStorage(currentFormData);
+      
+      // ALWAYS use the current user's zoneinfo for both fields
+      const enhancedFormDataSnapshot = {
+        ...cleanedFormData,
+        application_id: currentUserZoneinfo, // Use zoneinfo as application_id
+        applicantId: currentUserZoneinfo,    // Use zoneinfo as applicantId
+        webhookSummary: getWebhookSummary()
+      };
 
-        const draftData: DraftData = {
-          applicantId: user.applicantId,
-          reference_id: referenceId,
-          form_data: enhancedFormDataSnapshot,
-          current_step: currentStep,
-          last_updated: new Date().toISOString(),
-          status: 'draft',
-          uploaded_files_metadata: uploadedFilesMetadata,
-          webhook_responses: webhookResponses,
-          signatures: signatures,
-          encrypted_documents: encryptedDocuments,
-        };
+      console.log('💾 Saving draft with zoneinfo-based IDs:', {
+        application_id: currentUserZoneinfo,
+        applicantId: currentUserZoneinfo,
+        userZoneinfo: user?.zoneinfo,
+        userApplicantId: user?.applicantId
+      });
+
+      const draftData: DraftData = {
+        applicantId: currentUserZoneinfo, // Use zoneinfo for DynamoDB partition key
+        reference_id: referenceId,
+        form_data: enhancedFormDataSnapshot,
+        current_step: currentStep,
+        last_updated: new Date().toISOString(),
+        status: 'draft',
+        uploaded_files_metadata: uploadedFilesMetadata,
+        webhook_responses: webhookResponses,
+        signatures: signatures,
+        encrypted_documents: encryptedDocuments,
+      };
 
       const saveResult = await dynamoDBService.saveDraft(draftData);
       if (saveResult) {
@@ -857,7 +915,7 @@ export function ApplicationForm() {
     } catch (error) {
       console.error('❌ Error saving draft to DynamoDB:', error);
     }
-  }, [user?.applicantId, formData, referenceId, currentStep, uploadedFilesMetadata, webhookResponses, signatures, encryptedDocuments, getWebhookSummary]);
+  }, [getCurrentUserZoneinfo, formData, referenceId, currentStep, uploadedFilesMetadata, webhookResponses, signatures, encryptedDocuments, getWebhookSummary]);
 
   // Function to log current webhook state (useful for debugging)
   const logCurrentWebhookState = () => {
@@ -2625,6 +2683,7 @@ export function ApplicationForm() {
             
             // Application IDs
             applicantId: user?.applicantId || 'unknown',
+            application_id: user?.zoneinfo || user?.applicantId || 'unknown',
             reference_id: referenceId,
             
 
@@ -2649,6 +2708,7 @@ export function ApplicationForm() {
           console.log('=== WEBHOOK PAYLOAD DEBUG ===');
           console.log('✅ Complete Webhook Structure:');
           console.log('  - reference_id:', webhookPayload.reference_id);
+          console.log('  - applicantId:', webhookPayload.applicantId);
           console.log('  - application_id:', webhookPayload.application_id);
           console.log('  - form_data: [Complete application data]');
           console.log('  - uploaded_files: [Complete files metadata]');

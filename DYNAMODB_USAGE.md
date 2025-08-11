@@ -31,6 +31,40 @@ The DynamoDB service has been updated to use `applicantId` as the partition key,
 - **Automatic Validation**: All operations validate that the provided `applicantId` matches the authenticated user's zoneinfo
 - **Data Isolation**: Users can only access data associated with their own `applicantId`
 - **Automatic Table Creation**: Service will create the table with correct schema if it doesn't exist
+- **Form Data Cleaning**: Automatic resolution of conflicts between `application_id` and `applicantId` fields
+
+## Form Data Mapping
+
+The service automatically handles the mapping between form data fields and DynamoDB:
+
+### Field Mapping
+- **`application_id`**: Form field containing the LPPM number (e.g., "LPPM-20250801-00582")
+- **`applicantId`**: DynamoDB partition key field
+
+### Automatic Conflict Resolution
+The service detects and resolves conflicts between these fields:
+
+```typescript
+// Example: Conflicting form data
+const formData = {
+  application_id: "LPPM-20250801-00582", // ✅ Correct, matches user's zoneinfo
+  applicantId: "Lppm-20250811-89245"     // ❌ Incorrect, doesn't match zoneinfo
+};
+
+// Service automatically cleans this to:
+const cleanedData = {
+  application_id: "LPPM-20250801-00582", // Source of truth
+  applicantId: "LPPM-20250801-00582"     // Now consistent
+};
+```
+
+### Why This Happens
+This conflict typically occurs when:
+1. Form data is loaded from a previous draft with outdated `applicantId` values
+2. Legacy data uses different field names
+3. Data migration between different versions of the application
+
+The service ensures data consistency by prioritizing `application_id` as the source of truth.
 
 ## Usage Examples
 

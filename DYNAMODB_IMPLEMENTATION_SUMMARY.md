@@ -13,15 +13,109 @@ The DynamoDB service has been completely updated to use `applicantId` as the par
 - **Security Enhancement**: All CRUD operations now validate the applicantId before proceeding
 - **Better Error Handling**: Enhanced error messages and logging for debugging
 - **Schema Verification**: Service checks and reports on table schema correctness
+- **Form Data Cleaning**: Added automatic cleaning to resolve conflicts between `application_id` and `applicantId` fields
 
 #### New Methods Added:
 
 ```typescript
-// Validate that applicantId matches the authenticated user's zoneinfo
-private async validateApplicantId(applicantId: string): Promise<boolean>
+// Get the current user's zoneinfo attribute (source of truth)
+async getCurrentUserZoneinfo(): Promise<string | null>
 
-// Get the current user's applicantId from their zoneinfo attribute
-async getCurrentUserApplicantId(): Promise<string | null>
+// Generate applicantId from zoneinfo (for DynamoDB partition key)
+generateApplicantIdFromZoneinfo(zoneinfo: string): string
+
+// Ensure draft data uses current user's zoneinfo (useful for form components)
+async ensureDraftDataUsesCurrentZoneinfo(draftData: DraftData): Promise<DraftData>
+
+// Validate that the provided application_id/applicantId matches the authenticated user's zoneinfo
+private async validateApplicationId(applicationId: string): Promise<boolean>
+
+// Map application_id from form data to applicantId for DynamoDB
+private mapApplicationIdToApplicantId(formData: any): string | null
+
+// Clean form data to ensure application_id and applicantId are consistent
+private cleanFormDataForConsistency(formData: any): any
+
+// Retrieve draft data by reference_id (preferred method for form components)
+async getDraftByReferenceId(referenceId: string): Promise<DraftData | null>
+```
+
+#### Zoneinfo as Source of Truth:
+
+The service now uses **`zoneinfo` as the primary identifier** and generates `applicantId` from it:
+
+1. **`zoneinfo`**: Source of truth from AWS Cognito user attributes
+2. **`applicantId`**: Generated from `zoneinfo` for DynamoDB partition key
+3. **Automatic Mapping**: All retrieved data automatically uses current user's `zoneinfo`
+
+**Updated Interfaces:**
+```typescript
+export interface DraftData {
+  zoneinfo: string;        // Source of truth - user's zoneinfo value
+  applicantId: string;     // Generated from zoneinfo for DynamoDB partition key
+  reference_id: string;
+  form_data: any;
+  // ... other fields
+}
+
+export interface FormDataWithApplicationId {
+  zoneinfo: string;        // Source of truth - user's zoneinfo value
+  application_id: string;  // Form data uses application_id (should match zoneinfo)
+  applicantId: string;     // Generated from zoneinfo for DynamoDB partition key
+  // ... other fields
+}
+```
+
+**Usage Examples:**
+```typescript
+// Get current user's zoneinfo (source of truth)
+const zoneinfo = await dynamoDBService.getCurrentUserZoneinfo();
+// Returns: "LPPM-20250801-00582"
+
+// Generate applicantId from zoneinfo
+const applicantId = dynamoDBService.generateApplicantIdFromZoneinfo(zoneinfo);
+// Returns: "LPPM-20250801-00582" (same for now, but allows future transformation)
+
+// Save draft using current user's zoneinfo
+await dynamoDBUtils.saveDraftForCurrentUser({
+  reference_id: "app_123",
+  form_data: { /* form data */ },
+  current_step: 1
+});
+// Automatically sets zoneinfo and applicantId from current user
+
+// Get draft by reference_id (automatically maps to current user's zoneinfo)
+const draft = await dynamoDBUtils.getDraftForCurrentUser("app_123");
+// Returns draft with current user's zoneinfo, regardless of stored applicantId
+```
+
+This ensures that **no matter what data is stored in DynamoDB**, the form will always receive data with the correct, current user's zoneinfo values.
+
+#### Form Data Mapping and Cleaning:
+
+The service now automatically handles the mapping between form data fields:
+- **`application_id`**: The current form field containing the LPPM number (e.g., "LPPM-20250801-00582")
+- **`applicantId`**: The DynamoDB partition key field
+
+**Automatic Cleaning Process:**
+1. Detects if form data has both `application_id` and `applicantId` with conflicting values
+2. Removes the conflicting `applicantId` field
+3. Sets `applicantId` to match `application_id` for DynamoDB consistency
+4. Prioritizes `application_id` as the source of truth
+
+**Example:**
+```typescript
+// Before cleaning (conflicting data)
+{
+  application_id: "LPPM-20250801-00582", // Correct, matches user's zoneinfo
+  applicantId: "Lppm-20250811-89245"     // Incorrect, doesn't match zoneinfo
+}
+
+// After cleaning (consistent data)
+{
+  application_id: "LPPM-20250801-00582", // Source of truth
+  applicantId: "LPPM-20250801-00582"     // Now matches application_id
+}
 ```
 
 #### Updated Methods:

@@ -65,32 +65,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const userAttributes = await fetchUserAttributes();
           console.log('✅ User attributes fetched:', Object.keys(userAttributes));
           
-          // Get applicantId from database
-          const applicantId = await registerUserInDatabase(
-            currentUser.username,
-            userAttributes.email || '',
-            userAttributes.given_name,
-            userAttributes.family_name,
-            userAttributes.phone_number
-          );
-          console.log('✅ Database applicantId:', applicantId);
-          
-          // Check zoneinfo for temporary applicantId
+          // Check zoneinfo for applicantId (source of truth)
           const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
           console.log('🔍 Zoneinfo value:', zoneinfoValue);
           console.log('🔍 User attributes keys:', Object.keys(userAttributes));
           console.log('🔍 User attributes:', userAttributes);
           
-          // Use the database applicantId as the primary identifier
-          const finalApplicantId = applicantId || generateLppmNumber();
+          // Use zoneinfo as the source of truth for applicantId
+          const finalApplicantId = zoneinfoValue || generateLppmNumber();
           
-          console.log('✅ Final applicantId determined:', finalApplicantId);
+          console.log('✅ Final applicantId determined from zoneinfo:', finalApplicantId);
           
           const userState = {
             id: currentUser.username,
             email: userAttributes.email || '',
             username: currentUser.username,
-            applicantId: finalApplicantId,
+            applicantId: finalApplicantId, // Now uses zoneinfo value
             zoneinfo: zoneinfoValue,
             name: (userAttributes as any).name || '',
             given_name: userAttributes.given_name || '',
@@ -289,31 +279,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log('⚠️ No debug result available, falling back to basic auth');
           // Fallback to basic auth
           const currentUser = await getCurrentUser();
+          if (!currentUser) {
+            console.error('❌ No current user available in fallback');
+            return;
+          }
+          
           const userAttributes = await fetchUserAttributes();
           
-          const applicantId = await registerUserInDatabase(
-            currentUser.username,
-            userAttributes.email || '',
-            userAttributes.given_name,
-            userAttributes.family_name,
-            userAttributes.phone_number
-          );
-
-          // Check if zoneinfo contains the applicantId (temporary mapping)
-          const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
+          // Check if zoneinfo contains the applicantId (source of truth)
+          const zoneinfoValue = userAttributes.zoneinfo || (userAttributes as any)['custom:zoneinfo'];
           // Use ONLY zoneinfo as applicantId - no fallbacks
           const finalApplicantId = zoneinfoValue;
           
           setUser({
             id: currentUser.username,
-            email: userAttributes.email || '',
+            email: (userAttributes as any).email || '',
             username: currentUser.username,
             applicantId: finalApplicantId,
             zoneinfo: zoneinfoValue,
-            name: userAttributes.name,
-            given_name: userAttributes.given_name,
-            family_name: userAttributes.family_name,
-            phone_number: userAttributes.phone_number,
+            name: (userAttributes as any).name || '',
+            given_name: (userAttributes as any).given_name || '',
+            family_name: (userAttributes as any).family_name || '',
+            phone_number: (userAttributes as any).phone_number || '',
           });
         }
       } catch (identityError) {

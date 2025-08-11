@@ -1,11 +1,28 @@
-import { DynamoDBClient, PutItemCommand, GetItemCommand, UpdateItemCommand, DeleteItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, PutItemCommand, GetItemCommand, UpdateItemCommand, DeleteItemCommand, ScanCommand } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
 import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
 
 export interface DraftData {
-  applicantId: string; // Partition key - must match user's zoneinfo value
+  zoneinfo: string; // Source of truth - user's zoneinfo value
+  applicantId: string; // Generated from zoneinfo for DynamoDB partition key
+  reference_id: string;
+  form_data: any;
+  current_step: number;
+  last_updated: string;
+  status: 'draft' | 'submitted';
+  uploaded_files_metadata?: any;
+  webhook_responses?: any;
+  signatures?: any;
+  encrypted_documents?: any;
+}
+
+// Interface for form data that uses application_id
+export interface FormDataWithApplicationId {
+  zoneinfo: string; // Source of truth - user's zoneinfo value
+  application_id: string; // Form data uses application_id (should match zoneinfo)
+  applicantId: string; // Generated from zoneinfo for DynamoDB partition key
   reference_id: string;
   form_data: any;
   current_step: number;
@@ -88,12 +105,12 @@ export class DynamoDBService {
     return this.client;
   }
 
-  // Get the current user's applicantId from their zoneinfo attribute
-  async getCurrentUserApplicantId(): Promise<string | null> {
+  // Get the current user's zoneinfo attribute (source of truth)
+  async getCurrentUserZoneinfo(): Promise<string | null> {
     try {
       const session = await fetchAuthSession();
       if (!session.tokens?.idToken) {
-        console.error('❌ No valid authentication session to get applicantId');
+        console.error('❌ No valid authentication session to get zoneinfo');
         return null;
       }
 
@@ -104,15 +121,131 @@ export class DynamoDBService {
       const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
       
       if (!zoneinfoValue) {
-        console.error('❌ User has no zoneinfo attribute - cannot determine applicantId');
+        console.error('❌ User has no zoneinfo attribute - cannot determine zoneinfo');
         return null;
       }
       
-      console.log(`✅ Retrieved applicantId from user's zoneinfo: ${zoneinfoValue}`);
+      console.log(`✅ Retrieved zoneinfo from user attributes: ${zoneinfoValue}`);
       return zoneinfoValue;
     } catch (error) {
-      console.error('❌ Error getting current user applicantId:', error);
+      console.error('❌ Error getting current user zoneinfo:', error);
       return null;
+    }
+  }
+
+  // Generate applicantId from zoneinfo (for DynamoDB partition key)
+  generateApplicantIdFromZoneinfo(zoneinfo: string): string {
+    return zoneinfo; // For now, they're the same, but this allows for future transformation logic
+  }
+
+  // Ensure draft data uses current user's zoneinfo (useful for form components)
+  async ensureDraftDataUsesCurrentZoneinfo(draftData: DraftData): Promise<DraftData> {
+    try {
+      const currentUserZoneinfo = await this.getCurrentUserZoneinfo();
+      if (!currentUserZoneinfo) {
+        console.warn('⚠️ Cannot ensure zoneinfo consistency - no current user zoneinfo available');
+        return draftData;
+      }
+
+      console.log(`🔄 Ensuring draft data uses current user's zoneinfo: ${currentUserZoneinfo}`);
+      
+      // Update the draft data zoneinfo and applicantId
+      if (draftData.zoneinfo !== currentUserZoneinfo) {
+        console.log(`🔄 Updating draft zoneinfo from '${draftData.zoneinfo}' to '${currentUserZoneinfo}'`);
+        draftData.zoneinfo = currentUserZoneinfo;
+      }
+      
+      const generatedApplicantId = this.generateApplicantIdFromZoneinfo(currentUserZoneinfo);
+      if (draftData.applicantId !== generatedApplicantId) {
+        console.log(`🔄 Updating draft applicantId from '${draftData.applicantId}' to '${generatedApplicantId}'`);
+        draftData.applicantId = generatedApplicantId;
+      }
+      
+      // Clean the form data if it exists
+      if (draftData.form_data && typeof draftData.form_data === 'object') {
+        console.log('🧹 Cleaning form data to ensure zoneinfo consistency');
+        draftData.form_data = this.cleanFormDataForConsistency(draftData.form_data);
+      }
+      
+      console.log('✅ Draft data now uses current user\'s zoneinfo');
+      return draftData;
+    } catch (error) {
+      console.error('❌ Error ensuring draft data uses current zoneinfo:', error);
+      return draftData;
+    }
+  }
+
+  // Map application_id from form data to applicantId for DynamoDB
+  private mapApplicationIdToApplicantId(formData: any): string | null {
+    // Check if form data has application_id (prioritize this as it's the current form field)
+    if (formData.application_id) {
+      console.log(`🔄 Mapping application_id '${formData.application_id}' to applicantId for DynamoDB`);
+      return formData.application_id;
+    }
+    
+    // Check if form data has applicantId (fallback for legacy data)
+    if (formData.applicantId) {
+      console.log(`🔄 Using existing applicantId '${formData.applicantId}' from form data (legacy field)`);
+      return formData.applicantId;
+    }
+    
+    console.error('❌ No application_id or applicantId found in form data');
+    return null;
+  }
+
+  // Clean form data to ensure application_id and applicantId are consistent
+  private cleanFormDataForConsistency(formData: any): any {
+    try {
+      // If we have application_id, ensure it's the source of truth
+      if (formData.application_id) {
+        // Remove any conflicting applicantId field
+        if (formData.applicantId && formData.applicantId !== formData.application_id) {
+          console.log(`🧹 Cleaning form data: removing conflicting applicantId '${formData.applicantId}' (keeping application_id '${formData.application_id}')`);
+          delete formData.applicantId;
+        }
+        
+        // Ensure applicantId matches application_id for DynamoDB
+        formData.applicantId = formData.application_id;
+        console.log(`✅ Form data cleaned: applicantId set to '${formData.application_id}' to match application_id`);
+      }
+      
+      return formData;
+    } catch (error) {
+      console.warn('⚠️ Error cleaning form data for consistency:', error);
+      return formData;
+    }
+  }
+
+  // Validate that the provided application_id/applicantId matches the authenticated user's zoneinfo
+  private async validateApplicationId(applicationId: string): Promise<boolean> {
+    try {
+      const session = await fetchAuthSession();
+      if (!session.tokens?.idToken) {
+        console.error('❌ No valid authentication session to validate application_id');
+        return false;
+      }
+
+      // Get user attributes to check zoneinfo
+      const { fetchUserAttributes } = await import('aws-amplify/auth');
+      const userAttributes = await fetchUserAttributes();
+      
+      const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
+      
+      if (!zoneinfoValue) {
+        console.error('❌ User has no zoneinfo attribute - cannot validate application_id');
+        return false;
+      }
+      
+      if (applicationId !== zoneinfoValue) {
+        console.error(`❌ Application ID mismatch: provided '${applicationId}' does not match user's zoneinfo '${zoneinfoValue}'`);
+        return false;
+      }
+      
+      console.log(`✅ Application ID validation successful: '${applicationId}' matches user's zoneinfo`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error validating application_id:', error);
+      return false;
     }
   }
 
@@ -217,22 +350,36 @@ export class DynamoDBService {
     }
   }
 
-  // Save draft data with applicantId validation
-  async saveDraft(draftData: DraftData): Promise<boolean> {
+  // Save draft data with application_id/applicantId validation and mapping
+  async saveDraft(draftData: DraftData | FormDataWithApplicationId): Promise<boolean> {
     try {
       const client = await this.getClient();
       
+      // Clean form data to ensure consistency between application_id and applicantId
+      const cleanedFormData = this.cleanFormDataForConsistency(draftData);
+      
+      // Map application_id to applicantId for DynamoDB
+      const applicantId = this.mapApplicationIdToApplicantId(cleanedFormData);
+      if (!applicantId) {
+        console.error('❌ No application_id or applicantId found in draft data');
+        return false;
+      }
+      
+      // Get the application_id for logging (could be from either interface)
+      const applicationIdForLogging = 'application_id' in cleanedFormData ? cleanedFormData.application_id : cleanedFormData.applicantId;
+      
       console.log('💾 Saving draft to DynamoDB:', {
         table: this.tableName,
-        applicantId: draftData.applicantId,
+        application_id: applicationIdForLogging,
+        applicantId: applicantId, // DynamoDB partition key
         reference_id: draftData.reference_id,
         current_step: draftData.current_step
       });
 
-      // Validate that applicantId matches the authenticated user's zoneinfo
-      const isValidApplicantId = await this.validateApplicantId(draftData.applicantId);
-      if (!isValidApplicantId) {
-        console.error('❌ Invalid applicantId - must match authenticated user\'s zoneinfo value');
+      // Validate that application_id/applicantId matches the authenticated user's zoneinfo
+      const isValidApplicationId = await this.validateApplicationId(applicantId);
+      if (!isValidApplicationId) {
+        console.error('❌ Invalid application_id - must match authenticated user\'s zoneinfo value');
         return false;
       }
 
@@ -251,8 +398,8 @@ export class DynamoDBService {
       });
 
       // Validate required fields
-      if (!draftData.applicantId) {
-        console.error('❌ Missing required field: applicantId');
+      if (!applicantId) {
+        console.error('❌ Missing required field: applicantId (mapped from application_id)');
         return false;
       }
 
@@ -367,7 +514,7 @@ export class DynamoDBService {
         // Try to save only essential data
         console.warn('⚠️ Attempting to save only essential data...');
         const essentialData = {
-          applicantId: draftData.applicantId,
+          applicantId: applicantId, // Use the mapped applicantId
           reference_id: draftData.reference_id,
           current_step: draftData.current_step || 0,
           last_updated: draftData.last_updated || new Date().toISOString(),
@@ -395,7 +542,7 @@ export class DynamoDBService {
       const command = new PutItemCommand({
         TableName: this.tableName,
         Item: {
-          applicantId: { S: draftData.applicantId },
+          applicantId: { S: applicantId }, // Use the mapped applicantId
           reference_id: { S: draftData.reference_id },
           form_data: { S: JSON.stringify(cleanFormData) },
           current_step: { N: (draftData.current_step || 0).toString() },
@@ -579,23 +726,16 @@ export class DynamoDBService {
     return { applicantId: { S: applicationId } };
   }
 
-  // Retrieve draft data
+  // Retrieve draft data by applicantId (for backward compatibility)
   async getDraft(applicationId: string, referenceId: string): Promise<DraftData | null> {
     try {
       const client = await this.getClient();
       
-      console.log('📥 Retrieving draft from DynamoDB:', {
+      console.log('📥 Retrieving draft from DynamoDB by applicantId:', {
         table: this.tableName,
         applicantId: applicationId,
         reference_id: referenceId
       });
-
-      // Validate that applicantId matches the authenticated user's zoneinfo
-      const isValidApplicantId = await this.validateApplicantId(applicationId);
-      if (!isValidApplicantId) {
-        console.error('❌ Invalid applicantId - must match authenticated user\'s zoneinfo value');
-        return null;
-      }
 
       // Get the correct key structure - only use applicantId since table has no sort key
       const key = this.getKeyStructure(applicationId);
@@ -610,6 +750,25 @@ export class DynamoDBService {
       if (response.Item) {
         const draftData = unmarshall(response.Item) as DraftData;
         console.log('✅ Draft retrieved successfully from DynamoDB');
+        
+        // Ensure the returned draft data uses the current user's zoneinfo
+        const currentUserZoneinfo = await this.getCurrentUserZoneinfo();
+        if (currentUserZoneinfo) {
+          console.log(`🔄 Mapping retrieved draft to use current user's zoneinfo '${currentUserZoneinfo}'`);
+          
+          // Update the draft data to use current user's zoneinfo
+          draftData.zoneinfo = currentUserZoneinfo;
+          draftData.applicantId = this.generateApplicantIdFromZoneinfo(currentUserZoneinfo);
+          
+          // Clean the form data to ensure consistency
+          if (draftData.form_data && typeof draftData.form_data === 'object') {
+            console.log('🧹 Cleaning form data in retrieved draft to ensure zoneinfo consistency');
+            draftData.form_data = this.cleanFormDataForConsistency(draftData.form_data);
+          }
+          
+          console.log('✅ Draft data updated to use current user\'s zoneinfo');
+        }
+        
         return draftData;
       } else {
         console.log('📭 No draft found for the given applicantId');
@@ -638,6 +797,67 @@ export class DynamoDBService {
         console.error('🔧 Access denied - check AWS credentials and permissions');
       }
       
+      return null;
+    }
+  }
+
+  // Retrieve draft data by reference_id (preferred method for form components)
+  async getDraftByReferenceId(referenceId: string): Promise<DraftData | null> {
+    try {
+      const client = await this.getClient();
+      const currentUserZoneinfo = await this.getCurrentUserZoneinfo();
+      
+      if (!currentUserZoneinfo) {
+        console.error('❌ Cannot get draft - no zoneinfo available for current user');
+        return null;
+      }
+      
+      console.log('🔍 Searching for draft by reference_id:', {
+        table: this.tableName,
+        reference_id: referenceId,
+        currentUserZoneinfo: currentUserZoneinfo
+      });
+
+      // Since we can't query by reference_id directly (it's not a key), we need to scan
+      // This is not ideal for production, but necessary for the current table structure
+      const scanCommand = new ScanCommand({
+        TableName: this.tableName,
+        FilterExpression: 'reference_id = :reference_id',
+        ExpressionAttributeValues: {
+          ':reference_id': { S: referenceId }
+        }
+      });
+
+      const response = await client.send(scanCommand);
+      
+      if (response.Items && response.Items.length > 0) {
+        // Find the most recent draft with this reference_id
+        const drafts = response.Items.map((item: any) => unmarshall(item) as DraftData);
+        const mostRecentDraft = drafts.sort((a: DraftData, b: DraftData) => 
+          new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime()
+        )[0];
+        
+        console.log(`✅ Found draft with reference_id '${referenceId}' (stored with applicantId: '${mostRecentDraft.applicantId}')`);
+        
+        // Always map to current user's zoneinfo
+        console.log(`🔄 Mapping draft to use current user's zoneinfo '${currentUserZoneinfo}'`);
+        mostRecentDraft.zoneinfo = currentUserZoneinfo;
+        mostRecentDraft.applicantId = this.generateApplicantIdFromZoneinfo(currentUserZoneinfo);
+        
+        // Clean the form data to ensure consistency
+        if (mostRecentDraft.form_data && typeof mostRecentDraft.form_data === 'object') {
+          console.log('🧹 Cleaning form data in retrieved draft to ensure zoneinfo consistency');
+          mostRecentDraft.form_data = this.cleanFormDataForConsistency(mostRecentDraft.form_data);
+        }
+        
+        console.log('✅ Draft data updated to use current user\'s zoneinfo');
+        return mostRecentDraft;
+      } else {
+        console.log(`📭 No draft found with reference_id '${referenceId}'`);
+        return null;
+      }
+    } catch (error: any) {
+      console.error('❌ Error retrieving draft by reference_id from DynamoDB:', error);
       return null;
     }
   }
@@ -811,63 +1031,83 @@ export class DynamoDBService {
 // Export singleton instance
 export const dynamoDBService = new DynamoDBService();
 
-// Utility functions that automatically use the current user's applicantId
+// Utility functions that automatically use the current user's zoneinfo
 export const dynamoDBUtils = {
-  // Save draft using current user's applicantId
-  async saveDraftForCurrentUser(draftData: Omit<DraftData, 'applicantId'>): Promise<boolean> {
-    const applicantId = await dynamoDBService.getCurrentUserApplicantId();
-    if (!applicantId) {
-      console.error('❌ Cannot save draft - no applicantId available for current user');
+  // Save draft using current user's zoneinfo
+  async saveDraftForCurrentUser(draftData: any): Promise<boolean> {
+    const zoneinfo = await dynamoDBService.getCurrentUserZoneinfo();
+    if (!zoneinfo) {
+      console.error('❌ Cannot save draft - no zoneinfo available for current user');
       return false;
     }
     
-    return dynamoDBService.saveDraft({
-      ...draftData,
-      applicantId
-    });
+    // Ensure the draft data uses the current user's zoneinfo
+    draftData.zoneinfo = zoneinfo;
+    
+    // If the draft data has application_id, use it; otherwise use the current user's zoneinfo
+    if (draftData.application_id) {
+      console.log(`🔄 Using application_id '${draftData.application_id}' from form data`);
+      draftData.applicantId = draftData.application_id;
+    } else {
+      console.log(`🔄 Using current user's zoneinfo '${zoneinfo}' for DynamoDB`);
+      draftData.applicantId = zoneinfo;
+    }
+    
+    return dynamoDBService.saveDraft(draftData);
   },
 
-  // Get draft using current user's applicantId
+  // Get draft using current user's zoneinfo
   async getDraftForCurrentUser(referenceId: string): Promise<DraftData | null> {
-    const applicantId = await dynamoDBService.getCurrentUserApplicantId();
-    if (!applicantId) {
-      console.error('❌ Cannot get draft - no applicantId available for current user');
+    const zoneinfo = await dynamoDBService.getCurrentUserZoneinfo();
+    if (!zoneinfo) {
+      console.error('❌ Cannot get draft - no zoneinfo available for current user');
       return null;
     }
     
-    return dynamoDBService.getDraft(applicantId, referenceId);
+    console.log(`🔄 Getting draft for current user with zoneinfo: ${zoneinfo}`);
+    
+    // Use the new getDraftByReferenceId method which handles zoneinfo mapping automatically
+    return dynamoDBService.getDraftByReferenceId(referenceId);
   },
 
-  // Mark draft as submitted using current user's applicantId
+  // Mark draft as submitted using current user's zoneinfo
   async markDraftAsSubmittedForCurrentUser(referenceId: string): Promise<boolean> {
-    const applicantId = await dynamoDBService.getCurrentUserApplicantId();
-    if (!applicantId) {
-      console.error('❌ Cannot mark draft as submitted - no applicantId available for current user');
+    const zoneinfo = await dynamoDBService.getCurrentUserZoneinfo();
+    if (!zoneinfo) {
+      console.error('❌ Cannot mark draft as submitted - no zoneinfo available for current user');
       return false;
     }
     
+    const applicantId = dynamoDBService.generateApplicantIdFromZoneinfo(zoneinfo);
     return dynamoDBService.markAsSubmitted(applicantId, referenceId);
   },
 
-  // Delete draft using current user's applicantId
+  // Delete draft using current user's zoneinfo
   async deleteDraftForCurrentUser(referenceId: string): Promise<boolean> {
-    const applicantId = await dynamoDBService.getCurrentUserApplicantId();
-    if (!applicantId) {
-      console.error('❌ Cannot delete draft - no applicantId available for current user');
+    const zoneinfo = await dynamoDBService.getCurrentUserZoneinfo();
+    if (!zoneinfo) {
+      console.error('❌ Cannot delete draft - no zoneinfo available for current user');
       return false;
     }
     
+    const applicantId = dynamoDBService.generateApplicantIdFromZoneinfo(zoneinfo);
     return dynamoDBService.deleteDraft(applicantId, referenceId);
   },
 
   // Get all drafts for current user
   async getAllDraftsForCurrentUser(): Promise<DraftData[]> {
-    const applicantId = await dynamoDBService.getCurrentUserApplicantId();
-    if (!applicantId) {
-      console.error('❌ Cannot get drafts - no applicantId available for current user');
+    const zoneinfo = await dynamoDBService.getCurrentUserZoneinfo();
+    if (!zoneinfo) {
+      console.error('❌ Cannot get drafts - no zoneinfo available for current user');
       return [];
     }
     
+    const applicantId = dynamoDBService.generateApplicantIdFromZoneinfo(zoneinfo);
     return dynamoDBService.getAllDrafts(applicantId);
+  },
+
+  // Ensure any draft data uses current user's zoneinfo
+  async ensureDraftDataUsesCurrentZoneinfo(draftData: DraftData): Promise<DraftData> {
+    return dynamoDBService.ensureDraftDataUsesCurrentZoneinfo(draftData);
   }
 };
