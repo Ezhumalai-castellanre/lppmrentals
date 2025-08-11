@@ -29,6 +29,7 @@ import { useLocation } from "wouter";
 import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "@/lib/file-encryption";
 import { WebhookService } from "@/lib/webhook-service";
 import { MondayApiService, type UnitItem } from "@/lib/monday-api";
+import { DraftService, type DraftData } from "@/lib/draft-service";
 
 
 import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "@/components/ui/validated-input";
@@ -270,6 +271,172 @@ export function ApplicationForm() {
 
     fetchUnits();
   }, []);
+
+  // Load draft data when user is available
+  useEffect(() => {
+    if (user?.applicantId) {
+      loadDraft();
+    }
+  }, [user?.applicantId]);
+
+  // Cleanup auto-save timeout on unmount
+  useEffect(() => {
+    return () => {
+      DraftService.clearAutoSave();
+    };
+  }, []);
+
+  // Load draft data
+  const loadDraft = async () => {
+    if (!user?.applicantId) return;
+    
+    setIsLoadingDraft(true);
+    try {
+      const result = await DraftService.loadDraft(user.applicantId);
+      if (result.success && result.data) {
+        console.log('📋 Draft loaded successfully:', result.data);
+        
+        // Restore form data from draft
+        restoreFormFromDraft(result.data);
+        
+        // Update draft info
+        setDraftLastSaved(result.data.lastSaved);
+        
+        toast({
+          title: "Draft Loaded",
+          description: `Your application draft from ${new Date(result.data.lastSaved).toLocaleString()} has been restored.`,
+          variant: 'default',
+        });
+      }
+    } catch (error) {
+      console.error('❌ Failed to load draft:', error);
+      toast({
+        title: "Draft Load Error",
+        description: "Failed to load your saved draft. You can continue with a new application.",
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingDraft(false);
+    }
+  };
+
+  // Restore form data from draft
+  const restoreFormFromDraft = (draftData: DraftData) => {
+    try {
+      // Restore current step
+      if (draftData.currentStep !== undefined) {
+        setCurrentStep(draftData.currentStep);
+      }
+      
+      // Restore application info
+      if (draftData.applicationInfo) {
+        setFormData((prev: any) => ({
+          ...prev,
+          application: {
+            ...prev.application,
+            ...draftData.applicationInfo
+          }
+        }));
+      }
+      
+      // Restore primary applicant
+      if (draftData.primaryApplicant) {
+        setFormData((prev: any) => ({
+          ...prev,
+          applicant: {
+            ...prev.applicant,
+            ...draftData.primaryApplicant
+          }
+        }));
+      }
+      
+      // Restore co-applicant
+      if (draftData.coApplicant) {
+        setFormData((prev: any) => ({
+          ...prev,
+          coApplicant: {
+            ...prev.coApplicant,
+            ...draftData.coApplicant
+          }
+        }));
+        setHasCoApplicant(draftData.coApplicant.hasCoApplicant || false);
+      }
+      
+      // Restore guarantor
+      if (draftData.guarantor) {
+        setFormData((prev: any) => ({
+          ...prev,
+          guarantor: {
+            ...prev.guarantor,
+            ...draftData.guarantor
+          }
+        }));
+        setHasGuarantor(draftData.guarantor.hasGuarantor || false);
+      }
+      
+      // Restore other occupants
+      if (draftData.otherOccupants?.otherOccupants) {
+        setFormData((prev: any) => ({
+          ...prev,
+          otherOccupants: draftData.otherOccupants!.otherOccupants
+        }));
+      }
+      
+      // Restore documents
+      if (draftData.primaryApplicantDocuments?.documents) {
+        setDocuments((prev: any) => ({
+          ...prev,
+          applicant: draftData.primaryApplicantDocuments!.documents
+        }));
+      }
+      
+      if (draftData.coApplicantDocuments?.documents) {
+        setDocuments((prev: any) => ({
+          ...prev,
+          coApplicant: draftData.coApplicantDocuments!.documents
+        }));
+      }
+      
+      if (draftData.guarantorDocuments?.documents) {
+        setDocuments((prev: any) => ({
+          ...prev,
+          guarantor: draftData.guarantorDocuments!.documents
+        }));
+      }
+      
+      if (draftData.otherOccupants?.documents) {
+        setDocuments((prev: any) => ({
+          ...prev,
+          otherOccupants: draftData.otherOccupants!.documents
+        }));
+      }
+      
+      // Restore signatures
+      if (draftData.signatures) {
+        setSignatures(draftData.signatures);
+      }
+      
+      // Restore webhook responses
+      if (draftData.webhookResponses) {
+        setWebhookResponses(draftData.webhookResponses);
+      }
+      
+      // Restore uploaded files metadata
+      if (draftData.uploadedFilesMetadata) {
+        setUploadedFilesMetadata(draftData.uploadedFilesMetadata);
+      }
+      
+      console.log('✅ Form restored from draft successfully');
+      
+    } catch (error) {
+      console.error('❌ Error restoring form from draft:', error);
+      toast({
+        title: "Draft Restore Error",
+        description: "Some data could not be restored from your draft. Please review your application.",
+        variant: 'warning',
+      });
+    }
+  };
 
   // Set up welcome message
   useEffect(() => {
@@ -878,7 +1045,22 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
       e.stopPropagation();
     }
     
-    setCurrentStep((prev) => getNextAllowedStep(prev, 1));
+    const nextStepNumber = getNextAllowedStep(currentStep, 1);
+    
+    // Save draft before moving to next step
+    if (user?.applicantId) {
+      const draftData = DraftService.createDraftData(
+        user.applicantId,
+        nextStepNumber,
+        formData,
+        webhookResponses,
+        uploadedFilesMetadata
+      );
+      
+      DraftService.autoSaveDraft(draftData);
+    }
+    
+    setCurrentStep(nextStepNumber);
   };
 
   const prevStep = async (e?: React.MouseEvent) => {
@@ -889,7 +1071,22 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
       e.stopPropagation();
     }
     
-    setCurrentStep((prev) => getNextAllowedStep(prev, -1));
+    const prevStepNumber = getNextAllowedStep(currentStep, -1);
+    
+    // Save draft before moving to previous step
+    if (user?.applicantId) {
+      const draftData = DraftService.createDraftData(
+        user.applicantId,
+        prevStepNumber,
+        formData,
+        webhookResponses,
+        uploadedFilesMetadata
+      );
+      
+      DraftService.autoSaveDraft(draftData);
+    }
+    
+    setCurrentStep(prevStepNumber);
   };
 
   // --- Update goToStep to block manual access to co-applicant/guarantor docs if not allowed ---
@@ -938,10 +1135,24 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
     }
     
     // Save draft before jumping to step
+    if (user?.applicantId) {
+      const draftData = DraftService.createDraftData(
+        user.applicantId,
+        step,
+        formData,
+        webhookResponses,
+        uploadedFilesMetadata
+      );
+      
+      DraftService.autoSaveDraft(draftData);
+    }
+    
     setCurrentStep(step);
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(false);
+  const [draftLastSaved, setDraftLastSaved] = useState<string | null>(null);
 
   const onSubmit = async (data: ApplicationFormData) => {
     console.log('🚀 Form submission started');
@@ -2979,6 +3190,26 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
                     };
                     
                     console.log(`✅ Webhook response received for ${documentType}: ${response}`);
+                    
+                    // Update webhook responses
+                    setWebhookResponses(prev => ({
+                      ...prev,
+                      [documentType]: response
+                    }));
+                    
+                    // Auto-save draft with the new webhook response
+                    const draftData = DraftService.createDraftData(
+                      user.applicantId,
+                      currentStep,
+                      formData,
+                      {
+                        ...webhookResponses,
+                        [documentType]: response
+                      },
+                      uploadedFilesMetadata
+                    );
+                    
+                    DraftService.autoSaveDraft(draftData);
                   }
                 }}
                 onEncryptedDocumentChange={(documentType, encryptedFiles) => {
@@ -4513,6 +4744,55 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
                     <ChevronLeft className="w-4 h-4" />
                     <span>Previous</span>
                   </Button>
+                )}
+              </div>
+              
+              {/* Draft Status and Save Button */}
+              <div className="flex items-center space-x-4">
+                {user?.applicantId && (
+                  <>
+                    {draftLastSaved && (
+                      <div className="text-sm text-gray-500">
+                        Last saved: {new Date(draftLastSaved).toLocaleString()}
+                      </div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={async () => {
+                        if (user?.applicantId) {
+                          const draftData = DraftService.createDraftData(
+                            user.applicantId,
+                            currentStep,
+                            formData,
+                            webhookResponses,
+                            uploadedFilesMetadata
+                          );
+                          
+                          const result = await DraftService.saveDraft(draftData);
+                          if (result.success) {
+                            setDraftLastSaved(new Date().toISOString());
+                            toast({
+                              title: "Draft Saved",
+                              description: "Your application draft has been saved successfully.",
+                              variant: 'default',
+                            });
+                          } else {
+                            toast({
+                              title: "Draft Save Failed",
+                              description: result.error || "Failed to save draft. Please try again.",
+                              variant: 'destructive',
+                            });
+                          }
+                        }
+                      }}
+                      className="flex items-center space-x-2"
+                      disabled={isLoadingDraft}
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Save Draft</span>
+                    </Button>
+                  </>
                 )}
               </div>
               

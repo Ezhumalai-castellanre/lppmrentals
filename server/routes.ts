@@ -798,6 +798,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Draft system endpoints
+  app.post("/api/save-draft", async (req, res) => {
+    try {
+      console.log('=== SAVE DRAFT ENDPOINT CALLED ===');
+      
+      const { draftData, applicantId, action = 'save' } = req.body;
+
+      if (!draftData) {
+        return res.status(400).json({ error: 'Missing draft data' });
+      }
+
+      if (!applicantId) {
+        return res.status(400).json({ error: 'Missing applicant ID' });
+      }
+
+      console.log('📋 Draft data received:', {
+        applicantId,
+        action,
+        dataSize: JSON.stringify(draftData).length,
+        hasWebhookResponses: !!draftData.webhookResponses,
+        hasUploadedFiles: !!draftData.uploadedFilesMetadata,
+        currentStep: draftData.currentStep,
+        hasDocuments: !!draftData.documents
+      });
+
+      // For local development, we'll store the draft in memory or a local file
+      // In production, this would go to DynamoDB
+      const draftKey = `draft_${applicantId}`;
+      
+      // Store in a simple in-memory cache (you can replace this with file storage)
+      if (!(global as any).draftCache) {
+        (global as any).draftCache = new Map();
+      }
+      
+      const itemToSave = {
+        applicantId,
+        ...draftData,
+        lastSaved: new Date().toISOString(),
+        version: '1.0',
+        compressed: false
+      };
+      
+      (global as any).draftCache.set(draftKey, itemToSave);
+      
+      console.log('✅ Draft saved successfully:', {
+        applicantId,
+        savedSize: JSON.stringify(itemToSave).length
+      });
+
+      res.json({
+        success: true,
+        message: 'Draft saved successfully',
+        applicantId,
+        savedAt: itemToSave.lastSaved,
+        dataSize: JSON.stringify(itemToSave).length,
+        webhookResponses: itemToSave.webhookResponses || {},
+        uploadedFiles: itemToSave.uploadedFilesMetadata || {},
+        documents: itemToSave.documents || {},
+        currentStep: itemToSave.currentStep
+      });
+
+    } catch (error) {
+      console.error('❌ Save draft error:', error);
+      
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to save draft',
+        details: error instanceof Error ? error.stack : 'Unknown error'
+      });
+    }
+  });
+
+  app.get("/api/get-draft", async (req, res) => {
+    try {
+      console.log('=== GET DRAFT ENDPOINT CALLED ===');
+      
+      const { applicantId } = req.query;
+
+      if (!applicantId) {
+        return res.status(400).json({ error: 'Missing applicant ID' });
+      }
+
+      console.log('🔍 Retrieving draft for applicant:', applicantId);
+
+      // Get draft from local cache
+      if (!(global as any).draftCache) {
+        (global as any).draftCache = new Map();
+      }
+      
+      const draftKey = `draft_${applicantId}`;
+      const draftData = (global as any).draftCache.get(draftKey);
+      
+      if (!draftData) {
+        console.log('📭 No draft found for applicant:', applicantId);
+        return res.status(404).json({
+          success: false,
+          message: 'No draft found',
+          applicantId
+        });
+      }
+
+      console.log('✅ Draft retrieved successfully:', {
+        applicantId,
+        lastSaved: draftData.lastSaved,
+        currentStep: draftData.currentStep,
+        hasWebhookResponses: !!draftData.webhookResponses,
+        webhookResponseKeys: draftData.webhookResponses ? Object.keys(draftData.webhookResponses) : [],
+        hasUploadedFiles: !!draftData.uploadedFilesMetadata,
+        uploadedFileSections: draftData.uploadedFilesMetadata ? Object.keys(draftData.uploadedFilesMetadata) : [],
+        dataSize: JSON.stringify(draftData).length
+      });
+
+      // Extract and format the response
+      const response = {
+        success: true,
+        message: 'Draft retrieved successfully',
+        applicantId: draftData.applicantId,
+        lastSaved: draftData.lastSaved,
+        currentStep: draftData.currentStep,
+        isComplete: draftData.isComplete || false,
+        compressed: draftData.compressed || false,
+        version: draftData.version || '1.0',
+        
+        // Form data
+        formData: draftData.form_data || draftData.rawFormData || {},
+        
+        // Webhook responses (file URLs)
+        webhookResponses: draftData.webhookResponses || {},
+        
+        // Uploaded files metadata with URLs
+        uploadedFilesMetadata: draftData.uploadedFilesMetadata || {},
+        
+        // Other form state
+        signatures: draftData.signatures || {},
+        documents: draftData.documents || {},
+        encryptedDocuments: draftData.encryptedDocuments || {},
+        uploadedDocuments: draftData.uploadedDocuments || {},
+        
+        // Flags
+        hasCoApplicant: draftData.hasCoApplicant || false,
+        hasGuarantor: draftData.hasGuarantor || false,
+        
+        // Raw data for restoration
+        rawFormData: draftData.rawFormData || {},
+        rawFormValues: draftData.rawFormValues || {}
+      };
+
+      res.json(response);
+
+    } catch (error) {
+      console.error('❌ Get draft error:', error);
+      
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to retrieve draft',
+        details: error instanceof Error ? error.stack : 'Unknown error'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
