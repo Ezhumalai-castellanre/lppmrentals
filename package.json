@@ -5,6 +5,8 @@
   "license": "MIT",
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx server/index.ts",
+    "dev:client": "vite",
+    "dev:both": "concurrently \"npm run dev\" \"npm run dev:client\"",
     "build": "vite build",
     "build:server": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
@@ -14,7 +16,8 @@
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.11.2",
-
+    "@aws-sdk/client-dynamodb": "^3.864.0",
+    "@aws-sdk/util-dynamodb": "^3.864.0",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@radix-ui/react-accordion": "^1.2.4",
@@ -113,6 +116,7 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@types/ws": "^8.5.13",
+    "concurrently": "^9.2.0",
     "cross-env": "^7.0.3",
     "drizzle-kit": "^0.30.4",
     "netlify-cli": "^22.2.2",

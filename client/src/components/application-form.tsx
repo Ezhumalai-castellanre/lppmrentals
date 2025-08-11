@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,7 +22,7 @@ import { ResetPDFGenerator } from "@/lib/pdf-generator-reset";
 import { Download, FileText, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useDraftStorage } from "@/hooks/use-draft-storage";
+
 
 import ApplicationInstructions from "./application-instructions";
 import { useRef } from "react";
@@ -30,6 +30,7 @@ import { useLocation } from "wouter";
 import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "@/lib/file-encryption";
 import { WebhookService } from "@/lib/webhook-service";
 import { MondayApiService, type UnitItem } from "@/lib/monday-api";
+import { dynamoDBService, type DraftData } from "@/lib/dynamodb-service";
 
 
 import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "@/components/ui/validated-input";
@@ -203,23 +204,7 @@ export function ApplicationForm() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   
-  // Draft storage hook
-  const {
-    currentDraft,
-    isLoading: isDraftLoading,
-    error: draftError,
-    saveStepDraft,
-    saveFormDraft,
-    saveFileUploadDraft,
-    loadDraft,
-    deleteDraft,
-    restoreDraft,
-    startAutoSave,
-    stopAutoSave,
-    hasUnsavedChanges,
-    lastSaved,
-    isAutoSaving
-  } = useDraftStorage();
+
 
   // Read selected rental from sessionStorage
   const [selectedRental, setSelectedRental] = useState<any>(null);
@@ -289,22 +274,9 @@ export function ApplicationForm() {
     };
 
     fetchUnits();
-  }, []);
+  }, []); // ✅ Add empty dependency array to run only once on mount
 
-  // Set up welcome message
-  useEffect(() => {
-    if (user) {
-      const userName = user.name || user.given_name || user.email?.split('@')[0] || 'User';
-      setWelcomeMessage(`Welcome back, ${userName}!`);
-      
-      // Hide welcome message after 5 minutes
-      const timer = setTimeout(() => {
-        setShowWelcomeMessage(false);
-      }, 5 * 60 * 1000); // 5 minutes
 
-      return () => clearTimeout(timer);
-    }
-  }, [user]);
 
 
 
@@ -378,7 +350,124 @@ export function ApplicationForm() {
     mode: "onChange", // Enable real-time validation
   });
 
+  // Load draft data from DynamoDB
+  const loadDraftData = useCallback(async (applicationId: string) => {
+    try {
+      console.log('📥 Loading draft data from DynamoDB for application ID:', applicationId);
+      
+      // Try to load the most recent draft for this application
+      const draftData = await dynamoDBService.getDraft(applicationId, referenceId);
+      
+      if (draftData && draftData.status === 'draft') {
+        console.log('✅ Draft data loaded from DynamoDB:', draftData);
+        
+        // Restore form data
+        if (draftData.form_data) {
+          setFormData(draftData.form_data);
+          
+          // Restore current step
+          if (draftData.current_step !== undefined) {
+            setCurrentStep(draftData.current_step);
+          }
+          
+          // Restore signatures
+          if (draftData.signatures) {
+            setSignatures(draftData.signatures);
+          }
+          
+          // Restore webhook responses
+          if (draftData.webhook_responses) {
+            setWebhookResponses(draftData.webhook_responses);
+          }
+          
+          // Restore uploaded files metadata
+          if (draftData.uploaded_files_metadata) {
+            setUploadedFilesMetadata(draftData.uploaded_files_metadata);
+          }
+          
+          // Restore encrypted documents
+          if (draftData.encrypted_documents) {
+            setEncryptedDocuments(draftData.encrypted_documents);
+          }
+          
+          // Restore form values for React Hook Form
+          if (draftData.form_data.application) {
+            const app = draftData.form_data.application;
+            if (app.buildingAddress) form.setValue('buildingAddress', app.buildingAddress);
+            if (app.apartmentNumber) form.setValue('apartmentNumber', app.apartmentNumber);
+            if (app.apartmentType) form.setValue('apartmentType', app.apartmentType);
+            if (app.monthlyRent) form.setValue('monthlyRent', app.monthlyRent);
+            if (app.howDidYouHear) form.setValue('howDidYouHear', app.howDidYouHear);
+            if (app.moveInDate) {
+              const moveInDate = new Date(app.moveInDate);
+              if (!isNaN(moveInDate.getTime())) {
+                form.setValue('moveInDate', moveInDate);
+              }
+            }
+          }
+          
+          if (draftData.form_data.applicant) {
+            const applicant = draftData.form_data.applicant;
+            if (applicant.name) form.setValue('applicantName', applicant.name);
+            if (applicant.email) form.setValue('applicantEmail', applicant.email);
+            if (applicant.phone) form.setValue('applicantPhone', applicant.phone);
+            if (applicant.address) form.setValue('applicantAddress', applicant.address);
+            if (applicant.city) form.setValue('applicantCity', applicant.city);
+            if (applicant.state) form.setValue('applicantState', applicant.state);
+            if (applicant.zip) form.setValue('applicantZip', applicant.zip);
+            if (applicant.dob) {
+              const dob = new Date(applicant.dob);
+              if (!isNaN(dob.getTime())) {
+                form.setValue('applicantDob', dob);
+              }
+            }
+          }
+          
+          // Restore co-applicant and guarantor flags
+          if (draftData.form_data.hasCoApplicant !== undefined) {
+            setHasCoApplicant(draftData.form_data.hasCoApplicant);
+          }
+          if (draftData.form_data.hasGuarantor !== undefined) {
+            setHasGuarantor(draftData.form_data.hasGuarantor);
+          }
+          
+          toast({
+            title: "Draft Loaded",
+            description: "Your previous draft has been restored. You can continue from where you left off.",
+          });
+        }
+      } else {
+        console.log('📭 No draft data found or draft already submitted');
+      }
+    } catch (error) {
+      console.error('❌ Error loading draft data:', error);
+      toast({
+        title: "Draft Load Error",
+        description: "Failed to load your previous draft. Starting with a fresh form.",
+        variant: "destructive",
+      });
+    }
+  }, [referenceId, form, toast]);
 
+  // Set up welcome message and load draft data
+  useEffect(() => {
+    if (user) {
+      const userName = user.name || user.given_name || user.email?.split('@')[0] || 'User';
+      setWelcomeMessage(`Welcome back, ${userName}!`);
+      
+      // Load draft data from DynamoDB if available
+      if (user.applicantId) {
+        loadDraftData(user.applicantId);
+      }
+      
+      // Hide welcome message after 5 minutes
+      const timer = setTimeout(() => {
+        setShowWelcomeMessage(false);
+      }, 5 * 60 * 1000); // 5 minutes
+
+      return () => clearTimeout(timer);
+    }
+  }, [user, loadDraftData]);
 
   // Read selected rental from sessionStorage and pre-populate form
   useEffect(() => {
@@ -403,19 +492,9 @@ export function ApplicationForm() {
   }, [form]);
 
   // Start auto-save when form data changes
-  useEffect(() => {
-    if (user && currentStep > 0) {
-      // Start auto-save for the current step
-      startAutoSave(formData, currentStep);
-      
-      // Cleanup auto-save when component unmounts or step changes
-      return () => {
-        stopAutoSave();
-      };
-    }
-  }, [user, currentStep, formData, startAutoSave, stopAutoSave]);
 
-  const updateFormData = (section: string, field: string, value: any) => {
+
+  const updateFormData = async (section: string, field: string, value: any) => {
     setFormData((prev: any) => {
       const newFormData = {
         ...prev,
@@ -427,10 +506,44 @@ export function ApplicationForm() {
       
       return newFormData;
     });
+
+    // Save draft to DynamoDB after form data update
+    if (user?.applicantId) {
+      try {
+        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
+        const enhancedFormDataSnapshot = {
+          ...formDataSnapshot,
+          applicantId: user.applicantId,
+          webhookSummary: getWebhookSummary()
+        };
+
+        const draftData: DraftData = {
+          applicantId: user.applicantId,
+          reference_id: referenceId,
+          form_data: enhancedFormDataSnapshot,
+          current_step: currentStep,
+          last_updated: new Date().toISOString(),
+          status: 'draft',
+          uploaded_files_metadata: uploadedFilesMetadata,
+          webhook_responses: webhookResponses,
+          signatures: signatures,
+          encrypted_documents: encryptedDocuments,
+        };
+
+        const saveResult = await dynamoDBService.saveDraft(draftData);
+        if (saveResult) {
+          console.log('💾 Draft saved to DynamoDB after form data update for:', section, field);
+        } else {
+          console.warn('⚠️ Failed to save draft to DynamoDB after form data update');
+        }
+      } catch (error) {
+        console.error('❌ Error saving draft after form data update:', error);
+      }
+    }
   };
 
   // Handle building selection
-  const handleBuildingSelect = (buildingAddress: string) => {
+  const handleBuildingSelect = async (buildingAddress: string) => {
     setSelectedBuilding(buildingAddress);
     const unitsForBuilding = MondayApiService.getUnitsByBuilding(units, buildingAddress);
     setAvailableApartments(unitsForBuilding);
@@ -440,9 +553,9 @@ export function ApplicationForm() {
     setSelectedUnit(firstUnit);
     
     // Update form data
-    updateFormData('application', 'buildingAddress', buildingAddress);
-    updateFormData('application', 'apartmentNumber', firstUnit?.name || '');
-    updateFormData('application', 'apartmentType', firstUnit?.unitType || '');
+    await updateFormData('application', 'buildingAddress', buildingAddress);
+    await updateFormData('application', 'apartmentNumber', firstUnit?.name || '');
+    await updateFormData('application', 'apartmentType', firstUnit?.unitType || '');
     
     // Update form fields
     form.setValue('buildingAddress', buildingAddress);
@@ -451,22 +564,22 @@ export function ApplicationForm() {
   };
 
   // Handle apartment selection
-  const handleApartmentSelect = (apartmentName: string) => {
+  const handleApartmentSelect = async (apartmentName: string) => {
     console.log('🏠 handleApartmentSelect called with:', apartmentName);
     const selectedApartment = availableApartments.find(unit => unit.name === apartmentName);
     console.log('🏠 selectedApartment:', selectedApartment);
     setSelectedUnit(selectedApartment || null);
     
     // Update form data
-    updateFormData('application', 'apartmentNumber', apartmentName);
-    updateFormData('application', 'apartmentType', selectedApartment?.unitType || '');
-    updateFormData('application', 'monthlyRent', selectedApartment?.monthlyRent || undefined);
+    await updateFormData('application', 'apartmentNumber', apartmentName);
+    await updateFormData('application', 'apartmentType', selectedApartment?.unitType || '');
+    await updateFormData('application', 'monthlyRent', selectedApartment?.monthlyRent || undefined);
     
     // Update form fields
     console.log('🏠 Setting form values:');
-    console.log('- apartmentNumber:', apartmentName);
-    console.log('- apartmentType:', selectedApartment?.unitType || '');
-    console.log('- monthlyRent:', selectedApartment?.monthlyRent || undefined);
+    console.log('  - apartmentNumber:', apartmentName);
+    console.log('  - apartmentType:', selectedApartment?.unitType || '');
+    console.log('  - monthlyRent:', selectedApartment?.monthlyRent || undefined);
     
     form.setValue('apartmentNumber', apartmentName);
     form.setValue('apartmentType', selectedApartment?.unitType || '');
@@ -484,21 +597,7 @@ export function ApplicationForm() {
       },
     }));
     
-    // Save file upload draft
-    try {
-      const metadata = {
-        file_name: files.map(f => f.name),
-        file_size: files.map(f => f.size),
-        mime_type: files.map(f => f.type),
-        upload_date: new Date().toISOString()
-      };
-      
-      await saveFileUploadDraft(`${person}_${documentType}`, Array.from(files), metadata);
-      console.log(`✅ File upload draft saved for ${person} ${documentType}`);
-    } catch (draftError) {
-      console.warn('⚠️ Failed to save file upload draft:', draftError);
-      // Continue with document handling even if draft save fails
-    }
+
   };
 
   // Handler to attach webhook file URL to encrypted file
@@ -715,7 +814,7 @@ export function ApplicationForm() {
     window.open(fileUrl, '_blank');
   };
 
-  const handleEncryptedDocumentChange = (person: string, documentType: string, encryptedFiles: EncryptedFile[]) => {
+  const handleEncryptedDocumentChange = async (person: string, documentType: string, encryptedFiles: EncryptedFile[]) => {
     console.log('handleEncryptedDocumentChange called:', { person, documentType, encryptedFilesCount: encryptedFiles.length });
     
     // Special debugging for guarantor documents
@@ -779,9 +878,43 @@ export function ApplicationForm() {
       
       return newMetadata;
     });
+
+    // Save draft to DynamoDB after file upload
+    if (user?.applicantId) {
+      try {
+        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
+        const enhancedFormDataSnapshot = {
+          ...formDataSnapshot,
+          applicantId: user.applicantId,
+          webhookSummary: getWebhookSummary()
+        };
+
+        const draftData: DraftData = {
+          applicantId: user.applicantId,
+          reference_id: referenceId,
+          form_data: enhancedFormDataSnapshot,
+          current_step: currentStep,
+          last_updated: new Date().toISOString(),
+          status: 'draft',
+          uploaded_files_metadata: { ...uploadedFilesMetadata, [sectionKey]: filesMetadata },
+          webhook_responses: webhookResponses,
+          signatures: signatures,
+          encrypted_documents: { ...encryptedDocuments, [person]: { ...encryptedDocuments[person], [documentType]: encryptedFiles } },
+        };
+
+        const saveResult = await dynamoDBService.saveDraft(draftData);
+        if (saveResult) {
+          console.log('💾 Draft saved to DynamoDB after file upload for:', person, documentType);
+        } else {
+          console.warn('⚠️ Failed to save draft to DynamoDB after file upload');
+        }
+      } catch (error) {
+        console.error('❌ Error saving draft after file upload:', error);
+      }
+    }
   };
 
-  const handleSignatureChange = (person: string, signature: string) => {
+  const handleSignatureChange = async (person: string, signature: string) => {
     setSignatures((prev: any) => ({
       ...prev,
       [person]: signature,
@@ -790,6 +923,40 @@ export function ApplicationForm() {
       ...prev,
       [person]: new Date().toISOString(),
     }));
+
+    // Save draft to DynamoDB after signature change
+    if (user?.applicantId) {
+      try {
+        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
+        const enhancedFormDataSnapshot = {
+          ...formDataSnapshot,
+          applicantId: user.applicantId,
+          webhookSummary: getWebhookSummary()
+        };
+
+        const draftData: DraftData = {
+          applicantId: user.applicantId,
+          reference_id: referenceId,
+          form_data: enhancedFormDataSnapshot,
+          current_step: currentStep,
+          last_updated: new Date().toISOString(),
+          status: 'draft',
+          uploaded_files_metadata: uploadedFilesMetadata,
+          webhook_responses: webhookResponses,
+          signatures: { ...signatures, [person]: signature },
+          encrypted_documents: encryptedDocuments,
+        };
+
+        const saveResult = await dynamoDBService.saveDraft(draftData);
+        if (saveResult) {
+          console.log('💾 Draft saved to DynamoDB after signature change for:', person);
+        } else {
+          console.warn('⚠️ Failed to save draft to DynamoDB after signature change');
+        }
+      } catch (error) {
+        console.error('❌ Error saving draft after signature change:', error);
+      }
+    }
   };
 
   // Enhanced document change handlers for each person type
@@ -988,15 +1155,30 @@ export function ApplicationForm() {
       console.log('📈 Webhook Summary:', enhancedFormDataSnapshot.webhookSummary);
       console.log('➡️ Moving to step:', nextPlannedStep);
       console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
-      
-      // Save draft for current step before advancing
-      try {
-        await saveStepDraft(currentStep, enhancedFormDataSnapshot, documents);
-        console.log(`✅ Draft saved for step ${currentStep} before advancing`);
-      } catch (draftError) {
-        console.warn('⚠️ Failed to save draft before advancing:', draftError);
-        // Continue with step advancement even if draft save fails
+
+      // Save draft to DynamoDB before advancing to next step
+      if (user?.applicantId) {
+        const draftData: DraftData = {
+          applicantId: user.applicantId,
+          reference_id: referenceId,
+          form_data: enhancedFormDataSnapshot,
+          current_step: currentStep,
+          last_updated: new Date().toISOString(),
+          status: 'draft',
+          uploaded_files_metadata: uploadedFilesMetadata,
+          webhook_responses: webhookResponses,
+          signatures: signatures,
+          encrypted_documents: encryptedDocuments,
+        };
+
+        const saveResult = await dynamoDBService.saveDraft(draftData);
+        if (saveResult) {
+          console.log('💾 Draft saved to DynamoDB before advancing to step:', nextPlannedStep);
+        } else {
+          console.warn('⚠️ Failed to save draft to DynamoDB');
+        }
       }
+
     } catch (err) {
       console.warn('FormData logging failed:', err);
     }
@@ -1029,15 +1211,30 @@ export function ApplicationForm() {
       console.log('📈 Webhook Summary:', enhancedFormDataSnapshot.webhookSummary);
       console.log('⬅️ Going back to step:', getNextAllowedStep(currentStep, -1));
       console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
-      
-      // Save draft for current step before going back
-      try {
-        await saveStepDraft(currentStep, enhancedFormDataSnapshot, documents);
-        console.log(`✅ Draft saved for step ${currentStep} before going back`);
-      } catch (draftError) {
-        console.warn('⚠️ Failed to save draft before going back:', draftError);
-        // Continue with step navigation even if draft save fails
+
+      // Save draft to DynamoDB before going back
+      if (user?.applicantId) {
+        const draftData: DraftData = {
+          applicantId: user.applicantId,
+          reference_id: referenceId,
+          form_data: enhancedFormDataSnapshot,
+          current_step: currentStep,
+          last_updated: new Date().toISOString(),
+          status: 'draft',
+          uploaded_files_metadata: uploadedFilesMetadata,
+          webhook_responses: webhookResponses,
+          signatures: signatures,
+          encrypted_documents: encryptedDocuments,
+        };
+
+        const saveResult = await dynamoDBService.saveDraft(draftData);
+        if (saveResult) {
+          console.log('💾 Draft saved to DynamoDB before going back to step:', getNextAllowedStep(currentStep, -1));
+        } else {
+          console.warn('⚠️ Failed to save draft to DynamoDB');
+        }
       }
+
     } catch (err) {
       console.warn('FormData logging failed:', err);
     }
@@ -1107,15 +1304,30 @@ export function ApplicationForm() {
       console.log('📈 Webhook Summary:', enhancedFormDataSnapshot.webhookSummary);
       console.log('🎯 Jumping to step:', step);
       console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
-      
-      // Save draft for current step before jumping
-      try {
-        await saveStepDraft(currentStep, enhancedFormDataSnapshot, documents);
-        console.log(`✅ Draft saved for step ${currentStep} before jumping to step ${step}`);
-      } catch (draftError) {
-        console.warn('⚠️ Failed to save draft before jumping:', draftError);
-        // Continue with step navigation even if draft save fails
+
+      // Save draft to DynamoDB before jumping to step
+      if (user?.applicantId) {
+        const draftData: DraftData = {
+          applicantId: user.applicantId,
+          reference_id: referenceId,
+          form_data: enhancedFormDataSnapshot,
+          current_step: currentStep,
+          last_updated: new Date().toISOString(),
+          status: 'draft',
+          uploaded_files_metadata: uploadedFilesMetadata,
+          webhook_responses: webhookResponses,
+          signatures: signatures,
+          encrypted_documents: encryptedDocuments,
+        };
+
+        const saveResult = await dynamoDBService.saveDraft(draftData);
+        if (saveResult) {
+          console.log('💾 Draft saved to DynamoDB before jumping to step:', step);
+        } else {
+          console.warn('⚠️ Failed to save draft to DynamoDB');
+        }
       }
+
     } catch (err) {
       console.warn('FormData logging failed:', err);
     }
@@ -1126,7 +1338,7 @@ export function ApplicationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Enhanced occupants handling with document uploads
-  const addOccupant = () => {
+  const addOccupant = async () => {
     const newOccupant = {
       name: '',
       relationship: '',
@@ -1142,22 +1354,124 @@ export function ApplicationForm() {
       ...prev,
       occupants: [...(prev.occupants || []), newOccupant]
     }));
+
+    // Save draft to DynamoDB after adding occupant
+    if (user?.applicantId) {
+      try {
+        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
+        const enhancedFormDataSnapshot = {
+          ...formDataSnapshot,
+          applicantId: user.applicantId,
+          webhookSummary: getWebhookSummary()
+        };
+
+        const draftData: DraftData = {
+          applicantId: user.applicantId,
+          reference_id: referenceId,
+          form_data: enhancedFormDataSnapshot,
+          current_step: currentStep,
+          last_updated: new Date().toISOString(),
+          status: 'draft',
+          uploaded_files_metadata: uploadedFilesMetadata,
+          webhook_responses: webhookResponses,
+          signatures: signatures,
+          encrypted_documents: encryptedDocuments,
+        };
+
+        const saveResult = await dynamoDBService.saveDraft(draftData);
+        if (saveResult) {
+          console.log('💾 Draft saved to DynamoDB after adding occupant');
+        } else {
+          console.warn('⚠️ Failed to save draft to DynamoDB after adding occupant');
+        }
+      } catch (error) {
+        console.error('❌ Error saving draft after adding occupant:', error);
+      }
+    }
   };
 
-  const removeOccupant = (index: number) => {
+  const removeOccupant = async (index: number) => {
     setFormData((prev: any) => ({
       ...prev,
       occupants: prev.occupants.filter((_: any, i: number) => i !== index)
     }));
+
+    // Save draft to DynamoDB after removing occupant
+    if (user?.applicantId) {
+      try {
+        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
+        const enhancedFormDataSnapshot = {
+          ...formDataSnapshot,
+          applicantId: user.applicantId,
+          webhookSummary: getWebhookSummary()
+        };
+
+        const draftData: DraftData = {
+          applicantId: user.applicantId,
+          reference_id: referenceId,
+          form_data: enhancedFormDataSnapshot,
+          current_step: currentStep,
+          last_updated: new Date().toISOString(),
+          status: 'draft',
+          uploaded_files_metadata: uploadedFilesMetadata,
+          webhook_responses: webhookResponses,
+          signatures: signatures,
+          encrypted_documents: encryptedDocuments,
+        };
+
+        const saveResult = await dynamoDBService.saveDraft(draftData);
+        if (saveResult) {
+          console.log('💾 Draft saved to DynamoDB after removing occupant');
+        } else {
+          console.warn('⚠️ Failed to save draft to DynamoDB after removing occupant');
+        }
+      } catch (error) {
+        console.error('❌ Error saving draft after removing occupant:', error);
+      }
+    }
   };
 
-  const updateOccupant = (index: number, field: string, value: any) => {
+  const updateOccupant = async (index: number, field: string, value: any) => {
     setFormData((prev: any) => ({
       ...prev,
       occupants: prev.occupants.map((occupant: any, i: number) => 
         i === index ? { ...occupant, [field]: value } : occupant
       )
     }));
+
+    // Save draft to DynamoDB after occupant update
+    if (user?.applicantId) {
+      try {
+        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
+        const enhancedFormDataSnapshot = {
+          ...formDataSnapshot,
+          applicantId: user.applicantId,
+          webhookSummary: getWebhookSummary()
+        };
+
+        const draftData: DraftData = {
+          applicantId: user.applicantId,
+          reference_id: referenceId,
+          form_data: enhancedFormDataSnapshot,
+          current_step: currentStep,
+          last_updated: new Date().toISOString(),
+          status: 'draft',
+          uploaded_files_metadata: uploadedFilesMetadata,
+          webhook_responses: webhookResponses,
+          signatures: signatures,
+          encrypted_documents: encryptedDocuments,
+        };
+
+        const saveResult = await dynamoDBService.saveDraft(draftData);
+        if (saveResult) {
+          console.log('💾 Draft saved to DynamoDB after occupant update for:', index, field);
+        } else {
+          console.warn('⚠️ Failed to save draft to DynamoDB after occupant update');
+        }
+      } catch (error) {
+        console.error('❌ Error saving draft after occupant update:', error);
+      }
+    }
   };
 
   const handleOccupantDocumentChange = async (index: number, documentType: string, files: File[]) => {
@@ -1175,21 +1489,39 @@ export function ApplicationForm() {
         } : occupant
       )
     }));
-    
-    // Save file upload draft for occupant
-    try {
-      const metadata = {
-        file_name: files.map(f => f.name),
-        file_size: files.map(f => f.size),
-        mime_type: files.map(f => f.type),
-        upload_date: new Date().toISOString()
-      };
-      
-      await saveFileUploadDraft(`occupant_${index}_${documentType}`, Array.from(files), metadata);
-      console.log(`✅ File upload draft saved for occupant ${index + 1} ${documentType}`);
-    } catch (draftError) {
-      console.warn('⚠️ Failed to save occupant file upload draft:', draftError);
-      // Continue with document handling even if draft save fails
+
+    // Save draft to DynamoDB after occupant document change
+    if (user?.applicantId) {
+      try {
+        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
+        const enhancedFormDataSnapshot = {
+          ...formDataSnapshot,
+          applicantId: user.applicantId,
+          webhookSummary: getWebhookSummary()
+        };
+
+        const draftData: DraftData = {
+          applicantId: user.applicantId,
+          reference_id: referenceId,
+          form_data: enhancedFormDataSnapshot,
+          current_step: currentStep,
+          last_updated: new Date().toISOString(),
+          status: 'draft',
+          uploaded_files_metadata: uploadedFilesMetadata,
+          webhook_responses: webhookResponses,
+          signatures: signatures,
+          encrypted_documents: encryptedDocuments,
+        };
+
+        const saveResult = await dynamoDBService.saveDraft(draftData);
+        if (saveResult) {
+          console.log('💾 Draft saved to DynamoDB after occupant document change for:', index, documentType);
+        } else {
+          console.warn('⚠️ Failed to save draft to DynamoDB after occupant document change');
+        }
+      } catch (error) {
+        console.error('❌ Error saving draft after occupant document change:', error);
+      }
     }
   };
 
@@ -1200,14 +1532,7 @@ export function ApplicationForm() {
     setIsSubmitting(true);
     
     try {
-      // Save final form draft before submission
-      try {
-        await saveFormDraft(formData, documents, signatures, uploadedFilesMetadata, webhookResponses);
-        console.log('✅ Final form draft saved before submission');
-      } catch (draftError) {
-        console.warn('⚠️ Failed to save final form draft:', draftError);
-        // Continue with submission even if draft save fails
-      }
+
       
       // ENSURE FULL METADATA IS AVAILABLE FOR WEBHOOK
       
@@ -1838,6 +2163,20 @@ export function ApplicationForm() {
         console.log('🔗 Reference ID:', submissionResult.reference_id);
         console.log('=== END SERVER SUBMISSION ===');
 
+        // Mark draft as submitted in DynamoDB
+        if (user?.applicantId) {
+          try {
+            const markSubmittedResult = await dynamoDBService.markAsSubmitted(user.applicantId, referenceId);
+            if (markSubmittedResult) {
+              console.log('✅ Draft marked as submitted in DynamoDB');
+            } else {
+              console.warn('⚠️ Failed to mark draft as submitted in DynamoDB');
+            }
+          } catch (error) {
+            console.error('❌ Error marking draft as submitted:', error);
+          }
+        }
+
         // Note: Encrypted data and files are now sent separately via webhooks
         console.log('Application submitted successfully. Files and encrypted data sent via webhooks.');
 
@@ -2050,7 +2389,7 @@ export function ApplicationForm() {
             },
             
             // Application IDs
-            application_id: user?.applicantId || 'unknown',
+            applicantId: user?.applicantId || 'unknown',
             reference_id: referenceId,
             
 
@@ -2213,23 +2552,23 @@ export function ApplicationForm() {
     }
   }, [formData.applicant?.dob, form]);
 
-  const copyAddressToGuarantor = () => {
+  const copyAddressToGuarantor = async () => {
     if (sameAddressGuarantor) {
       const applicantAddress = formData.applicant;
-      updateFormData('guarantor', 'address', applicantAddress.address);
-      updateFormData('guarantor', 'city', applicantAddress.city);
-      updateFormData('guarantor', 'state', applicantAddress.state);
-      updateFormData('guarantor', 'zip', applicantAddress.zip);
-      updateFormData('guarantor', 'landlordName', applicantAddress.landlordName);
-      updateFormData('guarantor', 'landlordAddressLine1', applicantAddress.landlordAddressLine1);
-      updateFormData('guarantor', 'landlordAddressLine2', applicantAddress.landlordAddressLine2);
-      updateFormData('guarantor', 'landlordCity', applicantAddress.landlordCity);
-      updateFormData('guarantor', 'landlordState', applicantAddress.landlordState);
-      updateFormData('guarantor', 'landlordZipCode', applicantAddress.landlordZipCode);
-      updateFormData('guarantor', 'landlordPhone', applicantAddress.landlordPhone);
-      updateFormData('guarantor', 'landlordEmail', applicantAddress.landlordEmail);
-      updateFormData('guarantor', 'currentRent', applicantAddress.currentRent);
-      updateFormData('guarantor', 'lengthAtAddress', applicantAddress.lengthAtAddress);
+      await updateFormData('guarantor', 'address', applicantAddress.address);
+      await updateFormData('guarantor', 'city', applicantAddress.city);
+      await updateFormData('guarantor', 'state', applicantAddress.state);
+      await updateFormData('guarantor', 'zip', applicantAddress.zip);
+      await updateFormData('guarantor', 'landlordName', applicantAddress.landlordName);
+      await updateFormData('guarantor', 'landlordAddressLine1', applicantAddress.landlordAddressLine1);
+      await updateFormData('guarantor', 'landlordAddressLine2', applicantAddress.landlordAddressLine2);
+      await updateFormData('guarantor', 'landlordCity', applicantAddress.landlordCity);
+      await updateFormData('guarantor', 'landlordState', applicantAddress.landlordState);
+      await updateFormData('guarantor', 'landlordZipCode', applicantAddress.landlordZipCode);
+      await updateFormData('guarantor', 'landlordPhone', applicantAddress.landlordPhone);
+      await updateFormData('guarantor', 'landlordEmail', applicantAddress.landlordEmail);
+      await updateFormData('guarantor', 'currentRent', applicantAddress.currentRent);
+      await updateFormData('guarantor', 'lengthAtAddress', applicantAddress.lengthAtAddress);
     }
   };
 
@@ -4573,51 +4912,7 @@ export function ApplicationForm() {
               {renderStep()}
             </div>
 
-            {/* Draft Status Indicator */}
-            <div className="flex items-center justify-between pt-4 pb-2">
-              <div className="flex items-center space-x-4">
-                {isDraftLoading && (
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                    <span>Loading draft...</span>
-                  </div>
-                )}
-                {draftError && (
-                  <div className="flex items-center space-x-2 text-sm text-red-600">
-                    <span>⚠️ Draft error: {draftError}</span>
-                  </div>
-                )}
-                {lastSaved && (
-                  <div className="flex items-center space-x-2 text-sm text-green-600">
-                    <span>✅ Last saved: {new Date(lastSaved).toLocaleTimeString()}</span>
-                  </div>
-                )}
-                {isAutoSaving && (
-                  <div className="flex items-center space-x-2 text-sm text-blue-600">
-                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                    <span>Auto-saving...</span>
-                  </div>
-                )}
-                {/* Temporary status message */}
-                <div className="flex items-center space-x-2 text-sm text-orange-600">
-                  <span>⚠️ Drafts temporarily disabled (GraphQL schema mismatch)</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                {currentDraft && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={deleteDraft}
-                    className="text-xs"
-                  >
-                    Clear Draft
-                  </Button>
-                )}
-              </div>
-            </div>
+
 
             {/* Navigation Buttons */}
             <div className="flex items-center justify-between pt-6 border-t border-gray-200">
