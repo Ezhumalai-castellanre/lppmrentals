@@ -282,6 +282,8 @@ export function ApplicationForm() {
 
 
 
+
+
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
     defaultValues: {
@@ -354,6 +356,61 @@ export function ApplicationForm() {
   const getCurrentUserZoneinfo = useCallback(() => {
     return user?.zoneinfo || user?.applicantId;
   }, [user?.zoneinfo, user?.applicantId]);
+
+  // Auto-map user information to Primary Applicant Information
+  useEffect(() => {
+    if (user) {
+      try {
+        console.log('🔄 Auto-mapping user information to Primary Applicant Information:', user);
+        
+        // Map user name (combine given_name and family_name if available, fallback to name)
+        let fullName = '';
+        if (user.given_name && user.family_name) {
+          fullName = `${user.given_name} ${user.family_name}`;
+        } else if (user.name) {
+          fullName = user.name;
+        }
+        
+        if (fullName) {
+          form.setValue('applicantName', fullName);
+          updateFormData('applicant', 'name', fullName);
+          console.log('✅ Mapped user name:', fullName);
+        } else {
+          console.log('ℹ️ No user name available for auto-mapping');
+        }
+        
+        // Map user email
+        if (user.email) {
+          form.setValue('applicantEmail', user.email);
+          updateFormData('applicant', 'email', user.email);
+          console.log('✅ Mapped user email:', user.email);
+        } else {
+          console.log('ℹ️ No user email available for auto-mapping');
+        }
+        
+        // Map user phone number
+        if (user.phone_number) {
+          form.setValue('applicantPhone', user.phone_number);
+          updateFormData('applicant', 'phone', user.phone_number);
+          console.log('✅ Mapped user phone:', user.phone_number);
+        } else {
+          console.log('ℹ️ No user phone available for auto-mapping');
+        }
+        
+        console.log('✅ Auto-mapping completed for user:', user.username);
+        console.log('📊 Auto-mapping summary:', {
+          name: !!fullName,
+          email: !!user.email,
+          phone: !!user.phone_number
+        });
+      } catch (error) {
+        console.error('❌ Error during auto-mapping:', error);
+        // Continue with form functionality even if auto-mapping fails
+      }
+    } else {
+      console.log('ℹ️ No user available for auto-mapping');
+    }
+  }, [user, form]); // Dependencies: user (when user changes) and form (for setValue)
 
   // Ensure form data always uses current user's zoneinfo
   useEffect(() => {
@@ -3168,6 +3225,39 @@ export function ApplicationForm() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-8">
+              {/* Auto-mapping notification */}
+              {user && (user.email || user.phone_number || user.name || (user.given_name && user.family_name)) && (
+                <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-blue-800">
+                      <UserCheck className="w-4 h-4 mr-2" />
+                      <span className="text-sm font-medium">
+                        Your information has been automatically filled from your account
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // Clear auto-filled data
+                        form.setValue('applicantName', '');
+                        form.setValue('applicantEmail', '');
+                        form.setValue('applicantPhone', '');
+                        updateFormData('applicant', 'name', '');
+                        updateFormData('applicant', 'email', '');
+                        updateFormData('applicant', 'phone', '');
+                        toast({
+                          title: "Auto-filled data cleared",
+                          description: "You can now enter your information manually",
+                        });
+                      }}
+                      className="text-blue-600 border-blue-300 hover:bg-blue-100"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                 <div className="col-span-1 md:col-span-2">
                   <FormField
@@ -3175,7 +3265,9 @@ export function ApplicationForm() {
                     name="applicantName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="mb-0.5">Full Name</FormLabel>
+                        <FormLabel className="mb-0.5">
+                          Full Name
+                        </FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Enter full name" 
