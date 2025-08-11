@@ -71,14 +71,8 @@ export function useDraftStorage(): UseDraftStorageReturn {
         setHasUnsavedChanges(false);
         console.log('📋 Draft loaded successfully:', draft);
       } else {
-        // Try to load from fallback storage
-        const fallbackDraft = await draftStorage.loadDraftFromFallback();
-        if (fallbackDraft) {
-          setCurrentDraft(fallbackDraft);
-          setLastSaved(fallbackDraft.lastUpdated);
-          setHasUnsavedChanges(false);
-          console.log('📋 Draft loaded from fallback storage:', fallbackDraft);
-        }
+        // No fallback storage - draft not found
+        console.log('📋 No draft found');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load draft';

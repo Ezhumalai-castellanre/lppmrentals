@@ -260,13 +260,7 @@ export class DraftStorageService {
       console.log('⚠️ GraphQL operations temporarily disabled due to schema mismatch');
       console.log('🔍 Would query for applicantId:', id);
       
-      // Try to load from localStorage fallback
-      const fallbackDraft = await this.loadDraftFromFallback(id);
-      if (fallbackDraft) {
-        console.log('📋 Draft loaded from localStorage fallback');
-        return fallbackDraft;
-      }
-      
+      // No localStorage fallback - only GraphQL operations
       return null;
     } catch (error) {
       console.error('❌ Failed to get draft:', error);
@@ -302,9 +296,8 @@ export class DraftStorageService {
       console.log('⚠️ GraphQL operations temporarily disabled due to schema mismatch');
       console.log('🗑️ Would delete draft for applicantId:', id);
       
-      // Clear from localStorage
-      localStorage.removeItem(`draft_${id}`);
-      console.log('✅ Draft cleared from localStorage');
+      // No localStorage fallback - only GraphQL operations
+      console.log('✅ Draft delete operation prepared for GraphQL');
     } catch (error) {
       console.error('❌ Failed to delete draft:', error);
       throw error;
@@ -323,38 +316,18 @@ export class DraftStorageService {
         timestamp: draftData.lastUpdated
       });
       
-      // Store the full draft data in localStorage as fallback
-      localStorage.setItem(`draft_${draftData.applicantId}`, JSON.stringify(draftData));
-      
-      console.log('✅ Draft saved to localStorage (GraphQL temporarily disabled)', {
+      // No localStorage fallback - only GraphQL operations
+      console.log('✅ Draft data prepared for GraphQL (no localStorage fallback)', {
         applicantId: draftData.applicantId,
         timestamp: draftData.lastUpdated
       });
     } catch (error) {
       console.error('❌ Failed to save draft to database:', error);
-      
-      // Fallback to localStorage only
-      localStorage.setItem(`draft_${draftData.applicantId}`, JSON.stringify(draftData));
-      console.log('⚠️ Draft saved to localStorage only (database failed)');
+      throw error; // Re-throw error since no fallback
     }
   }
 
-  // Load draft from localStorage fallback
-  async loadDraftFromFallback(applicantId?: string): Promise<DraftData | null> {
-    try {
-      const id = applicantId || await this.getApplicantId();
-      const stored = localStorage.getItem(`draft_${id}`);
-      
-      if (stored) {
-        return JSON.parse(stored);
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('❌ Failed to load draft from fallback:', error);
-      return null;
-    }
-  }
+
 
   // Auto-save draft every few seconds
   startAutoSave(formData: any, currentStep: number, intervalMs: number = 5000): () => void {

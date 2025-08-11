@@ -4600,7 +4600,7 @@ export function ApplicationForm() {
                 )}
                 {/* Temporary status message */}
                 <div className="flex items-center space-x-2 text-sm text-orange-600">
-                  <span>⚠️ Drafts saved to localStorage (GraphQL schema mismatch)</span>
+                  <span>⚠️ Drafts temporarily disabled (GraphQL schema mismatch)</span>
                 </div>
               </div>
               
