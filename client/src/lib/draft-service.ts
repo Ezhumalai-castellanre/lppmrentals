@@ -1,200 +1,263 @@
 export interface DraftData {
+  // Core metadata
   applicantId: string;
   currentStep: number;
-  lastSaved: string;
   isComplete: boolean;
-  
-  // Form data organized by step
-  applicationInfo?: {
-    buildingAddress?: string;
-    apartmentNumber?: string;
-    moveInDate?: string;
-    monthlyRent?: number;
-    apartmentType?: string;
-    howDidYouHear?: string;
-    howDidYouHearOther?: string;
-  };
-  
-  primaryApplicant?: {
-    applicantName?: string;
-    applicantDob?: string;
-    applicantSsn?: string;
-    applicantPhone?: string;
-    applicantEmail?: string;
-    applicantLicense?: string;
-    applicantLicenseState?: string;
-    applicantAddress?: string;
-    applicantCity?: string;
-    applicantState?: string;
-    applicantZip?: string;
-    applicantLengthAtAddressYears?: number;
-    applicantLengthAtAddressMonths?: number;
-    applicantLandlordName?: string;
-    applicantLandlordAddressLine1?: string;
-    applicantLandlordAddressLine2?: string;
-    applicantLandlordCity?: string;
-    applicantLandlordState?: string;
-    applicantLandlordZipCode?: string;
-    applicantLandlordPhone?: string;
-    applicantLandlordEmail?: string;
-    applicantCurrentRent?: number;
-    applicantReasonForMoving?: string;
-  };
-  
-  primaryApplicantFinancial?: {
-    applicantEmploymentType?: string;
-    applicantPosition?: string;
-    applicantStartDate?: string;
-    bankInformation?: {
-      applicant?: {
-        bankRecords?: Array<{
-          bankName: string;
-          accountType: string;
-        }>;
-        totalBankRecords?: number;
-        hasBankRecords?: boolean;
-      };
-    };
-  };
-  
-  primaryApplicantDocuments?: {
-    documents?: {
-      applicant?: Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
-    };
-  };
-  
-  coApplicant?: {
-    hasCoApplicant?: boolean;
-    coApplicantName?: string;
-    coApplicantRelationship?: string;
-    coApplicantDob?: string;
-    coApplicantSsn?: string;
-    coApplicantPhone?: string;
-    coApplicantEmail?: string;
-    coApplicantLicense?: string;
-    coApplicantLicenseState?: string;
-    coApplicantCity?: string;
-    coApplicantState?: string;
-    coApplicantZip?: string;
-    coApplicantLengthAtAddressYears?: number;
-    coApplicantLengthAtAddressMonths?: number;
-    coApplicantLandlordName?: string;
-    coApplicantLandlordAddressLine1?: string;
-    coApplicantLandlordAddressLine2?: string;
-    coApplicantLandlordCity?: string;
-    coApplicantLandlordState?: string;
-    coApplicantLandlordZipCode?: string;
-    coApplicantLandlordPhone?: string;
-    coApplicantLandlordEmail?: string;
-    coApplicantCurrentRent?: number;
-    coApplicantReasonForMoving?: string;
-  };
-  
-  coApplicantFinancial?: {
-    coApplicantEmploymentType?: string;
-    coApplicantPosition?: string;
-    coApplicantStartDate?: string;
-    bankInformation?: {
-      coApplicant?: {
-        bankRecords?: Array<{
-          bankName: string;
-          accountType: string;
-        }>;
-        totalBankRecords?: number;
-        hasBankRecords?: boolean;
-      };
-    };
-  };
-  
-  coApplicantDocuments?: {
-    documents?: {
-      coApplicant?: Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
-    };
-  };
-  
-  otherOccupants?: {
-    otherOccupants?: Array<{
-      name: string;
-      relationship: string;
-      dob: string;
-      ssn: string;
-      license: string;
-      age: number;
-      ssnDocument?: any;
-      ssnEncryptedDocument?: any;
+  lastSaved: string;
+  version: string;
+  compressed: boolean;
+
+  // Step 1: Application Info
+  buildingAddress?: string;
+  apartmentNumber?: string;
+  moveInDate?: string;
+  monthlyRent?: number;
+  apartmentType?: string;
+  howDidYouHear?: string;
+
+  // Step 2: Primary Applicant
+  applicantName?: string;
+  applicantDob?: string;
+  applicantSsn?: string;
+  applicantPhone?: string;
+  applicantEmail?: string;
+  applicantLicense?: string;
+  applicantLicenseState?: string;
+  applicantAddress?: string;
+  applicantCity?: string;
+  applicantState?: string;
+  applicantZip?: string;
+  applicantLengthAtAddressYears?: number;
+  applicantLengthAtAddressMonths?: number;
+  applicantLandlordName?: string;
+  applicantLandlordAddressLine1?: string;
+  applicantLandlordAddressLine2?: string;
+  applicantLandlordCity?: string;
+  applicantLandlordState?: string;
+  applicantLandlordZipCode?: string;
+  applicantLandlordPhone?: string;
+  applicantLandlordEmail?: string;
+  applicantCurrentRent?: number;
+  applicantReasonForMoving?: string;
+
+  // Step 3: Primary Applicant Financial
+  applicantEmploymentType?: string;
+  applicantPosition?: string;
+  applicantStartDate?: string | null;
+  applicantBankInformation?: {
+    bankRecords: Array<{
+      bankName: string;
+      accountType: string;
     }>;
-    documents?: {
-      otherOccupants?: Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
-    };
+    totalBankRecords: number;
+    hasBankRecords: boolean;
   };
-  
-  guarantor?: {
-    hasGuarantor?: boolean;
-    guarantorName?: string;
-    guarantorRelationship?: string;
-    guarantorDob?: string;
-    guarantorSsn?: string;
-    guarantorPhone?: string;
-    guarantorEmail?: string;
-    guarantorLicense?: string;
-    guarantorLicenseState?: string;
-    guarantorAddress?: string;
-    guarantorCity?: string;
-    guarantorState?: string;
-    guarantorZip?: string;
-    guarantorLengthAtAddressYears?: number;
-    guarantorLengthAtAddressMonths?: number;
-    guarantorLandlordName?: string;
-    guarantorLandlordAddressLine1?: string;
-    guarantorLandlordAddressLine2?: string;
-    guarantorLandlordCity?: string;
-    guarantorLandlordState?: string;
-    guarantorLandlordZipCode?: string;
-    guarantorLandlordPhone?: string;
-    guarantorLandlordEmail?: string;
-    guarantorCurrentRent?: number;
-    guarantorReasonForMoving?: string;
+
+  // Step 4: Primary Applicant Documents
+  applicantDocuments?: {
+    photo_id?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    pay_stubs?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    bank_statements?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    tax_returns?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    social_security?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
   };
-  
-  guarantorFinancial?: {
-    guarantorEmploymentType?: string;
-    guarantorPosition?: string;
-    guarantorStartDate?: string;
-    bankInformation?: {
-      guarantor?: {
-        bankRecords?: Array<{
-          bankName: string;
-          accountType: string;
-        }>;
-        totalBankRecords?: number;
-        hasBankRecords?: boolean;
-      };
-    };
+
+  // Step 5: Co-Applicant (conditional)
+  hasCoApplicant?: boolean;
+  coApplicantName?: string;
+  coApplicantRelationship?: string;
+  coApplicantDob?: string;
+  coApplicantSsn?: string;
+  coApplicantPhone?: string;
+  coApplicantEmail?: string;
+  coApplicantLicense?: string;
+  coApplicantLicenseState?: string;
+  coApplicantCity?: string;
+  coApplicantState?: string;
+  coApplicantZip?: string;
+  coApplicantLengthAtAddressYears?: number;
+  coApplicantLengthAtAddressMonths?: number;
+  coApplicantLandlordName?: string;
+  coApplicantLandlordAddressLine1?: string;
+  coApplicantLandlordAddressLine2?: string;
+  coApplicantLandlordCity?: string;
+  coApplicantLandlordState?: string;
+  coApplicantLandlordZipCode?: string;
+  coApplicantLandlordPhone?: string;
+  coApplicantLandlordEmail?: string;
+  coApplicantCurrentRent?: number;
+  coApplicantReasonForMoving?: string;
+
+  // Step 6: Co-Applicant Financial (conditional)
+  coApplicantEmploymentType?: string;
+  coApplicantPosition?: string;
+  coApplicantStartDate?: string | null;
+  coApplicantBankInformation?: {
+    bankRecords: Array<{
+      bankName: string;
+      accountType: string;
+    }>;
+    totalBankRecords: number;
+    hasBankRecords: boolean;
   };
-  
+
+  // Step 7: Co-Applicant Documents (conditional)
+  coApplicantDocuments?: {
+    photo_id?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    pay_stubs?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    bank_statements?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    tax_returns?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    social_security?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+  };
+
+  // Step 8: Other Occupants
+  otherOccupants?: Array<{
+    name: string;
+    relationship: string;
+    dob: string;
+    ssn: string;
+    license: string;
+    age: number;
+    ssnDocument?: string | null;
+    ssnEncryptedDocument?: string | null;
+  }>;
+  otherOccupantsDocuments?: {
+    social_security1?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    social_security2?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    social_security3?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    social_security4?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+  };
+
+  // Step 9: Guarantor (conditional)
+  hasGuarantor?: boolean;
+  guarantorName?: string;
+  guarantorRelationship?: string;
+  guarantorDob?: string;
+  guarantorSsn?: string;
+  guarantorPhone?: string;
+  guarantorEmail?: string;
+  guarantorLicense?: string;
+  guarantorLicenseState?: string;
+  guarantorAddress?: string;
+  guarantorCity?: string;
+  guarantorState?: string;
+  guarantorZip?: string;
+  guarantorLengthAtAddressYears?: number;
+  guarantorLengthAtAddressMonths?: number;
+  guarantorLandlordName?: string;
+  guarantorLandlordAddressLine1?: string;
+  guarantorLandlordAddressLine2?: string;
+  guarantorLandlordCity?: string;
+  guarantorLandlordState?: string;
+  guarantorLandlordZipCode?: string;
+  guarantorLandlordPhone?: string;
+  guarantorLandlordEmail?: string;
+  guarantorCurrentRent?: number;
+  guarantorReasonForMoving?: string;
+
+  // Step 10: Guarantor Financial (conditional)
+  guarantorEmploymentType?: string;
+  guarantorPosition?: string;
+  guarantorStartDate?: string | null;
+  guarantorBankInformation?: {
+    bankRecords: Array<{
+      bankName: string;
+      accountType: string;
+    }>;
+    totalBankRecords: number;
+    hasBankRecords: boolean;
+  };
+
+  // Step 11: Guarantor Documents (conditional)
   guarantorDocuments?: {
-    documents?: {
-      guarantor?: Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
-    };
+    photo_id?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    pay_stubs?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    bank_statements?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    tax_returns?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
+    social_security?: Array<{
+      filename: string;
+      webhookbodyUrl: string;
+    }>;
   };
-  
+
+  // Step 12: Digital Signatures
   signatures?: {
     applicant?: string;
     coApplicant?: string;
     guarantor?: string;
   };
-  
   signatureTimestamps?: {
     applicant?: string;
     coApplicant?: string;
     guarantor?: string;
   };
-  
-  // Webhook responses for file uploads
-  webhookResponses?: Record<string, any>;
-  
-  // Uploaded files metadata
-  uploadedFilesMetadata?: Record<string, any[]>;
+
+  // File management (legacy support)
+  webhookResponses?: Record<string, string>;
+  uploadedFilesMetadata?: Record<string, Array<{
+    file_name: string;
+    file_size: number;
+    mime_type: string;
+    upload_date: string;
+  }>>;
+
+  // Legacy field names for backward compatibility
+  documents?: Record<string, any>;
+  bankInformation?: Record<string, any>;
 }
 
 export class DraftService {
@@ -283,21 +346,106 @@ export class DraftService {
       const draftData: DraftData = {
         applicantId: result.applicantId,
         currentStep: result.currentStep || 0,
-        lastSaved: result.lastSaved,
         isComplete: result.isComplete || false,
+        lastSaved: result.lastSaved,
+        version: result.version || '1.0',
+        compressed: result.compressed || false,
         
-        // Map form data from the response
-        applicationInfo: result.formData?.application || result.formData?.applicationInfo,
-        primaryApplicant: result.formData?.applicant || result.formData?.primaryApplicant,
-        primaryApplicantFinancial: result.formData?.applicantFinancial || result.formData?.primaryApplicantFinancial,
-        primaryApplicantDocuments: result.formData?.applicantDocuments || result.formData?.primaryApplicantDocuments,
-        coApplicant: result.formData?.coApplicant || result.formData?.coApplicant,
-        coApplicantFinancial: result.formData?.coApplicantFinancial || result.formData?.coApplicantFinancial,
-        coApplicantDocuments: result.formData?.coApplicantDocuments || result.formData?.coApplicantDocuments,
-        otherOccupants: result.formData?.otherOccupants || result.formData?.otherOccupants,
-        guarantor: result.formData?.guarantor || result.formData?.guarantor,
-        guarantorFinancial: result.formData?.guarantorFinancial || result.formData?.guarantorFinancial,
-        guarantorDocuments: result.formData?.guarantorDocuments || result.formData?.guarantorDocuments,
+        // Map form data from the response - extract from formData field
+        buildingAddress: result.formData?.buildingAddress || result.buildingAddress,
+        apartmentNumber: result.formData?.apartmentNumber || result.apartmentNumber,
+        moveInDate: result.formData?.moveInDate || result.moveInDate,
+        monthlyRent: result.formData?.monthlyRent || result.monthlyRent,
+        apartmentType: result.formData?.apartmentType || result.apartmentType,
+        howDidYouHear: result.formData?.howDidYouHear || result.howDidYouHear,
+        applicantName: result.formData?.applicantName || result.applicantName,
+        applicantDob: result.formData?.applicantDob || result.applicantDob,
+        applicantSsn: result.formData?.applicantSsn || result.applicantSsn,
+        applicantPhone: result.formData?.applicantPhone || result.applicantPhone,
+        applicantEmail: result.formData?.applicantEmail || result.applicantEmail,
+        applicantLicense: result.formData?.applicantLicense || result.applicantLicense,
+        applicantLicenseState: result.formData?.applicantLicenseState || result.applicantLicenseState,
+        applicantAddress: result.formData?.applicantAddress || result.applicantAddress,
+        applicantCity: result.formData?.applicantCity || result.applicantCity,
+        applicantState: result.formData?.applicantState || result.applicantState,
+        applicantZip: result.formData?.applicantZip || result.applicantZip,
+        applicantLengthAtAddressYears: result.formData?.applicantLengthAtAddressYears || result.applicantLengthAtAddressYears,
+        applicantLengthAtAddressMonths: result.formData?.applicantLengthAtAddressMonths || result.applicantLengthAtAddressMonths,
+        applicantLandlordName: result.formData?.applicantLandlordName || result.applicantLandlordName,
+        applicantLandlordAddressLine1: result.formData?.applicantLandlordAddressLine1 || result.applicantLandlordAddressLine1,
+        applicantLandlordAddressLine2: result.formData?.applicantLandlordAddressLine2 || result.applicantLandlordAddressLine2,
+        applicantLandlordCity: result.formData?.applicantLandlordCity || result.applicantLandlordCity,
+        applicantLandlordState: result.formData?.applicantLandlordState || result.applicantLandlordState,
+        applicantLandlordZipCode: result.formData?.applicantLandlordZipCode || result.applicantLandlordZipCode,
+        applicantLandlordPhone: result.formData?.applicantLandlordPhone || result.applicantLandlordPhone,
+        applicantLandlordEmail: result.formData?.applicantLandlordEmail || result.applicantLandlordEmail,
+        applicantCurrentRent: result.formData?.applicantCurrentRent || result.applicantCurrentRent,
+        applicantReasonForMoving: result.formData?.applicantReasonForMoving || result.applicantReasonForMoving,
+        applicantEmploymentType: result.formData?.applicantEmploymentType || result.applicantEmploymentType,
+        applicantPosition: result.formData?.applicantPosition || result.applicantPosition,
+        applicantStartDate: result.formData?.applicantStartDate || result.applicantStartDate,
+        applicantBankInformation: result.formData?.applicantBankInformation || result.applicantBankInformation,
+        applicantDocuments: result.formData?.applicantDocuments || result.applicantDocuments,
+        hasCoApplicant: result.formData?.hasCoApplicant || result.hasCoApplicant,
+        coApplicantName: result.formData?.coApplicantName || result.coApplicantName,
+        coApplicantRelationship: result.formData?.coApplicantRelationship || result.coApplicantRelationship,
+        coApplicantDob: result.formData?.coApplicantDob || result.coApplicantDob,
+        coApplicantSsn: result.formData?.coApplicantSsn || result.coApplicantSsn,
+        coApplicantPhone: result.formData?.coApplicantPhone || result.coApplicantPhone,
+        coApplicantEmail: result.formData?.coApplicantEmail || result.coApplicantEmail,
+        coApplicantLicense: result.formData?.coApplicantLicense || result.coApplicantLicense,
+        coApplicantLicenseState: result.formData?.coApplicantLicenseState || result.coApplicantLicenseState,
+        coApplicantCity: result.formData?.coApplicantCity || result.coApplicantCity,
+        coApplicantState: result.formData?.coApplicantState || result.coApplicantState,
+        coApplicantZip: result.formData?.coApplicantZip || result.coApplicantZip,
+        coApplicantLengthAtAddressYears: result.formData?.coApplicantLengthAtAddressYears || result.coApplicantLengthAtAddressYears,
+        coApplicantLengthAtAddressMonths: result.formData?.coApplicantLengthAtAddressMonths || result.coApplicantLengthAtAddressMonths,
+        coApplicantLandlordName: result.formData?.coApplicantLandlordName || result.coApplicantLandlordName,
+        coApplicantLandlordAddressLine1: result.formData?.coApplicantLandlordAddressLine1 || result.coApplicantLandlordAddressLine1,
+        coApplicantLandlordAddressLine2: result.formData?.coApplicantLandlordAddressLine2 || result.coApplicantLandlordAddressLine2,
+        coApplicantLandlordCity: result.formData?.coApplicantLandlordCity || result.coApplicantLandlordCity,
+        coApplicantLandlordState: result.formData?.coApplicantLandlordState || result.coApplicantLandlordState,
+        coApplicantLandlordZipCode: result.formData?.coApplicantLandlordZipCode || result.coApplicantLandlordZipCode,
+        coApplicantLandlordPhone: result.formData?.coApplicantLandlordPhone || result.coApplicantLandlordPhone,
+        coApplicantLandlordEmail: result.formData?.coApplicantLandlordEmail || result.coApplicantLandlordEmail,
+        coApplicantCurrentRent: result.formData?.coApplicantCurrentRent || result.coApplicantCurrentRent,
+        coApplicantReasonForMoving: result.formData?.coApplicantReasonForMoving || result.coApplicantReasonForMoving,
+        coApplicantEmploymentType: result.formData?.coApplicantEmploymentType || result.coApplicantEmploymentType,
+        coApplicantPosition: result.formData?.coApplicantPosition || result.coApplicantPosition,
+        coApplicantStartDate: result.formData?.coApplicantStartDate || result.coApplicantStartDate,
+        coApplicantBankInformation: result.formData?.coApplicantBankInformation || result.coApplicantBankInformation,
+        coApplicantDocuments: result.formData?.coApplicantDocuments || result.coApplicantDocuments,
+        otherOccupants: result.formData?.otherOccupants || result.otherOccupants,
+        hasGuarantor: result.formData?.hasGuarantor || result.hasGuarantor,
+        guarantorName: result.formData?.guarantorName || result.guarantorName,
+        guarantorRelationship: result.formData?.guarantorRelationship || result.guarantorRelationship,
+        guarantorDob: result.formData?.guarantorDob || result.guarantorDob,
+        guarantorSsn: result.formData?.guarantorSsn || result.guarantorSsn,
+        guarantorPhone: result.formData?.guarantorPhone || result.guarantorPhone,
+        guarantorEmail: result.formData?.guarantorEmail || result.guarantorEmail,
+        guarantorLicense: result.formData?.guarantorLicense || result.guarantorLicense,
+        guarantorLicenseState: result.formData?.guarantorLicenseState || result.guarantorLicenseState,
+        guarantorAddress: result.formData?.guarantorAddress || result.guarantorAddress,
+        guarantorCity: result.formData?.guarantorCity || result.guarantorCity,
+        guarantorState: result.formData?.guarantorState || result.guarantorState,
+        guarantorZip: result.formData?.guarantorZip || result.guarantorZip,
+        guarantorLengthAtAddressYears: result.formData?.guarantorLengthAtAddressYears || result.guarantorLengthAtAddressYears,
+        guarantorLengthAtAddressMonths: result.formData?.guarantorLengthAtAddressMonths || result.guarantorLengthAtAddressMonths,
+        guarantorLandlordName: result.formData?.guarantorLandlordName || result.guarantorLandlordName,
+        guarantorLandlordAddressLine1: result.formData?.guarantorLandlordAddressLine1 || result.guarantorLandlordAddressLine1,
+        guarantorLandlordAddressLine2: result.formData?.guarantorLandlordAddressLine2 || result.guarantorLandlordAddressLine2,
+        guarantorLandlordCity: result.formData?.guarantorLandlordCity || result.guarantorLandlordCity,
+        guarantorLandlordState: result.formData?.guarantorLandlordState || result.guarantorLandlordState,
+        guarantorLandlordZipCode: result.formData?.guarantorLandlordZipCode || result.guarantorLandlordZipCode,
+        guarantorLandlordPhone: result.formData?.guarantorLandlordPhone || result.guarantorLandlordPhone,
+        guarantorLandlordEmail: result.formData?.guarantorLandlordEmail || result.guarantorLandlordEmail,
+        guarantorCurrentRent: result.formData?.guarantorCurrentRent || result.guarantorCurrentRent,
+        guarantorReasonForMoving: result.formData?.guarantorReasonForMoving || result.guarantorReasonForMoving,
+        guarantorEmploymentType: result.formData?.guarantorEmploymentType || result.guarantorEmploymentType,
+        guarantorPosition: result.formData?.guarantorPosition || result.guarantorPosition,
+        guarantorStartDate: result.formData?.guarantorStartDate || result.guarantorStartDate,
+        guarantorBankInformation: result.formData?.guarantorBankInformation || result.guarantorBankInformation,
+        guarantorDocuments: result.formData?.guarantorDocuments || result.guarantorDocuments,
         signatures: result.signatures,
         signatureTimestamps: result.signatureTimestamps,
         webhookResponses: result.webhookResponses || {},
@@ -349,153 +497,159 @@ export class DraftService {
   /**
    * Create draft data from form state
    */
-  static createDraftData(
-    applicantId: string,
-    currentStep: number,
-    formData: any,
-    webhookResponses: Record<string, any> = {},
-    uploadedFilesMetadata: Record<string, any[]> = {}
-  ): DraftData {
-    return {
+  static createDraftData(formData: any, applicantId: string, currentStep: number): DraftData {
+    console.log('🔧 Creating draft data from form:', { formData, applicantId, currentStep });
+    
+    const draftData: DraftData = {
       applicantId,
       currentStep,
       lastSaved: new Date().toISOString(),
       isComplete: false,
+      version: '1.0',
+      compressed: false,
       
-      // Map form data to draft structure
-      applicationInfo: {
-        buildingAddress: formData.application?.buildingAddress,
-        apartmentNumber: formData.application?.apartmentNumber,
-        moveInDate: formData.application?.moveInDate,
-        monthlyRent: formData.application?.monthlyRent,
-        apartmentType: formData.application?.apartmentType,
-        howDidYouHear: formData.application?.howDidYouHear,
-        howDidYouHearOther: formData.application?.howDidYouHearOther
-      },
+      // Step 1: Application Info - extract from flat structure
+      buildingAddress: formData.buildingAddress,
+      apartmentNumber: formData.apartmentNumber,
+      moveInDate: formData.moveInDate,
+      monthlyRent: formData.monthlyRent,
+      apartmentType: formData.apartmentType,
+      howDidYouHear: formData.howDidYouHear,
       
-      primaryApplicant: {
-        applicantName: formData.applicant?.name,
-        applicantDob: formData.applicant?.dob,
-        applicantSsn: formData.applicant?.ssn,
-        applicantPhone: formData.applicant?.phone,
-        applicantEmail: formData.applicant?.email,
-        applicantLicense: formData.applicant?.license,
-        applicantLicenseState: formData.applicant?.licenseState,
-        applicantAddress: formData.applicant?.address,
-        applicantCity: formData.applicant?.city,
-        applicantState: formData.applicant?.state,
-        applicantZip: formData.applicant?.zip,
-        applicantLengthAtAddressYears: formData.applicant?.lengthAtAddressYears,
-        applicantLengthAtAddressMonths: formData.applicant?.lengthAtAddressMonths,
-        applicantLandlordName: formData.applicant?.landlordName,
-        applicantLandlordAddressLine1: formData.applicant?.landlordAddressLine1,
-        applicantLandlordAddressLine2: formData.applicant?.landlordAddressLine2,
-        applicantLandlordCity: formData.applicant?.landlordCity,
-        applicantLandlordState: formData.applicant?.landlordState,
-        applicantLandlordZipCode: formData.applicant?.landlordZipCode,
-        applicantLandlordPhone: formData.applicant?.landlordPhone,
-        applicantLandlordEmail: formData.applicant?.landlordEmail,
-        applicantCurrentRent: formData.applicant?.currentRent,
-        applicantReasonForMoving: formData.applicant?.reasonForMoving
-      },
+      // Step 2: Primary Applicant - extract from flat structure
+      applicantName: formData.applicantName,
+      applicantDob: formData.applicantDob,
+      applicantSsn: formData.applicantSsn,
+      applicantPhone: formData.applicantPhone,
+      applicantEmail: formData.applicantEmail,
+      applicantLicense: formData.applicantLicense,
+      applicantLicenseState: formData.applicantLicenseState,
+      applicantAddress: formData.applicantAddress,
+      applicantCity: formData.applicantCity,
+      applicantState: formData.applicantState,
+      applicantZip: formData.applicantZip,
+      applicantLengthAtAddressYears: formData.applicantLengthAtAddressYears,
+      applicantLengthAtAddressMonths: formData.applicantLengthAtAddressMonths,
+      applicantLandlordName: formData.applicantLandlordName,
+      applicantLandlordAddressLine1: formData.applicantLandlordAddressLine1,
+      applicantLandlordAddressLine2: formData.applicantLandlordAddressLine2,
+      applicantLandlordCity: formData.applicantLandlordCity,
+      applicantLandlordState: formData.applicantLandlordState,
+      applicantLandlordZipCode: formData.applicantLandlordZipCode,
+      applicantLandlordPhone: formData.applicantLandlordPhone,
+      applicantLandlordEmail: formData.applicantLandlordEmail,
+      applicantCurrentRent: formData.applicantCurrentRent,
+      applicantReasonForMoving: formData.applicantReasonForMoving,
       
-      primaryApplicantFinancial: {
-        applicantEmploymentType: formData.applicant?.employmentType,
-        applicantPosition: formData.applicant?.position,
-        applicantStartDate: formData.applicant?.startDate,
-        bankInformation: formData.applicant?.bankInformation
-      },
+      // Step 3: Primary Applicant Financial - extract from flat structure
+      applicantEmploymentType: formData.applicantEmploymentType,
+      applicantPosition: formData.applicantPosition,
+      applicantStartDate: formData.applicantStartDate,
+      applicantBankInformation: formData.applicantBankInformation,
       
-      primaryApplicantDocuments: {
-        documents: formData.documents?.applicant
-      },
+      // Step 4: Primary Applicant Documents - extract from flat structure
+      applicantDocuments: formData.applicantDocuments,
       
-      coApplicant: {
-        hasCoApplicant: formData.hasCoApplicant,
-        coApplicantName: formData.coApplicant?.name,
-        coApplicantRelationship: formData.coApplicant?.relationship,
-        coApplicantDob: formData.coApplicant?.dob,
-        coApplicantSsn: formData.coApplicant?.ssn,
-        coApplicantPhone: formData.coApplicant?.phone,
-        coApplicantEmail: formData.coApplicant?.email,
-        coApplicantLicense: formData.coApplicant?.license,
-        coApplicantLicenseState: formData.coApplicant?.licenseState,
-        coApplicantCity: formData.coApplicant?.city,
-        coApplicantState: formData.coApplicant?.state,
-        coApplicantZip: formData.coApplicant?.zip,
-        coApplicantLengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears,
-        coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths,
-        coApplicantLandlordName: formData.coApplicant?.landlordName,
-        coApplicantLandlordAddressLine1: formData.coApplicant?.landlordAddressLine1,
-        coApplicantLandlordAddressLine2: formData.coApplicant?.landlordAddressLine2,
-        coApplicantLandlordCity: formData.coApplicant?.landlordCity,
-        coApplicantLandlordState: formData.coApplicant?.landlordState,
-        coApplicantLandlordZipCode: formData.coApplicant?.landlordZipCode,
-        coApplicantLandlordPhone: formData.coApplicant?.landlordPhone,
-        coApplicantLandlordEmail: formData.coApplicant?.landlordEmail,
-        coApplicantCurrentRent: formData.coApplicant?.currentRent,
-        coApplicantReasonForMoving: formData.coApplicant?.reasonForMoving
-      },
+      // Step 5: Co-Applicant (conditional) - extract from flat structure
+      hasCoApplicant: formData.hasCoApplicant,
+      coApplicantName: formData.coApplicantName,
+      coApplicantRelationship: formData.coApplicantRelationship,
+      coApplicantDob: formData.coApplicantDob,
+      coApplicantSsn: formData.coApplicantSsn,
+      coApplicantPhone: formData.coApplicantPhone,
+      coApplicantEmail: formData.coApplicantEmail,
+      coApplicantLicense: formData.coApplicantLicense,
+      coApplicantLicenseState: formData.coApplicantLicenseState,
+      coApplicantCity: formData.coApplicantCity,
+      coApplicantState: formData.coApplicantState,
+      coApplicantZip: formData.coApplicantZip,
+      coApplicantLengthAtAddressYears: formData.coApplicantLengthAtAddressYears,
+      coApplicantLengthAtAddressMonths: formData.coApplicantLengthAtAddressMonths,
+      coApplicantLandlordName: formData.coApplicantLandlordName,
+      coApplicantLandlordAddressLine1: formData.coApplicantLandlordAddressLine1,
+      coApplicantLandlordAddressLine2: formData.coApplicantLandlordAddressLine2,
+      coApplicantLandlordCity: formData.coApplicantLandlordCity,
+      coApplicantLandlordState: formData.coApplicantLandlordState,
+      coApplicantLandlordZipCode: formData.coApplicantLandlordZipCode,
+      coApplicantLandlordPhone: formData.coApplicantLandlordPhone,
+      coApplicantLandlordEmail: formData.coApplicantLandlordEmail,
+      coApplicantCurrentRent: formData.coApplicantCurrentRent,
+      coApplicantReasonForMoving: formData.coApplicantReasonForMoving,
       
-      coApplicantFinancial: {
-        coApplicantEmploymentType: formData.coApplicant?.employmentType,
-        coApplicantPosition: formData.coApplicant?.position,
-        coApplicantStartDate: formData.coApplicant?.startDate,
-        bankInformation: formData.coApplicant?.bankInformation
-      },
+      // Step 6: Co-Applicant Financial (conditional) - extract from flat structure
+      coApplicantEmploymentType: formData.coApplicantEmploymentType,
+      coApplicantPosition: formData.coApplicantPosition,
+      coApplicantStartDate: formData.coApplicantStartDate,
+      coApplicantBankInformation: formData.coApplicantBankInformation,
       
-      coApplicantDocuments: {
-        documents: formData.documents?.coApplicant
-      },
+      // Step 7: Co-Applicant Documents (conditional) - extract from flat structure
+      coApplicantDocuments: formData.coApplicantDocuments,
       
-      otherOccupants: {
-        otherOccupants: formData.otherOccupants || formData.occupants,
-        documents: formData.documents?.otherOccupants
-      },
+      // Step 8: Other Occupants - extract from flat structure
+      otherOccupants: formData.otherOccupants || formData.occupants,
+      otherOccupantsDocuments: formData.otherOccupantsDocuments,
       
-      guarantor: {
-        hasGuarantor: formData.hasGuarantor,
-        guarantorName: formData.guarantor?.name,
-        guarantorRelationship: formData.guarantor?.relationship,
-        guarantorDob: formData.guarantor?.dob,
-        guarantorSsn: formData.guarantor?.ssn,
-        guarantorPhone: formData.guarantor?.phone,
-        guarantorEmail: formData.guarantor?.email,
-        guarantorLicense: formData.guarantor?.license,
-        guarantorLicenseState: formData.guarantor?.licenseState,
-        guarantorAddress: formData.guarantor?.address,
-        guarantorCity: formData.guarantor?.city,
-        guarantorState: formData.guarantor?.state,
-        guarantorZip: formData.guarantor?.zip,
-        guarantorLengthAtAddressYears: formData.guarantor?.lengthAtAddressYears,
-        guarantorLengthAtAddressMonths: formData.guarantor?.lengthAtAddressMonths,
-        guarantorLandlordName: formData.guarantor?.landlordName,
-        guarantorLandlordAddressLine1: formData.guarantor?.landlordAddressLine1,
-        guarantorLandlordAddressLine2: formData.guarantor?.landlordAddressLine2,
-        guarantorLandlordCity: formData.guarantor?.landlordCity,
-        guarantorLandlordState: formData.guarantor?.landlordState,
-        guarantorLandlordZipCode: formData.guarantor?.landlordZipCode,
-        guarantorLandlordPhone: formData.guarantor?.landlordPhone,
-        guarantorLandlordEmail: formData.guarantor?.landlordEmail,
-        guarantorCurrentRent: formData.guarantor?.currentRent,
-        guarantorReasonForMoving: formData.guarantor?.reasonForMoving
-      },
+      // Step 9: Guarantor (conditional) - extract from nested structure
+      hasGuarantor: formData.hasGuarantor,
+      guarantorName: formData.guarantor?.name,
+      guarantorRelationship: formData.guarantor?.relationship,
+      guarantorDob: formData.guarantor?.dob,
+      guarantorSsn: formData.guarantor?.ssn,
+      guarantorPhone: formData.guarantor?.phone,
+      guarantorEmail: formData.guarantor?.email,
+      guarantorLicense: formData.guarantor?.license,
+      guarantorLicenseState: formData.guarantor?.licenseState,
+      guarantorAddress: formData.guarantor?.address,
+      guarantorCity: formData.guarantor?.city,
+      guarantorState: formData.guarantor?.state,
+      guarantorZip: formData.guarantor?.zip,
+      guarantorLengthAtAddressYears: formData.guarantor?.lengthAtAddressYears,
+      guarantorLengthAtAddressMonths: formData.guarantor?.lengthAtAddressMonths,
+      guarantorLandlordName: formData.guarantor?.landlordName,
+      guarantorLandlordAddressLine1: formData.guarantor?.landlordAddressLine1,
+      guarantorLandlordAddressLine2: formData.guarantor?.landlordAddressLine2,
+      guarantorLandlordCity: formData.guarantor?.landlordCity,
+      guarantorLandlordState: formData.guarantor?.landlordState,
+      guarantorLandlordZipCode: formData.guarantor?.landlordZipCode,
+      guarantorLandlordPhone: formData.guarantor?.landlordPhone,
+      guarantorLandlordEmail: formData.guarantor?.landlordEmail,
+      guarantorCurrentRent: formData.guarantor?.currentRent,
+      guarantorReasonForMoving: formData.guarantor?.reasonForMoving,
       
-      guarantorFinancial: {
-        guarantorEmploymentType: formData.guarantor?.employmentType,
-        guarantorPosition: formData.guarantor?.position,
-        guarantorStartDate: formData.guarantor?.startDate,
-        bankInformation: formData.guarantor?.bankInformation
-      },
+      // Step 10: Guarantor Financial (conditional) - extract from nested structure
+      guarantorEmploymentType: formData.guarantor?.employmentType,
+      guarantorPosition: formData.guarantor?.position,
+      guarantorStartDate: formData.guarantor?.startDate,
+      guarantorBankInformation: formData.guarantor?.bankInformation,
       
-      guarantorDocuments: {
-        documents: formData.documents?.guarantor
-      },
+      // Step 11: Guarantor Documents (conditional) - extract from nested structure
+      guarantorDocuments: formData.documents?.guarantor,
       
+      // Step 12: Digital Signatures - extract from nested structure
       signatures: formData.signatures,
       signatureTimestamps: formData.signatureTimestamps,
-      webhookResponses,
-      uploadedFilesMetadata
+      
+      // File management - extract from nested structure or use provided values
+      webhookResponses: formData.webhookResponses || {},
+      uploadedFilesMetadata: formData.uploadedFilesMetadata || {},
+      
+      // Legacy field names for backward compatibility
+      documents: formData.documents || {},
+      bankInformation: formData.bankInformation || {},
     };
+    
+    console.log('📋 Draft data created:', {
+      applicantId: draftData.applicantId,
+      currentStep: draftData.currentStep,
+      hasApplicationInfo: !!draftData.buildingAddress,
+      hasApplicantInfo: !!draftData.applicantName,
+      hasCoApplicant: draftData.hasCoApplicant,
+      hasGuarantor: draftData.hasGuarantor,
+      hasDocuments: !!draftData.documents,
+      hasWebhookResponses: !!draftData.webhookResponses,
+      dataSize: JSON.stringify(draftData).length
+    });
+    
+    return draftData;
   }
 }

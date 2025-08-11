@@ -832,8 +832,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (global as any).draftCache = new Map();
       }
       
+      // Get existing draft data to merge with new data
+      const existingDraft = (global as any).draftCache.get(draftKey);
+      
+      // Merge new draft data with existing data, preserving all fields
       const itemToSave = {
         applicantId,
+        // Preserve existing data
+        ...(existingDraft || {}),
+        // Override with new data (this will update existing fields and add new ones)
         ...draftData,
         lastSaved: new Date().toISOString(),
         version: '1.0',
@@ -921,8 +928,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
         compressed: draftData.compressed || false,
         version: draftData.version || '1.0',
         
-        // Form data
-        formData: draftData.form_data || draftData.rawFormData || {},
+        // Form data - extract all the form fields that were saved
+        formData: {
+          // Extract application info fields (Step 1)
+          apartmentNumber: draftData.apartmentNumber,
+          apartmentType: draftData.apartmentType,
+          buildingAddress: draftData.buildingAddress,
+          moveInDate: draftData.moveInDate,
+          monthlyRent: draftData.monthlyRent,
+          howDidYouHear: draftData.howDidYouHear,
+          
+          // Extract applicant info fields (Step 2)
+          applicantName: draftData.applicantName,
+          applicantDob: draftData.applicantDob,
+          applicantSsn: draftData.applicantSsn,
+          applicantPhone: draftData.applicantPhone,
+          applicantEmail: draftData.applicantEmail,
+          applicantLicense: draftData.applicantLicense,
+          applicantLicenseState: draftData.applicantLicenseState,
+          applicantAddress: draftData.applicantAddress,
+          applicantCity: draftData.applicantCity,
+          applicantState: draftData.applicantState,
+          applicantZip: draftData.applicantZip,
+          applicantLengthAtAddressYears: draftData.applicantLengthAtAddressYears,
+          applicantLengthAtAddressMonths: draftData.applicantLengthAtAddressMonths,
+          applicantLandlordName: draftData.applicantLandlordName,
+          applicantLandlordAddressLine1: draftData.applicantLandlordAddressLine1,
+          applicantLandlordAddressLine2: draftData.applicantLandlordAddressLine2,
+          applicantLandlordCity: draftData.applicantLandlordCity,
+          applicantLandlordState: draftData.applicantLandlordState,
+          applicantLandlordZipCode: draftData.applicantLandlordZipCode,
+          applicantLandlordPhone: draftData.applicantLandlordPhone,
+          applicantLandlordEmail: draftData.applicantLandlordEmail,
+          applicantCurrentRent: draftData.applicantCurrentRent,
+          applicantReasonForMoving: draftData.applicantReasonForMoving,
+          applicantEmploymentType: draftData.applicantEmploymentType,
+          applicantPosition: draftData.applicantPosition,
+          applicantStartDate: draftData.applicantStartDate,
+          
+          // Extract co-applicant fields (Step 5-7)
+          hasCoApplicant: draftData.hasCoApplicant,
+          coApplicantName: draftData.coApplicantName,
+          coApplicantRelationship: draftData.coApplicantRelationship,
+          coApplicantDob: draftData.coApplicantDob,
+          coApplicantSsn: draftData.coApplicantSsn,
+          coApplicantPhone: draftData.coApplicantPhone,
+          coApplicantEmail: draftData.coApplicantEmail,
+          coApplicantLicense: draftData.coApplicantLicense,
+          coApplicantLicenseState: draftData.coApplicantLicenseState,
+          coApplicantCity: draftData.coApplicantCity,
+          coApplicantState: draftData.coApplicantState,
+          coApplicantZip: draftData.coApplicantZip,
+          coApplicantLengthAtAddressYears: draftData.coApplicantLengthAtAddressYears,
+          coApplicantLengthAtAddressMonths: draftData.coApplicantLengthAtAddressMonths,
+          coApplicantLandlordName: draftData.coApplicantLandlordName,
+          coApplicantLandlordAddressLine1: draftData.coApplicantLandlordAddressLine1,
+          coApplicantLandlordAddressLine2: draftData.coApplicantLandlordAddressLine2,
+          coApplicantLandlordCity: draftData.coApplicantLandlordCity,
+          coApplicantLandlordState: draftData.coApplicantLandlordState,
+          coApplicantLandlordZipCode: draftData.coApplicantLandlordZipCode,
+          coApplicantLandlordPhone: draftData.coApplicantLandlordPhone,
+          coApplicantLandlordEmail: draftData.coApplicantLandlordEmail,
+          coApplicantCurrentRent: draftData.coApplicantCurrentRent,
+          coApplicantReasonForMoving: draftData.coApplicantReasonForMoving,
+          coApplicantEmploymentType: draftData.coApplicantEmploymentType,
+          coApplicantPosition: draftData.coApplicantPosition,
+          coApplicantStartDate: draftData.coApplicantStartDate,
+          
+          // Extract other occupants (Step 8)
+          otherOccupants: draftData.otherOccupants,
+          
+          // Extract guarantor fields (Step 9-11)
+          hasGuarantor: draftData.hasGuarantor,
+          guarantorName: draftData.guarantorName,
+          guarantorRelationship: draftData.guarantorRelationship,
+          guarantorDob: draftData.guarantorDob,
+          guarantorSsn: draftData.guarantorSsn,
+          guarantorPhone: draftData.guarantorPhone,
+          guarantorEmail: draftData.guarantorEmail,
+          guarantorLicense: draftData.guarantorLicense,
+          guarantorLicenseState: draftData.guarantorLicenseState,
+          guarantorAddress: draftData.guarantorAddress,
+          guarantorCity: draftData.guarantorCity,
+          guarantorState: draftData.guarantorState,
+          guarantorZip: draftData.guarantorZip,
+          guarantorLengthAtAddressYears: draftData.guarantorLengthAtAddressYears,
+          guarantorLengthAtAddressMonths: draftData.guarantorLengthAtAddressMonths,
+          guarantorLandlordName: draftData.guarantorLandlordName,
+          guarantorLandlordAddressLine1: draftData.guarantorLandlordAddressLine1,
+          guarantorLandlordAddressLine2: draftData.guarantorLandlordAddressLine2,
+          guarantorLandlordCity: draftData.guarantorLandlordCity,
+          guarantorLandlordState: draftData.guarantorLandlordState,
+          guarantorLandlordZipCode: draftData.guarantorLandlordZipCode,
+          guarantorLandlordPhone: draftData.guarantorLandlordPhone,
+          guarantorLandlordEmail: draftData.guarantorLandlordEmail,
+          guarantorCurrentRent: draftData.guarantorCurrentRent,
+          guarantorReasonForMoving: draftData.guarantorReasonForMoving,
+          guarantorEmploymentType: draftData.guarantorEmploymentType,
+          guarantorPosition: draftData.guarantorPosition,
+          guarantorStartDate: draftData.guarantorStartDate,
+          
+          // Add other form fields as they get saved
+          ...draftData.form_data,
+          ...draftData.rawFormData
+        },
         
         // Webhook responses (file URLs)
         webhookResponses: draftData.webhookResponses || {},

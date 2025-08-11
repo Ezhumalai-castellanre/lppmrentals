@@ -323,118 +323,339 @@ export function ApplicationForm() {
   // Restore form data from draft
   const restoreFormFromDraft = (draftData: DraftData) => {
     try {
+      console.log('🔄 Restoring form data from draft:', draftData);
+      
       // Restore current step
       if (draftData.currentStep !== undefined) {
         setCurrentStep(draftData.currentStep);
       }
       
-      // Restore application info
-      if (draftData.applicationInfo) {
+      // Restore application info (Step 1) - map to nested structure and update form
+      if (draftData.buildingAddress !== undefined || draftData.apartmentNumber !== undefined || draftData.moveInDate !== undefined || draftData.monthlyRent !== undefined || draftData.apartmentType !== undefined || draftData.howDidYouHear !== undefined) {
         setFormData((prev: any) => ({
           ...prev,
           application: {
             ...prev.application,
-            ...draftData.applicationInfo
+            buildingAddress: draftData.buildingAddress || prev.application?.buildingAddress,
+            apartmentNumber: draftData.apartmentNumber || prev.application?.apartmentNumber,
+            moveInDate: draftData.moveInDate || prev.application?.moveInDate,
+            monthlyRent: draftData.monthlyRent || prev.application?.monthlyRent,
+            apartmentType: draftData.apartmentType || prev.application?.apartmentType,
+            howDidYouHear: draftData.howDidYouHear || prev.application?.howDidYouHear
           }
         }));
+        
+        // Update React Hook Form values with proper type handling
+        if (draftData.buildingAddress !== undefined) form.setValue('buildingAddress', draftData.buildingAddress);
+        if (draftData.apartmentNumber !== undefined) form.setValue('apartmentNumber', draftData.apartmentNumber);
+        if (draftData.moveInDate !== undefined) form.setValue('moveInDate', new Date(draftData.moveInDate));
+        if (draftData.monthlyRent !== undefined) form.setValue('monthlyRent', Number(draftData.monthlyRent) || 0);
+        if (draftData.apartmentType !== undefined) form.setValue('apartmentType', draftData.apartmentType);
+        if (draftData.howDidYouHear !== undefined) form.setValue('howDidYouHear', draftData.howDidYouHear);
+        
+        console.log('🔧 Form values set for application:', {
+          buildingAddress: draftData.buildingAddress,
+          apartmentNumber: draftData.apartmentNumber,
+          moveInDate: draftData.moveInDate,
+          monthlyRent: draftData.monthlyRent,
+          apartmentType: draftData.apartmentType,
+          howDidYouHear: draftData.howDidYouHear
+        });
+        
+        console.log('✅ Application info restored:', {
+          buildingAddress: draftData.buildingAddress,
+          apartmentNumber: draftData.apartmentNumber,
+          moveInDate: draftData.moveInDate
+        });
       }
       
-      // Restore primary applicant
-      if (draftData.primaryApplicant) {
+      // Restore primary applicant (Step 2) - map to nested structure and update form
+      if (draftData.applicantName || draftData.applicantDob || draftData.applicantSsn || draftData.applicantPhone || draftData.applicantEmail) {
         setFormData((prev: any) => ({
           ...prev,
           applicant: {
             ...prev.applicant,
-            ...draftData.primaryApplicant
+            name: draftData.applicantName || prev.applicant?.name,
+            dob: draftData.applicantDob || prev.applicant?.dob,
+            ssn: draftData.applicantSsn || prev.applicant?.ssn,
+            phone: draftData.applicantPhone || prev.applicant?.phone,
+            email: draftData.applicantEmail || prev.applicant?.email,
+            license: draftData.applicantLicense || prev.applicant?.license,
+            licenseState: draftData.applicantLicenseState || prev.applicant?.licenseState,
+            address: draftData.applicantAddress || prev.applicant?.address,
+            city: draftData.applicantCity || prev.applicant?.city,
+            state: draftData.applicantState || prev.applicant?.state,
+            zip: draftData.applicantZip || prev.applicant?.zip,
+            lengthAtAddressYears: draftData.applicantLengthAtAddressYears || prev.applicant?.lengthAtAddressYears,
+            lengthAtAddressMonths: draftData.applicantLengthAtAddressMonths || prev.applicant?.lengthAtAddressMonths,
+            landlordName: draftData.applicantLandlordName || prev.applicant?.landlordName,
+            landlordAddressLine1: draftData.applicantLandlordAddressLine1 || prev.applicant?.landlordAddressLine1,
+            landlordAddressLine2: draftData.applicantLandlordAddressLine2 || prev.applicant?.landlordAddressLine2,
+            landlordCity: draftData.applicantLandlordCity || prev.applicant?.landlordCity,
+            landlordState: draftData.applicantLandlordState || prev.applicant?.landlordState,
+            landlordZipCode: draftData.applicantLandlordZipCode || prev.applicant?.landlordZipCode,
+            landlordPhone: draftData.applicantLandlordPhone || prev.applicant?.landlordPhone,
+            landlordEmail: draftData.applicantLandlordEmail || prev.applicant?.landlordEmail,
+            currentRent: draftData.applicantCurrentRent || prev.applicant?.currentRent,
+            reasonForMoving: draftData.applicantReasonForMoving || prev.applicant?.reasonForMoving,
+            employmentType: draftData.applicantEmploymentType || prev.applicant?.employmentType,
+            position: draftData.applicantPosition || prev.applicant?.position,
+            startDate: draftData.applicantStartDate || prev.applicant?.startDate,
+            bankInformation: draftData.applicantBankInformation || prev.applicant?.bankInformation
           }
         }));
+        
+        // Update React Hook Form values for applicant
+        form.setValue('applicantName', draftData.applicantName || '');
+        form.setValue('applicantDob', draftData.applicantDob ? new Date(draftData.applicantDob) : new Date());
+        form.setValue('applicantSsn', draftData.applicantSsn || '');
+        form.setValue('applicantPhone', draftData.applicantPhone || '');
+        form.setValue('applicantEmail', draftData.applicantEmail || '');
+        form.setValue('applicantLicense', draftData.applicantLicense || '');
+        form.setValue('applicantLicenseState', draftData.applicantLicenseState || '');
+        form.setValue('applicantAddress', draftData.applicantAddress || '');
+        form.setValue('applicantCity', draftData.applicantCity || '');
+        form.setValue('applicantState', draftData.applicantState || '');
+        form.setValue('applicantZip', draftData.applicantZip || '');
+        form.setValue('applicantLengthAtAddressYears', draftData.applicantLengthAtAddressYears || '');
+        form.setValue('applicantLengthAtAddressMonths', draftData.applicantLengthAtAddressMonths || '');
+        form.setValue('applicantLandlordName', draftData.applicantLandlordName || '');
+        form.setValue('applicantLandlordAddressLine1', draftData.applicantLandlordAddressLine1 || '');
+        form.setValue('applicantLandlordAddressLine2', draftData.applicantLandlordAddressLine2 || '');
+        form.setValue('applicantLandlordCity', draftData.applicantLandlordCity || '');
+        form.setValue('applicantLandlordState', draftData.applicantLandlordState || '');
+        form.setValue('applicantLandlordZipCode', draftData.applicantLandlordZipCode || '');
+        form.setValue('applicantLandlordPhone', draftData.applicantLandlordPhone || '');
+        form.setValue('applicantLandlordEmail', draftData.applicantLandlordEmail || '');
+        form.setValue('applicantCurrentRent', draftData.applicantCurrentRent || '');
+        form.setValue('applicantReasonForMoving', draftData.applicantReasonForMoving || '');
+        form.setValue('applicantEmploymentType', draftData.applicantEmploymentType || '');
+        form.setValue('applicantPosition', draftData.applicantPosition || '');
+        form.setValue('applicantStartDate', draftData.applicantStartDate ? new Date(draftData.applicantStartDate) : new Date());
+        
+        console.log('✅ Applicant info restored:', {
+          name: draftData.applicantName,
+          email: draftData.applicantEmail,
+          phone: draftData.applicantPhone
+        });
       }
       
-      // Restore co-applicant
-      if (draftData.coApplicant) {
+      // Restore co-applicant (Step 5-7) - map to nested structure and update form
+      if (draftData.hasCoApplicant !== undefined || draftData.coApplicantName || draftData.coApplicantDob || draftData.coApplicantSsn) {
         setFormData((prev: any) => ({
           ...prev,
           coApplicant: {
             ...prev.coApplicant,
-            ...draftData.coApplicant
+            name: draftData.coApplicantName || prev.coApplicant?.name,
+            dob: draftData.coApplicantDob || prev.coApplicant?.dob,
+            ssn: draftData.coApplicantSsn || prev.coApplicant?.ssn,
+            phone: draftData.coApplicantPhone || prev.coApplicant?.phone,
+            email: draftData.coApplicantEmail || prev.coApplicant?.email,
+            license: draftData.coApplicantLicense || prev.coApplicant?.license,
+            licenseState: draftData.coApplicantLicenseState || prev.coApplicant?.licenseState,
+            city: draftData.coApplicantCity || prev.coApplicant?.city,
+            state: draftData.coApplicantState || prev.coApplicant?.state,
+            zip: draftData.coApplicantZip || prev.coApplicant?.zip,
+            lengthAtAddressYears: draftData.coApplicantLengthAtAddressYears || prev.coApplicant?.lengthAtAddressYears,
+            lengthAtAddressMonths: draftData.coApplicantLengthAtAddressMonths || prev.coApplicant?.lengthAtAddressMonths,
+            landlordName: draftData.coApplicantLandlordName || prev.coApplicant?.landlordName,
+            landlordAddressLine1: draftData.coApplicantLandlordAddressLine1 || prev.coApplicant?.landlordAddressLine1,
+            landlordAddressLine2: draftData.coApplicantLandlordAddressLine2 || prev.coApplicant?.landlordAddressLine2,
+            landlordCity: draftData.coApplicantLandlordCity || prev.coApplicant?.landlordCity,
+            landlordState: draftData.coApplicantLandlordState || prev.coApplicant?.landlordState,
+            landlordZipCode: draftData.coApplicantLandlordZipCode || prev.coApplicant?.landlordZipCode,
+            landlordPhone: draftData.coApplicantLandlordPhone || prev.coApplicant?.landlordPhone,
+            landlordEmail: draftData.coApplicantLandlordEmail || prev.coApplicant?.landlordEmail,
+            currentRent: draftData.coApplicantCurrentRent || prev.coApplicant?.currentRent,
+            reasonForMoving: draftData.coApplicantReasonForMoving || prev.coApplicant?.reasonForMoving,
+            employmentType: draftData.coApplicantEmploymentType || prev.coApplicant?.employmentType,
+            position: draftData.coApplicantPosition || prev.coApplicant?.position,
+            startDate: draftData.coApplicantStartDate || prev.coApplicant?.startDate,
+            bankInformation: draftData.coApplicantBankInformation || prev.coApplicant?.bankInformation
           }
         }));
-        setHasCoApplicant(draftData.coApplicant.hasCoApplicant || false);
+        
+        // Update React Hook Form values for co-applicant
+        form.setValue('hasCoApplicant', draftData.hasCoApplicant || false);
+        form.setValue('coApplicant.name', draftData.coApplicantName || '');
+        form.setValue('coApplicant.dob', draftData.coApplicantDob ? new Date(draftData.coApplicantDob) : undefined);
+        form.setValue('coApplicant.ssn', draftData.coApplicantSsn || '');
+        form.setValue('coApplicant.phone', draftData.coApplicantPhone || '');
+        form.setValue('coApplicant.email', draftData.coApplicantEmail || '');
+        form.setValue('coApplicant.license', draftData.coApplicantLicense || '');
+        form.setValue('coApplicant.licenseState', draftData.coApplicantLicenseState || '');
+        form.setValue('coApplicant.city', draftData.coApplicantCity || '');
+        form.setValue('coApplicant.state', draftData.coApplicantState || '');
+        form.setValue('coApplicant.zip', draftData.coApplicantZip || '');
+        form.setValue('coApplicant.lengthAtAddressYears', draftData.coApplicantLengthAtAddressYears || '');
+        form.setValue('coApplicant.lengthAtAddressMonths', draftData.coApplicantLengthAtAddressMonths || '');
+        form.setValue('coApplicant.landlordName', draftData.coApplicantLandlordName || '');
+        form.setValue('coApplicant.landlordAddressLine1', draftData.coApplicantLandlordAddressLine1 || '');
+        form.setValue('coApplicant.landlordAddressLine2', draftData.coApplicantLandlordAddressLine2 || '');
+        form.setValue('coApplicant.landlordCity', draftData.coApplicantLandlordCity || '');
+        form.setValue('coApplicant.landlordState', draftData.coApplicantLandlordState || '');
+        form.setValue('coApplicant.landlordZipCode', draftData.coApplicantLandlordZipCode || '');
+        form.setValue('coApplicant.landlordPhone', draftData.coApplicantLandlordPhone || '');
+        form.setValue('coApplicant.landlordEmail', draftData.coApplicantLandlordEmail || '');
+        form.setValue('coApplicant.currentRent', draftData.coApplicantCurrentRent || '');
+        form.setValue('coApplicant.reasonForMoving', draftData.coApplicantReasonForMoving || '');
+        form.setValue('coApplicant.employmentType', draftData.coApplicantEmploymentType || '');
+        form.setValue('coApplicant.position', draftData.coApplicantPosition || '');
+        form.setValue('coApplicant.startDate', draftData.coApplicantStartDate ? new Date(draftData.coApplicantStartDate) : undefined);
+        
+        setHasCoApplicant(draftData.hasCoApplicant || false);
+        console.log('✅ Co-applicant info restored:', {
+          hasCoApplicant: draftData.hasCoApplicant,
+          name: draftData.coApplicantName,
+          email: draftData.coApplicantEmail
+        });
       }
       
-      // Restore guarantor
-      if (draftData.guarantor) {
+      // Restore guarantor (Step 9-11) - map to nested structure and update form
+      if (draftData.hasGuarantor !== undefined || draftData.guarantorName || draftData.guarantorDob || draftData.guarantorSsn) {
         setFormData((prev: any) => ({
           ...prev,
           guarantor: {
             ...prev.guarantor,
-            ...draftData.guarantor
+            name: draftData.guarantorName || prev.guarantor?.name,
+            dob: draftData.guarantorDob || prev.guarantor?.dob,
+            ssn: draftData.guarantorSsn || prev.guarantor?.ssn,
+            phone: draftData.guarantorPhone || prev.guarantor?.phone,
+            email: draftData.guarantorEmail || prev.guarantor?.email,
+            license: draftData.guarantorLicense || prev.guarantor?.license,
+            licenseState: draftData.guarantorLicenseState || prev.guarantor?.licenseState,
+            address: draftData.guarantorAddress || prev.guarantor?.address,
+            city: draftData.guarantorCity || prev.guarantor?.city,
+            state: draftData.guarantorState || prev.guarantor?.state,
+            zip: draftData.guarantorZip || prev.guarantor?.zip,
+            lengthAtAddressYears: draftData.guarantorLengthAtAddressYears || prev.guarantor?.lengthAtAddressYears,
+            lengthAtAddressMonths: draftData.guarantorLengthAtAddressMonths || prev.guarantor?.lengthAtAddressMonths,
+            landlordName: draftData.guarantorLandlordName || prev.guarantor?.landlordName,
+            landlordAddressLine1: draftData.guarantorLandlordAddressLine1 || prev.guarantor?.landlordAddressLine1,
+            landlordAddressLine2: draftData.guarantorLandlordAddressLine2 || prev.guarantor?.landlordAddressLine2,
+            landlordCity: draftData.guarantorLandlordCity || prev.guarantor?.landlordCity,
+            landlordState: draftData.guarantorLandlordState || prev.guarantor?.landlordState,
+            landlordZipCode: draftData.guarantorLandlordZipCode || prev.guarantor?.landlordZipCode,
+            landlordPhone: draftData.guarantorLandlordPhone || prev.guarantor?.landlordPhone,
+            landlordEmail: draftData.guarantorLandlordEmail || prev.guarantor?.landlordEmail,
+            currentRent: draftData.guarantorCurrentRent || prev.guarantor?.currentRent,
+            reasonForMoving: draftData.guarantorReasonForMoving || prev.guarantor?.reasonForMoving,
+            employmentType: draftData.guarantorEmploymentType || prev.guarantor?.employmentType,
+            position: draftData.guarantorPosition || prev.guarantor?.position,
+            startDate: draftData.guarantorStartDate || prev.guarantor?.startDate,
+            bankInformation: draftData.guarantorBankInformation || prev.guarantor?.bankInformation
           }
         }));
-        setHasGuarantor(draftData.guarantor.hasGuarantor || false);
+        
+        // Update React Hook Form values for guarantor
+        form.setValue('hasGuarantor', draftData.hasGuarantor || false);
+        form.setValue('guarantor.name', draftData.guarantorName || '');
+        form.setValue('guarantor.dob', draftData.guarantorDob ? new Date(draftData.guarantorDob) : undefined);
+        form.setValue('guarantor.ssn', draftData.guarantorSsn || '');
+        form.setValue('guarantor.phone', draftData.guarantorPhone || '');
+        form.setValue('guarantor.email', draftData.guarantorEmail || '');
+        form.setValue('guarantor.license', draftData.guarantorLicense || '');
+        form.setValue('guarantor.licenseState', draftData.guarantorLicenseState || '');
+        form.setValue('guarantor.address', draftData.guarantorAddress || '');
+        form.setValue('guarantor.city', draftData.guarantorCity || '');
+        form.setValue('guarantor.state', draftData.guarantorState || '');
+        form.setValue('guarantor.zip', draftData.guarantorZip || '');
+        form.setValue('guarantor.lengthAtAddressYears', draftData.guarantorLengthAtAddressYears || '');
+        form.setValue('guarantor.lengthAtAddressMonths', draftData.guarantorLengthAtAddressMonths || '');
+        form.setValue('guarantor.landlordName', draftData.guarantorLandlordName || '');
+        form.setValue('guarantor.landlordAddressLine1', draftData.guarantorLandlordAddressLine1 || '');
+        form.setValue('guarantor.landlordAddressLine2', draftData.guarantorLandlordAddressLine2 || '');
+        form.setValue('guarantor.landlordCity', draftData.guarantorLandlordCity || '');
+        form.setValue('guarantor.landlordState', draftData.guarantorLandlordState || '');
+        form.setValue('guarantor.landlordZipCode', draftData.guarantorLandlordZipCode || '');
+        form.setValue('guarantor.landlordPhone', draftData.guarantorLandlordPhone || '');
+        form.setValue('guarantor.landlordEmail', draftData.guarantorLandlordEmail || '');
+        form.setValue('guarantor.currentRent', draftData.guarantorCurrentRent || '');
+        form.setValue('guarantor.reasonForMoving', draftData.guarantorReasonForMoving || '');
+        form.setValue('guarantor.employmentType', draftData.guarantorEmploymentType || '');
+        form.setValue('guarantor.position', draftData.guarantorPosition || '');
+        form.setValue('guarantor.startDate', draftData.guarantorStartDate ? new Date(draftData.guarantorStartDate) : undefined);
+        
+        setHasGuarantor(draftData.hasGuarantor || false);
+        console.log('✅ Guarantor info restored:', {
+          hasGuarantor: draftData.hasGuarantor,
+          name: draftData.guarantorName,
+          email: draftData.guarantorEmail
+        });
       }
       
-      // Restore other occupants
-      if (draftData.otherOccupants?.otherOccupants) {
+      // Restore other occupants (Step 8) - map to nested structure
+      if (draftData.otherOccupants && draftData.otherOccupants.length > 0) {
         setFormData((prev: any) => ({
           ...prev,
-          otherOccupants: draftData.otherOccupants!.otherOccupants
+          otherOccupants: draftData.otherOccupants
         }));
+        console.log('✅ Other occupants restored:', draftData.otherOccupants.length, 'occupants');
       }
       
-      // Restore documents
-      if (draftData.primaryApplicantDocuments?.documents) {
+      // Restore documents for all sections - map to nested structure
+      if (draftData.applicantDocuments) {
         setDocuments((prev: any) => ({
           ...prev,
-          applicant: draftData.primaryApplicantDocuments!.documents
+          applicant: draftData.applicantDocuments
         }));
+        console.log('✅ Applicant documents restored');
       }
       
-      if (draftData.coApplicantDocuments?.documents) {
+      if (draftData.coApplicantDocuments) {
         setDocuments((prev: any) => ({
           ...prev,
-          coApplicant: draftData.coApplicantDocuments!.documents
+          coApplicant: draftData.coApplicantDocuments
         }));
+        console.log('✅ Co-applicant documents restored');
       }
       
-      if (draftData.guarantorDocuments?.documents) {
+      if (draftData.guarantorDocuments) {
         setDocuments((prev: any) => ({
           ...prev,
-          guarantor: draftData.guarantorDocuments!.documents
+          guarantor: draftData.guarantorDocuments
         }));
+        console.log('✅ Guarantor documents restored');
       }
       
-      if (draftData.otherOccupants?.documents) {
+      if (draftData.otherOccupantsDocuments) {
         setDocuments((prev: any) => ({
           ...prev,
-          otherOccupants: draftData.otherOccupants!.documents
+          otherOccupants: draftData.otherOccupantsDocuments
         }));
+        console.log('✅ Other occupants documents restored');
       }
       
-      // Restore signatures
+      // Restore signatures (Step 12) - map to nested structure
       if (draftData.signatures) {
         setSignatures(draftData.signatures);
+        console.log('✅ Signatures restored:', draftData.signatures);
       }
       
-      // Restore webhook responses
+      // Restore webhook responses and file metadata - map to nested structure
       if (draftData.webhookResponses) {
         setWebhookResponses(draftData.webhookResponses);
+        console.log('✅ Webhook responses restored:', Object.keys(draftData.webhookResponses).length, 'responses');
       }
       
-      // Restore uploaded files metadata
       if (draftData.uploadedFilesMetadata) {
         setUploadedFilesMetadata(draftData.uploadedFilesMetadata);
+        console.log('✅ File metadata restored:', Object.keys(draftData.uploadedFilesMetadata).length, 'sections');
       }
       
-      console.log('✅ Form restored from draft successfully');
+      console.log('✅ Form data restored successfully from draft');
+      
+      // Force form update after a short delay to ensure all fields are populated
+      setTimeout(() => {
+        console.log('🔄 Forcing form update after draft restoration...');
+        // Trigger form validation update
+        form.trigger();
+        // Force re-render of form fields
+        form.reset(form.getValues());
+      }, 100);
       
     } catch (error) {
-      console.error('❌ Error restoring form from draft:', error);
-      toast({
-        title: "Draft Restore Error",
-        description: "Some data could not be restored from your draft. Please review your application.",
-        variant: 'warning',
-      });
+      console.error('❌ Error restoring form data from draft:', error);
     }
   };
 
@@ -564,6 +785,7 @@ export function ApplicationForm() {
       // Update application fields
       if (formData.application) {
         console.log('📋 Application data found:', formData.application);
+
         
         if (formData.application.buildingAddress) {
           console.log('🏢 Setting buildingAddress:', formData.application.buildingAddress);
@@ -1050,11 +1272,9 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
     // Save draft before moving to next step
     if (user?.applicantId) {
       const draftData = DraftService.createDraftData(
-        user.applicantId,
-        nextStepNumber,
         formData,
-        webhookResponses,
-        uploadedFilesMetadata
+        user.applicantId,
+        nextStepNumber
       );
       
       DraftService.autoSaveDraft(draftData);
@@ -1076,11 +1296,9 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
     // Save draft before moving to previous step
     if (user?.applicantId) {
       const draftData = DraftService.createDraftData(
-        user.applicantId,
-        prevStepNumber,
         formData,
-        webhookResponses,
-        uploadedFilesMetadata
+        user.applicantId,
+        prevStepNumber
       );
       
       DraftService.autoSaveDraft(draftData);
@@ -1137,11 +1355,9 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
     // Save draft before jumping to step
     if (user?.applicantId) {
       const draftData = DraftService.createDraftData(
-        user.applicantId,
-        step,
         formData,
-        webhookResponses,
-        uploadedFilesMetadata
+        user.applicantId,
+        step
       );
       
       DraftService.autoSaveDraft(draftData);
@@ -3199,14 +3415,16 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
                     
                     // Auto-save draft with the new webhook response
                     const draftData = DraftService.createDraftData(
-                      user.applicantId,
-                      currentStep,
-                      formData,
                       {
-                        ...webhookResponses,
-                        [documentType]: response
+                        ...formData,
+                        webhookResponses: {
+                          ...webhookResponses,
+                          [documentType]: response
+                        },
+                        uploadedFilesMetadata
                       },
-                      uploadedFilesMetadata
+                      user.applicantId,
+                      currentStep
                     );
                     
                     DraftService.autoSaveDraft(draftData);
@@ -4761,13 +4979,11 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
                       variant="outline"
                       onClick={async () => {
                         if (user?.applicantId) {
-                          const draftData = DraftService.createDraftData(
-                            user.applicantId,
-                            currentStep,
-                            formData,
-                            webhookResponses,
-                            uploadedFilesMetadata
-                          );
+                                const draftData = DraftService.createDraftData(
+        formData,
+        user.applicantId,
+        currentStep
+      );
                           
                           const result = await DraftService.saveDraft(draftData);
                           if (result.success) {

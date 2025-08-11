@@ -31,8 +31,6 @@ export default function TestDraft() {
     setIsLoading(true);
     try {
       const draft = DraftService.createDraftData(
-        user.applicantId,
-        1,
         {
           application: {
             buildingAddress: testData.name,
@@ -43,19 +41,21 @@ export default function TestDraft() {
             name: testData.name,
             email: testData.email,
             phone: testData.phone
+          },
+          webhookResponses: {
+            test_document: 'https://example.com/test.pdf'
+          },
+          uploadedFilesMetadata: {
+            test_files: [{
+              file_name: 'test.pdf',
+              file_size: 1024,
+              mime_type: 'application/pdf',
+              upload_date: new Date().toISOString()
+            }]
           }
         },
-        {
-          test_document: 'https://example.com/test.pdf'
-        },
-        {
-          test_files: [{
-            file_name: 'test.pdf',
-            file_size: 1024,
-            mime_type: 'application/pdf',
-            upload_date: new Date().toISOString()
-          }]
-        }
+        user.applicantId,
+        1
       );
 
       console.log('💾 Attempting to save draft:', draft);
