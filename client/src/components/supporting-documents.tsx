@@ -5,7 +5,7 @@ import { Badge } from "./ui/badge";
 import { CheckCircle, AlertCircle, FileText, DollarSign, Building, User, CreditCard, Shield, UserCheck, Building2, Briefcase, GraduationCap, Eye, Download, X } from "lucide-react";
 import { type EncryptedFile } from "@/lib/file-encryption";
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 
 interface DocumentInfo {
   id: string;
@@ -56,6 +56,7 @@ interface SupportingDocumentsProps {
   zoneinfo?: string;
   showOnlyCoApplicant?: boolean;
   showOnlyGuarantor?: boolean;
+  showOnlyApplicant?: boolean;
 }
 
 export const SupportingDocuments = ({
@@ -69,18 +70,30 @@ export const SupportingDocuments = ({
   applicantId,
   zoneinfo,
   showOnlyCoApplicant = false,
-  showOnlyGuarantor = false
+  showOnlyGuarantor = false,
+  showOnlyApplicant = false
 }: SupportingDocumentsProps): JSX.Element => {
+  
+  // Debug component props
+  console.log(`🏗️ SupportingDocuments component props:`, {
+    showOnlyCoApplicant,
+    showOnlyGuarantor,
+    showOnlyApplicant,
+    referenceId,
+    applicationId
+  });
   const [previewModal, setPreviewModal] = useState<{
     isOpen: boolean;
     title: string;
     url: string;
     filename: string;
+    fileType: string;
   }>({
     isOpen: false,
     title: '',
     url: '',
-    filename: ''
+    filename: '',
+    fileType: ''
   });
 
   const requiredDocuments: CategoryInfo[] = [
@@ -180,8 +193,8 @@ export const SupportingDocuments = ({
       }
       
       if (fileUrl && fileUrl.trim()) {
-        return {
-          status: "uploaded",
+      return {
+        status: "uploaded",
           count: 1
         };
       }
@@ -300,7 +313,11 @@ export const SupportingDocuments = ({
   const getUploadedDocuments = (documentId: string) => {
     const uploadedDocs: Array<{ filename: string; webhookbodyUrl: string }> = [];
     
-    // First check webhookResponses for direct S3 URLs
+    // Get the current context to filter documents appropriately
+    const currentContext = getCurrentContext();
+    console.log(`🔍 getUploadedDocuments called for documentId: ${documentId}, currentContext: ${currentContext}`);
+    
+    // First check webhookResponses for direct S3 URLs (this handles the case where webhookResponses are already filtered by person type)
     const webhookResponse = formData.webhookResponses?.[documentId];
     if (webhookResponse) {
       let fileUrl = '';
@@ -313,16 +330,25 @@ export const SupportingDocuments = ({
       }
       
       if (fileUrl && fileUrl.trim()) {
+        // Create filename with person type prefix based on current context
+        const filename = `${currentContext}_${documentId}_document`;
+        console.log(`📁 Adding document with context-aware filename: ${filename}`);
         uploadedDocs.push({
-          filename: `${documentId}_document`,
+          filename: filename,
           webhookbodyUrl: fileUrl
         });
       }
     }
     
-    // Check for documents with person prefix in webhookResponses
+    // Check for documents with person prefix in webhookResponses (this handles the case where webhookResponses contain all person types)
     const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_', 'occupants_'];
     for (const prefix of personPrefixes) {
+      // Only process documents for the current context
+      if (currentContext === 'applicant' && prefix !== 'applicant_') continue;
+      if (currentContext === 'coApplicant' && prefix !== 'coApplicant_') continue;
+      if (currentContext === 'guarantor' && prefix !== 'guarantor_') continue;
+      if (currentContext === 'occupants' && prefix !== 'occupants_') continue;
+      
       const prefixedDocumentId = prefix + documentId;
       const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
       if (prefixedWebhookResponse) {
@@ -336,8 +362,10 @@ export const SupportingDocuments = ({
         }
         
         if (fileUrl && fileUrl.trim()) {
+          const filename = `${prefixedDocumentId}_document`;
+          console.log(`📁 Adding document with prefixed filename: ${filename} for ${prefixedDocumentId}`);
           uploadedDocs.push({
-            filename: `${prefixedDocumentId}_document`,
+            filename: filename,
             webhookbodyUrl: fileUrl
           });
         }
@@ -347,53 +375,123 @@ export const SupportingDocuments = ({
     // Fall back to checking documents structure if no webhook responses
     const documents = formData.documents;
     if (documents && uploadedDocs.length === 0) {
-      // Check applicant documents
-      if (documents.applicant && documents.applicant[documentId]) {
+      // Only check documents for the current context
+      if (currentContext === 'applicant' && documents.applicant && documents.applicant[documentId]) {
         const files = documents.applicant[documentId];
         if (Array.isArray(files)) {
+          console.log(`📁 Adding applicant documents from documents structure: ${files.length} files`);
           uploadedDocs.push(...files);
         }
       }
       
-      // Check co-applicant documents
-      if (documents.coApplicant && documents.coApplicant[documentId]) {
+      if (currentContext === 'coApplicant' && documents.coApplicant && documents.coApplicant[documentId]) {
         const files = documents.coApplicant[documentId];
         if (Array.isArray(files)) {
+          console.log(`📁 Adding coApplicant documents from documents structure: ${files.length} files`);
           uploadedDocs.push(...files);
         }
       }
       
-      // Check guarantor documents
-      if (documents.guarantor && documents.guarantor[documentId]) {
+      if (currentContext === 'guarantor' && documents.guarantor && documents.guarantor[documentId]) {
         const files = documents.guarantor[documentId];
         if (Array.isArray(files)) {
+          console.log(`📁 Adding guarantor documents from documents structure: ${files.length} files`);
           uploadedDocs.push(...files);
         }
       }
-      
-      // Check other occupants documents
-      if (documents.otherOccupants) {
-        Object.entries(documents.otherOccupants).forEach(([key, files]) => {
-          if (key.includes(documentId) && Array.isArray(files)) {
-            uploadedDocs.push(...files);
-          }
-        });
-      }
+    }
+    
+    // Check other occupants documents only if in occupants context
+    if (currentContext === 'occupants' && documents?.otherOccupants) {
+      Object.entries(documents.otherOccupants).forEach(([key, files]) => {
+        if (key.includes(documentId) && Array.isArray(files)) {
+          console.log(`📁 Adding occupant documents from documents structure: ${files.length} files`);
+          uploadedDocs.push(...files);
+        }
+      });
     }
 
+    console.log(`📁 getUploadedDocuments returning ${uploadedDocs.length} documents for ${documentId} in ${currentContext} context:`, uploadedDocs);
     return uploadedDocs;
   };
 
   const handlePreviewDocument = (filename: string, webhookbodyUrl: string, documentName: string) => {
+    // Check if the URL is accessible before opening preview
+    if (!webhookbodyUrl) {
+      console.error('❌ No webhook URL provided for preview');
+      return;
+    }
+
+    // Validate URL format
+    try {
+      new URL(webhookbodyUrl);
+    } catch (error) {
+      console.error('❌ Invalid URL format:', webhookbodyUrl);
+      return;
+    }
+
+    // Test URL accessibility
+    fetch(webhookbodyUrl, { method: 'HEAD' })
+      .then(response => {
+        if (response.ok) {
+          // URL is accessible, open preview
+          const fileType = getFileTypeFromFilename(filename);
     setPreviewModal({
       isOpen: true,
       title: documentName,
       url: webhookbodyUrl,
-      filename: filename
+            filename: filename,
+            fileType: fileType
+          });
+          
+          // Set a timeout to automatically show fallback if iframe fails
+          setTimeout(() => {
+            const iframe = document.querySelector('iframe');
+            const fallback = document.getElementById('fallback-content');
+            if (iframe && fallback && !iframe.contentDocument?.body?.innerHTML) {
+              console.log('⏰ Timeout reached, showing fallback content');
+              fallback.classList.remove('hidden');
+            }
+          }, 5000); // 5 second timeout
+        } else {
+          // URL is not accessible, show error
+          console.error('❌ URL not accessible:', response.status, response.statusText);
+          alert(`Unable to preview document. Error: ${response.status} ${response.statusText}`);
+        }
+      })
+      .catch(error => {
+        console.error('❌ Error accessing URL:', error);
+        // Try to open in new tab as fallback
+        try {
+          window.open(webhookbodyUrl, '_blank');
+        } catch (fallbackError) {
+          console.error('❌ Fallback also failed:', fallbackError);
+          alert('Unable to preview document. Please try downloading instead.');
+        }
     });
   };
 
   const handleDownloadDocument = (webhookbodyUrl: string, filename: string) => {
+    if (!webhookbodyUrl) {
+      console.error('❌ No webhook URL provided for download');
+      alert('No download URL available for this document.');
+      return;
+    }
+
+    // Validate URL format
+    try {
+      new URL(webhookbodyUrl);
+    } catch (error) {
+      console.error('❌ Invalid URL format for download:', webhookbodyUrl);
+      alert('Invalid download URL. Please contact support.');
+      return;
+    }
+
+    // Test URL accessibility before downloading
+    fetch(webhookbodyUrl, { method: 'HEAD' })
+      .then(response => {
+        if (response.ok) {
+          // URL is accessible, proceed with download
     const link = document.createElement('a');
     link.href = webhookbodyUrl;
     link.download = filename;
@@ -401,6 +499,22 @@ export const SupportingDocuments = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+        } else {
+          // URL is not accessible, show error
+          console.error('❌ Download URL not accessible:', response.status, response.statusText);
+          alert(`Unable to download document. Error: ${response.status} ${response.statusText}`);
+        }
+      })
+      .catch(error => {
+        console.error('❌ Error accessing download URL:', error);
+        // Try direct download as fallback
+        try {
+          window.open(webhookbodyUrl, '_blank');
+        } catch (fallbackError) {
+          console.error('❌ Download fallback also failed:', fallbackError);
+          alert('Unable to download document. Please try again later.');
+        }
+      });
   };
 
   // Helper function to determine person type from document ID
@@ -421,6 +535,155 @@ export const SupportingDocuments = ({
 
   const handleClosePreview = () => {
     setPreviewModal(prev => ({ ...prev, isOpen: false }));
+  };
+
+  // Function to get file type from filename
+  const getFileTypeFromFilename = (filename: string): string => {
+    if (!filename) return 'unknown';
+    
+    const extension = filename.toLowerCase().split('.').pop();
+    
+    switch (extension) {
+      case 'pdf':
+        return 'pdf';
+      case 'jpg':
+      case 'jpeg':
+        return 'image';
+      case 'png':
+        return 'image';
+      case 'gif':
+        return 'image';
+      case 'bmp':
+        return 'image';
+      case 'webp':
+        return 'image';
+      case 'doc':
+      case 'docx':
+        return 'document';
+      case 'xls':
+      case 'xlsx':
+        return 'spreadsheet';
+      case 'ppt':
+      case 'pptx':
+        return 'presentation';
+      case 'txt':
+        return 'text';
+      default:
+        return 'unknown';
+    }
+  };
+
+  // Function to determine current context based on props and document IDs
+  const getCurrentContext = (): string => {
+    // Check if we're showing only specific person types
+    if (showOnlyApplicant) {
+      return 'applicant';
+    } else if (showOnlyCoApplicant) {
+      return 'coApplicant';
+    } else if (showOnlyGuarantor) {
+      return 'guarantor';
+    }
+    
+    // Check document IDs to determine context
+    const documentIds = requiredDocuments.flatMap(cat => cat.documents.map(doc => doc.id));
+    
+    // Look for person-specific document IDs
+    if (documentIds.some(id => id.startsWith('coApplicant_'))) {
+      return 'coApplicant';
+    } else if (documentIds.some(id => id.startsWith('guarantor_'))) {
+      return 'guarantor';
+    } else if (documentIds.some(id => id.startsWith('occupants_'))) {
+      return 'occupants';
+    } else if (documentIds.some(id => id.startsWith('applicant_'))) {
+      return 'applicant';
+    }
+    
+    // Check if we're in a specific person's document section by looking at the current document being processed
+    // This helps when the component is used in different contexts
+    if (documentIds.length > 0) {
+      const firstDocId = documentIds[0];
+      if (firstDocId.includes('coApplicant') || firstDocId.includes('co-applicant')) {
+        return 'coApplicant';
+      } else if (firstDocId.includes('guarantor')) {
+        return 'guarantor';
+      } else if (firstDocId.includes('occupants') || firstDocId.includes('occupant')) {
+        return 'occupants';
+      }
+    }
+    
+    // Default to applicant for supporting documents
+    return 'applicant';
+  };
+
+  // Function to get context for a specific document
+  const getDocumentContext = (documentId: string): string => {
+    console.log(`🔍 Analyzing document ID for context: ${documentId}`);
+    
+    // Check if the document ID contains person-specific information
+    if (documentId.includes('coApplicant') || documentId.includes('co-applicant')) {
+      console.log(`🔍 Document ${documentId} identified as coApplicant`);
+      return 'coApplicant';
+    } else if (documentId.includes('guarantor')) {
+      console.log(`🔍 Document ${documentId} identified as guarantor`);
+      return 'guarantor';
+    } else if (documentId.includes('occupants') || documentId.includes('occupant')) {
+      console.log(`🔍 Document ${documentId} identified as occupants`);
+      return 'occupants';
+    } else if (documentId.includes('applicant')) {
+      console.log(`🔍 Document ${documentId} identified as applicant`);
+      return 'applicant';
+    }
+    
+    // Check if we're in a specific section by looking at the document ID patterns
+    // For Co-Applicant documents, the ID might be something like "photo_id" but we're in co-applicant context
+    if (showOnlyCoApplicant) {
+      console.log(`🔍 Document ${documentId} in co-applicant context (showOnlyCoApplicant: true)`);
+      return 'coApplicant';
+    } else if (showOnlyGuarantor) {
+      console.log(`🔍 Document ${documentId} in guarantor context (showOnlyGuarantor: true)`);
+      return 'guarantor';
+    }
+    
+    console.log(`🔍 Document ${documentId} context unknown, using fallback`);
+    // Fallback to global context
+    return getCurrentContext();
+  };
+
+  // Function to validate and test webhook URLs
+  const validateWebhookUrl = async (url: string): Promise<{ isValid: boolean; error?: string }> => {
+    if (!url) {
+      return { isValid: false, error: 'No URL provided' };
+    }
+
+    try {
+      // Validate URL format
+      new URL(url);
+    } catch (error) {
+      return { isValid: false, error: 'Invalid URL format' };
+    }
+
+    try {
+      // Test URL accessibility
+      const response = await fetch(url, { 
+        method: 'HEAD',
+        mode: 'cors',
+        cache: 'no-cache'
+      });
+      
+      if (response.ok) {
+        return { isValid: true };
+      } else {
+        return { 
+          isValid: false, 
+          error: `HTTP ${response.status}: ${response.statusText}` 
+        };
+      }
+    } catch (error) {
+      return { 
+        isValid: false, 
+        error: error instanceof Error ? error.message : 'Network error' 
+      };
+    }
   };
 
   // Determine employment type for applicant, co-applicant, and guarantor
@@ -534,8 +797,8 @@ export const SupportingDocuments = ({
                     <div className="flex items-center gap-2">
                       {docStatus.status === "uploaded" ? (
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 text-green-600">
-                            <CheckCircle className="h-4 w-4" />
+                        <div className="flex items-center gap-1 text-green-600">
+                          <CheckCircle className="h-4 w-4" />
                             <span className="text-xs font-medium">Uploaded ({docStatus.count} file{docStatus.count > 1 ? 's' : ''})</span>
                           </div>
                           {/* Preview button for uploaded documents */}
@@ -585,9 +848,26 @@ export const SupportingDocuments = ({
                       {(() => {
                         const uploadedDocs = getUploadedDocuments(document.id);
                         if (uploadedDocs.length > 0) {
-                          // Group documents by person type
+                          // Group documents by person type based on the actual filename
                           const groupedDocs = uploadedDocs.reduce((acc, doc) => {
-                            const personType = getPersonTypeFromDocumentId(document.id);
+                            // Extract person type from the actual filename
+                            let personType = 'unknown';
+                            
+                            if (doc.filename.startsWith('applicant_')) {
+                              personType = 'applicant';
+                            } else if (doc.filename.startsWith('coApplicant_')) {
+                              personType = 'coApplicant';
+                            } else if (doc.filename.startsWith('guarantor_')) {
+                              personType = 'guarantor';
+                            } else if (doc.filename.startsWith('occupants_')) {
+                              personType = 'occupants';
+                            } else {
+                              // Fallback: try to determine from document ID
+                              personType = getPersonTypeFromDocumentId(document.id);
+                            }
+                            
+                            console.log(`📁 Grouping document: ${doc.filename} -> ${personType}`);
+                            
                             if (!acc[personType]) {
                               acc[personType] = [];
                             }
@@ -595,17 +875,80 @@ export const SupportingDocuments = ({
                             return acc;
                           }, {} as Record<string, typeof uploadedDocs>);
 
+                          console.log(`📁 Final grouped documents:`, groupedDocs);
+
+                          // Filter documents based on document-specific context
+                          const documentContext = getDocumentContext(document.id);
+                          const globalContext = getCurrentContext();
+                          console.log(`📁 Document context for ${document.id}:`, documentContext);
+                          console.log(`📁 Global context:`, globalContext);
+                          console.log(`📁 Document IDs being processed:`, requiredDocuments.flatMap(cat => cat.documents.map(doc => doc.id)));
+                          console.log(`📁 showOnlyCoApplicant:`, showOnlyCoApplicant);
+                          console.log(`📁 showOnlyGuarantor:`, showOnlyGuarantor);
+                          
+                          // Use document-specific context first, fallback to global context
+                          let effectiveContext = documentContext !== 'unknown' ? documentContext : globalContext;
+                          
+                          // Override context based on component props - this should take priority
+                          if (showOnlyApplicant) {
+                            effectiveContext = 'applicant';
+                            console.log(`🔧 Overriding context to applicant due to showOnlyApplicant prop`);
+                          } else if (showOnlyCoApplicant) {
+                            effectiveContext = 'coApplicant';
+                            console.log(`🔧 Overriding context to coApplicant due to showOnlyCoApplicant prop`);
+                          } else if (showOnlyGuarantor) {
+                            effectiveContext = 'guarantor';
+                            console.log(`🔧 Overriding context to guarantor due to showOnlyGuarantor prop`);
+                          }
+                          
+                          console.log(`📁 Effective context:`, effectiveContext);
+                          console.log(`📁 Props check - showOnlyCoApplicant: ${showOnlyCoApplicant}, showOnlyGuarantor: ${showOnlyGuarantor}`);
+                          
+                          // Only show documents for the effective context
+                          const filteredGroupedDocs: Record<string, typeof uploadedDocs> = {};
+                          
+                          // Force context-based filtering when we have a specific context
+                          if (effectiveContext === 'applicant') {
+                            if (groupedDocs.applicant) {
+                              filteredGroupedDocs.applicant = groupedDocs.applicant;
+                            }
+                            console.log(`🔧 Showing only applicant documents for effectiveContext: ${effectiveContext}`);
+                          } else if (effectiveContext === 'coApplicant') {
+                            if (groupedDocs.coApplicant) {
+                              filteredGroupedDocs.coApplicant = groupedDocs.coApplicant;
+                            }
+                            console.log(`🔧 Showing only coApplicant documents for effectiveContext: ${effectiveContext}`);
+                          } else if (effectiveContext === 'guarantor') {
+                            if (groupedDocs.guarantor) {
+                              filteredGroupedDocs.guarantor = groupedDocs.guarantor;
+                            }
+                            console.log(`🔧 Showing only guarantor documents for effectiveContext: ${effectiveContext}`);
+                          } else if (effectiveContext === 'occupants') {
+                            if (groupedDocs.occupants) {
+                              filteredGroupedDocs.occupants = groupedDocs.occupants;
+                            }
+                            console.log(`🔧 Showing only occupants documents for effectiveContext: ${effectiveContext}`);
+                          } else {
+                            // If no specific context, show all documents (fallback)
+                            Object.assign(filteredGroupedDocs, groupedDocs);
+                            console.log(`🔧 No specific context, showing all documents as fallback`);
+                          }
+
+                          console.log(`📁 Filtered grouped documents:`, filteredGroupedDocs);
+
                           return (
                             <div className="mt-3 space-y-3">
-                              <p className="text-xs font-medium text-green-800">Uploaded Files:</p>
+                              <p className="text-xs font-medium text-green-800">
+                                Uploaded Files {effectiveContext !== 'applicant' ? `(${effectiveContext.charAt(0).toUpperCase() + effectiveContext.slice(1)})` : ''}:
+                              </p>
                               
                               {/* Applicant Documents */}
-                              {groupedDocs.applicant && groupedDocs.applicant.length > 0 && (
+                              {filteredGroupedDocs.applicant && filteredGroupedDocs.applicant.length > 0 && (
                                 <div className="space-y-2">
                                   <div className="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">
-                                    👤 Applicant Documents
+                                    👤 {effectiveContext === 'applicant' ? 'Applicant' : 'Applicant'} Documents
                                   </div>
-                                  {groupedDocs.applicant.map((doc, index) => (
+                                  {filteredGroupedDocs.applicant.map((doc, index) => (
                                     <div key={index} className="flex items-center justify-between bg-white rounded border p-2 ml-3">
                                       <div className="flex items-center gap-2">
                                         <FileText className="h-4 w-4 text-blue-600" />
@@ -637,12 +980,12 @@ export const SupportingDocuments = ({
                               )}
 
                               {/* Co-Applicant Documents */}
-                              {groupedDocs.coApplicant && groupedDocs.coApplicant.length > 0 && (
+                              {filteredGroupedDocs.coApplicant && filteredGroupedDocs.coApplicant.length > 0 && (
                                 <div className="space-y-2">
                                   <div className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-1 rounded border border-purple-200">
-                                    👥 Co-Applicant Documents
+                                    👥 {effectiveContext === 'coApplicant' ? 'Co-Applicant' : 'Co-Applicant'} Documents
                                   </div>
-                                  {groupedDocs.coApplicant.map((doc, index) => (
+                                  {filteredGroupedDocs.coApplicant.map((doc, index) => (
                                     <div key={index} className="flex items-center justify-between bg-white rounded border p-2 ml-3">
                                       <div className="flex items-center gap-2">
                                         <FileText className="h-4 w-4 text-purple-600" />
@@ -674,12 +1017,12 @@ export const SupportingDocuments = ({
                               )}
 
                               {/* Guarantor Documents */}
-                              {groupedDocs.guarantor && groupedDocs.guarantor.length > 0 && (
+                              {filteredGroupedDocs.guarantor && filteredGroupedDocs.guarantor.length > 0 && (
                                 <div className="space-y-2">
                                   <div className="text-xs font-semibold text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-200">
-                                    🏦 Guarantor Documents
+                                    🏦 {effectiveContext === 'guarantor' ? 'Guarantor' : 'Guarantor'} Documents
                                   </div>
-                                  {groupedDocs.guarantor.map((doc, index) => (
+                                  {filteredGroupedDocs.guarantor.map((doc, index) => (
                                     <div key={index} className="flex items-center justify-between bg-white rounded border p-2 ml-3">
                                       <div className="flex items-center gap-2">
                                         <FileText className="h-4 w-4 text-orange-600" />
@@ -711,39 +1054,39 @@ export const SupportingDocuments = ({
                               )}
 
                               {/* Occupant Documents */}
-                              {groupedDocs.occupants && groupedDocs.occupants.length > 0 && (
+                              {filteredGroupedDocs.occupants && filteredGroupedDocs.occupants.length > 0 && (
                                 <div className="space-y-2">
                                   <div className="text-xs font-semibold text-green-700 bg-green-50 px-2 py-1 rounded border border-green-200">
-                                    🏠 Occupant Documents
+                                    🏠 {effectiveContext === 'occupants' ? 'Occupant' : 'Occupant'} Documents
                                   </div>
-                                  {groupedDocs.occupants.map((doc, index) => (
+                                  {filteredGroupedDocs.occupants.map((doc, index) => (
                                     <div key={index} className="flex items-center justify-between bg-white rounded border p-2 ml-3">
-                                      <div className="flex items-center gap-2">
-                                        <FileText className="h-4 w-4 text-green-600" />
-                                        <span className="text-xs text-gray-700">{doc.filename}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <Button
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-green-600" />
+                                    <span className="text-xs text-gray-700">{doc.filename}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button
                                           variant="outline"
-                                          size="sm"
-                                          onClick={() => handlePreviewDocument(doc.filename, doc.webhookbodyUrl, document.name)}
+                                      size="sm"
+                                      onClick={() => handlePreviewDocument(doc.filename, doc.webhookbodyUrl, document.name)}
                                           className="h-6 px-2 text-xs border-green-200 text-green-700 hover:bg-green-50"
-                                        >
-                                          <Eye className="h-3 w-3 mr-1" />
-                                          Preview
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => handleDownloadDocument(doc.webhookbodyUrl, doc.filename)}
-                                          className="h-6 px-2 text-xs"
-                                        >
-                                          <Download className="h-3 w-3 mr-1" />
-                                          Download
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))}
+                                    >
+                                      <Eye className="h-3 w-3 mr-1" />
+                                      Preview
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDownloadDocument(doc.webhookbodyUrl, doc.filename)}
+                                      className="h-6 px-2 text-xs"
+                                    >
+                                      <Download className="h-3 w-3 mr-1" />
+                                      Download
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
                                 </div>
                               )}
                             </div>
@@ -796,27 +1139,97 @@ export const SupportingDocuments = ({
       ))}
 
       <Dialog open={previewModal.isOpen} onOpenChange={handleClosePreview}>
-        <DialogContent>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>{previewModal.title}</DialogTitle>
           </DialogHeader>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={handleClosePreview}>
-              <X className="h-4 w-4 mr-2" /> Close
+          <div className="flex-1 overflow-hidden">
+            {previewModal.url && (
+              <div className="w-full h-full">
+                {/* Try iframe first */}
+                <iframe
+                  src={previewModal.url}
+                  className="w-full h-full border-0"
+                  title={previewModal.filename}
+                  onError={() => {
+                    console.log('❌ Iframe failed, showing fallback content');
+                    const fallback = document.getElementById('fallback-content');
+                    if (fallback) fallback.classList.remove('hidden');
+                  }}
+                  onLoad={(e) => {
+                    // Check if content is blocked or iframe is empty
+                    const iframe = e.target as HTMLIFrameElement;
+                    try {
+                      // Try to access iframe content to detect CORS issues
+                      if (iframe.contentDocument && iframe.contentDocument.body) {
+                        const content = iframe.contentDocument.body.innerHTML;
+                        if (content.includes('blocked') || content.includes('Contact the site owner')) {
+                          console.log('❌ Content blocked detected, showing fallback');
+                          const fallback = document.getElementById('fallback-content');
+                          if (fallback) fallback.classList.remove('hidden');
+                        }
+                      }
+                    } catch (error) {
+                      // CORS error or content blocked, show fallback
+                      console.log('❌ CORS error or content blocked, showing fallback');
+                      const fallback = document.getElementById('fallback-content');
+                      if (fallback) fallback.classList.remove('hidden');
+                    }
+                  }}
+                />
+                
+                {/* Fallback content if iframe fails or content is blocked */}
+                <div className="hidden" id="fallback-content">
+                  <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                    <div className="text-amber-600 mb-4">
+                      <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      Preview Unavailable
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      The document preview is blocked or unavailable. This can happen due to:
+                    </p>
+                    <ul className="text-sm text-gray-600 mb-6 text-left space-y-1">
+                      <li>• CORS (Cross-Origin) restrictions</li>
+                      <li>• S3 bucket security settings</li>
+                      <li>• Document access permissions</li>
+                      <li>• Network connectivity issues</li>
+                    </ul>
+                    <div className="flex gap-3">
+                      <Button 
+                        onClick={() => window.open(previewModal.url, '_blank')}
+                        variant="outline"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        Open in New Tab
+                      </Button>
+                      <Button 
+                        onClick={() => handleDownloadDocument(previewModal.url, previewModal.filename)}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Document
             </Button>
-            <Button onClick={() => handleDownloadDocument(previewModal.url, previewModal.filename)}>
-              <Download className="h-4 w-4 mr-2" /> Download
-            </Button>
-            <Button onClick={() => handlePreviewDocument(previewModal.filename, previewModal.url, previewModal.title)}>
-              <Eye className="h-4 w-4 mr-2" /> Preview
-            </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          {previewModal.url && (
-            <iframe
-              src={previewModal.url}
-              style={{ width: '100%', height: 'calc(100vh - 250px)', border: 'none' }}
-            />
-          )}
+          <DialogFooter>
+            <Button onClick={() => handleDownloadDocument(previewModal.url, previewModal.filename)}>
+              <Download className="w-4 h-4 mr-2" />
+              Download
+            </Button>
+            <Button variant="outline" onClick={handleClosePreview}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

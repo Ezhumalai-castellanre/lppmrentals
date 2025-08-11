@@ -517,7 +517,10 @@ export function ApplicationForm() {
 
 
       // Also update the webhook file URL for encrypted documents
-      handleWebhookFileUrl(person, documentType, fileUrl, `${documentType}_${Date.now()}`);
+      // Use person-specific filename to maintain context
+      const personSpecificFilename = `${person}_${documentType}_${Date.now()}`;
+      console.log(`🔑 Setting webhook file URL with person-specific filename: ${personSpecificFilename}`);
+      handleWebhookFileUrl(person, documentType, fileUrl, personSpecificFilename);
       
       console.log(`✅ Webhook response processing completed for ${person} ${documentType}`);
     } else {
@@ -2968,8 +2971,24 @@ export function ApplicationForm() {
               <SupportingDocuments 
                 formData={{
                   ...formData,
-                  webhookResponses
+                  webhookResponses: Object.fromEntries(
+                    Object.entries(webhookResponses)
+                      .filter(([key]) => key.startsWith('applicant_'))
+                      .map(([key, value]) => [key.replace('applicant_', ''), value])
+                  )
                 }}
+                // Debug: Log what webhook responses are being filtered for applicant
+                // Original webhookResponses: {applicant_employment_letter: "...", coApplicant_photo_id: "...", guarantor_social_security: "..."}
+                // Filtered for applicant: {employment_letter: "...", ...}
+                // Log the filtering process
+                // console.log('🔍 Filtering webhook responses for applicant:', {
+                //   original: webhookResponses,
+                //   filtered: Object.fromEntries(
+                //     Object.entries(webhookResponses)
+                //       .filter(([key]) => key.startsWith('applicant_'))
+                //       .map(([key, value]) => [key.replace('applicant_', ''), value])
+                //   )
+                // });
                 onDocumentChange={(documentType, files) => {
                   handleDocumentChange('applicant', documentType, files);
                 }}
@@ -2984,7 +3003,7 @@ export function ApplicationForm() {
                 applicationId={user?.applicantId || 'unknown'}
                 applicantId={user?.id}
                 zoneinfo={user?.zoneinfo}
-                showOnlyCoApplicant={false}
+                showOnlyApplicant={true}
               />
             </CardContent>
           </Card>
@@ -3484,6 +3503,9 @@ export function ApplicationForm() {
                         .map(([key, value]) => [key.replace('coApplicant_', ''), value])
                     )
                   }}
+                  // Debug: Filter webhook responses for coApplicant only
+                  // Original: {applicant_employment_letter: "...", coApplicant_photo_id: "...", guarantor_social_security: "..."}
+                  // Filtered: {photo_id: "..."}
                   onDocumentChange={coApplicantDocumentChange}
                   onEncryptedDocumentChange={coApplicantEncryptedDocumentChange}
                   onWebhookResponse={coApplicantWebhookResponse}
@@ -4264,25 +4286,28 @@ export function ApplicationForm() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <SupportingDocuments
-                formData={{
-                  ...formData,
-                  webhookResponses: Object.fromEntries(
-                    Object.entries(webhookResponses)
-                      .filter(([key]) => key.startsWith('guarantor_'))
-                      .map(([key, value]) => [key.replace('guarantor_', ''), value])
-                  )
-                }}
-                onDocumentChange={guarantorDocumentChange}
-                onEncryptedDocumentChange={guarantorEncryptedDocumentChange}
-                onWebhookResponse={guarantorWebhookResponse}
-                referenceId={referenceId}
-                enableWebhook={true}
-                applicationId={user?.applicantId || 'unknown'}
-                applicantId={user?.id}
-                zoneinfo={user?.zoneinfo}
-                showOnlyGuarantor={true}
-              />
+                <SupportingDocuments
+                  formData={{
+                    ...formData,
+                    webhookResponses: Object.fromEntries(
+                      Object.entries(webhookResponses)
+                        .filter(([key]) => key.startsWith('guarantor_'))
+                        .map(([key, value]) => [key.replace('guarantor_', ''), value])
+                    )
+                  }}
+                  // Debug: Filter webhook responses for guarantor only
+                  // Original: {applicant_employment_letter: "...", coApplicant_photo_id: "...", guarantor_social_security: "..."}
+                  // Filtered: {social_security: "..."}
+                  onDocumentChange={guarantorDocumentChange}
+                  onEncryptedDocumentChange={guarantorEncryptedDocumentChange}
+                  onWebhookResponse={guarantorWebhookResponse}
+                  referenceId={referenceId}
+                  enableWebhook={true}
+                  applicationId={user?.applicantId || 'unknown'}
+                  applicantId={user?.id}
+                  zoneinfo={user?.zoneinfo}
+                  showOnlyGuarantor={true}
+                />
             </CardContent>
           </Card>
         );
