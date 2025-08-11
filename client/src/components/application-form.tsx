@@ -36,6 +36,10 @@ import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInpu
 import { StateCitySelector, StateSelector, CitySelector } from "@/components/ui/state-city-selector";
 import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail, validateDriverLicense } from "@/lib/validation";
 import { FileUpload } from "@/components/ui/file-upload";
+<<<<<<< HEAD
+=======
+
+>>>>>>> 56baf52 (Remove all save draft setup files and functions)
 
 
 const applicationSchema = z.object({
@@ -744,6 +748,11 @@ export function ApplicationForm() {
     mode: "onChange", // Enable real-time validation
   });
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 56baf52 (Remove all save draft setup files and functions)
   // Read selected rental from sessionStorage and pre-populate form
   useEffect(() => {
     const storedRental = sessionStorage.getItem('selectedRental');
