@@ -35,9 +35,7 @@ import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInpu
 import { StateCitySelector, StateSelector, CitySelector } from "@/components/ui/state-city-selector";
 import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail, validateDriverLicense } from "@/lib/validation";
 import { FileUpload } from "@/components/ui/file-upload";
-import { SaveDraftButton } from "@/components/ui/save-draft-button";
-import { LoadDraftButton } from "@/components/ui/load-draft-button";
-import { DraftService } from "@/lib/draft-service";
+
 
 
 const applicationSchema = z.object({
@@ -361,92 +359,7 @@ export function ApplicationForm() {
     mode: "onChange", // Enable real-time validation
   });
 
-  // Load draft data when component mounts
-  useEffect(() => {
-    const loadDraftData = async () => {
-      if (user?.applicantId) {
-        try {
-          console.log('🔄 Loading draft data for applicant:', user.applicantId);
-          const draft = await DraftService.loadDraft(user.applicantId);
-          
-          if (draft && draft.formData) {
-            console.log('📋 Draft data found:', draft.formData);
-            
-            // Restore the main form data
-            if (draft.formData.rawFormData) {
-              setFormData(draft.formData.rawFormData);
-            }
-            
-            // Restore form values
-            if (draft.formData.rawFormValues) {
-              Object.entries(draft.formData.rawFormValues).forEach(([key, value]) => {
-                if (value !== undefined && value !== null) {
-                  try {
-                    form.setValue(key as any, value);
-                  } catch (error) {
-                    console.warn(`Failed to restore form field ${key}:`, error);
-                  }
-                }
-              });
-            }
-            
-            // Restore other state
-            if (draft.formData.signatures) {
-              setSignatures(draft.formData.signatures);
-            }
-            if (draft.formData.documents) {
-              setDocuments(draft.formData.documents);
-            }
-            if (draft.formData.encryptedDocuments) {
-              setEncryptedDocuments(draft.formData.encryptedDocuments);
-            }
-            if (draft.formData.uploadedDocuments) {
-              setUploadedDocuments(draft.formData.uploadedDocuments);
-            }
-            if (draft.formData.uploadedFilesMetadata) {
-              setUploadedFilesMetadata(draft.formData.uploadedFilesMetadata);
-            }
-            if (draft.formData.webhookResponses) {
-              setWebhookResponses(draft.formData.webhookResponses);
-            }
-            if (draft.formData.hasCoApplicant !== undefined) {
-              setHasCoApplicant(draft.formData.hasCoApplicant);
-            }
-            if (draft.formData.hasGuarantor !== undefined) {
-              setHasGuarantor(draft.formData.hasGuarantor);
-            }
-            if (draft.formData.currentStep !== undefined) {
-              setCurrentStep(draft.formData.currentStep);
-            }
-            
-            console.log('✅ Draft data restored successfully');
-            
-            // Show welcome message for draft restoration
-            if (draft.formData.lastUpdated) {
-              const lastUpdated = new Date(draft.formData.lastUpdated);
-              const timeDiff = Date.now() - lastUpdated.getTime();
-              const hoursDiff = Math.floor(timeDiff / (1000 * 60 * 60));
-              
-              if (hoursDiff < 24) {
-                setWelcomeMessage(`Welcome back! Your draft from ${hoursDiff === 0 ? 'recently' : `${hoursDiff} hour${hoursDiff === 1 ? '' : 's'} ago`} has been restored.`);
-              } else {
-                const daysDiff = Math.floor(hoursDiff / 24);
-                setWelcomeMessage(`Welcome back! Your draft from ${daysDiff} day${daysDiff === 1 ? '' : 's'} ago has been restored.`);
-              }
-              setShowWelcomeMessage(true);
-            }
-          } else {
-            console.log('📋 No draft data found, starting fresh application');
-          }
-        } catch (error) {
-          console.warn('⚠️ Failed to load draft data:', error);
-          // Don't show error to user, just start fresh
-        }
-      }
-    };
 
-    loadDraftData();
-  }, [user?.applicantId, form]);
 
   // Read selected rental from sessionStorage and pre-populate form
   useEffect(() => {
