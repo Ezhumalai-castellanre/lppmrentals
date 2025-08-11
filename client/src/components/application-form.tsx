@@ -494,6 +494,20 @@ export function ApplicationForm() {
   // Start auto-save when form data changes
 
 
+  // Debounced save function to prevent multiple rapid saves
+  const debouncedSaveRef = useRef<NodeJS.Timeout>();
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debouncedSaveRef.current) {
+        clearTimeout(debouncedSaveRef.current);
+      }
+    };
+  }, []);
+
+
+
   const updateFormData = async (section: string, field: string, value: any) => {
     setFormData((prev: any) => {
       const newFormData = {
@@ -507,39 +521,14 @@ export function ApplicationForm() {
       return newFormData;
     });
 
-    // Save draft to DynamoDB after form data update
-    if (user?.applicantId) {
-      try {
-        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
-        const enhancedFormDataSnapshot = {
-          ...formDataSnapshot,
-          applicantId: user.applicantId,
-          webhookSummary: getWebhookSummary()
-        };
-
-        const draftData: DraftData = {
-          applicantId: user.applicantId,
-          reference_id: referenceId,
-          form_data: enhancedFormDataSnapshot,
-          current_step: currentStep,
-          last_updated: new Date().toISOString(),
-          status: 'draft',
-          uploaded_files_metadata: uploadedFilesMetadata,
-          webhook_responses: webhookResponses,
-          signatures: signatures,
-          encrypted_documents: encryptedDocuments,
-        };
-
-        const saveResult = await dynamoDBService.saveDraft(draftData);
-        if (saveResult) {
-          console.log('💾 Draft saved to DynamoDB after form data update for:', section, field);
-        } else {
-          console.warn('⚠️ Failed to save draft to DynamoDB after form data update');
-        }
-      } catch (error) {
-        console.error('❌ Error saving draft after form data update:', error);
-      }
+    // Debounce the save operation to prevent multiple rapid saves
+    if (debouncedSaveRef.current) {
+      clearTimeout(debouncedSaveRef.current);
     }
+    
+    debouncedSaveRef.current = setTimeout(() => {
+      saveDraftToDynamoDB();
+    }, 1000); // Wait 1 second after last change before saving
   };
 
   // Handle building selection
@@ -692,6 +681,46 @@ export function ApplicationForm() {
     
     return summary;
   };
+
+  // Save draft to DynamoDB function
+  const saveDraftToDynamoDB = useCallback(async () => {
+    if (!user?.applicantId) {
+      console.log('⚠️ No applicantId available, skipping draft save');
+      return;
+    }
+
+    try {
+      // Get the latest form data from state
+      const currentFormData = formData;
+      const enhancedFormDataSnapshot = {
+        ...currentFormData,
+        applicantId: user.applicantId,
+        webhookSummary: getWebhookSummary()
+      };
+
+      const draftData: DraftData = {
+        applicantId: user.applicantId,
+        reference_id: referenceId,
+        form_data: enhancedFormDataSnapshot,
+        current_step: currentStep,
+        last_updated: new Date().toISOString(),
+        status: 'draft',
+        uploaded_files_metadata: uploadedFilesMetadata,
+        webhook_responses: webhookResponses,
+        signatures: signatures,
+        encrypted_documents: encryptedDocuments,
+      };
+
+      const saveResult = await dynamoDBService.saveDraft(draftData);
+      if (saveResult) {
+        console.log('💾 Draft saved to DynamoDB successfully');
+      } else {
+        console.warn('⚠️ Failed to save draft to DynamoDB');
+      }
+    } catch (error) {
+      console.error('❌ Error saving draft to DynamoDB:', error);
+    }
+  }, [user?.applicantId, formData, referenceId, currentStep, uploadedFilesMetadata, webhookResponses, signatures, encryptedDocuments, getWebhookSummary]);
 
   // Function to log current webhook state (useful for debugging)
   const logCurrentWebhookState = () => {

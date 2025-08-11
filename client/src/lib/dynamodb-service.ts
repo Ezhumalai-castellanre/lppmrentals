@@ -34,7 +34,7 @@ export class DynamoDBService {
     try {
       console.log('💾 Saving draft to DynamoDB:', {
         table: this.tableName,
-        application_id: draftData.application_id,
+        applicantId: draftData.applicantId,
         reference_id: draftData.reference_id,
         current_step: draftData.current_step
       });
@@ -69,7 +69,7 @@ export class DynamoDBService {
     try {
       console.log('📥 Retrieving draft from DynamoDB:', {
         table: this.tableName,
-        application_id: applicationId,
+        applicantId: applicationId,
         reference_id: referenceId
       });
 
@@ -102,7 +102,7 @@ export class DynamoDBService {
     try {
       console.log('📝 Marking draft as submitted in DynamoDB:', {
         table: this.tableName,
-        application_id: applicationId,
+        applicantId: applicationId,
         reference_id: referenceId
       });
 
@@ -136,14 +136,14 @@ export class DynamoDBService {
     try {
       console.log('🗑️ Deleting draft from DynamoDB:', {
         table: this.tableName,
-        application_id: applicationId,
+        applicantId: applicationId,
         reference_id: referenceId
       });
 
       const command = new DeleteItemCommand({
         TableName: this.tableName,
         Key: marshall({
-          application_id: applicationId,
+          applicantId: applicationId,
           reference_id: referenceId,
         }),
       });
