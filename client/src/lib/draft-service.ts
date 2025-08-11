@@ -508,13 +508,13 @@ export class DraftService {
       version: '1.0',
       compressed: false,
       
-      // Step 1: Application Info - extract from flat structure
-      buildingAddress: formData.buildingAddress,
-      apartmentNumber: formData.apartmentNumber,
-      moveInDate: formData.moveInDate,
-      monthlyRent: formData.monthlyRent,
-      apartmentType: formData.apartmentType,
-      howDidYouHear: formData.howDidYouHear,
+      // Step 1: Application Info - extract from nested structure
+      buildingAddress: formData.application?.buildingAddress,
+      apartmentNumber: formData.application?.apartmentNumber,
+      moveInDate: formData.application?.moveInDate,
+      monthlyRent: formData.application?.monthlyRent,
+      apartmentType: formData.application?.apartmentType,
+      howDidYouHear: formData.application?.howDidYouHear,
       
       // Step 2: Primary Applicant - extract from flat structure
       applicantName: formData.applicantName,
@@ -589,47 +589,47 @@ export class DraftService {
       otherOccupants: formData.otherOccupants || formData.occupants,
       otherOccupantsDocuments: formData.otherOccupantsDocuments,
       
-      // Step 9: Guarantor (conditional) - extract from nested structure
+      // Step 9: Guarantor (conditional) - extract from flat structure
       hasGuarantor: formData.hasGuarantor,
-      guarantorName: formData.guarantor?.name,
-      guarantorRelationship: formData.guarantor?.relationship,
-      guarantorDob: formData.guarantor?.dob,
-      guarantorSsn: formData.guarantor?.ssn,
-      guarantorPhone: formData.guarantor?.phone,
-      guarantorEmail: formData.guarantor?.email,
-      guarantorLicense: formData.guarantor?.license,
-      guarantorLicenseState: formData.guarantor?.licenseState,
-      guarantorAddress: formData.guarantor?.address,
-      guarantorCity: formData.guarantor?.city,
-      guarantorState: formData.guarantor?.state,
-      guarantorZip: formData.guarantor?.zip,
-      guarantorLengthAtAddressYears: formData.guarantor?.lengthAtAddressYears,
-      guarantorLengthAtAddressMonths: formData.guarantor?.lengthAtAddressMonths,
-      guarantorLandlordName: formData.guarantor?.landlordName,
-      guarantorLandlordAddressLine1: formData.guarantor?.landlordAddressLine1,
-      guarantorLandlordAddressLine2: formData.guarantor?.landlordAddressLine2,
-      guarantorLandlordCity: formData.guarantor?.landlordCity,
-      guarantorLandlordState: formData.guarantor?.landlordState,
-      guarantorLandlordZipCode: formData.guarantor?.landlordZipCode,
-      guarantorLandlordPhone: formData.guarantor?.landlordPhone,
-      guarantorLandlordEmail: formData.guarantor?.landlordEmail,
-      guarantorCurrentRent: formData.guarantor?.currentRent,
-      guarantorReasonForMoving: formData.guarantor?.reasonForMoving,
+      guarantorName: formData.guarantorName,
+      guarantorRelationship: formData.guarantorRelationship,
+      guarantorDob: formData.guarantorDob,
+      guarantorSsn: formData.guarantorSsn,
+      guarantorPhone: formData.guarantorPhone,
+      guarantorEmail: formData.guarantorEmail,
+      guarantorLicense: formData.guarantorLicense,
+      guarantorLicenseState: formData.guarantorLicenseState,
+      guarantorAddress: formData.guarantorAddress,
+      guarantorCity: formData.guarantorCity,
+      guarantorState: formData.guarantorState,
+      guarantorZip: formData.guarantorZip,
+      guarantorLengthAtAddressYears: formData.guarantorLengthAtAddressYears,
+      guarantorLengthAtAddressMonths: formData.guarantorLengthAtAddressMonths,
+      guarantorLandlordName: formData.guarantorLandlordName,
+      guarantorLandlordAddressLine1: formData.guarantorLandlordAddressLine1,
+      guarantorLandlordAddressLine2: formData.guarantorLandlordAddressLine2,
+      guarantorLandlordCity: formData.guarantorLandlordCity,
+      guarantorLandlordState: formData.guarantorLandlordState,
+      guarantorLandlordZipCode: formData.guarantorLandlordZipCode,
+      guarantorLandlordPhone: formData.guarantorLandlordPhone,
+      guarantorLandlordEmail: formData.guarantorLandlordEmail,
+      guarantorCurrentRent: formData.guarantorCurrentRent,
+      guarantorReasonForMoving: formData.guarantorReasonForMoving,
       
-      // Step 10: Guarantor Financial (conditional) - extract from nested structure
-      guarantorEmploymentType: formData.guarantor?.employmentType,
-      guarantorPosition: formData.guarantor?.position,
-      guarantorStartDate: formData.guarantor?.startDate,
-      guarantorBankInformation: formData.guarantor?.bankInformation,
+      // Step 10: Guarantor Financial (conditional) - extract from flat structure
+      guarantorEmploymentType: formData.guarantorEmploymentType,
+      guarantorPosition: formData.guarantorPosition,
+      guarantorStartDate: formData.guarantorStartDate,
+      guarantorBankInformation: formData.guarantorBankInformation,
       
-      // Step 11: Guarantor Documents (conditional) - extract from nested structure
-      guarantorDocuments: formData.documents?.guarantor,
+      // Step 11: Guarantor Documents (conditional) - extract from flat structure
+      guarantorDocuments: formData.guarantorDocuments,
       
-      // Step 12: Digital Signatures - extract from nested structure
+      // Step 12: Digital Signatures - extract from flat structure
       signatures: formData.signatures,
       signatureTimestamps: formData.signatureTimestamps,
       
-      // File management - extract from nested structure or use provided values
+      // File management - extract from flat structure or use provided values
       webhookResponses: formData.webhookResponses || {},
       uploadedFilesMetadata: formData.uploadedFilesMetadata || {},
       
