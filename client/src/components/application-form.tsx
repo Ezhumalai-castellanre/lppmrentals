@@ -363,7 +363,41 @@ export function ApplicationForm() {
         
         // Restore form data
         if (draftData.form_data) {
-          setFormData(draftData.form_data);
+          // Parse the form data if it's a string (from DynamoDB)
+          let parsedFormData = draftData.form_data;
+          if (typeof draftData.form_data === 'string') {
+            try {
+              parsedFormData = JSON.parse(draftData.form_data);
+              console.log('✅ Parsed form data from JSON string:', parsedFormData);
+              
+              // Clean up the parsed data to ensure consistency
+              if (parsedFormData.application_id) {
+                // Remove the old application_id field and ensure applicantId is set
+                delete parsedFormData.application_id;
+                parsedFormData.applicantId = draftData.applicantId;
+              }
+              
+              // Ensure all required sections exist
+              parsedFormData.application = parsedFormData.application || {};
+              parsedFormData.applicant = parsedFormData.applicant || {};
+              parsedFormData.coApplicant = parsedFormData.coApplicant || {};
+              parsedFormData.guarantor = parsedFormData.guarantor || {};
+              parsedFormData.occupants = parsedFormData.occupants || [];
+              
+              console.log('🧹 Cleaned and normalized form data:', parsedFormData);
+            } catch (parseError) {
+              console.error('❌ Error parsing form data JSON:', parseError);
+              parsedFormData = {
+                application: {},
+                applicant: {},
+                coApplicant: {},
+                guarantor: {},
+                occupants: []
+              };
+            }
+          }
+          
+          setFormData(parsedFormData);
           
           // Restore current step
           if (draftData.current_step !== undefined) {
@@ -372,27 +406,63 @@ export function ApplicationForm() {
           
           // Restore signatures
           if (draftData.signatures) {
-            setSignatures(draftData.signatures);
+            let parsedSignatures = draftData.signatures;
+            if (typeof draftData.signatures === 'string') {
+              try {
+                parsedSignatures = JSON.parse(draftData.signatures);
+              } catch (parseError) {
+                console.error('❌ Error parsing signatures JSON:', parseError);
+                parsedSignatures = {};
+              }
+            }
+            setSignatures(parsedSignatures);
           }
           
           // Restore webhook responses
           if (draftData.webhook_responses) {
-            setWebhookResponses(draftData.webhook_responses);
+            let parsedWebhookResponses = draftData.webhook_responses;
+            if (typeof draftData.webhook_responses === 'string') {
+              try {
+                parsedWebhookResponses = JSON.parse(draftData.webhook_responses);
+              } catch (parseError) {
+                console.error('❌ Error parsing webhook responses JSON:', parseError);
+                parsedWebhookResponses = {};
+              }
+            }
+            setWebhookResponses(parsedWebhookResponses);
           }
           
           // Restore uploaded files metadata
           if (draftData.uploaded_files_metadata) {
-            setUploadedFilesMetadata(draftData.uploaded_files_metadata);
+            let parsedUploadedFiles = draftData.uploaded_files_metadata;
+            if (typeof draftData.uploaded_files_metadata === 'string') {
+              try {
+                parsedUploadedFiles = JSON.parse(draftData.uploaded_files_metadata);
+              } catch (parseError) {
+                console.error('❌ Error parsing uploaded files JSON:', parseError);
+                parsedUploadedFiles = {};
+              }
+            }
+            setUploadedFilesMetadata(parsedUploadedFiles);
           }
           
           // Restore encrypted documents
           if (draftData.encrypted_documents) {
-            setEncryptedDocuments(draftData.encrypted_documents);
+            let parsedEncryptedDocuments = draftData.encrypted_documents;
+            if (typeof draftData.encrypted_documents === 'string') {
+              try {
+                parsedEncryptedDocuments = JSON.parse(draftData.encrypted_documents);
+              } catch (parseError) {
+                console.error('❌ Error parsing encrypted documents JSON:', parseError);
+                parsedEncryptedDocuments = {};
+              }
+            }
+            setEncryptedDocuments(parsedEncryptedDocuments);
           }
           
           // Restore form values for React Hook Form
-          if (draftData.form_data.application) {
-            const app = draftData.form_data.application;
+          if (parsedFormData.application) {
+            const app = parsedFormData.application;
             if (app.buildingAddress) form.setValue('buildingAddress', app.buildingAddress);
             if (app.apartmentNumber) form.setValue('apartmentNumber', app.apartmentNumber);
             if (app.apartmentType) form.setValue('apartmentType', app.apartmentType);
@@ -406,8 +476,8 @@ export function ApplicationForm() {
             }
           }
           
-          if (draftData.form_data.applicant) {
-            const applicant = draftData.form_data.applicant;
+          if (parsedFormData.applicant) {
+            const applicant = parsedFormData.applicant;
             if (applicant.name) form.setValue('applicantName', applicant.name);
             if (applicant.email) form.setValue('applicantEmail', applicant.email);
             if (applicant.phone) form.setValue('applicantPhone', applicant.phone);
@@ -424,11 +494,11 @@ export function ApplicationForm() {
           }
           
           // Restore co-applicant and guarantor flags
-          if (draftData.form_data.hasCoApplicant !== undefined) {
-            setHasCoApplicant(draftData.form_data.hasCoApplicant);
+          if (parsedFormData.hasCoApplicant !== undefined) {
+            setHasCoApplicant(parsedFormData.hasCoApplicant);
           }
-          if (draftData.form_data.hasGuarantor !== undefined) {
-            setHasGuarantor(draftData.form_data.hasGuarantor);
+          if (parsedFormData.hasGuarantor !== undefined) {
+            setHasGuarantor(parsedFormData.hasGuarantor);
           }
           
           toast({
@@ -689,27 +759,36 @@ export function ApplicationForm() {
       return;
     }
 
+    if (!user.applicantId.trim()) {
+      console.log('⚠️ Empty applicantId, skipping draft save');
+      return;
+    }
+
     try {
       // Get the latest form data from state
       const currentFormData = formData;
-      const enhancedFormDataSnapshot = {
-        ...currentFormData,
-        applicantId: user.applicantId,
-        webhookSummary: getWebhookSummary()
-      };
+              // Clean up the form data before saving to remove empty values and ensure consistency
+        const cleanedFormData = cleanFormDataForStorage(currentFormData);
+        
+        const enhancedFormDataSnapshot = {
+          ...cleanedFormData,
+          applicantId: user.applicantId,
+          // Remove the old application_id field to avoid confusion
+          webhookSummary: getWebhookSummary()
+        };
 
-      const draftData: DraftData = {
-        applicantId: user.applicantId,
-        reference_id: referenceId,
-        form_data: enhancedFormDataSnapshot,
-        current_step: currentStep,
-        last_updated: new Date().toISOString(),
-        status: 'draft',
-        uploaded_files_metadata: uploadedFilesMetadata,
-        webhook_responses: webhookResponses,
-        signatures: signatures,
-        encrypted_documents: encryptedDocuments,
-      };
+        const draftData: DraftData = {
+          applicantId: user.applicantId,
+          reference_id: referenceId,
+          form_data: enhancedFormDataSnapshot,
+          current_step: currentStep,
+          last_updated: new Date().toISOString(),
+          status: 'draft',
+          uploaded_files_metadata: uploadedFilesMetadata,
+          webhook_responses: webhookResponses,
+          signatures: signatures,
+          encrypted_documents: encryptedDocuments,
+        };
 
       const saveResult = await dynamoDBService.saveDraft(draftData);
       if (saveResult) {
@@ -759,6 +838,75 @@ export function ApplicationForm() {
     }
     console.log('  - SSN Document Sections:', documentSections);
     console.log('=== END OCCUPANT FORM DATA ===');
+  };
+
+  // Clean form data for storage by removing empty values and ensuring consistency
+  const cleanFormDataForStorage = (data: any) => {
+    const cleaned: any = {};
+    
+    // Clean application section
+    if (data.application) {
+      cleaned.application = {};
+      Object.entries(data.application).forEach(([key, value]) => {
+        if (value !== '' && value !== null && value !== undefined) {
+          cleaned.application[key] = value;
+        }
+      });
+    }
+    
+    // Clean applicant section
+    if (data.applicant) {
+      cleaned.applicant = {};
+      Object.entries(data.applicant).forEach(([key, value]) => {
+        if (value !== '' && value !== null && value !== undefined) {
+          cleaned.applicant[key] = value;
+        }
+      });
+    }
+    
+    // Clean coApplicant section
+    if (data.coApplicant) {
+      cleaned.coApplicant = {};
+      Object.entries(data.coApplicant).forEach(([key, value]) => {
+        if (value !== '' && value !== null && value !== undefined) {
+          cleaned.coApplicant[key] = value;
+        }
+      });
+    }
+    
+    // Clean guarantor section
+    if (data.guarantor) {
+      cleaned.guarantor = {};
+      Object.entries(data.guarantor).forEach(([key, value]) => {
+        if (value !== '' && value !== null && value !== undefined) {
+          cleaned.guarantor[key] = value;
+        }
+      });
+    }
+    
+    // Clean occupants array
+    if (data.occupants && Array.isArray(data.occupants)) {
+      cleaned.occupants = data.occupants.map((occupant: any) => {
+        const cleanOccupant: any = {};
+        if (occupant) {
+          Object.entries(occupant).forEach(([key, value]) => {
+            if (value !== '' && value !== null && value !== undefined) {
+              cleanOccupant[key] = value;
+            }
+          });
+        }
+        return cleanOccupant;
+      }).filter((occupant: any) => Object.keys(occupant).length > 0);
+    }
+    
+    // Copy other fields
+    Object.entries(data).forEach(([key, value]) => {
+      if (!['application', 'applicant', 'coApplicant', 'guarantor', 'occupants'].includes(key)) {
+        cleaned[key] = value;
+      }
+    });
+    
+    return cleaned;
   };
 
   // Function to get occupant document status

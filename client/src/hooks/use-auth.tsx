@@ -81,35 +81,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log('🔍 User attributes keys:', Object.keys(userAttributes));
           console.log('🔍 User attributes:', userAttributes);
           
-          // Determine the actual applicantId
-          let actualApplicantId = applicantId; // Default to database applicantId
-          if (zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_') || zoneinfoValue.startsWith('LPPM-'))) {
-            actualApplicantId = zoneinfoValue; // Use zoneinfo as applicantId if it's a temporary format or LPPM format
-            console.log('🔧 Using zoneinfo as applicantId:', actualApplicantId);
-          } else if (!applicantId) {
-            // If no applicantId from database, generate a new one
-            actualApplicantId = generateLppmNumber();
-            console.log('🔧 Generated new applicantId because none found in database:', actualApplicantId);
-          }
+          // Use the database applicantId as the primary identifier
+          const finalApplicantId = applicantId || generateLppmNumber();
           
-          console.log('✅ Final applicantId determined:', actualApplicantId);
+          console.log('✅ Final applicantId determined:', finalApplicantId);
           
           const userState = {
             id: currentUser.username,
             email: userAttributes.email || '',
-            username: currentUser?.username || '',
-            applicantId: zoneinfoValue,
-            zoneinfo: zoneinfoValue, // Keep zoneinfo and applicantId in sync
-            name: userAttributes?.attributes?.name || '',
-            given_name: userAttributes?.attributes?.given_name || '',
-            family_name: userAttributes?.attributes?.family_name || '',
-            phone_number: userAttributes?.attributes?.phone_number || '',
+            username: currentUser.username,
+            applicantId: finalApplicantId,
+            zoneinfo: zoneinfoValue,
+            name: (userAttributes as any).name || '',
+            given_name: userAttributes.given_name || '',
+            family_name: userAttributes.family_name || '',
+            phone_number: userAttributes.phone_number || '',
           };
           
           setUser(userState);
           
           console.log('✅ User state set successfully:', userState);
-          console.log('✅ User state set successfully with applicantId:', actualApplicantId);
+          console.log('✅ User state set successfully with applicantId:', finalApplicantId);
           console.log('✅ User state set successfully with zoneinfo:', zoneinfoValue);
         } catch (attributesError) {
           console.error('❌ Error fetching user attributes, using fallback:', attributesError);
@@ -256,23 +248,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           // Check if zoneinfo contains the applicantId (temporary mapping)
           const zoneinfoValue = userAttributes.attributes.zoneinfo || userAttributes.attributes['custom:zoneinfo'];
-          const actualZoneinfo = zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')) ? undefined : zoneinfoValue;
           
-          // Determine the actual applicantId - prioritize zoneinfo if it's a valid temporary ID, otherwise use the database applicantId
-          let actualApplicantId = applicantId; // Default to database applicantId
-          if (zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_'))) {
-            actualApplicantId = zoneinfoValue; // Use zoneinfo as applicantId if it's a temporary format
-          } else if (!applicantId) {
-            // If no applicantId from database, generate a new one
-            actualApplicantId = generateLppmNumber();
-            console.log('🔧 Generated new applicantId because none found in database:', actualApplicantId);
-          }
-
+          // Use the database applicantId as the primary identifier
+          const finalApplicantId = applicantId || generateLppmNumber();
+          
           setUser({
             id: currentUser.username,
             email: userAttributes.attributes.email || '',
             username: currentUser.username,
-            applicantId: zoneinfoValue,
+            applicantId: finalApplicantId,
             zoneinfo: zoneinfoValue,
             name: userAttributes.attributes.name,
             given_name: userAttributes.attributes?.given_name || '',
@@ -283,27 +267,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log('✅ User logged in with attributes:', {
             id: currentUser.username,
             email: userAttributes.attributes.email,
-            zoneinfo: userAttributes.attributes.zoneinfo || userAttributes.attributes['custom:zoneinfo'],
+            zoneinfo: zoneinfoValue,
             name: userAttributes.attributes.name,
             given_name: userAttributes.attributes.given_name,
             family_name: userAttributes.attributes.family_name,
             phone_number: userAttributes.attributes.phone_number,
             databaseApplicantId: applicantId,
-            finalApplicantId: actualApplicantId,
+            finalApplicantId: finalApplicantId,
           });
           
           // Additional detailed logging for zoneinfo
           console.log('🔍 Detailed zoneinfo analysis:', {
             zoneinfo_standard: userAttributes.attributes.zoneinfo,
             zoneinfo_custom: userAttributes.attributes['custom:zoneinfo'],
-            zoneinfo_final: userAttributes.attributes.zoneinfo || userAttributes.attributes['custom:zoneinfo'],
+            zoneinfo_final: zoneinfoValue,
             all_attributes_keys: Object.keys(userAttributes.attributes),
             custom_attributes: Object.keys(userAttributes.attributes).filter(key => key.startsWith('custom:')),
-            actual_zoneinfo: actualZoneinfo,
             database_applicantId: applicantId,
-            final_applicantId: actualApplicantId,
-            is_temp_applicant_id: zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')),
-            zoneinfo_used_as_applicantId: zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')),
+            final_applicantId: finalApplicantId,
           });
         } else {
           console.log('⚠️ No debug result available, falling back to basic auth');
@@ -321,23 +302,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           // Check if zoneinfo contains the applicantId (temporary mapping)
           const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
-          const actualZoneinfo = zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_')) ? undefined : zoneinfoValue;
+          // Use the database applicantId as the primary identifier
+          const finalApplicantId = applicantId || generateLppmNumber();
           
-          // Determine the actual applicantId - prioritize zoneinfo if it's a valid temporary ID, otherwise use the database applicantId
-          let actualApplicantId = applicantId; // Default to database applicantId
-          if (zoneinfoValue && (zoneinfoValue.startsWith('temp_') || zoneinfoValue.startsWith('zone_'))) {
-            actualApplicantId = zoneinfoValue; // Use zoneinfo as applicantId if it's a temporary format
-          } else if (!applicantId) {
-            // If no applicantId from database, generate a new one
-            actualApplicantId = generateLppmNumber();
-            console.log('🔧 Generated new applicantId because none found in database:', actualApplicantId);
-          }
-
           setUser({
             id: currentUser.username,
             email: userAttributes.email || '',
             username: currentUser.username,
-            applicantId: zoneinfoValue,
+            applicantId: finalApplicantId,
             zoneinfo: zoneinfoValue,
             name: userAttributes.name,
             given_name: userAttributes.given_name,
