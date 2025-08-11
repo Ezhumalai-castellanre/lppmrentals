@@ -145,6 +145,95 @@ app.post('/api/upload-files', async (req, res) => {
   }
 });
 
+// Draft management endpoints
+app.post('/api/drafts', async (req, res) => {
+  try {
+    log('=== DRAFT SAVE ENDPOINT CALLED ===');
+    log('✅ Received request to save draft:', new Date().toLocaleTimeString());
+    
+    const { applicantId, formData } = req.body;
+
+    if (!applicantId || !formData) {
+      return res.status(400).json({ error: 'applicantId and formData are required' });
+    }
+
+    // For local development, we'll store drafts in memory (you can extend this to use your database)
+    // In production, this would use DynamoDB
+    if (!global.draftStorage) {
+      global.draftStorage = new Map();
+    }
+
+    // Check if the data size exceeds reasonable limits
+    const dataSize = JSON.stringify(formData).length;
+    if (dataSize > 1000000) { // 1MB limit for local development
+      log(`Draft data size (${dataSize} bytes) exceeds local limit`);
+      return res.status(413).json({ 
+        error: 'Draft data too large for local development',
+        dataSize: dataSize
+      });
+    }
+
+    // Store the draft
+    global.draftStorage.set(applicantId, {
+      applicantId,
+      formData,
+      lastUpdated: new Date().toISOString(),
+      dataSize: dataSize
+    });
+
+    log(`✅ Draft saved for ${applicantId}, size: ${dataSize} bytes`);
+
+    return res.status(200).json({ 
+      message: 'Draft saved successfully',
+      dataSize: dataSize
+    });
+
+  } catch (error) {
+    log('Error saving draft:', error);
+    
+    return res.status(500).json({ 
+      error: 'Could not save draft',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+app.get('/api/drafts/:applicantId', async (req, res) => {
+  try {
+    const { applicantId } = req.params;
+    log(`=== DRAFT LOAD ENDPOINT CALLED ===`);
+    log(`🔍 Looking for draft for applicant: ${applicantId}`);
+
+    if (!global.draftStorage) {
+      global.draftStorage = new Map();
+    }
+
+    const draft = global.draftStorage.get(applicantId);
+
+    if (!draft) {
+      log(`❌ No draft found for ${applicantId}`);
+      return res.status(404).json({ message: 'Draft not found' });
+    }
+
+    log(`✅ Draft found for ${applicantId}, size: ${draft.dataSize} bytes`);
+
+    return res.status(200).json({
+      applicantId: draft.applicantId,
+      formData: draft.formData,
+      lastUpdated: draft.lastUpdated,
+      dataSize: draft.dataSize
+    });
+
+  } catch (error) {
+    log('Error loading draft:', error);
+    
+    return res.status(500).json({ 
+      error: 'Could not load draft',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 
 
 (async () => {

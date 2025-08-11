@@ -35,6 +35,9 @@ import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInpu
 import { StateCitySelector, StateSelector, CitySelector } from "@/components/ui/state-city-selector";
 import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail, validateDriverLicense } from "@/lib/validation";
 import { FileUpload } from "@/components/ui/file-upload";
+import { SaveDraftButton } from "@/components/ui/save-draft-button";
+import { LoadDraftButton } from "@/components/ui/load-draft-button";
+import { DraftService } from "@/lib/draft-service";
 
 
 const applicationSchema = z.object({
@@ -288,6 +291,8 @@ export function ApplicationForm() {
 
 
 
+
+
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
     defaultValues: {
@@ -355,6 +360,93 @@ export function ApplicationForm() {
     },
     mode: "onChange", // Enable real-time validation
   });
+
+  // Load draft data when component mounts
+  useEffect(() => {
+    const loadDraftData = async () => {
+      if (user?.applicantId) {
+        try {
+          console.log('🔄 Loading draft data for applicant:', user.applicantId);
+          const draft = await DraftService.loadDraft(user.applicantId);
+          
+          if (draft && draft.formData) {
+            console.log('📋 Draft data found:', draft.formData);
+            
+            // Restore the main form data
+            if (draft.formData.rawFormData) {
+              setFormData(draft.formData.rawFormData);
+            }
+            
+            // Restore form values
+            if (draft.formData.rawFormValues) {
+              Object.entries(draft.formData.rawFormValues).forEach(([key, value]) => {
+                if (value !== undefined && value !== null) {
+                  try {
+                    form.setValue(key as any, value);
+                  } catch (error) {
+                    console.warn(`Failed to restore form field ${key}:`, error);
+                  }
+                }
+              });
+            }
+            
+            // Restore other state
+            if (draft.formData.signatures) {
+              setSignatures(draft.formData.signatures);
+            }
+            if (draft.formData.documents) {
+              setDocuments(draft.formData.documents);
+            }
+            if (draft.formData.encryptedDocuments) {
+              setEncryptedDocuments(draft.formData.encryptedDocuments);
+            }
+            if (draft.formData.uploadedDocuments) {
+              setUploadedDocuments(draft.formData.uploadedDocuments);
+            }
+            if (draft.formData.uploadedFilesMetadata) {
+              setUploadedFilesMetadata(draft.formData.uploadedFilesMetadata);
+            }
+            if (draft.formData.webhookResponses) {
+              setWebhookResponses(draft.formData.webhookResponses);
+            }
+            if (draft.formData.hasCoApplicant !== undefined) {
+              setHasCoApplicant(draft.formData.hasCoApplicant);
+            }
+            if (draft.formData.hasGuarantor !== undefined) {
+              setHasGuarantor(draft.formData.hasGuarantor);
+            }
+            if (draft.formData.currentStep !== undefined) {
+              setCurrentStep(draft.formData.currentStep);
+            }
+            
+            console.log('✅ Draft data restored successfully');
+            
+            // Show welcome message for draft restoration
+            if (draft.formData.lastUpdated) {
+              const lastUpdated = new Date(draft.formData.lastUpdated);
+              const timeDiff = Date.now() - lastUpdated.getTime();
+              const hoursDiff = Math.floor(timeDiff / (1000 * 60 * 60));
+              
+              if (hoursDiff < 24) {
+                setWelcomeMessage(`Welcome back! Your draft from ${hoursDiff === 0 ? 'recently' : `${hoursDiff} hour${hoursDiff === 1 ? '' : 's'} ago`} has been restored.`);
+              } else {
+                const daysDiff = Math.floor(hoursDiff / 24);
+                setWelcomeMessage(`Welcome back! Your draft from ${daysDiff} day${daysDiff === 1 ? '' : 's'} ago has been restored.`);
+              }
+              setShowWelcomeMessage(true);
+            }
+          } else {
+            console.log('📋 No draft data found, starting fresh application');
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to load draft data:', error);
+          // Don't show error to user, just start fresh
+        }
+      }
+    };
+
+    loadDraftData();
+  }, [user?.applicantId, form]);
 
   // Read selected rental from sessionStorage and pre-populate form
   useEffect(() => {
@@ -530,6 +622,34 @@ export function ApplicationForm() {
           [field]: value,
         },
       };
+      
+      // Auto-save draft when form data changes
+      if (user?.applicantId) {
+        const applicantId = user.applicantId; // Extract to avoid undefined issues
+        // Debounce draft saving to avoid too many API calls
+        const timeoutId = setTimeout(async () => {
+          try {
+            const formValues = form.getValues();
+            const draftData = {
+              ...newFormData,
+              rawFormValues: formValues,
+              currentStep: currentStep,
+              lastUpdated: new Date().toISOString()
+            };
+            
+            await DraftService.saveDraft(applicantId, draftData);
+            console.log('✅ Draft auto-saved after form data change');
+          } catch (error) {
+            console.warn('⚠️ Failed to auto-save draft after form data change:', error);
+          }
+        }, 2000); // Save draft 2 seconds after last change
+        
+        // Clear previous timeout
+        if ((window as any).draftSaveTimeout) {
+          clearTimeout((window as any).draftSaveTimeout);
+        }
+        (window as any).draftSaveTimeout = timeoutId;
+      }
       
       // Update draft with new form data using proper mapping
       const safeDateToISO = (dateValue: any): string | null => {
@@ -878,6 +998,25 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
       e.stopPropagation();
     }
     
+    // Auto-save draft before moving to next step
+    if (user?.applicantId) {
+      try {
+        const formValues = form.getValues();
+        const draftData = {
+          ...formData,
+          rawFormValues: formValues,
+          currentStep: currentStep,
+          lastUpdated: new Date().toISOString()
+        };
+        
+        await DraftService.saveDraft(user.applicantId, draftData);
+        console.log('✅ Draft auto-saved before moving to next step');
+      } catch (error) {
+        console.warn('⚠️ Failed to auto-save draft:', error);
+        // Don't block navigation if draft save fails
+      }
+    }
+    
     setCurrentStep((prev) => getNextAllowedStep(prev, 1));
   };
 
@@ -887,6 +1026,25 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
     if (e) {
       e.preventDefault();
       e.stopPropagation();
+    }
+    
+    // Auto-save draft before moving to previous step
+    if (user?.applicantId) {
+      try {
+        const formValues = form.getValues();
+        const draftData = {
+          ...formData,
+          rawFormValues: formValues,
+          currentStep: currentStep,
+          lastUpdated: new Date().toISOString()
+        };
+        
+        await DraftService.saveDraft(user.applicantId, draftData);
+        console.log('✅ Draft auto-saved before moving to previous step');
+      } catch (error) {
+        console.warn('⚠️ Failed to auto-save draft:', error);
+        // Don't block navigation if draft save fails
+      }
     }
     
     setCurrentStep((prev) => getNextAllowedStep(prev, -1));
@@ -4482,6 +4640,82 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
               );
             })}
           </div>
+
+          {/* Draft Management Buttons */}
+          {user?.applicantId && (
+            <div className="flex items-center justify-center gap-4 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="text-sm text-gray-600">
+                <strong>Draft Management:</strong> Save your progress and return later
+              </div>
+              <div className="flex items-center gap-2">
+                <SaveDraftButton
+                  applicantId={user.applicantId}
+                  formData={formData}
+                  onSave={() => {
+                    console.log('Draft saved successfully');
+                    // Optionally show a success message or update UI
+                  }}
+                  variant="default"
+                  size="sm"
+                />
+                <LoadDraftButton
+                  applicantId={user.applicantId}
+                  onLoad={(loadedFormData) => {
+                    console.log('Loading draft data:', loadedFormData);
+                    // Restore form data from draft
+                    if (loadedFormData) {
+                      // Restore the main form data
+                      if (loadedFormData.rawFormData) {
+                        setFormData(loadedFormData.rawFormData);
+                      }
+                      
+                      // Restore form values
+                      if (loadedFormData.rawFormValues) {
+                        Object.entries(loadedFormData.rawFormValues).forEach(([key, value]) => {
+                          if (value !== undefined && value !== null) {
+                            form.setValue(key as any, value);
+                          }
+                        });
+                      }
+                      
+                      // Restore other state
+                      if (loadedFormData.signatures) {
+                        setSignatures(loadedFormData.signatures);
+                      }
+                      if (loadedFormData.documents) {
+                        setDocuments(loadedFormData.documents);
+                      }
+                      if (loadedFormData.encryptedDocuments) {
+                        setEncryptedDocuments(loadedFormData.encryptedDocuments);
+                      }
+                      if (loadedFormData.uploadedDocuments) {
+                        setUploadedDocuments(loadedFormData.uploadedDocuments);
+                      }
+                      if (loadedFormData.uploadedFilesMetadata) {
+                        setUploadedFilesMetadata(loadedFormData.uploadedFilesMetadata);
+                      }
+                      if (loadedFormData.webhookResponses) {
+                        setWebhookResponses(loadedFormData.webhookResponses);
+                      }
+                      if (loadedFormData.hasCoApplicant !== undefined) {
+                        setHasCoApplicant(loadedFormData.hasCoApplicant);
+                      }
+                      if (loadedFormData.hasGuarantor !== undefined) {
+                        setHasGuarantor(loadedFormData.hasGuarantor);
+                      }
+                      if (loadedFormData.currentStep !== undefined) {
+                        setCurrentStep(loadedFormData.currentStep);
+                      }
+                      
+                      console.log('✅ Draft data restored successfully');
+                    }
+                  }}
+                  variant="outline"
+                  size="sm"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <Form {...form}>
