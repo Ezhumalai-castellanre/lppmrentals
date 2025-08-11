@@ -419,9 +419,9 @@ export default function LandingPage() {
                         Discover beautiful properties in prime locations. Experience luxury living with our premium property management services.
                       </p>
                       <div className="flex flex-col gap-2">
-                        <button className="border-2 border-white text-white px-3 py-2 rounded-lg font-semibold text-xs hover:bg-white hover:text-gray-900 transition-all duration-300">
-                          Sign In to Apply
-                        </button>
+                          <a href="https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1&color_mktgkr4e=East+30th+Street&short_text800omovg=6B" className="border-2 border-white text-white px-3 py-2 rounded-lg font-semibold text-xs hover:bg-white hover:text-gray-900 transition-all duration-300">
+                            Sign In to Apply
+                          </a>
                       </div>
                     </div>
                     
@@ -437,9 +437,9 @@ export default function LandingPage() {
                         Discover beautiful properties in prime locations. Experience luxury living with our premium property management services.
                       </p>
                       <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
-                        <button className="border-2 border-white text-white px-4 lg:px-6 xl:px-8 py-3 lg:py-4 rounded-lg font-semibold text-sm md:text-base lg:text-lg hover:bg-white hover:text-gray-900 transition-all duration-300">
+                        <a href="https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1&color_mktgkr4e=East+30th+Street&short_text800omovg=6B" className="border-2 border-white text-white px-4 lg:px-6 xl:px-8 py-3 lg:py-4 rounded-lg font-semibold text-sm md:text-base lg:text-lg hover:bg-white hover:text-gray-900 transition-all duration-300">
                           Sign In to Apply
-                        </button>
+                        </a>
                       </div>
                     </div>
                   </div>
