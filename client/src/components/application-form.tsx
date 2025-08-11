@@ -383,149 +383,6 @@ export function ApplicationForm() {
     }
   }, [form]);
 
-  // Update form fields when formData is loaded from draft
-  useEffect(() => {
-    if (formData && Object.keys(formData).length > 0) {
-      console.log('🔄 Updating form fields from formData:', formData);
-      
-      // Helper function to safely convert string dates to Date objects
-      const toValidDate = (dateValue: any): Date | undefined => {
-        if (!dateValue) return undefined;
-        try {
-          const date = new Date(dateValue);
-          return isNaN(date.getTime()) ? undefined : date;
-        } catch {
-          return undefined;
-        }
-      };
-
-      // Update application fields
-      if (formData.application) {
-        console.log('📋 Application data found:', formData.application);
-        
-        if (formData.application.buildingAddress) {
-          console.log('🏢 Setting buildingAddress:', formData.application.buildingAddress);
-          form.setValue('buildingAddress', formData.application.buildingAddress);
-        }
-        if (formData.application.apartmentNumber) {
-          console.log('🏠 Setting apartmentNumber:', formData.application.apartmentNumber);
-          form.setValue('apartmentNumber', formData.application.apartmentNumber);
-        }
-        if (formData.application.moveInDate) {
-          console.log('📅 Setting moveInDate:', formData.application.moveInDate);
-          const moveInDate = toValidDate(formData.application.moveInDate);
-          if (moveInDate) {
-            form.setValue('moveInDate', moveInDate);
-          }
-        }
-        if (formData.application.monthlyRent !== undefined) {
-          console.log('💰 Setting monthlyRent:', formData.application.monthlyRent);
-          form.setValue('monthlyRent', formData.application.monthlyRent);
-        }
-        if (formData.application.apartmentType) {
-          console.log('🏘️ Setting apartmentType:', formData.application.apartmentType);
-          form.setValue('apartmentType', formData.application.apartmentType);
-        }
-        if (formData.application.howDidYouHear) {
-          form.setValue('howDidYouHear', formData.application.howDidYouHear);
-        }
-        if (formData.application.howDidYouHearOther) {
-          form.setValue('howDidYouHearOther', formData.application.howDidYouHearOther);
-        }
-      }
-
-      // Update applicant fields
-      if (formData.applicant) {
-        if (formData.applicant.name) {
-          form.setValue('applicantName', formData.applicant.name);
-        }
-        if (formData.applicant.dob) {
-          const applicantDob = toValidDate(formData.applicant.dob);
-          if (applicantDob) {
-            form.setValue('applicantDob', applicantDob);
-          }
-        }
-        if (formData.applicant.ssn) {
-          form.setValue('applicantSsn', formData.applicant.ssn);
-        }
-        if (formData.applicant.phone) {
-          form.setValue('applicantPhone', formData.applicant.phone);
-        }
-        if (formData.applicant.email) {
-          form.setValue('applicantEmail', formData.applicant.email);
-        }
-        if (formData.applicant.license) {
-          form.setValue('applicantLicense', formData.applicant.license);
-        }
-        if (formData.applicant.licenseState) {
-          form.setValue('applicantLicenseState', formData.applicant.licenseState);
-        }
-        if (formData.applicant.address) {
-          form.setValue('applicantAddress', formData.applicant.address);
-        }
-        if (formData.applicant.city) {
-          form.setValue('applicantCity', formData.applicant.city);
-        }
-        if (formData.applicant.state) {
-          form.setValue('applicantState', formData.applicant.state);
-        }
-        if (formData.applicant.zip) {
-          form.setValue('applicantZip', formData.applicant.zip);
-        }
-      }
-
-      // Update co-applicant fields if they exist
-      if (formData.coApplicant) {
-        if (formData.coApplicant.ssn) {
-          form.setValue('coApplicantSsn', formData.coApplicant.ssn);
-        }
-        if (formData.coApplicant.phone) {
-          form.setValue('coApplicantPhone', formData.coApplicant.phone);
-        }
-        if (formData.coApplicant.email) {
-          form.setValue('coApplicantEmail', formData.coApplicant.email);
-        }
-        if (formData.coApplicant.license) {
-          form.setValue('coApplicantLicense', formData.coApplicant.license);
-        }
-        if (formData.coApplicant.zip) {
-          form.setValue('coApplicantZip', formData.coApplicant.zip);
-        }
-      }
-
-      // Update guarantor fields if they exist
-      if (formData.guarantor) {
-        if (formData.guarantor.ssn) {
-          form.setValue('guarantorSsn', formData.guarantor.ssn);
-        }
-        if (formData.guarantor.phone) {
-          form.setValue('guarantorPhone', formData.guarantor.phone);
-        }
-        if (formData.guarantor.email) {
-          form.setValue('guarantorEmail', formData.guarantor.email);
-        }
-        if (formData.guarantor.license) {
-          form.setValue('guarantorLicense', formData.guarantor.license);
-        }
-        if (formData.guarantor.zip) {
-          form.setValue('guarantorZip', formData.guarantor.zip);
-        }
-      }
-
-      // Update building and apartment selection if available
-      if (formData.application?.buildingAddress && units.length > 0) {
-        setSelectedBuilding(formData.application.buildingAddress);
-        const unitsForBuilding = MondayApiService.getUnitsByBuilding(units, formData.application.buildingAddress);
-        setAvailableApartments(unitsForBuilding);
-        
-        if (formData.application.apartmentNumber) {
-          const selectedApartment = unitsForBuilding.find(unit => unit.name === formData.application.apartmentNumber);
-          setSelectedUnit(selectedApartment || null);
-        }
-      }
-    }
-  }, [formData, form, units]);
-
   const updateFormData = (section: string, field: string, value: any) => {
     setFormData((prev: any) => {
       const newFormData = {
@@ -535,92 +392,6 @@ export function ApplicationForm() {
           [field]: value,
         },
       };
-      
-      // Auto-save draft when form data changes
-      if (user?.applicantId) {
-        const applicantId = user.applicantId; // Extract to avoid undefined issues
-        // Debounce draft saving to avoid too many API calls
-        const timeoutId = setTimeout(async () => {
-          try {
-            const formValues = form.getValues();
-            const draftData = {
-              ...newFormData,
-              rawFormValues: formValues,
-              currentStep: currentStep,
-              lastUpdated: new Date().toISOString()
-            };
-            
-            await DraftService.saveDraft(applicantId, draftData);
-            console.log('✅ Draft auto-saved after form data change');
-          } catch (error) {
-            console.warn('⚠️ Failed to auto-save draft after form data change:', error);
-          }
-        }, 2000); // Save draft 2 seconds after last change
-        
-        // Clear previous timeout
-        if ((window as any).draftSaveTimeout) {
-          clearTimeout((window as any).draftSaveTimeout);
-        }
-        (window as any).draftSaveTimeout = timeoutId;
-      }
-      
-      // Update draft with new form data using proper mapping
-      const safeDateToISO = (dateValue: any): string | null => {
-        if (!dateValue) return null;
-        try {
-          const date = new Date(dateValue);
-          if (isNaN(date.getTime())) {
-            console.warn('Invalid date value:', dateValue);
-            return null;
-          }
-          return date.toISOString();
-        } catch (error) {
-          console.warn('Error converting date to ISO:', dateValue, error);
-          return null;
-        }
-      };
-
-      const formValues = form.getValues();
-      
-      // Create mapped form data with proper field mapping
-      const mappedFormData = {
-        // Application Info
-        buildingAddress: formValues.buildingAddress || newFormData.application?.buildingAddress,
-        apartmentNumber: formValues.apartmentNumber || newFormData.application?.apartmentNumber,
-        moveInDate: safeDateToISO(formValues.moveInDate || newFormData.application?.moveInDate),
-        monthlyRent: formValues.monthlyRent || newFormData.application?.monthlyRent,
-        apartmentType: formValues.apartmentType || newFormData.application?.apartmentType,
-        howDidYouHear: formValues.howDidYouHear || newFormData.application?.howDidYouHear,
-        howDidYouHearOther: formValues.howDidYouHearOther || newFormData.application?.howDidYouHearOther,
-        
-        // Primary Applicant
-        applicantName: formValues.applicantName || newFormData.applicant?.name,
-        applicantDob: safeDateToISO(formValues.applicantDob || newFormData.applicant?.dob),
-        applicantSsn: newFormData.applicant?.ssn || formValues.applicantSsn,
-        applicantPhone: formatPhoneForPayload(newFormData.applicant?.phone || formValues.applicantPhone),
-        applicantEmail: formValues.applicantEmail || newFormData.applicant?.email,
-        applicantLicense: newFormData.applicant?.license || formValues.applicantLicense,
-        applicantLicenseState: newFormData.applicant?.licenseState || formValues.applicantLicenseState,
-        applicantAddress: formValues.applicantAddress || newFormData.applicant?.address,
-        applicantCity: formValues.applicantCity || newFormData.applicant?.city,
-        applicantState: formValues.applicantState || newFormData.applicant?.state,
-        applicantZip: formValues.applicantZip || newFormData.applicant?.zip,
-        
-        // Store the raw form data for restoration
-        rawFormData: newFormData,
-        rawFormValues: formValues,
-        signatures,
-        documents,
-        encryptedDocuments,
-        uploadedDocuments,
-        uploadedFilesMetadata,
-        webhookResponses,
-        hasCoApplicant,
-        hasGuarantor,
-        currentStep,
-      };
-      
-
       
       return newFormData;
     });
@@ -681,7 +452,7 @@ export function ApplicationForm() {
   };
 
   // Handler to attach webhook file URL to encrypted file
-const handleWebhookFileUrl = (person: string, documentType: string, fileUrl: string, fileName: string) => {
+  const handleWebhookFileUrl = (person: string, documentType: string, fileUrl: string, fileName: string) => {
   setEncryptedDocuments((prev: any) => {
     const updated = { ...prev };
     if (!updated[person] || !updated[person][documentType]) return prev;
@@ -692,7 +463,7 @@ const handleWebhookFileUrl = (person: string, documentType: string, fileUrl: str
   });
 };
 
-const handleEncryptedDocumentChange = (person: string, documentType: string, encryptedFiles: EncryptedFile[]) => {
+  const handleEncryptedDocumentChange = (person: string, documentType: string, encryptedFiles: EncryptedFile[]) => {
     console.log('handleEncryptedDocumentChange called:', { person, documentType, encryptedFilesCount: encryptedFiles.length });
     
     // Special debugging for guarantor documents
@@ -881,7 +652,7 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
   }, [referenceId]);
 
   // --- Add this helper to get the next allowed step index ---
-  function getNextAllowedStep(current: number, direction: 1 | -1) {
+  const getNextAllowedStep = (current: number, direction: 1 | -1) => {
     let next = current + direction;
     // If moving forward and co-applicant is not checked, skip co-applicant financial and docs
     if (direction === 1 && (next === 6 || next === 7) && !hasCoApplicant) {
@@ -900,7 +671,7 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
       next = 9;
     }
     return Math.max(0, Math.min(STEPS.length - 1, next));
-  }
+  };
 
   // --- Update nextStep and prevStep to use the helper ---
   const nextStep = async (e?: React.MouseEvent) => {
@@ -909,25 +680,6 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
     if (e) {
       e.preventDefault();
       e.stopPropagation();
-    }
-    
-    // Auto-save draft before moving to next step
-    if (user?.applicantId) {
-      try {
-        const formValues = form.getValues();
-        const draftData = {
-          ...formData,
-          rawFormValues: formValues,
-          currentStep: currentStep,
-          lastUpdated: new Date().toISOString()
-        };
-        
-        await DraftService.saveDraft(user.applicantId, draftData);
-        console.log('✅ Draft auto-saved before moving to next step');
-      } catch (error) {
-        console.warn('⚠️ Failed to auto-save draft:', error);
-        // Don't block navigation if draft save fails
-      }
     }
     
     setCurrentStep((prev) => getNextAllowedStep(prev, 1));
@@ -939,25 +691,6 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
     if (e) {
       e.preventDefault();
       e.stopPropagation();
-    }
-    
-    // Auto-save draft before moving to previous step
-    if (user?.applicantId) {
-      try {
-        const formValues = form.getValues();
-        const draftData = {
-          ...formData,
-          rawFormValues: formValues,
-          currentStep: currentStep,
-          lastUpdated: new Date().toISOString()
-        };
-        
-        await DraftService.saveDraft(user.applicantId, draftData);
-        console.log('✅ Draft auto-saved before moving to previous step');
-      } catch (error) {
-        console.warn('⚠️ Failed to auto-save draft:', error);
-        // Don't block navigation if draft save fails
-      }
     }
     
     setCurrentStep((prev) => getNextAllowedStep(prev, -1));
@@ -1008,7 +741,6 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
       return;
     }
     
-    // Save draft before jumping to step
     setCurrentStep(step);
   };
 
@@ -1020,10 +752,10 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
     
     try {
       // ENSURE FULL METADATA IS AVAILABLE FOR WEBHOOK
-      // The full uploadedFilesMetadata should be sent via webhook, not stored in draft
+      
       console.log('📊 Full uploadedFilesMetadata for webhook:', JSON.stringify(uploadedFilesMetadata, null, 2));
       
-             console.log('🚀 === COMPLETE FORM SUBMISSION DATA ===' );
+      console.log('🚀 === COMPLETE FORM SUBMISSION DATA ===' );
       console.log("📋 FORM DATA (React Hook Form):");
       console.log(JSON.stringify(data, null, 2));
       
@@ -2000,9 +1732,7 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
         variant: "destructive",
       });
     }
-  };
-
-
+  }; // end onSubmit
 
   // Debug effect for Date of Birth
   useEffect(() => {
@@ -2978,79 +2708,7 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
                     });
                   }
                   
-                  // Save draft immediately after successful webhook response
-                  if (user?.applicantId && response) {
-                    const formValues = form.getValues();
-                    const safeDateToISO = (dateValue: any): string | null => {
-                      if (!dateValue) return null;
-                      try {
-                        const date = new Date(dateValue);
-                        if (isNaN(date.getTime())) {
-                          console.warn('Invalid date value:', dateValue);
-                          return null;
-                        }
-                        return date.toISOString();
-                      } catch (error) {
-                        console.warn('Error converting date to ISO:', dateValue, error);
-                        return null;
-                      }
-                    };
-                    
-                    // Create mapped form data with webhook response
-                    const mappedFormData = {
-                      // Application Info
-                      buildingAddress: formValues.buildingAddress || formData.application?.buildingAddress,
-                      apartmentNumber: formValues.apartmentNumber || formData.application?.apartmentNumber,
-                      moveInDate: safeDateToISO(formValues.moveInDate || formData.application?.moveInDate),
-                      monthlyRent: formValues.monthlyRent || formData.application?.monthlyRent,
-                      apartmentType: formValues.apartmentType || formData.application?.apartmentType,
-                      howDidYouHear: formValues.howDidYouHear || formData.application?.howDidYouHear,
-                      howDidYouHearOther: formValues.howDidYouHearOther || formData.application?.howDidYouHearOther,
-                      
-                      // Primary Applicant
-                      applicantName: formValues.applicantName || formData.applicant?.name,
-                      applicantDob: safeDateToISO(formValues.applicantDob || formData.applicant?.dob),
-                      applicantSsn: formData.applicant?.ssn || formValues.applicantSsn,
-                      applicantPhone: formatPhoneForPayload(formData.applicant?.phone || formValues.applicantPhone),
-                      applicantEmail: formValues.applicantEmail || formData.applicant?.email,
-                      applicantLicense: formData.applicant?.license || formValues.applicantLicense,
-                      applicantLicenseState: formData.applicant?.licenseState || formValues.applicantLicenseState,
-                      applicantAddress: formValues.applicantAddress || formData.applicant?.address,
-                      applicantCity: formValues.applicantCity || formData.applicant?.city,
-                      applicantState: formValues.applicantState || formData.applicant?.state,
-                      applicantZip: formValues.applicantZip || formData.applicant?.zip,
-                      
-                      // Store the raw form data for restoration
-                      rawFormData: formData,
-                      rawFormValues: formValues,
-                      signatures,
-                      documents,
-                      encryptedDocuments,
-                      uploadedDocuments,
-                      // OPTIMIZED: Only store essential metadata for draft, full metadata will be sent on submit
-                      uploadedFilesMetadata: Object.keys(uploadedFilesMetadata).length > 0 ? 
-                        Object.fromEntries(
-                          Object.entries(uploadedFilesMetadata).map(([key, files]) => [
-                            key, 
-                            files.map(file => ({
-                              file_name: file.file_name,
-                              file_size: file.file_size,
-                              mime_type: file.mime_type,
-                              upload_date: file.upload_date
-                            }))
-                          ])
-                        ) : {},
-                      hasCoApplicant,
-                      hasGuarantor,
-                      currentStep,
-                      webhookResponses: {
-                        ...webhookResponses,
-                        [documentType]: response
-                      }
-                    };
-                    
-                    console.log(`✅ Webhook response received for ${documentType}: ${response}`);
-                  }
+                  console.log(`✅ Webhook response received for ${documentType}: ${response}`);
                 }}
                 onEncryptedDocumentChange={(documentType, encryptedFiles) => {
                   console.log('Encrypted document change:', documentType, encryptedFiles);
@@ -4449,20 +4107,7 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
       default:
         return null;
     }
-  };
-
-  // Helper to robustly convert to Date or undefined
-  function toValidDate(val: any): Date | undefined {
-    if (!val) return undefined;
-    if (val instanceof Date && !isNaN(val.getTime())) return val;
-    if (typeof val === 'string' || typeof val === 'number') {
-      const d = new Date(val);
-      if (d instanceof Date && !isNaN(d.getTime())) return d;
-    }
-    return undefined;
-  }
-
-
+  }; // end renderStep
 
   // Enhanced sync effect for applicantDob
   useEffect(() => {
@@ -4479,6 +4124,17 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
       // Don't set undefined for required date field
     }
   }, [formData.applicant?.dob, form]);
+
+  // Helper to robustly convert to Date or undefined
+  const toValidDate = (val: any): Date | undefined => {
+    if (!val) return undefined;
+    if (val instanceof Date && !isNaN(val.getTime())) return val;
+    if (typeof val === 'string' || typeof val === 'number') {
+      const d = new Date(val);
+      if (d instanceof Date && !isNaN(d.getTime())) return d;
+    }
+    return undefined;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 sm:bg-gradient-to-br sm:from-blue-50 sm:to-gray-100 sm:dark:from-gray-900 sm:dark:to-gray-800">
@@ -4554,81 +4210,7 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
             })}
           </div>
 
-          {/* Draft Management Buttons */}
-          {user?.applicantId && (
-            <div className="flex items-center justify-center gap-4 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="text-sm text-gray-600">
-                <strong>Draft Management:</strong> Save your progress and return later
-              </div>
-              <div className="flex items-center gap-2">
-                <SaveDraftButton
-                  applicantId={user.applicantId}
-                  formData={formData}
-                  onSave={() => {
-                    console.log('Draft saved successfully');
-                    // Optionally show a success message or update UI
-                  }}
-                  variant="default"
-                  size="sm"
-                />
-                <LoadDraftButton
-                  applicantId={user.applicantId}
-                  onLoad={(loadedFormData) => {
-                    console.log('Loading draft data:', loadedFormData);
-                    // Restore form data from draft
-                    if (loadedFormData) {
-                      // Restore the main form data
-                      if (loadedFormData.rawFormData) {
-                        setFormData(loadedFormData.rawFormData);
-                      }
-                      
-                      // Restore form values
-                      if (loadedFormData.rawFormValues) {
-                        Object.entries(loadedFormData.rawFormValues).forEach(([key, value]) => {
-                          if (value !== undefined && value !== null) {
-                            form.setValue(key as any, value);
-                          }
-                        });
-                      }
-                      
-                      // Restore other state
-                      if (loadedFormData.signatures) {
-                        setSignatures(loadedFormData.signatures);
-                      }
-                      if (loadedFormData.documents) {
-                        setDocuments(loadedFormData.documents);
-                      }
-                      if (loadedFormData.encryptedDocuments) {
-                        setEncryptedDocuments(loadedFormData.encryptedDocuments);
-                      }
-                      if (loadedFormData.uploadedDocuments) {
-                        setUploadedDocuments(loadedFormData.uploadedDocuments);
-                      }
-                      if (loadedFormData.uploadedFilesMetadata) {
-                        setUploadedFilesMetadata(loadedFormData.uploadedFilesMetadata);
-                      }
-                      if (loadedFormData.webhookResponses) {
-                        setWebhookResponses(loadedFormData.webhookResponses);
-                      }
-                      if (loadedFormData.hasCoApplicant !== undefined) {
-                        setHasCoApplicant(loadedFormData.hasCoApplicant);
-                      }
-                      if (loadedFormData.hasGuarantor !== undefined) {
-                        setHasGuarantor(loadedFormData.hasGuarantor);
-                      }
-                      if (loadedFormData.currentStep !== undefined) {
-                        setCurrentStep(loadedFormData.currentStep);
-                      }
-                      
-                      console.log('✅ Draft data restored successfully');
-                    }
-                  }}
-                  variant="outline"
-                  size="sm"
-                />
-              </div>
-            </div>
-          )}
+
         </div>
 
         <Form {...form}>
@@ -4699,4 +4281,4 @@ const handleEncryptedDocumentChange = (person: string, documentType: string, enc
       </div>
     </div>
   );
-}
+} // end ApplicationForm

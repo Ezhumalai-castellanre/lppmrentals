@@ -178,7 +178,7 @@ export const SupportingDocuments = ({
       };
     }
     
-    // Check for uploaded documents from draft data
+    
     const uploadedFilesMetadata = formData.uploadedFilesMetadata;
     if (uploadedFilesMetadata) {
       // Check for documents in uploadedFilesMetadata
@@ -204,7 +204,7 @@ export const SupportingDocuments = ({
       }
     }
     
-    // Check for encrypted documents from draft data
+    
     const encryptedDocuments = formData.encryptedDocuments;
     if (encryptedDocuments) {
       // Check for documents with person prefix in encryptedDocuments
@@ -434,7 +434,7 @@ export const SupportingDocuments = ({
                         <span className="text-sm font-medium">Document uploaded successfully</span>
                       </div>
                       <p className="text-xs text-green-700 mt-1">
-                        {docStatus.count} file{docStatus.count > 1 ? 's' : ''} uploaded from draft
+                        {docStatus.count} file{docStatus.count > 1 ? 's' : ''} uploaded
                       </p>
                       
                       {/* Show uploaded documents with preview/download options */}

@@ -7,18 +7,15 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import ProtectedRoute from "@/components/protected-route";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import RentalApplicationPage from "@/pages/rental-application";
+import { ApplicationForm } from "@/components/application-form";
 import MondayApplicationPage from "@/pages/monday-application";
 import MissingDocumentsPage from "@/pages/missing-documents";
 import MaintenancePage from "@/pages/maintenance";
 import ApplicationsPage from "@/pages/applications";
 import LoginPage from "@/pages/login";
-import TestAuthPage from "@/pages/test-auth";
-import TestApplicationsPage from "@/pages/test-applications";
 import ChangePasswordPage from "@/pages/change-password";
 import LandingPage from "@/pages/landing";
 import NotFound from "@/pages/not-found";
-import VacantUnitsTest from "@/components/vacant-units-test";
 import AvailableRentalsPage from "@/pages/available-rentals";
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
@@ -75,7 +72,7 @@ function Router() {
       <Route path="/application">
         <ProtectedRoute>
           <AppLayout>
-            <RentalApplicationPage />
+            <ApplicationForm />
           </AppLayout>
         </ProtectedRoute>
       </Route>
@@ -103,27 +100,7 @@ function Router() {
           </AppLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/test-applications">
-        <ProtectedRoute>
-          <AppLayout>
-            <TestApplicationsPage />
-          </AppLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/test-auth">
-        <ProtectedRoute>
-          <AppLayout>
-            <TestAuthPage />
-          </AppLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/vacant-units-test">
-        <ProtectedRoute>
-          <AppLayout>
-            <VacantUnitsTest />
-          </AppLayout>
-        </ProtectedRoute>
-      </Route>
+
       <Route path="/change-password">
         <ProtectedRoute>
           <AppLayout>
@@ -137,7 +114,7 @@ function Router() {
         {isAuthenticated ? (
           <ProtectedRoute>
             <AppLayout>
-              <RentalApplicationPage />
+              <ApplicationForm />
             </AppLayout>
           </ProtectedRoute>
         ) : (

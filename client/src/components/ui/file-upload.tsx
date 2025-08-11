@@ -230,7 +230,7 @@ export function FileUpload({
             <CheckCircle className="w-4 h-4" />
             <span className="text-sm font-medium">Document uploaded successfully</span>
           </div>
-          <p className="text-xs text-green-700 mt-1">1 file uploaded from draft</p>
+                          <p className="text-xs text-green-700 mt-1">1 file uploaded</p>
           <div className="mt-2">
             <div className="flex items-center text-sm text-green-600">
               <CheckCircle className="w-4 h-4 mr-2" />

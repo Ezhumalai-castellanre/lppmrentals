@@ -1,4 +1,4 @@
-import DynamoDBService from './dynamodb-service';
+
 
 export interface FileUploadWebhookData {
   reference_id: string;
