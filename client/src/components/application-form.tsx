@@ -463,17 +463,63 @@ export function ApplicationForm() {
           // Restore form values for React Hook Form
           if (parsedFormData.application) {
             const app = parsedFormData.application;
-            if (app.buildingAddress) form.setValue('buildingAddress', app.buildingAddress);
-            if (app.apartmentNumber) form.setValue('apartmentNumber', app.apartmentNumber);
-            if (app.apartmentType) form.setValue('apartmentType', app.apartmentType);
-            if (app.monthlyRent) form.setValue('monthlyRent', app.monthlyRent);
-            if (app.howDidYouHear) form.setValue('howDidYouHear', app.howDidYouHear);
+            console.log('🔧 Restoring application form values:', app);
+            
+            // Restore all application fields
+            if (app.buildingAddress) {
+              form.setValue('buildingAddress', app.buildingAddress);
+              console.log('🏢 Set buildingAddress:', app.buildingAddress);
+            }
+            if (app.apartmentNumber) {
+              form.setValue('apartmentNumber', app.apartmentNumber);
+              console.log('🏠 Set apartmentNumber:', app.apartmentNumber);
+            }
+            if (app.apartmentType) {
+              form.setValue('apartmentType', app.apartmentType);
+              console.log('🏘️ Set apartmentType:', app.apartmentType);
+            }
+            if (app.monthlyRent) {
+              form.setValue('monthlyRent', app.monthlyRent);
+              console.log('💰 Set monthlyRent:', app.monthlyRent);
+            }
+            if (app.howDidYouHear) {
+              form.setValue('howDidYouHear', app.howDidYouHear);
+              console.log('📢 Set howDidYouHear:', app.howDidYouHear);
+            }
+            if (app.howDidYouHearOther) {
+              form.setValue('howDidYouHearOther', app.howDidYouHearOther);
+              console.log('📝 Set howDidYouHearOther:', app.howDidYouHearOther);
+            }
             if (app.moveInDate) {
               const moveInDate = new Date(app.moveInDate);
               if (!isNaN(moveInDate.getTime())) {
                 form.setValue('moveInDate', moveInDate);
+                console.log('📅 Set moveInDate:', moveInDate);
               }
             }
+            
+            console.log('✅ Application form values restored:', {
+              buildingAddress: app.buildingAddress,
+              apartmentNumber: app.apartmentNumber,
+              apartmentType: app.apartmentType,
+              monthlyRent: app.monthlyRent,
+              howDidYouHear: app.howDidYouHear,
+              howDidYouHearOther: app.howDidYouHearOther,
+              moveInDate: app.moveInDate
+            });
+            
+            // Verify the form values were actually set
+            setTimeout(() => {
+              console.log('🔍 Verifying form values after restoration:', {
+                buildingAddress: form.getValues('buildingAddress'),
+                apartmentNumber: form.getValues('apartmentNumber'),
+                apartmentType: form.getValues('apartmentType'),
+                monthlyRent: form.getValues('monthlyRent'),
+                howDidYouHear: form.getValues('howDidYouHear'),
+                howDidYouHearOther: form.getValues('howDidYouHearOther'),
+                moveInDate: form.getValues('moveInDate')
+              });
+            }, 200);
           }
           
           if (parsedFormData.applicant) {
@@ -499,6 +545,18 @@ export function ApplicationForm() {
           }
           if (parsedFormData.hasGuarantor !== undefined) {
             setHasGuarantor(parsedFormData.hasGuarantor);
+          }
+          
+          // Force form to re-render with the restored values
+          setTimeout(() => {
+            form.reset(form.getValues());
+          }, 100);
+          
+          // If we have building and apartment data, ensure the apartments are loaded
+          if (parsedFormData.application?.buildingAddress && parsedFormData.application?.apartmentNumber) {
+            console.log('🏠 Restoring building and apartment selection...');
+            // Trigger building selection to load apartments
+            handleBuildingSelect(parsedFormData.application.buildingAddress);
           }
           
           toast({
@@ -2873,7 +2931,7 @@ export function ApplicationForm() {
                       <FormLabel>Apartment #</FormLabel>
                       <FormControl>
                         <Select 
-                          value={field.value}
+                          value={field.value || ''}
                           onValueChange={(value) => {
                             field.onChange(value);
                             handleApartmentSelect(value);
@@ -2881,7 +2939,17 @@ export function ApplicationForm() {
                           disabled={!selectedBuilding || availableApartments.length === 0}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder={!selectedBuilding ? "Select building first" : availableApartments.length === 0 ? "No apartments available" : "Select apartment"} />
+                            <SelectValue 
+                              placeholder={
+                                field.value 
+                                  ? field.value 
+                                  : !selectedBuilding 
+                                    ? "Select building first" 
+                                    : availableApartments.length === 0 
+                                      ? "No apartments available" 
+                                      : "Select apartment"
+                              } 
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             {availableApartments.map((apartment) => (

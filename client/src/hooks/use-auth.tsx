@@ -237,20 +237,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
           });
           
-          // Get the applicantId from the database
-          const applicantId = await registerUserInDatabase(
-            currentUser.username,
-            userAttributes.attributes.email || '',
-            userAttributes.attributes.given_name,
-            userAttributes.attributes.family_name,
-            userAttributes.attributes.phone_number
-          );
+          // No longer using database applicantId - only zoneinfo
 
           // Check if zoneinfo contains the applicantId (temporary mapping)
           const zoneinfoValue = userAttributes.attributes.zoneinfo || userAttributes.attributes['custom:zoneinfo'];
           
-          // Use the database applicantId as the primary identifier
-          const finalApplicantId = applicantId || generateLppmNumber();
+          // Use ONLY zoneinfo as applicantId - no fallbacks
+          const finalApplicantId = zoneinfoValue;
+          
+          // Log which source is being used for applicantId
+          if (zoneinfoValue) {
+            console.log('🎯 Using zoneinfo as applicantId:', zoneinfoValue);
+          } else {
+            console.log('❌ No zoneinfo available - applicantId will be undefined');
+          }
           
           setUser({
             id: currentUser.username,
@@ -272,8 +272,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             given_name: userAttributes.attributes.given_name,
             family_name: userAttributes.attributes.family_name,
             phone_number: userAttributes.attributes.phone_number,
-            databaseApplicantId: applicantId,
             finalApplicantId: finalApplicantId,
+            applicantIdSource: zoneinfoValue ? 'zoneinfo' : 'none'
           });
           
           // Additional detailed logging for zoneinfo
@@ -283,7 +283,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             zoneinfo_final: zoneinfoValue,
             all_attributes_keys: Object.keys(userAttributes.attributes),
             custom_attributes: Object.keys(userAttributes.attributes).filter(key => key.startsWith('custom:')),
-            database_applicantId: applicantId,
             final_applicantId: finalApplicantId,
           });
         } else {
@@ -302,8 +301,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           // Check if zoneinfo contains the applicantId (temporary mapping)
           const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
-          // Use the database applicantId as the primary identifier
-          const finalApplicantId = applicantId || generateLppmNumber();
+          // Use ONLY zoneinfo as applicantId - no fallbacks
+          const finalApplicantId = zoneinfoValue;
           
           setUser({
             id: currentUser.username,
@@ -320,15 +319,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (identityError) {
         // If Identity Pool fails, still set the user from sign-in
         console.log('Identity Pool error (non-critical):', identityError);
-        // Set user with basic info from sign-in and generate fallback applicantId
-        const fallbackApplicantId = generateLppmNumber();
+        // Set user with basic info from sign-in - no applicantId if zoneinfo unavailable
         setUser({
           id: username,
           email: '',
           username: username,
-          applicantId: fallbackApplicantId,
+          // No applicantId - only zoneinfo should provide it
         });
-        console.log('🔧 Using fallback applicantId due to Identity Pool error:', fallbackApplicantId);
+        console.log('🔧 No applicantId available due to Identity Pool error - zoneinfo required');
       }
     } catch (error: any) {
       console.error('Error signing in:', error);

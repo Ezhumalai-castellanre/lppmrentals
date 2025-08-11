@@ -102,6 +102,20 @@ export class DynamoDBService {
         current_step: draftData.current_step
       });
 
+      // Log raw data sizes to identify what's causing the size issue
+      const rawSizes = {
+        formData: JSON.stringify(draftData.form_data || {}).length,
+        uploadedFiles: JSON.stringify(draftData.uploaded_files_metadata || {}).length,
+        webhookResponses: JSON.stringify(draftData.webhook_responses || {}).length,
+        signatures: JSON.stringify(draftData.signatures || {}).length,
+        encryptedDocuments: JSON.stringify(draftData.encrypted_documents || {}).length
+      };
+      
+      console.log('📊 Raw data sizes before cleaning:', {
+        ...rawSizes,
+        totalRawSize: Object.values(rawSizes).reduce((sum, size) => sum + size, 0)
+      });
+
       // Validate required fields
       if (!draftData.applicantId) {
         console.error('❌ Missing required field: applicantId');
@@ -114,19 +128,135 @@ export class DynamoDBService {
       }
 
       // Clean and validate the data before saving
-      const cleanFormData = this.cleanDataForDynamoDB(draftData.form_data);
-      const cleanUploadedFiles = this.cleanDataForDynamoDB(draftData.uploaded_files_metadata || {});
-      const cleanWebhookResponses = this.cleanDataForDynamoDB(draftData.webhook_responses || {});
-      const cleanSignatures = this.cleanDataForDynamoDB(draftData.signatures || {});
-      const cleanEncryptedDocuments = this.cleanDataForDynamoDB(draftData.encrypted_documents || {});
+      let cleanFormData = this.cleanDataForDynamoDB(draftData.form_data);
+      let cleanUploadedFiles = this.cleanDataForDynamoDB(draftData.uploaded_files_metadata || {});
+      let cleanWebhookResponses = this.cleanDataForDynamoDB(draftData.webhook_responses || {});
+      let cleanSignatures = this.cleanDataForDynamoDB(draftData.signatures || {});
+      let cleanEncryptedDocuments = this.cleanDataForDynamoDB(draftData.encrypted_documents || {});
 
-      console.log('🧹 Cleaned data for DynamoDB:', {
-        formDataKeys: Object.keys(cleanFormData),
-        uploadedFilesKeys: Object.keys(cleanUploadedFiles),
-        webhookResponsesKeys: Object.keys(cleanWebhookResponses),
-        signaturesKeys: Object.keys(cleanSignatures),
-        encryptedDocumentsKeys: Object.keys(cleanEncryptedDocuments)
+      // Check sizes before saving to prevent DynamoDB size limit errors
+      const sizes = {
+        formData: JSON.stringify(cleanFormData).length,
+        uploadedFiles: JSON.stringify(cleanUploadedFiles).length,
+        webhookResponses: JSON.stringify(cleanWebhookResponses).length,
+        signatures: JSON.stringify(cleanSignatures).length,
+        encryptedDocuments: JSON.stringify(cleanEncryptedDocuments).length
+      };
+      
+      const totalSize = Object.values(sizes).reduce((sum, size) => sum + size, 0);
+      
+      console.log('📏 Data sizes before saving:', {
+        ...sizes,
+        totalSize,
+        maxAllowed: 400 * 1024, // 400KB in bytes
+        isOverLimit: totalSize > 400 * 1024
       });
+      
+      // If data is too large, implement aggressive truncation
+      if (totalSize > 400 * 1024) {
+        console.warn('⚠️ Data exceeds 400KB limit, implementing aggressive truncation');
+        
+        // Truncate the largest fields first
+        if (sizes.encryptedDocuments > 100 * 1024) {
+          console.warn('⚠️ Truncating encrypted documents from', sizes.encryptedDocuments, 'to 100KB');
+          cleanEncryptedDocuments = this.truncateLargeData(cleanEncryptedDocuments, 100 * 1024);
+        }
+        
+        if (sizes.formData > 150 * 1024) {
+          console.warn('⚠️ Truncating form data from', sizes.formData, 'to 150KB');
+          cleanFormData = this.truncateLargeData(cleanFormData, 150 * 1024);
+        }
+        
+        if (sizes.uploadedFiles > 50 * 1024) {
+          console.warn('⚠️ Truncating uploaded files from', sizes.uploadedFiles, 'to 50KB');
+          cleanUploadedFiles = this.truncateLargeData(cleanUploadedFiles, 50 * 1024);
+        }
+        
+        if (sizes.webhookResponses > 50 * 1024) {
+          console.warn('⚠️ Truncating webhook responses from', sizes.webhookResponses, 'to 50KB');
+          cleanWebhookResponses = this.truncateLargeData(cleanWebhookResponses, 50 * 1024);
+        }
+        
+        if (sizes.signatures > 50 * 1024) {
+          console.warn('⚠️ Truncating signatures from', sizes.signatures, 'to 50KB');
+          cleanSignatures = this.truncateLargeData(cleanSignatures, 50 * 1024);
+        }
+        
+        // Recalculate sizes after truncation
+        const newSizes = {
+          formData: JSON.stringify(cleanFormData).length,
+          uploadedFiles: JSON.stringify(cleanUploadedFiles).length,
+          webhookResponses: JSON.stringify(cleanWebhookResponses).length,
+          signatures: JSON.stringify(cleanSignatures).length,
+          encryptedDocuments: JSON.stringify(cleanEncryptedDocuments).length
+        };
+        
+        const newTotalSize = Object.values(newSizes).reduce((sum, size) => sum + size, 0);
+        
+        console.log('📏 Data sizes after truncation:', {
+          ...newSizes,
+          newTotalSize,
+          reduction: totalSize - newTotalSize
+        });
+      }
+
+      // Final size check before saving
+      const finalSizes = {
+        formData: JSON.stringify(cleanFormData).length,
+        uploadedFiles: JSON.stringify(cleanUploadedFiles).length,
+        webhookResponses: JSON.stringify(cleanWebhookResponses).length,
+        signatures: JSON.stringify(cleanSignatures).length,
+        encryptedDocuments: JSON.stringify(cleanEncryptedDocuments).length
+      };
+      
+      const finalTotalSize = Object.values(finalSizes).reduce((sum, size) => sum + size, 0);
+      
+      if (finalTotalSize > 400 * 1024) {
+        console.error('❌ Data still too large after truncation:', {
+          finalTotalSize,
+          maxAllowed: 400 * 1024,
+          sizes: finalSizes
+        });
+        
+        // Analyze the data structure to identify large fields
+        console.log('🔍 Analyzing data structure to identify large fields...');
+        const formDataAnalysis = this.analyzeDataStructure(cleanFormData, 'form_data');
+        const encryptedDocsAnalysis = this.analyzeDataStructure(cleanEncryptedDocuments, 'encrypted_documents');
+        
+        // Sort by size to show largest fields first
+        const allAnalysis = [...formDataAnalysis, ...encryptedDocsAnalysis]
+          .sort((a, b) => b.size - a.size)
+          .slice(0, 20); // Show top 20 largest fields
+        
+        console.log('🔍 Top 20 largest fields:', allAnalysis);
+        
+        // Try to save only essential data
+        console.warn('⚠️ Attempting to save only essential data...');
+        const essentialData = {
+          applicantId: draftData.applicantId,
+          reference_id: draftData.reference_id,
+          current_step: draftData.current_step || 0,
+          last_updated: draftData.last_updated || new Date().toISOString(),
+          status: draftData.status || 'draft',
+          form_data: { _truncated: true, _message: 'Data too large, only essential fields saved' }
+        };
+        
+        const essentialCommand = new PutItemCommand({
+          TableName: this.tableName,
+          Item: {
+            applicantId: { S: essentialData.applicantId },
+            reference_id: { S: essentialData.reference_id },
+            current_step: { N: essentialData.current_step.toString() },
+            last_updated: { S: essentialData.last_updated },
+            status: { S: essentialData.status },
+            form_data: { S: JSON.stringify(essentialData.form_data) },
+          },
+        });
+        
+        await this.client.send(essentialCommand);
+        console.log('✅ Essential data saved successfully (full data was too large)');
+        return true;
+      }
 
       const command = new PutItemCommand({
         TableName: this.tableName,
@@ -208,6 +338,105 @@ export class DynamoDBService {
     } catch (error) {
       console.warn('⚠️ Error cleaning data for DynamoDB:', error);
       return {};
+    }
+  }
+
+  // Analyze data structure to identify large fields
+  private analyzeDataStructure(data: any, path: string = ''): { path: string; size: number; type: string }[] {
+    const results: { path: string; size: number; type: string }[] = [];
+    
+    try {
+      if (data === null || data === undefined) {
+        return results;
+      }
+      
+      if (typeof data === 'string') {
+        results.push({ path, size: data.length, type: 'string' });
+        return results;
+      }
+      
+      if (typeof data === 'number' || typeof data === 'boolean') {
+        results.push({ path, size: 8, type: typeof data });
+        return results;
+      }
+      
+      if (Array.isArray(data)) {
+        results.push({ path, size: data.length, type: 'array' });
+        data.forEach((item, index) => {
+          results.push(...this.analyzeDataStructure(item, `${path}[${index}]`));
+        });
+        return results;
+      }
+      
+      if (typeof data === 'object') {
+        const keys = Object.keys(data);
+        results.push({ path, size: keys.length, type: 'object' });
+        
+        for (const [key, value] of Object.entries(data)) {
+          results.push(...this.analyzeDataStructure(value, path ? `${path}.${key}` : key));
+        }
+        return results;
+      }
+      
+      return results;
+    } catch (error) {
+      console.warn('⚠️ Error analyzing data structure:', error);
+      return results;
+    }
+  }
+
+  // Truncate large data to fit within DynamoDB size limits
+  private truncateLargeData(data: any, maxSizeBytes: number): any {
+    try {
+      const jsonString = JSON.stringify(data);
+      if (jsonString.length <= maxSizeBytes) {
+        return data;
+      }
+      
+      console.warn('⚠️ Truncating data from', jsonString.length, 'to', maxSizeBytes, 'bytes');
+      
+      // If it's an object, try to keep only essential fields
+      if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+        const essentialFields = ['id', 'name', 'type', 'status', 'created', 'updated'];
+        const truncated: any = {};
+        
+        for (const field of essentialFields) {
+          if (data[field] !== undefined) {
+            truncated[field] = data[field];
+          }
+        }
+        
+        // Add a note that data was truncated
+        truncated._truncated = true;
+        truncated._originalSize = jsonString.length;
+        truncated._truncatedAt = new Date().toISOString();
+        
+        return truncated;
+      }
+      
+      // If it's an array, keep only first few items
+      if (Array.isArray(data)) {
+        const truncated = data.slice(0, 10); // Keep only first 10 items
+        truncated.push({
+          _truncated: true,
+          _originalSize: jsonString.length,
+          _truncatedAt: new Date().toISOString(),
+          _originalItemCount: data.length
+        });
+        return truncated;
+      }
+      
+      // For other types, return a minimal representation
+      return {
+        _truncated: true,
+        _originalSize: jsonString.length,
+        _truncatedAt: new Date().toISOString(),
+        _originalType: typeof data,
+        _value: String(data).substring(0, 100) + '...'
+      };
+    } catch (error) {
+      console.warn('⚠️ Error truncating data:', error);
+      return { _truncated: true, _error: 'Failed to truncate data' };
     }
   }
 
