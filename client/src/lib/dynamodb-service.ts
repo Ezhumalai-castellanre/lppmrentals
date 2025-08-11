@@ -1,5 +1,8 @@
 import { DynamoDBClient, PutItemCommand, GetItemCommand, UpdateItemCommand, DeleteItemCommand } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
+import { fetchAuthSession } from 'aws-amplify/auth';
+import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
+import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
 
 export interface DraftData {
   applicantId: string; // Use applicantId to match DynamoDB table schema
@@ -15,39 +18,84 @@ export interface DraftData {
 }
 
 export class DynamoDBService {
-  private client: DynamoDBClient;
+  private client: DynamoDBClient | null = null;
   private tableName: string;
+  private region: string;
 
   constructor() {
-    this.client = new DynamoDBClient({
-      region: import.meta.env.VITE_AWS_DYNAMODB_REGION || 'us-east-1',
-      credentials: {
-        accessKeyId: import.meta.env.VITE_AWS_DYNAMODB_ACCESS_KEY_ID || '',
-        secretAccessKey: import.meta.env.VITE_AWS_DYNAMODB_SECRET_ACCESS_KEY || '',
-      },
-    });
+    this.region = import.meta.env.VITE_AWS_REGION || 'us-east-1';
     this.tableName = import.meta.env.VITE_AWS_DYNAMODB_TABLE_NAME || 'DraftSaved';
     
-    // Check table existence and log status
-    this.checkTableStatus();
-    
-    // Test connection and get actual table schema
-    this.testConnection().then(success => {
-      if (success) {
-        console.log('✅ DynamoDB service initialized successfully');
-      } else {
-        console.warn('⚠️ DynamoDB service initialized with connection issues');
+    // Initialize client lazily when needed
+    this.initializeClient();
+  }
+
+  // Initialize DynamoDB client with authenticated credentials
+  private async initializeClient(): Promise<void> {
+    try {
+      const session = await fetchAuthSession();
+      
+      if (!session.tokens?.accessToken || !import.meta.env.VITE_AWS_IDENTITY_POOL_ID) {
+        console.warn('⚠️ No valid authentication session or Identity Pool ID, DynamoDB operations will fail');
+        return;
       }
-    });
+
+      // Use Cognito Identity Pool to get temporary AWS credentials
+      const credentials = await fromCognitoIdentityPool({
+        client: new CognitoIdentityClient({ region: this.region }),
+        identityPoolId: import.meta.env.VITE_AWS_IDENTITY_POOL_ID,
+        logins: {
+          [`cognito-idp.${this.region}.amazonaws.com/${import.meta.env.VITE_AWS_USER_POOL_ID}`]: 
+            session.tokens.idToken?.toString() || ''
+        }
+      });
+
+      // Create client with temporary AWS credentials
+      this.client = new DynamoDBClient({
+        region: this.region,
+        credentials: credentials,
+      });
+
+      console.log('✅ DynamoDB client initialized with temporary AWS credentials');
+      
+      // Check table status after client initialization
+      this.checkTableStatus();
+      
+      // Test connection
+      this.testConnection().then(success => {
+        if (success) {
+          console.log('✅ DynamoDB service initialized successfully');
+        } else {
+          console.warn('⚠️ DynamoDB service initialized with connection issues');
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error initializing DynamoDB client:', error);
+      this.client = null;
+    }
+  }
+
+  // Get authenticated client, reinitialize if needed
+  private async getClient(): Promise<DynamoDBClient> {
+    if (!this.client) {
+      await this.initializeClient();
+    }
+    
+    if (!this.client) {
+      throw new Error('Failed to initialize DynamoDB client - no valid authentication');
+    }
+    
+    return this.client;
   }
 
   // Check DynamoDB table status
   private async checkTableStatus() {
     try {
       const { DescribeTableCommand, CreateTableCommand } = await import('@aws-sdk/client-dynamodb');
+      const client = await this.getClient();
       
       try {
-        await this.client.send(new DescribeTableCommand({
+        await client.send(new DescribeTableCommand({
           TableName: this.tableName,
         }));
         console.log(`✅ DynamoDB table '${this.tableName}' exists and is accessible`);
@@ -56,7 +104,7 @@ export class DynamoDBService {
           console.log(`📋 DynamoDB table '${this.tableName}' does not exist, creating it...`);
           
           try {
-            await this.client.send(new CreateTableCommand({
+            await client.send(new CreateTableCommand({
               TableName: this.tableName,
               AttributeDefinitions: [
                 {
@@ -95,6 +143,8 @@ export class DynamoDBService {
   // Save draft data
   async saveDraft(draftData: DraftData): Promise<boolean> {
     try {
+      const client = await this.getClient();
+      
       console.log('💾 Saving draft to DynamoDB:', {
         table: this.tableName,
         application_id: draftData.applicantId,
@@ -253,7 +303,7 @@ export class DynamoDBService {
           },
         });
         
-        await this.client.send(essentialCommand);
+        await client.send(essentialCommand);
         console.log('✅ Essential data saved successfully (full data was too large)');
         return true;
       }
@@ -274,7 +324,7 @@ export class DynamoDBService {
         },
       });
 
-      await this.client.send(command);
+      await client.send(command);
       console.log('✅ Draft saved successfully to DynamoDB');
       return true;
     } catch (error) {
@@ -448,6 +498,8 @@ export class DynamoDBService {
   // Retrieve draft data
   async getDraft(applicationId: string, referenceId: string): Promise<DraftData | null> {
     try {
+      const client = await this.getClient();
+      
       console.log('📥 Retrieving draft from DynamoDB:', {
         table: this.tableName,
         application_id: applicationId,
@@ -462,7 +514,7 @@ export class DynamoDBService {
         Key: key,
       });
 
-      const response = await this.client.send(command);
+      const response = await client.send(command);
       
       if (response.Item) {
         const draftData = unmarshall(response.Item) as DraftData;
@@ -502,6 +554,8 @@ export class DynamoDBService {
   // Update draft status to submitted
   async markAsSubmitted(applicationId: string, referenceId: string): Promise<boolean> {
     try {
+      const client = await this.getClient();
+      
       console.log('📝 Marking draft as submitted in DynamoDB:', {
         table: this.tableName,
         application_id: applicationId,
@@ -523,7 +577,7 @@ export class DynamoDBService {
         },
       });
 
-      await this.client.send(command);
+      await client.send(command);
       console.log('✅ Draft marked as submitted successfully');
       return true;
     } catch (error) {
@@ -535,6 +589,8 @@ export class DynamoDBService {
   // Delete draft data
   async deleteDraft(applicationId: string, referenceId: string): Promise<boolean> {
     try {
+      const client = await this.getClient();
+      
       console.log('🗑️ Deleting draft from DynamoDB:', {
         table: this.tableName,
         application_id: applicationId,
@@ -548,7 +604,7 @@ export class DynamoDBService {
         },
       });
 
-      await this.client.send(command);
+      await client.send(command);
       console.log('✅ Draft deleted successfully from DynamoDB');
       return true;
     } catch (error) {
@@ -579,10 +635,11 @@ export class DynamoDBService {
   async testConnection(): Promise<boolean> {
     try {
       console.log('🧪 Testing DynamoDB connection...');
+      const client = await this.getClient();
       
       // Try to describe the table
       const { DescribeTableCommand } = await import('@aws-sdk/client-dynamodb');
-      const describeResult = await this.client.send(new DescribeTableCommand({
+      const describeResult = await client.send(new DescribeTableCommand({
         TableName: this.tableName,
       }));
       

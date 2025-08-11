@@ -1,5 +1,7 @@
 import { Amplify } from 'aws-amplify';
 import { fetchAuthSession } from 'aws-amplify/auth';
+import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
+import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
 
 // Check if AWS credentials are available
 const hasAwsCredentials = import.meta.env.VITE_AWS_USER_POOL_ID &&
@@ -78,17 +80,49 @@ export const getAwsCredentials = async () => {
       return null;
     }
 
-    return {
-      accessKeyId: session.tokens.accessToken.toString(),
-      secretAccessKey: session.tokens.idToken?.toString() || '',
-      sessionToken: session.tokens.accessToken.toString(),
-      // Add additional session info
-      identityId: session.identityId,
-      userSub: session.tokens.accessToken.payload?.sub,
-    };
+    // For DynamoDB access, we need to use the Identity Pool to get temporary AWS credentials
+    // The access token and ID token are not AWS credentials - they're JWT tokens
+    if (session.identityId) {
+      console.log('Using Identity Pool for AWS credentials');
+      return {
+        identityId: session.identityId,
+        userSub: session.tokens.accessToken.payload?.sub,
+        // Note: We'll use the credential provider in the DynamoDB service
+      };
+    } else {
+      console.warn('No Identity Pool configured - DynamoDB operations will fail');
+      return null;
+    }
   } catch (error) {
     console.error('Error getting AWS credentials:', error);
     // Don't throw the error, just return null to allow the app to continue
+    return null;
+  }
+};
+
+// Function to get temporary AWS credentials using Identity Pool
+export const getTemporaryAwsCredentials = async () => {
+  try {
+    const session = await fetchAuthSession();
+    
+    if (!session.tokens?.accessToken || !import.meta.env.VITE_AWS_IDENTITY_POOL_ID) {
+      console.warn('Missing required tokens or Identity Pool ID for AWS credentials');
+      return null;
+    }
+
+    // Use the Cognito Identity Pool to get temporary AWS credentials
+    const credentials = await fromCognitoIdentityPool({
+      client: new CognitoIdentityClient({ region: import.meta.env.VITE_AWS_REGION || 'us-east-1' }),
+      identityPoolId: import.meta.env.VITE_AWS_IDENTITY_POOL_ID,
+      logins: {
+        [`cognito-idp.${import.meta.env.VITE_AWS_REGION || 'us-east-1'}.amazonaws.com/${import.meta.env.VITE_AWS_USER_POOL_ID}`]: 
+          session.tokens.idToken?.toString() || ''
+      }
+    });
+
+    return credentials;
+  } catch (error) {
+    console.error('Error getting temporary AWS credentials:', error);
     return null;
   }
 };
@@ -288,3 +322,5 @@ export const triggerAwsDebug = async () => {
     console.error('❌ AWS Debug failed:', error);
   }
 }; 
+
+ 

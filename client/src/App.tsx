@@ -19,6 +19,7 @@ import NotFound from "@/pages/not-found";
 import AvailableRentalsPage from "@/pages/available-rentals";
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
+import { DebugAuth } from "@/components/debug-auth";
 import "./lib/aws-config";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
@@ -97,6 +98,17 @@ function Router() {
         <ProtectedRoute>
           <AppLayout>
             <ApplicationsPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Debug route for troubleshooting */}
+      <Route path="/debug">
+        <ProtectedRoute>
+          <AppLayout>
+            <div className="container mx-auto py-8">
+              <DebugAuth />
+            </div>
           </AppLayout>
         </ProtectedRoute>
       </Route>
