@@ -5,7 +5,7 @@ import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-id
 import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
 
 export interface DraftData {
-  applicantId: string; // Use applicantId to match DynamoDB table schema
+  applicantId: string; // Partition key - must match user's zoneinfo value
   reference_id: string;
   form_data: any;
   current_step: number;
@@ -88,17 +88,61 @@ export class DynamoDBService {
     return this.client;
   }
 
-  // Check DynamoDB table status
+  // Get the current user's applicantId from their zoneinfo attribute
+  async getCurrentUserApplicantId(): Promise<string | null> {
+    try {
+      const session = await fetchAuthSession();
+      if (!session.tokens?.idToken) {
+        console.error('❌ No valid authentication session to get applicantId');
+        return null;
+      }
+
+      // Get user attributes to check zoneinfo
+      const { fetchUserAttributes } = await import('aws-amplify/auth');
+      const userAttributes = await fetchUserAttributes();
+      
+      const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
+      
+      if (!zoneinfoValue) {
+        console.error('❌ User has no zoneinfo attribute - cannot determine applicantId');
+        return null;
+      }
+      
+      console.log(`✅ Retrieved applicantId from user's zoneinfo: ${zoneinfoValue}`);
+      return zoneinfoValue;
+    } catch (error) {
+      console.error('❌ Error getting current user applicantId:', error);
+      return null;
+    }
+  }
+
+  // Check DynamoDB table status and ensure proper schema
   private async checkTableStatus() {
     try {
       const { DescribeTableCommand, CreateTableCommand } = await import('@aws-sdk/client-dynamodb');
       const client = await this.getClient();
       
       try {
-        await client.send(new DescribeTableCommand({
+        const describeResult = await client.send(new DescribeTableCommand({
           TableName: this.tableName,
         }));
+        
         console.log(`✅ DynamoDB table '${this.tableName}' exists and is accessible`);
+        
+        // Verify the table has the correct schema
+        const keySchema = describeResult.Table?.KeySchema || [];
+        const hasApplicantIdPartitionKey = keySchema.some(k => 
+          k.AttributeName === 'applicantId' && k.KeyType === 'HASH'
+        );
+        
+        if (!hasApplicantIdPartitionKey) {
+          console.error(`❌ Table '${this.tableName}' does not have 'applicantId' as partition key`);
+          console.error(`📋 Current key schema:`, keySchema);
+          console.error(`📋 Expected: applicantId as HASH (partition key)`);
+        } else {
+          console.log(`✅ Table '${this.tableName}' has correct schema with 'applicantId' as partition key`);
+        }
+        
       } catch (error: any) {
         if (error.name === 'ResourceNotFoundException') {
           console.log(`📋 DynamoDB table '${this.tableName}' does not exist, creating it...`);
@@ -121,7 +165,7 @@ export class DynamoDBService {
               BillingMode: 'PAY_PER_REQUEST'
             }));
             
-            console.log(`✅ DynamoDB table '${this.tableName}' created successfully`);
+            console.log(`✅ DynamoDB table '${this.tableName}' created successfully with 'applicantId' as partition key`);
           } catch (createError: any) {
             console.error(`❌ Failed to create DynamoDB table '${this.tableName}':`, createError);
             console.error(`📋 Please create the table manually with the following schema:`);
@@ -140,17 +184,57 @@ export class DynamoDBService {
     }
   }
 
-  // Save draft data
+  // Validate that applicantId matches the authenticated user's zoneinfo
+  private async validateApplicantId(applicantId: string): Promise<boolean> {
+    try {
+      const session = await fetchAuthSession();
+      if (!session.tokens?.idToken) {
+        console.error('❌ No valid authentication session to validate applicantId');
+        return false;
+      }
+
+      // Get user attributes to check zoneinfo
+      const { fetchUserAttributes } = await import('aws-amplify/auth');
+      const userAttributes = await fetchUserAttributes();
+      
+      const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
+      
+      if (!zoneinfoValue) {
+        console.error('❌ User has no zoneinfo attribute - cannot validate applicantId');
+        return false;
+      }
+      
+      if (applicantId !== zoneinfoValue) {
+        console.error(`❌ ApplicantId mismatch: provided '${applicantId}' does not match user's zoneinfo '${zoneinfoValue}'`);
+        return false;
+      }
+      
+      console.log(`✅ ApplicantId validation successful: '${applicantId}' matches user's zoneinfo`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error validating applicantId:', error);
+      return false;
+    }
+  }
+
+  // Save draft data with applicantId validation
   async saveDraft(draftData: DraftData): Promise<boolean> {
     try {
       const client = await this.getClient();
       
       console.log('💾 Saving draft to DynamoDB:', {
         table: this.tableName,
-        application_id: draftData.applicantId,
+        applicantId: draftData.applicantId,
         reference_id: draftData.reference_id,
         current_step: draftData.current_step
       });
+
+      // Validate that applicantId matches the authenticated user's zoneinfo
+      const isValidApplicantId = await this.validateApplicantId(draftData.applicantId);
+      if (!isValidApplicantId) {
+        console.error('❌ Invalid applicantId - must match authenticated user\'s zoneinfo value');
+        return false;
+      }
 
       // Log raw data sizes to identify what's causing the size issue
       const rawSizes = {
@@ -325,7 +409,7 @@ export class DynamoDBService {
       });
 
       await client.send(command);
-      console.log('✅ Draft saved successfully to DynamoDB');
+      console.log('✅ Draft saved successfully to DynamoDB with validated applicantId');
       return true;
     } catch (error) {
       console.error('❌ Error saving draft to DynamoDB:', error);
@@ -502,11 +586,18 @@ export class DynamoDBService {
       
       console.log('📥 Retrieving draft from DynamoDB:', {
         table: this.tableName,
-        application_id: applicationId,
+        applicantId: applicationId,
         reference_id: referenceId
       });
 
-      // Get the correct key structure - only use application_id since table has no sort key
+      // Validate that applicantId matches the authenticated user's zoneinfo
+      const isValidApplicantId = await this.validateApplicantId(applicationId);
+      if (!isValidApplicantId) {
+        console.error('❌ Invalid applicantId - must match authenticated user\'s zoneinfo value');
+        return null;
+      }
+
+      // Get the correct key structure - only use applicantId since table has no sort key
       const key = this.getKeyStructure(applicationId);
 
       const command = new GetItemCommand({
@@ -521,7 +612,7 @@ export class DynamoDBService {
         console.log('✅ Draft retrieved successfully from DynamoDB');
         return draftData;
       } else {
-        console.log('📭 No draft found for the given application ID');
+        console.log('📭 No draft found for the given applicantId');
         return null;
       }
     } catch (error: any) {
@@ -558,9 +649,16 @@ export class DynamoDBService {
       
       console.log('📝 Marking draft as submitted in DynamoDB:', {
         table: this.tableName,
-        application_id: applicationId,
+        applicantId: applicationId,
         reference_id: referenceId
       });
+
+      // Validate that applicantId matches the authenticated user's zoneinfo
+      const isValidApplicantId = await this.validateApplicantId(applicationId);
+      if (!isValidApplicantId) {
+        console.error('❌ Invalid applicantId - must match authenticated user\'s zoneinfo value');
+        return false;
+      }
 
       const command = new UpdateItemCommand({
         TableName: this.tableName,
@@ -593,9 +691,16 @@ export class DynamoDBService {
       
       console.log('🗑️ Deleting draft from DynamoDB:', {
         table: this.tableName,
-        application_id: applicationId,
+        applicantId: applicationId,
         reference_id: referenceId
       });
+
+      // Validate that applicantId matches the authenticated user's zoneinfo
+      const isValidApplicantId = await this.validateApplicantId(applicationId);
+      if (!isValidApplicantId) {
+        console.error('❌ Invalid applicantId - must match authenticated user\'s zoneinfo value');
+        return false;
+      }
 
       const command = new DeleteItemCommand({
         TableName: this.tableName,
@@ -613,14 +718,21 @@ export class DynamoDBService {
     }
   }
 
-  // Get all drafts for an application ID
-  async getAllDrafts(applicationId: string): Promise<DraftData[]> {
+  // Get all drafts for an applicantId
+  async getAllDrafts(applicantId: string): Promise<DraftData[]> {
     try {
-      console.log('📋 Getting all drafts for application ID:', applicationId);
+      console.log('📋 Getting all drafts for applicantId:', applicantId);
+
+      // Validate that applicantId matches the authenticated user's zoneinfo
+      const isValidApplicantId = await this.validateApplicantId(applicantId);
+      if (!isValidApplicantId) {
+        console.error('❌ Invalid applicantId - must match authenticated user\'s zoneinfo value');
+        return [];
+      }
 
       // Note: This would require a GSI or scan operation
       // For now, we'll implement a basic scan (not recommended for production)
-      // In production, you should create a GSI on application_id
+      // In production, you should create a GSI on applicantId
       
       // This is a simplified implementation - in production you'd want to use a GSI
       console.log('⚠️ getAllDrafts requires a GSI for production use');
@@ -652,19 +764,34 @@ export class DynamoDBService {
         type: k.KeyType
       })));
       
-      // Check if our key structure matches
-      const hasPartitionKey = keySchema.some(k => k.KeyType === 'HASH');
+      // Check if our key structure matches the expected schema
+      const hasApplicantIdPartitionKey = keySchema.some(k => 
+        k.AttributeName === 'applicantId' && k.KeyType === 'HASH'
+      );
       const hasSortKey = keySchema.some(k => k.KeyType === 'RANGE');
       
-      if (hasPartitionKey && hasSortKey) {
-        console.log('✅ Table has partition key + sort key (composite key)');
-      } else if (hasPartitionKey) {
-        console.log('✅ Table has only partition key (simple key)');
+      if (hasApplicantIdPartitionKey && hasSortKey) {
+        console.log('✅ Table has applicantId as partition key + sort key (composite key)');
+      } else if (hasApplicantIdPartitionKey) {
+        console.log('✅ Table has applicantId as partition key (simple key) - this is correct');
       } else {
-        console.log('❌ Table has no valid key schema');
+        console.log('❌ Table does not have applicantId as partition key');
+        console.error('📋 Expected schema: applicantId as HASH (partition key)');
+        console.error('📋 Current schema:', keySchema);
       }
       
-      return true;
+      // Log table details
+      if (describeResult.Table) {
+        console.log('📋 Table details:', {
+          name: describeResult.Table.TableName,
+          status: describeResult.Table.TableStatus,
+          itemCount: describeResult.Table.ItemCount,
+          tableSizeBytes: describeResult.Table.TableSizeBytes,
+          billingMode: describeResult.Table.BillingModeSummary?.BillingMode
+        });
+      }
+      
+      return hasApplicantIdPartitionKey;
     } catch (error: any) {
       console.error('❌ DynamoDB connection test failed:', error);
       
@@ -683,3 +810,64 @@ export class DynamoDBService {
 
 // Export singleton instance
 export const dynamoDBService = new DynamoDBService();
+
+// Utility functions that automatically use the current user's applicantId
+export const dynamoDBUtils = {
+  // Save draft using current user's applicantId
+  async saveDraftForCurrentUser(draftData: Omit<DraftData, 'applicantId'>): Promise<boolean> {
+    const applicantId = await dynamoDBService.getCurrentUserApplicantId();
+    if (!applicantId) {
+      console.error('❌ Cannot save draft - no applicantId available for current user');
+      return false;
+    }
+    
+    return dynamoDBService.saveDraft({
+      ...draftData,
+      applicantId
+    });
+  },
+
+  // Get draft using current user's applicantId
+  async getDraftForCurrentUser(referenceId: string): Promise<DraftData | null> {
+    const applicantId = await dynamoDBService.getCurrentUserApplicantId();
+    if (!applicantId) {
+      console.error('❌ Cannot get draft - no applicantId available for current user');
+      return null;
+    }
+    
+    return dynamoDBService.getDraft(applicantId, referenceId);
+  },
+
+  // Mark draft as submitted using current user's applicantId
+  async markDraftAsSubmittedForCurrentUser(referenceId: string): Promise<boolean> {
+    const applicantId = await dynamoDBService.getCurrentUserApplicantId();
+    if (!applicantId) {
+      console.error('❌ Cannot mark draft as submitted - no applicantId available for current user');
+      return false;
+    }
+    
+    return dynamoDBService.markAsSubmitted(applicantId, referenceId);
+  },
+
+  // Delete draft using current user's applicantId
+  async deleteDraftForCurrentUser(referenceId: string): Promise<boolean> {
+    const applicantId = await dynamoDBService.getCurrentUserApplicantId();
+    if (!applicantId) {
+      console.error('❌ Cannot delete draft - no applicantId available for current user');
+      return false;
+    }
+    
+    return dynamoDBService.deleteDraft(applicantId, referenceId);
+  },
+
+  // Get all drafts for current user
+  async getAllDraftsForCurrentUser(): Promise<DraftData[]> {
+    const applicantId = await dynamoDBService.getCurrentUserApplicantId();
+    if (!applicantId) {
+      console.error('❌ Cannot get drafts - no applicantId available for current user');
+      return [];
+    }
+    
+    return dynamoDBService.getAllDrafts(applicantId);
+  }
+};
