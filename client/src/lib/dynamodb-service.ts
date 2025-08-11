@@ -161,13 +161,37 @@ export class DynamoDBService {
         draftData.applicantId = generatedApplicantId;
       }
       
-      // Clean the form data if it exists
+      // Clean the form data if it exists (ensures all nested fields are consistent)
       if (draftData.form_data && typeof draftData.form_data === 'object') {
         console.log('🧹 Cleaning form data to ensure zoneinfo consistency');
         draftData.form_data = this.cleanFormDataForConsistency(draftData.form_data);
+        
+        // Ensure the cleaned form data also uses current zoneinfo
+        if (draftData.form_data.application_id !== currentUserZoneinfo) {
+          console.log(`🔄 Updating form_data.application_id to current zoneinfo '${currentUserZoneinfo}'`);
+          draftData.form_data.application_id = currentUserZoneinfo;
+        }
+        
+        if (draftData.form_data.applicantId !== generatedApplicantId) {
+          console.log(`🔄 Updating form_data.applicantId to generated applicantId '${generatedApplicantId}'`);
+          draftData.form_data.applicantId = generatedApplicantId;
+        }
+        
+        if (draftData.form_data.zoneinfo !== currentUserZoneinfo) {
+          console.log(`🔄 Updating form_data.zoneinfo to current zoneinfo '${currentUserZoneinfo}'`);
+          draftData.form_data.zoneinfo = currentUserZoneinfo;
+        }
       }
       
-      console.log('✅ Draft data now uses current user\'s zoneinfo');
+      // 4. Log the final state for verification
+      console.log('✅ Draft data now uses current user\'s zoneinfo. Final state:', {
+        zoneinfo: draftData.zoneinfo,
+        applicantId: draftData.applicantId,
+        form_data_zoneinfo: draftData.form_data?.zoneinfo,
+        form_data_application_id: draftData.form_data?.application_id,
+        form_data_applicantId: draftData.form_data?.applicantId
+      });
+      
       return draftData;
     } catch (error) {
       console.error('❌ Error ensuring draft data uses current zoneinfo:', error);
@@ -196,18 +220,47 @@ export class DynamoDBService {
   // Clean form data to ensure application_id and applicantId are consistent
   private cleanFormDataForConsistency(formData: any): any {
     try {
-      // If we have application_id, ensure it's the source of truth
+      console.log('🧹 Starting comprehensive form data cleaning for zoneinfo consistency...');
+      
+      // For now, we'll use the formData.zoneinfo if available, or clean based on application_id
+      // The actual zoneinfo mapping will happen in the calling methods
+      
+      // 1. Handle application_id field (form data)
       if (formData.application_id) {
-        // Remove any conflicting applicantId field
-        if (formData.applicantId && formData.applicantId !== formData.application_id) {
-          console.log(`🧹 Cleaning form data: removing conflicting applicantId '${formData.applicantId}' (keeping application_id '${formData.application_id}')`);
-          delete formData.applicantId;
+        // If we have application_id, ensure applicantId matches it
+        if (formData.applicantId !== formData.application_id) {
+          console.log(`🔄 Updating applicantId from '${formData.applicantId}' to match application_id '${formData.application_id}'`);
+          formData.applicantId = formData.application_id;
         }
         
-        // Ensure applicantId matches application_id for DynamoDB
-        formData.applicantId = formData.application_id;
-        console.log(`✅ Form data cleaned: applicantId set to '${formData.application_id}' to match application_id`);
+        // Ensure zoneinfo is set to application_id if not present
+        if (!formData.zoneinfo) {
+          formData.zoneinfo = formData.application_id;
+          console.log(`✅ Set zoneinfo to application_id '${formData.application_id}'`);
+        }
+        
+        console.log(`✅ Form data cleaned: applicantId and zoneinfo set to '${formData.application_id}'`);
       }
+      
+      // 2. Handle applicantId field (DynamoDB partition key)
+      if (formData.applicantId && !formData.application_id) {
+        // If we only have applicantId, set application_id to match
+        formData.application_id = formData.applicantId;
+        console.log(`✅ Set application_id to match applicantId '${formData.applicantId}'`);
+      }
+      
+      // 3. Clean nested form_data if it exists
+      if (formData.form_data && typeof formData.form_data === 'object') {
+        console.log('🧹 Cleaning nested form_data for consistency...');
+        formData.form_data = this.cleanFormDataForConsistency(formData.form_data);
+      }
+      
+      // 4. Log the final cleaned state
+      console.log('✅ Form data cleaning completed. Final state:', {
+        zoneinfo: formData.zoneinfo,
+        application_id: formData.application_id,
+        applicantId: formData.applicantId
+      });
       
       return formData;
     } catch (error) {
@@ -764,9 +817,31 @@ export class DynamoDBService {
           if (draftData.form_data && typeof draftData.form_data === 'object') {
             console.log('🧹 Cleaning form data in retrieved draft to ensure zoneinfo consistency');
             draftData.form_data = this.cleanFormDataForConsistency(draftData.form_data);
+            
+            // Ensure all form data fields use current zoneinfo
+            if (draftData.form_data.application_id !== currentUserZoneinfo) {
+              console.log(`🔄 Updating form_data.application_id to current zoneinfo '${currentUserZoneinfo}'`);
+              draftData.form_data.application_id = currentUserZoneinfo;
+            }
+            
+            if (draftData.form_data.applicantId !== draftData.applicantId) {
+              console.log(`🔄 Updating form_data.applicantId to match draft applicantId '${draftData.applicantId}'`);
+              draftData.form_data.applicantId = draftData.applicantId;
+            }
+            
+            if (draftData.form_data.zoneinfo !== currentUserZoneinfo) {
+              console.log(`🔄 Updating form_data.zoneinfo to current zoneinfo '${currentUserZoneinfo}'`);
+              draftData.form_data.zoneinfo = currentUserZoneinfo;
+            }
           }
           
-          console.log('✅ Draft data updated to use current user\'s zoneinfo');
+          console.log('✅ Draft data updated to use current user\'s zoneinfo. Final state:', {
+            zoneinfo: draftData.zoneinfo,
+            applicantId: draftData.applicantId,
+            form_data_zoneinfo: draftData.form_data?.zoneinfo,
+            form_data_application_id: draftData.form_data?.application_id,
+            form_data_applicantId: draftData.form_data?.applicantId
+          });
         }
         
         return draftData;
@@ -848,9 +923,32 @@ export class DynamoDBService {
         if (mostRecentDraft.form_data && typeof mostRecentDraft.form_data === 'object') {
           console.log('🧹 Cleaning form data in retrieved draft to ensure zoneinfo consistency');
           mostRecentDraft.form_data = this.cleanFormDataForConsistency(mostRecentDraft.form_data);
+          
+          // Ensure all form data fields use current zoneinfo
+          if (mostRecentDraft.form_data.application_id !== currentUserZoneinfo) {
+            console.log(`🔄 Updating form_data.application_id to current zoneinfo '${currentUserZoneinfo}'`);
+            mostRecentDraft.form_data.application_id = currentUserZoneinfo;
+          }
+          
+          if (mostRecentDraft.form_data.applicantId !== mostRecentDraft.applicantId) {
+            console.log(`🔄 Updating form_data.applicantId to match draft applicantId '${mostRecentDraft.applicantId}'`);
+            mostRecentDraft.form_data.applicantId = mostRecentDraft.applicantId;
+          }
+          
+          if (mostRecentDraft.form_data.zoneinfo !== currentUserZoneinfo) {
+            console.log(`🔄 Updating form_data.zoneinfo to current zoneinfo '${currentUserZoneinfo}'`);
+            mostRecentDraft.form_data.zoneinfo = currentUserZoneinfo;
+          }
         }
         
-        console.log('✅ Draft data updated to use current user\'s zoneinfo');
+        console.log('✅ Draft data updated to use current user\'s zoneinfo. Final state:', {
+          zoneinfo: mostRecentDraft.zoneinfo,
+          applicantId: mostRecentDraft.applicantId,
+          form_data_zoneinfo: mostRecentDraft.form_data?.zoneinfo,
+          form_data_application_id: mostRecentDraft.form_data?.application_id,
+          form_data_applicantId: mostRecentDraft.form_data?.applicantId
+        });
+        
         return mostRecentDraft;
       } else {
         console.log(`📭 No draft found with reference_id '${referenceId}'`);
