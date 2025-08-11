@@ -1,6 +1,8 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import "./lib/aws-config";
+import "./lib/test-graphql";
 
 // ULTRA-AGGRESSIVE ERROR SUPPRESSION - RUNS IMMEDIATELY
 (function() {

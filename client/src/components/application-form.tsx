@@ -22,6 +22,7 @@ import { ResetPDFGenerator } from "@/lib/pdf-generator-reset";
 import { Download, FileText, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { useDraftStorage } from "@/hooks/use-draft-storage";
 
 import ApplicationInstructions from "./application-instructions";
 import { useRef } from "react";
@@ -201,6 +202,24 @@ export function ApplicationForm() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  
+  // Draft storage hook
+  const {
+    currentDraft,
+    isLoading: isDraftLoading,
+    error: draftError,
+    saveStepDraft,
+    saveFormDraft,
+    saveFileUploadDraft,
+    loadDraft,
+    deleteDraft,
+    restoreDraft,
+    startAutoSave,
+    stopAutoSave,
+    hasUnsavedChanges,
+    lastSaved,
+    isAutoSaving
+  } = useDraftStorage();
 
   // Read selected rental from sessionStorage
   const [selectedRental, setSelectedRental] = useState<any>(null);
@@ -383,6 +402,19 @@ export function ApplicationForm() {
     }
   }, [form]);
 
+  // Start auto-save when form data changes
+  useEffect(() => {
+    if (user && currentStep > 0) {
+      // Start auto-save for the current step
+      startAutoSave(formData, currentStep);
+      
+      // Cleanup auto-save when component unmounts or step changes
+      return () => {
+        stopAutoSave();
+      };
+    }
+  }, [user, currentStep, formData, startAutoSave, stopAutoSave]);
+
   const updateFormData = (section: string, field: string, value: any) => {
     setFormData((prev: any) => {
       const newFormData = {
@@ -441,7 +473,7 @@ export function ApplicationForm() {
     form.setValue('monthlyRent', selectedApartment?.monthlyRent || undefined);
   };
 
-  const handleDocumentChange = (person: string, documentType: string, files: File[]) => {
+  const handleDocumentChange = async (person: string, documentType: string, files: File[]) => {
     console.log(`📁 Document change for ${person} ${documentType}:`, files.length, 'files');
     
     setDocuments((prev: any) => ({
@@ -451,6 +483,22 @@ export function ApplicationForm() {
         [documentType]: files,
       },
     }));
+    
+    // Save file upload draft
+    try {
+      const metadata = {
+        file_name: files.map(f => f.name),
+        file_size: files.map(f => f.size),
+        mime_type: files.map(f => f.type),
+        upload_date: new Date().toISOString()
+      };
+      
+      await saveFileUploadDraft(`${person}_${documentType}`, Array.from(files), metadata);
+      console.log(`✅ File upload draft saved for ${person} ${documentType}`);
+    } catch (draftError) {
+      console.warn('⚠️ Failed to save file upload draft:', draftError);
+      // Continue with document handling even if draft save fails
+    }
   };
 
   // Handler to attach webhook file URL to encrypted file
@@ -940,6 +988,15 @@ export function ApplicationForm() {
       console.log('📈 Webhook Summary:', enhancedFormDataSnapshot.webhookSummary);
       console.log('➡️ Moving to step:', nextPlannedStep);
       console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
+      
+      // Save draft for current step before advancing
+      try {
+        await saveStepDraft(currentStep, enhancedFormDataSnapshot, documents);
+        console.log(`✅ Draft saved for step ${currentStep} before advancing`);
+      } catch (draftError) {
+        console.warn('⚠️ Failed to save draft before advancing:', draftError);
+        // Continue with step advancement even if draft save fails
+      }
     } catch (err) {
       console.warn('FormData logging failed:', err);
     }
@@ -972,6 +1029,15 @@ export function ApplicationForm() {
       console.log('📈 Webhook Summary:', enhancedFormDataSnapshot.webhookSummary);
       console.log('⬅️ Going back to step:', getNextAllowedStep(currentStep, -1));
       console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
+      
+      // Save draft for current step before going back
+      try {
+        await saveStepDraft(currentStep, enhancedFormDataSnapshot, documents);
+        console.log(`✅ Draft saved for step ${currentStep} before going back`);
+      } catch (draftError) {
+        console.warn('⚠️ Failed to save draft before going back:', draftError);
+        // Continue with step navigation even if draft save fails
+      }
     } catch (err) {
       console.warn('FormData logging failed:', err);
     }
@@ -1041,6 +1107,15 @@ export function ApplicationForm() {
       console.log('📈 Webhook Summary:', enhancedFormDataSnapshot.webhookSummary);
       console.log('🎯 Jumping to step:', step);
       console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
+      
+      // Save draft for current step before jumping
+      try {
+        await saveStepDraft(currentStep, enhancedFormDataSnapshot, documents);
+        console.log(`✅ Draft saved for step ${currentStep} before jumping to step ${step}`);
+      } catch (draftError) {
+        console.warn('⚠️ Failed to save draft before jumping:', draftError);
+        // Continue with step navigation even if draft save fails
+      }
     } catch (err) {
       console.warn('FormData logging failed:', err);
     }
@@ -1085,7 +1160,7 @@ export function ApplicationForm() {
     }));
   };
 
-  const handleOccupantDocumentChange = (index: number, documentType: string, files: File[]) => {
+  const handleOccupantDocumentChange = async (index: number, documentType: string, files: File[]) => {
     console.log(`📁 Occupant ${index + 1} document change:`, { documentType, filesCount: files.length });
     
     setFormData((prev: any) => ({
@@ -1100,6 +1175,22 @@ export function ApplicationForm() {
         } : occupant
       )
     }));
+    
+    // Save file upload draft for occupant
+    try {
+      const metadata = {
+        file_name: files.map(f => f.name),
+        file_size: files.map(f => f.size),
+        mime_type: files.map(f => f.type),
+        upload_date: new Date().toISOString()
+      };
+      
+      await saveFileUploadDraft(`occupant_${index}_${documentType}`, Array.from(files), metadata);
+      console.log(`✅ File upload draft saved for occupant ${index + 1} ${documentType}`);
+    } catch (draftError) {
+      console.warn('⚠️ Failed to save occupant file upload draft:', draftError);
+      // Continue with document handling even if draft save fails
+    }
   };
 
   // Removed handleOccupantEncryptedDocumentChange - no longer needed
@@ -1109,6 +1200,15 @@ export function ApplicationForm() {
     setIsSubmitting(true);
     
     try {
+      // Save final form draft before submission
+      try {
+        await saveFormDraft(formData, documents, signatures, uploadedFilesMetadata, webhookResponses);
+        console.log('✅ Final form draft saved before submission');
+      } catch (draftError) {
+        console.warn('⚠️ Failed to save final form draft:', draftError);
+        // Continue with submission even if draft save fails
+      }
+      
       // ENSURE FULL METADATA IS AVAILABLE FOR WEBHOOK
       
       console.log('📊 Full uploadedFilesMetadata for webhook:', JSON.stringify(uploadedFilesMetadata, null, 2));
@@ -3803,32 +3903,9 @@ export function ApplicationForm() {
                 Add Another Occupant
               </Button>
                 
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={logOccupantFormData}
-                  className="text-xs"
-                >
-                  📊 Log Form Data
-                </Button>
+             
                 
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    console.log('🧪 Testing occupant preview functionality...');
-                    console.log('🧪 Current webhook responses:', formData.webhookResponses);
-                    console.log('🧪 Testing getOccupantDocumentStatus for occupant 0, ssn1:');
-                    const status = getOccupantDocumentStatus(0, 'ssn1');
-                    console.log('🧪 Status result:', status);
-                    console.log('🧪 Testing getOccupantUploadedDocuments for occupant 0, ssn1:');
-                    const docs = getOccupantUploadedDocuments(0, 'ssn1');
-                    console.log('🧪 Documents result:', docs);
-                  }}
-                  className="text-xs"
-                >
-                  🧪 Test Preview
-                </Button>
+                
               </div>
             </CardContent>
           </Card>
@@ -4494,6 +4571,52 @@ export function ApplicationForm() {
             {/* Current Step Content */}
             <div className="form-container">
               {renderStep()}
+            </div>
+
+            {/* Draft Status Indicator */}
+            <div className="flex items-center justify-between pt-4 pb-2">
+              <div className="flex items-center space-x-4">
+                {isDraftLoading && (
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    <span>Loading draft...</span>
+                  </div>
+                )}
+                {draftError && (
+                  <div className="flex items-center space-x-2 text-sm text-red-600">
+                    <span>⚠️ Draft error: {draftError}</span>
+                  </div>
+                )}
+                {lastSaved && (
+                  <div className="flex items-center space-x-2 text-sm text-green-600">
+                    <span>✅ Last saved: {new Date(lastSaved).toLocaleTimeString()}</span>
+                  </div>
+                )}
+                {isAutoSaving && (
+                  <div className="flex items-center space-x-2 text-sm text-blue-600">
+                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    <span>Auto-saving...</span>
+                  </div>
+                )}
+                {/* Temporary status message */}
+                <div className="flex items-center space-x-2 text-sm text-orange-600">
+                  <span>⚠️ Drafts saved to localStorage (GraphQL schema mismatch)</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                {currentDraft && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={deleteDraft}
+                    className="text-xs"
+                  >
+                    Clear Draft
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Navigation Buttons */}
