@@ -167,18 +167,51 @@ export const SupportingDocuments = ({
   ];
 
   const getDocumentStatus = (documentId: string): DocumentStatus => {
-    const documents = formData.documents?.[documentId] || [];
+    // First check webhookResponses for direct S3 URLs
     const webhookResponse = formData.webhookResponses?.[documentId];
-    
-    // Check if we have a webhook response (S3 URL) indicating successful upload
-    if (webhookResponse && typeof webhookResponse === 'string' && webhookResponse.trim()) {
-      return {
-        status: "uploaded",
-        count: 1 // We have a successful upload
-      };
+    if (webhookResponse) {
+      let fileUrl = '';
+      if (typeof webhookResponse === 'string') {
+        fileUrl = webhookResponse;
+      } else if (webhookResponse && webhookResponse.body) {
+        fileUrl = webhookResponse.body;
+      } else if (webhookResponse && webhookResponse.url) {
+        fileUrl = webhookResponse.url;
+      }
+      
+      if (fileUrl && fileUrl.trim()) {
+        return {
+          status: "uploaded",
+          count: 1
+        };
+      }
     }
     
+    // Check for documents with person prefix in webhookResponses
+    const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_', 'occupants_'];
+    for (const prefix of personPrefixes) {
+      const prefixedDocumentId = prefix + documentId;
+      const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+      if (prefixedWebhookResponse) {
+        let fileUrl = '';
+        if (typeof prefixedWebhookResponse === 'string') {
+          fileUrl = prefixedWebhookResponse;
+        } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+          fileUrl = prefixedWebhookResponse.body;
+        } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+          fileUrl = prefixedWebhookResponse.url;
+        }
+        
+        if (fileUrl && fileUrl.trim()) {
+          return {
+            status: "uploaded",
+            count: 1
+          };
+        }
+      }
+    }
     
+    // Check uploadedFilesMetadata
     const uploadedFilesMetadata = formData.uploadedFilesMetadata;
     if (uploadedFilesMetadata) {
       // Check for documents in uploadedFilesMetadata
@@ -190,8 +223,7 @@ export const SupportingDocuments = ({
         };
       }
       
-      // Check for documents with person prefix (e.g., applicant_photo_id, guarantor_photo_id)
-      const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_'];
+      // Check for documents with person prefix
       for (const prefix of personPrefixes) {
         const prefixedDocumentId = prefix + documentId;
         const prefixedFiles = uploadedFilesMetadata[prefixedDocumentId];
@@ -204,47 +236,59 @@ export const SupportingDocuments = ({
       }
     }
     
-    
+    // Check encryptedDocuments
     const encryptedDocuments = formData.encryptedDocuments;
     if (encryptedDocuments) {
-      // Check for documents with person prefix in encryptedDocuments
-      if (encryptedDocuments.applicant && encryptedDocuments.applicant[documentId]) {
-        const files = encryptedDocuments.applicant[documentId];
-        if (Array.isArray(files) && files.length > 0) {
-          return {
-            status: "uploaded",
-            count: files.length
-          };
-        }
-      }
-      
-      if (encryptedDocuments.coApplicant && encryptedDocuments.coApplicant[documentId]) {
-        const files = encryptedDocuments.coApplicant[documentId];
-        if (Array.isArray(files) && files.length > 0) {
-          return {
-            status: "uploaded",
-            count: files.length
-          };
-        }
-      }
-      
-      if (encryptedDocuments.guarantor && encryptedDocuments.guarantor[documentId]) {
-        const files = encryptedDocuments.guarantor[documentId];
-        if (Array.isArray(files) && files.length > 0) {
-          return {
-            status: "uploaded",
-            count: files.length
-          };
+      for (const person of personPrefixes) {
+        const cleanPerson = person.replace('_', '');
+        const personDocs = encryptedDocuments[cleanPerson as keyof typeof encryptedDocuments];
+        if (personDocs && personDocs[documentId]) {
+          const files = personDocs[documentId];
+          if (Array.isArray(files) && files.length > 0) {
+            return {
+              status: "uploaded",
+              count: files.length
+            };
+          }
         }
       }
     }
     
     // Fall back to checking actual files
-    if (documents.length > 0) {
-      return {
-        status: "uploaded",
-        count: documents.length
-      };
+    const documents = formData.documents;
+    if (documents) {
+      // Check applicant documents
+      if (documents.applicant && documents.applicant[documentId]) {
+        const files = documents.applicant[documentId];
+        if (Array.isArray(files) && files.length > 0) {
+          return {
+            status: "uploaded",
+            count: files.length
+          };
+        }
+      }
+      
+      // Check co-applicant documents
+      if (documents.coApplicant && documents.coApplicant[documentId]) {
+        const files = documents.coApplicant[documentId];
+        if (Array.isArray(files) && files.length > 0) {
+          return {
+            status: "uploaded",
+            count: files.length
+          };
+        }
+      }
+      
+      // Check guarantor documents
+      if (documents.guarantor && documents.guarantor[documentId]) {
+        const files = documents.guarantor[documentId];
+        if (Array.isArray(files) && files.length > 0) {
+          return {
+            status: "uploaded",
+            count: files.length
+          };
+        }
+      }
     }
     
     return {
@@ -254,44 +298,87 @@ export const SupportingDocuments = ({
   };
 
   const getUploadedDocuments = (documentId: string) => {
-    const documents = formData.documents;
-    if (!documents) return [];
-
-    // Check for documents in the new structure with webhookbodyUrl
     const uploadedDocs: Array<{ filename: string; webhookbodyUrl: string }> = [];
     
-    // Check applicant documents
-    if (documents.applicant) {
-      const applicantDocs = documents.applicant as Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
-      if (applicantDocs[documentId]) {
-        uploadedDocs.push(...applicantDocs[documentId]);
+    // First check webhookResponses for direct S3 URLs
+    const webhookResponse = formData.webhookResponses?.[documentId];
+    if (webhookResponse) {
+      let fileUrl = '';
+      if (typeof webhookResponse === 'string') {
+        fileUrl = webhookResponse;
+      } else if (webhookResponse && webhookResponse.body) {
+        fileUrl = webhookResponse.body;
+      } else if (webhookResponse && webhookResponse.url) {
+        fileUrl = webhookResponse.url;
+      }
+      
+      if (fileUrl && fileUrl.trim()) {
+        uploadedDocs.push({
+          filename: `${documentId}_document`,
+          webhookbodyUrl: fileUrl
+        });
       }
     }
     
-    // Check co-applicant documents
-    if (documents.coApplicant) {
-      const coApplicantDocs = documents.coApplicant as Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
-      if (coApplicantDocs[documentId]) {
-        uploadedDocs.push(...coApplicantDocs[documentId]);
+    // Check for documents with person prefix in webhookResponses
+    const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_', 'occupants_'];
+    for (const prefix of personPrefixes) {
+      const prefixedDocumentId = prefix + documentId;
+      const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+      if (prefixedWebhookResponse) {
+        let fileUrl = '';
+        if (typeof prefixedWebhookResponse === 'string') {
+          fileUrl = prefixedWebhookResponse;
+        } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+          fileUrl = prefixedWebhookResponse.body;
+        } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+          fileUrl = prefixedWebhookResponse.url;
+        }
+        
+        if (fileUrl && fileUrl.trim()) {
+          uploadedDocs.push({
+            filename: `${prefixedDocumentId}_document`,
+            webhookbodyUrl: fileUrl
+          });
+        }
       }
     }
     
-    // Check guarantor documents
-    if (documents.guarantor) {
-      const guarantorDocs = documents.guarantor as Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
-      if (guarantorDocs[documentId]) {
-        uploadedDocs.push(...guarantorDocs[documentId]);
-      }
-    }
-    
-    // Check other occupants documents
-    if (documents.otherOccupants) {
-      const otherOccupantsDocs = documents.otherOccupants as Record<string, Array<{ filename: string; webhookbodyUrl: string }>>;
-      Object.entries(otherOccupantsDocs).forEach(([key, files]) => {
-        if (key.includes(documentId) && Array.isArray(files)) {
+    // Fall back to checking documents structure if no webhook responses
+    const documents = formData.documents;
+    if (documents && uploadedDocs.length === 0) {
+      // Check applicant documents
+      if (documents.applicant && documents.applicant[documentId]) {
+        const files = documents.applicant[documentId];
+        if (Array.isArray(files)) {
           uploadedDocs.push(...files);
         }
-      });
+      }
+      
+      // Check co-applicant documents
+      if (documents.coApplicant && documents.coApplicant[documentId]) {
+        const files = documents.coApplicant[documentId];
+        if (Array.isArray(files)) {
+          uploadedDocs.push(...files);
+        }
+      }
+      
+      // Check guarantor documents
+      if (documents.guarantor && documents.guarantor[documentId]) {
+        const files = documents.guarantor[documentId];
+        if (Array.isArray(files)) {
+          uploadedDocs.push(...files);
+        }
+      }
+      
+      // Check other occupants documents
+      if (documents.otherOccupants) {
+        Object.entries(documents.otherOccupants).forEach(([key, files]) => {
+          if (key.includes(documentId) && Array.isArray(files)) {
+            uploadedDocs.push(...files);
+          }
+        });
+      }
     }
 
     return uploadedDocs;
@@ -314,6 +401,22 @@ export const SupportingDocuments = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Helper function to determine person type from document ID
+  const getPersonTypeFromDocumentId = (documentId: string): string => {
+    if (documentId.startsWith('applicant_')) {
+      return 'applicant';
+    } else if (documentId.startsWith('coApplicant_')) {
+      return 'coApplicant';
+    } else if (documentId.startsWith('guarantor_')) {
+      return 'guarantor';
+    } else if (documentId.startsWith('occupants_')) {
+      return 'occupants';
+    } else {
+      // Default to applicant for backward compatibility
+      return 'applicant';
+    }
   };
 
   const handleClosePreview = () => {
@@ -409,13 +512,54 @@ export const SupportingDocuments = ({
                         {!document.required && (
                           <Badge variant="secondary" className="text-xs">Optional</Badge>
                         )}
+                        {/* Show person type badge */}
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs ${
+                            document.id.startsWith('applicant_') ? 'border-blue-200 text-blue-700 bg-blue-50' :
+                            document.id.startsWith('coApplicant_') ? 'border-purple-200 text-purple-700 bg-purple-50' :
+                            document.id.startsWith('guarantor_') ? 'border-orange-200 text-orange-700 bg-orange-50' :
+                            document.id.startsWith('occupants_') ? 'border-green-200 text-green-700 bg-green-50' :
+                            'border-gray-200 text-gray-700 bg-gray-50'
+                          }`}
+                        >
+                          {document.id.startsWith('applicant_') ? '👤 Applicant' :
+                           document.id.startsWith('coApplicant_') ? '👥 Co-Applicant' :
+                           document.id.startsWith('guarantor_') ? '🏦 Guarantor' :
+                           document.id.startsWith('occupants_') ? '🏠 Occupant' :
+                           '📄 Document'}
+                        </Badge>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {docStatus.status === "uploaded" ? (
-                        <div className="flex items-center gap-1 text-green-600">
-                          <CheckCircle className="h-4 w-4" />
-                          <span className="text-xs font-medium">Already Uploaded ({docStatus.count} file{docStatus.count > 1 ? 's' : ''})</span>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 text-green-600">
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="text-xs font-medium">Uploaded ({docStatus.count} file{docStatus.count > 1 ? 's' : ''})</span>
+                          </div>
+                          {/* Preview button for uploaded documents */}
+                          {(() => {
+                            const uploadedDocs = getUploadedDocuments(document.id);
+                            if (uploadedDocs.length > 0 && uploadedDocs[0]?.webhookbodyUrl) {
+                              return (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handlePreviewDocument(
+                                    uploadedDocs[0].filename, 
+                                    uploadedDocs[0].webhookbodyUrl, 
+                                    document.name
+                                  )}
+                                  className="h-6 px-2 text-xs border-green-200 text-green-700 hover:bg-green-50"
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  Preview
+                                </Button>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 text-orange-600">
@@ -441,37 +585,167 @@ export const SupportingDocuments = ({
                       {(() => {
                         const uploadedDocs = getUploadedDocuments(document.id);
                         if (uploadedDocs.length > 0) {
+                          // Group documents by person type
+                          const groupedDocs = uploadedDocs.reduce((acc, doc) => {
+                            const personType = getPersonTypeFromDocumentId(document.id);
+                            if (!acc[personType]) {
+                              acc[personType] = [];
+                            }
+                            acc[personType].push(doc);
+                            return acc;
+                          }, {} as Record<string, typeof uploadedDocs>);
+
                           return (
-                            <div className="mt-3 space-y-2">
+                            <div className="mt-3 space-y-3">
                               <p className="text-xs font-medium text-green-800">Uploaded Files:</p>
-                              {uploadedDocs.map((doc, index) => (
-                                <div key={index} className="flex items-center justify-between bg-white rounded border p-2">
-                                  <div className="flex items-center gap-2">
-                                    <FileText className="h-4 w-4 text-green-600" />
-                                    <span className="text-xs text-gray-700">{doc.filename}</span>
+                              
+                              {/* Applicant Documents */}
+                              {groupedDocs.applicant && groupedDocs.applicant.length > 0 && (
+                                <div className="space-y-2">
+                                  <div className="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                                    👤 Applicant Documents
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handlePreviewDocument(doc.filename, doc.webhookbodyUrl, document.name)}
-                                      className="h-6 px-2 text-xs"
-                                    >
-                                      <Eye className="h-3 w-3 mr-1" />
-                                      Preview
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleDownloadDocument(doc.webhookbodyUrl, doc.filename)}
-                                      className="h-6 px-2 text-xs"
-                                    >
-                                      <Download className="h-3 w-3 mr-1" />
-                                      Download
-                                    </Button>
-                                  </div>
+                                  {groupedDocs.applicant.map((doc, index) => (
+                                    <div key={index} className="flex items-center justify-between bg-white rounded border p-2 ml-3">
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-blue-600" />
+                                        <span className="text-xs text-gray-700">{doc.filename}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handlePreviewDocument(doc.filename, doc.webhookbodyUrl, document.name)}
+                                          className="h-6 px-2 text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
+                                        >
+                                          <Eye className="h-3 w-3 mr-1" />
+                                          Preview
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleDownloadDocument(doc.webhookbodyUrl, doc.filename)}
+                                          className="h-6 px-2 text-xs"
+                                        >
+                                          <Download className="h-3 w-3 mr-1" />
+                                          Download
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
+                              )}
+
+                              {/* Co-Applicant Documents */}
+                              {groupedDocs.coApplicant && groupedDocs.coApplicant.length > 0 && (
+                                <div className="space-y-2">
+                                  <div className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-1 rounded border border-purple-200">
+                                    👥 Co-Applicant Documents
+                                  </div>
+                                  {groupedDocs.coApplicant.map((doc, index) => (
+                                    <div key={index} className="flex items-center justify-between bg-white rounded border p-2 ml-3">
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-purple-600" />
+                                        <span className="text-xs text-gray-700">{doc.filename}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handlePreviewDocument(doc.filename, doc.webhookbodyUrl, document.name)}
+                                          className="h-6 px-2 text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+                                        >
+                                          <Eye className="h-3 w-3 mr-1" />
+                                          Preview
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleDownloadDocument(doc.webhookbodyUrl, doc.filename)}
+                                          className="h-6 px-2 text-xs"
+                                        >
+                                          <Download className="h-3 w-3 mr-1" />
+                                          Download
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Guarantor Documents */}
+                              {groupedDocs.guarantor && groupedDocs.guarantor.length > 0 && (
+                                <div className="space-y-2">
+                                  <div className="text-xs font-semibold text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-200">
+                                    🏦 Guarantor Documents
+                                  </div>
+                                  {groupedDocs.guarantor.map((doc, index) => (
+                                    <div key={index} className="flex items-center justify-between bg-white rounded border p-2 ml-3">
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-orange-600" />
+                                        <span className="text-xs text-gray-700">{doc.filename}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handlePreviewDocument(doc.filename, doc.webhookbodyUrl, document.name)}
+                                          className="h-6 px-2 text-xs border-orange-200 text-orange-700 hover:bg-orange-50"
+                                        >
+                                          <Eye className="h-3 w-3 mr-1" />
+                                          Preview
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleDownloadDocument(doc.webhookbodyUrl, doc.filename)}
+                                          className="h-6 px-2 text-xs"
+                                        >
+                                          <Download className="h-3 w-3 mr-1" />
+                                          Download
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Occupant Documents */}
+                              {groupedDocs.occupants && groupedDocs.occupants.length > 0 && (
+                                <div className="space-y-2">
+                                  <div className="text-xs font-semibold text-green-700 bg-green-50 px-2 py-1 rounded border border-green-200">
+                                    🏠 Occupant Documents
+                                  </div>
+                                  {groupedDocs.occupants.map((doc, index) => (
+                                    <div key={index} className="flex items-center justify-between bg-white rounded border p-2 ml-3">
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-green-600" />
+                                        <span className="text-xs text-gray-700">{doc.filename}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handlePreviewDocument(doc.filename, doc.webhookbodyUrl, document.name)}
+                                          className="h-6 px-2 text-xs border-green-200 text-green-700 hover:bg-green-50"
+                                        >
+                                          <Eye className="h-3 w-3 mr-1" />
+                                          Preview
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleDownloadDocument(doc.webhookbodyUrl, doc.filename)}
+                                          className="h-6 px-2 text-xs"
+                                        >
+                                          <Download className="h-3 w-3 mr-1" />
+                                          Download
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           );
                         }

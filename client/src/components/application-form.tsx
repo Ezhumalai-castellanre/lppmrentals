@@ -216,7 +216,7 @@ export function ApplicationForm() {
     applicant: {},
     coApplicant: {},
     guarantor: {},
-    occupants: [], // Each occupant: { name, relationship, dob, ssn, age }
+    occupants: [], // Each occupant: { name, relationship, dob, ssn, age, ssnDocument, ssnEncryptedDocument, documents, encryptedDocuments }
   });
   const [signatures, setSignatures] = useState<any>({});
   const [signatureTimestamps, setSignatureTimestamps] = useState<any>({});
@@ -442,6 +442,8 @@ export function ApplicationForm() {
   };
 
   const handleDocumentChange = (person: string, documentType: string, files: File[]) => {
+    console.log(`📁 Document change for ${person} ${documentType}:`, files.length, 'files');
+    
     setDocuments((prev: any) => ({
       ...prev,
       [person]: {
@@ -453,15 +455,215 @@ export function ApplicationForm() {
 
   // Handler to attach webhook file URL to encrypted file
   const handleWebhookFileUrl = (person: string, documentType: string, fileUrl: string, fileName: string) => {
-  setEncryptedDocuments((prev: any) => {
-    const updated = { ...prev };
-    if (!updated[person] || !updated[person][documentType]) return prev;
-    updated[person][documentType] = updated[person][documentType].map((file: any) =>
-      file.filename === fileName ? { ...file, fileUrl } : file
-    );
-    return updated;
-  });
-};
+    setEncryptedDocuments((prev: any) => {
+      const updated = { ...prev };
+      if (!updated[person] || !updated[person][documentType]) return prev;
+      updated[person][documentType] = updated[person][documentType].map((file: any) =>
+        file.filename === fileName ? { ...file, fileUrl } : file
+      );
+      return updated;
+    });
+  };
+
+  // Enhanced webhook response handler
+  const handleWebhookResponse = (person: 'applicant' | 'coApplicant' | 'guarantor' | 'occupants', documentType: string, response: any) => {
+    console.log(`📥 === WEBHOOK RESPONSE RECEIVED ===`);
+    console.log(`👤 Person: ${person}`);
+    console.log(`📄 Document Type: ${documentType}`);
+    console.log(`📨 Raw Response:`, response);
+    
+    // Store webhook response
+    const responseKey = person === 'occupants' ? `occupants_${documentType}` : `${person}_${documentType}`;
+    console.log(`🔑 Setting webhook response for key: ${responseKey}`);
+    console.log(`🔑 Previous webhook responses:`, webhookResponses);
+    
+    setWebhookResponses(prev => {
+      const newResponses = {
+        ...prev,
+        [responseKey]: response
+      };
+      console.log(`💾 Updated webhook responses:`, newResponses);
+      return newResponses;
+    });
+    
+    // Log the state after setting
+    setTimeout(() => {
+      console.log(`⏰ Webhook responses after setState:`, webhookResponses);
+    }, 0);
+
+    // Extract file URL from webhook response
+    let fileUrl = '';
+    let responseType = 'unknown';
+    
+    if (typeof response === 'string') {
+      fileUrl = response;
+      responseType = 'string';
+    } else if (response && response.body) {
+      fileUrl = response.body;
+      responseType = 'body';
+    } else if (response && response.url) {
+      fileUrl = response.url;
+      responseType = 'url';
+    }
+
+    console.log(`🔍 Response Analysis:`);
+    console.log(`  - Response Type: ${responseType}`);
+    console.log(`  - File URL: ${fileUrl}`);
+    console.log(`  - Has File URL: ${!!fileUrl}`);
+
+    if (fileUrl) {
+      console.log(`✅ File URL successfully extracted: ${fileUrl}`);
+      
+
+
+      // Also update the webhook file URL for encrypted documents
+      handleWebhookFileUrl(person, documentType, fileUrl, `${documentType}_${Date.now()}`);
+      
+      console.log(`✅ Webhook response processing completed for ${person} ${documentType}`);
+    } else {
+      console.warn(`⚠️ No file URL found in webhook response for ${person} ${documentType}`);
+    }
+    
+    console.log(`=== END WEBHOOK RESPONSE ===`);
+  };
+
+  // Helper function to get comprehensive webhook summary
+  const getWebhookSummary = () => {
+    const summary = {
+      totalResponses: Object.keys(webhookResponses).length,
+      responsesByPerson: {
+        applicant: Object.keys(webhookResponses).filter(key => key.startsWith('applicant_')).length,
+        coApplicant: Object.keys(webhookResponses).filter(key => key.startsWith('coApplicant_')).length,
+        guarantor: Object.keys(webhookResponses).filter(key => key.startsWith('guarantor_')).length,
+        occupants: Object.keys(webhookResponses).filter(key => key.startsWith('occupants_')).length
+      },
+      webhookResponses: webhookResponses
+    };
+    
+    return summary;
+  };
+
+  // Function to log current webhook state (useful for debugging)
+  const logCurrentWebhookState = () => {
+    console.log('🔍 === CURRENT WEBHOOK STATE ===');
+    console.log('📊 Webhook Summary:', getWebhookSummary());
+    console.log('🌐 Webhook Responses:', webhookResponses);
+    console.log('📋 Uploaded Documents:', uploadedDocuments);
+    console.log('=== END CURRENT WEBHOOK STATE ===');
+  };
+
+  // Function to log current occupant form data structure
+  const logOccupantFormData = () => {
+    console.log('👥 === CURRENT OCCUPANT FORM DATA ===');
+    console.log('📊 Total Occupants:', formData.occupants?.length || 0);
+    
+    if (formData.occupants && formData.occupants.length > 0) {
+      formData.occupants.forEach((occupant: any, index: number) => {
+        console.log(`👤 Occupant ${index + 1}:`, {
+          name: occupant.name,
+          relationship: occupant.relationship,
+          dob: occupant.dob,
+          ssn: occupant.ssn,
+          license: occupant.license,
+          age: occupant.age,
+          documents: occupant.documents,
+          encryptedDocuments: occupant.encryptedDocuments
+        });
+      });
+    }
+    
+    console.log('📁 Document Sections Created:');
+    const documentSections: string[] = [];
+    if (formData.occupants) {
+      formData.occupants.forEach((_: any, index: number) => {
+        documentSections.push(`occupants_ssn${index + 1}`);
+      });
+    }
+    console.log('  - SSN Document Sections:', documentSections);
+    console.log('=== END OCCUPANT FORM DATA ===');
+  };
+
+  // Function to get occupant document status
+  const getOccupantDocumentStatus = (occupantIndex: number, documentType: string) => {
+    const sectionName = `occupants_${documentType}`;
+    
+    console.log(`🔍 Checking occupant document status for section: ${sectionName}`);
+    console.log(`🔍 Available webhook responses:`, Object.keys(formData.webhookResponses || {}));
+    
+    // Check webhook responses first
+    const webhookResponse = formData.webhookResponses?.[sectionName];
+    console.log(`🔍 Webhook response for ${sectionName}:`, webhookResponse);
+    
+    if (webhookResponse) {
+      let fileUrl = '';
+      if (typeof webhookResponse === 'string') {
+        fileUrl = webhookResponse;
+      } else if (webhookResponse && webhookResponse.body) {
+        fileUrl = webhookResponse.body;
+      } else if (webhookResponse && webhookResponse.url) {
+        fileUrl = webhookResponse.url;
+      }
+      console.log(`🔍 Extracted file URL:`, fileUrl);
+      if (fileUrl && fileUrl.trim()) {
+        return { status: "uploaded", count: 1 };
+      }
+    }
+    
+    // Check encrypted documents
+    const occupant = formData.occupants?.[occupantIndex];
+    if (occupant?.encryptedDocuments?.[documentType]?.length > 0) {
+      return { status: "pending", count: occupant.encryptedDocuments[documentType].length };
+    }
+    
+    // Check regular documents
+    if (occupant?.documents?.[documentType]?.length > 0) {
+      return { status: "pending", count: occupant.documents[documentType].length };
+    }
+    
+    return { status: "missing", count: 0 };
+  };
+
+  // Function to get occupant uploaded documents
+  const getOccupantUploadedDocuments = (occupantIndex: number, documentType: string) => {
+    const uploadedDocs: Array<{ filename: string; webhookbodyUrl: string }> = [];
+    const sectionName = `occupants_${documentType}`;
+    
+    console.log(`📁 Getting uploaded documents for section: ${sectionName}`);
+    
+    // Check webhook responses first
+    const webhookResponse = formData.webhookResponses?.[sectionName];
+    console.log(`📁 Webhook response for ${sectionName}:`, webhookResponse);
+    
+    if (webhookResponse) {
+      let fileUrl = '';
+      if (typeof webhookResponse === 'string') {
+        fileUrl = webhookResponse;
+      } else if (webhookResponse && webhookResponse.body) {
+        fileUrl = webhookResponse.body;
+      } else if (webhookResponse && webhookResponse.url) {
+        fileUrl = webhookResponse.url;
+      }
+      console.log(`📁 Extracted file URL:`, fileUrl);
+      if (fileUrl && fileUrl.trim()) {
+        uploadedDocs.push({ 
+          filename: `${documentType}_document`, 
+          webhookbodyUrl: fileUrl 
+        });
+        console.log(`📁 Added document to uploaded docs:`, uploadedDocs[uploadedDocs.length - 1]);
+      }
+    }
+    
+    console.log(`📁 Final uploaded docs array:`, uploadedDocs);
+    return uploadedDocs;
+  };
+
+  // Function to handle occupant document preview
+  const handlePreviewOccupantDocument = (filename: string, fileUrl: string, documentName: string) => {
+    console.log(`👁️ Previewing occupant document:`, { filename, fileUrl, documentName });
+    
+    // Open in new tab for preview
+    window.open(fileUrl, '_blank');
+  };
 
   const handleEncryptedDocumentChange = (person: string, documentType: string, encryptedFiles: EncryptedFile[]) => {
     console.log('handleEncryptedDocumentChange called:', { person, documentType, encryptedFilesCount: encryptedFiles.length });
@@ -538,6 +740,38 @@ export function ApplicationForm() {
       ...prev,
       [person]: new Date().toISOString(),
     }));
+  };
+
+  // Enhanced document change handlers for each person type
+  const applicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('applicant', documentType, files);
+  const applicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('applicant', documentType, encryptedFiles);
+
+  const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicant', documentType, files);
+  const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicant', documentType, encryptedFiles);
+
+  const guarantorDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('guarantor', documentType, files);
+  const guarantorEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('guarantor', documentType, encryptedFiles);
+
+  const occupantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('occupants', documentType, files);
+  const occupantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('occupants', documentType, encryptedFiles);
+
+  // Enhanced webhook response handlers for each person type
+  const applicantWebhookResponse = (documentType: string, response: any) => {
+    handleWebhookResponse('applicant', documentType, response);
+  };
+
+  const coApplicantWebhookResponse = (documentType: string, response: any) => {
+    handleWebhookResponse('coApplicant', documentType, response);
+  };
+
+  const guarantorWebhookResponse = (documentType: string, response: any) => {
+    handleWebhookResponse('guarantor', documentType, response);
+  };
+
+  const occupantWebhookResponse = (documentType: string, response: any) => {
+    console.log(`🌐 Occupant webhook response for ${documentType}:`, response);
+    console.log(`🌐 Calling handleWebhookResponse with:`, { person: 'occupants', documentType, response });
+    handleWebhookResponse('occupants', documentType, response);
   };
 
   const generatePDF = async () => {
@@ -634,7 +868,8 @@ export function ApplicationForm() {
   // Clear webhook cache when starting fresh
   const clearWebhookCache = () => {
     WebhookService.clearFailedUploads();
-    console.log('🧹 Cleared webhook cache for new application');
+    // Don't clear successful webhook responses - they're needed for preview functionality
+    console.log('🧹 Cleared failed uploads cache');
   };
 
   // Check webhook status
@@ -647,7 +882,10 @@ export function ApplicationForm() {
   // Clear cache when component mounts or when referenceId changes
   useEffect(() => {
     if (referenceId) {
+      console.log('🔄 useEffect triggered - referenceId changed to:', referenceId);
+      console.log('🔄 Current webhook responses before clearing:', webhookResponses);
       clearWebhookCache();
+      console.log('🔄 After clearWebhookCache - webhook responses:', webhookResponses);
     }
   }, [referenceId]);
 
@@ -681,7 +919,27 @@ export function ApplicationForm() {
       e.preventDefault();
       e.stopPropagation();
     }
-    
+
+    try {
+      const nextPlannedStep = getNextAllowedStep(currentStep, 1);
+      // Log a safe snapshot of formData to avoid proxies/refs
+      const formDataSnapshot = JSON.parse(JSON.stringify(formData));
+      
+      // Enhanced FormData snapshot with webhook responses
+      const enhancedFormDataSnapshot = {
+        ...formDataSnapshot,
+        webhookSummary: getWebhookSummary()
+      };
+      
+      console.log('🧾 === ENHANCED FORM DATA SNAPSHOT BEFORE ADVANCING ===');
+      console.log('📊 Form Data:', enhancedFormDataSnapshot);
+      console.log('📈 Webhook Summary:', enhancedFormDataSnapshot.webhookSummary);
+      console.log('➡️ Moving to step:', nextPlannedStep);
+      console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
+    } catch (err) {
+      console.warn('FormData logging failed:', err);
+    }
+
     setCurrentStep((prev) => getNextAllowedStep(prev, 1));
   };
 
@@ -745,6 +1003,77 @@ export function ApplicationForm() {
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Enhanced occupants handling with document uploads
+  const addOccupant = () => {
+    const newOccupant = {
+      name: '',
+      relationship: '',
+      dob: '',
+      ssn: '',
+      license: '',
+      age: '',
+      ssnDocument: null,
+      ssnEncryptedDocument: null,
+      documents: {},
+      encryptedDocuments: {}
+    };
+    
+    setFormData((prev: any) => ({
+      ...prev,
+      occupants: [...(prev.occupants || []), newOccupant]
+    }));
+  };
+
+  const removeOccupant = (index: number) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      occupants: prev.occupants.filter((_: any, i: number) => i !== index)
+    }));
+  };
+
+  const updateOccupant = (index: number, field: string, value: any) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      occupants: prev.occupants.map((occupant: any, i: number) => 
+        i === index ? { ...occupant, [field]: value } : occupant
+      )
+    }));
+  };
+
+  const handleOccupantDocumentChange = (index: number, documentType: string, files: File[]) => {
+    console.log(`📁 Occupant ${index + 1} document change:`, { documentType, filesCount: files.length });
+    
+    setFormData((prev: any) => ({
+      ...prev,
+      occupants: prev.occupants.map((occupant: any, i: number) => 
+        i === index ? { 
+          ...occupant, 
+          documents: { 
+            ...occupant.documents, 
+            [documentType]: files 
+          } 
+        } : occupant
+      )
+    }));
+  };
+
+  const handleOccupantEncryptedDocumentChange = (index: number, documentType: string, encryptedFiles: EncryptedFile[]) => {
+    console.log(`🔐 Occupant ${index + 1} encrypted document change:`, { documentType, encryptedFilesCount: encryptedFiles.length });
+    
+    setFormData((prev: any) => ({
+      ...prev,
+      occupants: prev.occupants.map((occupant: any, i: number) => 
+        i === index ? { 
+          ...occupant, 
+          encryptedDocuments: { 
+            ...occupant.encryptedDocuments, 
+            [documentType]: encryptedFiles 
+          } 
+        } : occupant
+      )
+    }));
+  };
 
   const onSubmit = async (data: ApplicationFormData) => {
     console.log('🚀 Form submission started');
@@ -1598,6 +1927,8 @@ export function ApplicationForm() {
             application_id: user?.applicantId || 'unknown',
             reference_id: referenceId,
             
+
+            
             // Webhook responses for uploaded documents
             webhookResponses: webhookResponses,
 
@@ -1934,9 +2265,6 @@ export function ApplicationForm() {
                         <DatePicker
                           value={field.value}
                           onChange={(date) => {
-                            console.log('DatePicker onChange - moveInDate:', date);
-                            console.log('DatePicker onChange - moveInDate type:', typeof date);
-                            console.log('DatePicker onChange - moveInDate instanceof Date:', date instanceof Date);
                             field.onChange(date);
                             updateFormData('application', 'moveInDate', date); // Store Date object, not string
                           }}
@@ -2643,125 +2971,13 @@ export function ApplicationForm() {
                   webhookResponses
                 }}
                 onDocumentChange={(documentType, files) => {
-                  setDocuments((prev: any) => ({
-                    ...prev,
-                    [documentType]: files,
-                  }));
+                  handleDocumentChange('applicant', documentType, files);
                 }}
                 onWebhookResponse={(documentType, response) => {
-                  console.log('Webhook response received:', documentType, response);
-                  
-                  // Extract file URL from webhook response
-                  let fileUrl = '';
-                  if (response) {
-                    try {
-                      // Try to parse as JSON first
-                      const responseJson = JSON.parse(response);
-                      if (responseJson && typeof responseJson === 'string') {
-                        fileUrl = responseJson;
-                      } else if (responseJson && responseJson.url) {
-                        fileUrl = responseJson.url;
-                      } else if (responseJson && responseJson.body) {
-                        fileUrl = responseJson.body;
-                      }
-                    } catch (parseError) {
-                      // If not JSON, treat the entire response as the URL
-                      fileUrl = response.trim();
-                    }
-                  }
-                  
-                  console.log('📄 Extracted file URL from webhook response:', fileUrl);
-                  
-                  // Store the webhook response (S3 URL)
-                  setWebhookResponses((prev: any) => ({
-                    ...prev,
-                    [documentType]: response,
-                  }));
-                  
-                  // Update uploadedDocuments with the file URL
-                  if (fileUrl) {
-                    setUploadedDocuments(prev => {
-                      const safePrev = Array.isArray(prev) ? prev : [];
-                      // Find and update the document with the file URL
-                      const updatedDocs = safePrev.map(doc => {
-                        if (doc.section_name === documentType || doc.documents === documentType) {
-                          return {
-                            ...doc,
-                            file_url: fileUrl
-                          };
-                        }
-                        return doc;
-                      });
-                      
-                      // If no existing document found, add a new one
-                      if (!updatedDocs.some(doc => doc.section_name === documentType || doc.documents === documentType)) {
-                        updatedDocs.push({
-                          reference_id: `${Date.now()}-${documentType}`,
-                          file_name: documentType,
-                          section_name: documentType,
-                          documents: documentType,
-                          file_url: fileUrl
-                        });
-                      }
-                      
-                      return updatedDocs;
-                    });
-                  }
-                  
-                  console.log(`✅ Webhook response received for ${documentType}: ${response}`);
+                  handleWebhookResponse('applicant', documentType, response);
                 }}
                 onEncryptedDocumentChange={(documentType, encryptedFiles) => {
-                  console.log('Encrypted document change:', documentType, encryptedFiles);
-                  setEncryptedDocuments((prev: any) => ({
-                    ...prev,
-                    [documentType]: encryptedFiles,
-                  }));
-
-                  // Check if this is a guarantor document by checking if formData has a guarantor
-                  // and if the documentType matches guarantor document IDs
-                  const guarantorDocumentIds = ['photo_id', 'social_security', 'w9_forms', 'employment_letter', 'pay_stubs', 'tax_returns', 'bank_statement', 'accountant_letter', 'credit_report'];
-                  const isGuarantorDocument = formData?.guarantor && guarantorDocumentIds.includes(documentType);
-                  
-                  // Track uploadedDocuments for webhook
-                  const sectionKey = isGuarantorDocument ? `guarantor_${documentType}` : `supporting_${documentType}`;
-                  const docs = encryptedFiles.map(file => ({
-                    reference_id: file.uploadDate + '-' + file.filename,
-                    file_name: file.filename,
-                    section_name: sectionKey,
-                    documents: documentType
-                  }));
-                  setUploadedDocuments(prev => {
-                    // Ensure prev is always an array
-                    const safePrev = Array.isArray(prev) ? prev : [];
-                    const filtered = safePrev.filter(doc => doc.section_name !== sectionKey);
-                    return [...filtered, ...docs];
-                  });
-
-                  // Track uploaded files metadata for webhook - OPTIMIZED VERSION
-                  const filesMetadata = encryptedFiles.map(file => ({
-                    file_name: file.filename,
-                    file_size: file.originalSize,
-                    mime_type: file.mimeType,
-                    upload_date: file.uploadDate
-                  }));
-
-                  setUploadedFilesMetadata(prev => {
-                    const newMetadata = {
-                      ...prev,
-                      [sectionKey]: filesMetadata
-                    };
-                    
-                    // Log metadata size for debugging
-                    const metadataSize = JSON.stringify(newMetadata).length;
-                    console.log(`📊 UploadedFilesMetadata size: ${metadataSize} characters for section ${sectionKey}`);
-                    
-                    // If metadata is getting too large, log a warning
-                    if (metadataSize > 50000) { // 50KB warning threshold
-                      console.warn(`⚠️ UploadedFilesMetadata is getting large: ${metadataSize} characters`);
-                    }
-                    
-                    return newMetadata;
-                  });
+                  handleEncryptedDocumentChange('applicant', documentType, encryptedFiles);
                 }}
                 referenceId={referenceId}
                 enableWebhook={true}
@@ -3247,65 +3463,7 @@ export function ApplicationForm() {
         const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicant', documentType, files);
         const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicant', documentType, encryptedFiles);
         const coApplicantWebhookResponse = (documentType: string, response: any) => {
-          console.log('Co-applicant webhook response received:', documentType, response);
-          
-          // Extract file URL from webhook response
-          let fileUrl = '';
-          if (response) {
-            try {
-              // Try to parse as JSON first
-              const responseJson = JSON.parse(response);
-              if (responseJson && typeof responseJson === 'string') {
-                fileUrl = responseJson;
-              } else if (responseJson && responseJson.url) {
-                fileUrl = responseJson.url;
-              } else if (responseJson && responseJson.body) {
-                fileUrl = responseJson.body;
-              }
-            } catch (parseError) {
-              // If not JSON, treat the entire response as the URL
-              fileUrl = response.trim();
-            }
-          }
-          
-          console.log('📄 Extracted co-applicant file URL from webhook response:', fileUrl);
-          
-          setWebhookResponses((prev: any) => ({
-            ...prev,
-            [`coApplicant_${documentType}`]: response,
-          }));
-          
-          // Update uploadedDocuments with the file URL
-          if (fileUrl) {
-            setUploadedDocuments(prev => {
-              const safePrev = Array.isArray(prev) ? prev : [];
-              const sectionKey = `coApplicant_${documentType}`;
-              
-              // Find and update the document with the file URL
-              const updatedDocs = safePrev.map(doc => {
-                if (doc.section_name === sectionKey || doc.documents === documentType) {
-                  return {
-                    ...doc,
-                    file_url: fileUrl
-                  };
-                }
-                return doc;
-              });
-              
-              // If no existing document found, add a new one
-              if (!updatedDocs.some(doc => doc.section_name === sectionKey || doc.documents === documentType)) {
-                updatedDocs.push({
-                  reference_id: `${Date.now()}-${sectionKey}`,
-                  file_name: documentType,
-                  section_name: sectionKey,
-                  documents: documentType,
-                  file_url: fileUrl
-                });
-              }
-              
-              return updatedDocs;
-            });
-          }
+          handleWebhookResponse('coApplicant', documentType, response);
         };
         return (
           hasCoApplicant ? (
@@ -3352,6 +3510,18 @@ export function ApplicationForm() {
               <div className="text-sm text-muted-foreground mt-2">
                 List any other people who will be living in the apartment
               </div>
+                
+                {/* Debug: Show current webhook responses for occupants */}
+                {Object.keys(formData.webhookResponses || {}).filter(key => key.startsWith('occupants_')).length > 0 && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="text-xs font-medium text-blue-800 mb-2">🔍 Debug: Occupant Webhook Responses</div>
+                    {Object.entries(formData.webhookResponses || {}).filter(([key]) => key.startsWith('occupants_')).map(([key, value]) => (
+                      <div key={key} className="text-xs text-blue-700 mb-1">
+                        <strong>{key}:</strong> {typeof value === 'string' ? value : JSON.stringify(value)}
+                      </div>
+                    ))}
+                  </div>
+                )}
             </CardHeader>
             <CardContent className="space-y-8">
               {(formData.occupants || []).map((occupant: any, idx: number) => (
@@ -3453,9 +3623,7 @@ export function ApplicationForm() {
                           filesCount: files.length,
                           fileName: files[0]?.name
                         });
-                        const updated = [...formData.occupants];
-                        updated[idx] = { ...updated[idx], ssnDocument: files[0] };
-                        setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                          handleOccupantDocumentChange(idx, `ssn${idx + 1}`, files);
                       }}
                       onEncryptedFilesChange={encryptedFiles => {
                         console.log('🚀 OCCUPANT SSN ENCRYPTED DOCUMENT UPLOAD:', {
@@ -3464,20 +3632,99 @@ export function ApplicationForm() {
                           encryptedFilesCount: encryptedFiles.length,
                           fileName: encryptedFiles[0]?.filename
                         });
-                        const updated = [...formData.occupants];
-                        updated[idx] = { ...updated[idx], ssnEncryptedDocument: encryptedFiles[0] };
-                        setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                          handleOccupantEncryptedDocumentChange(idx, `ssn${idx + 1}`, encryptedFiles);
+                        }}
+                        onWebhookResponse={(response) => {
+                          console.log('🚀 OCCUPANT SSN WEBHOOK RESPONSE:', {
+                            occupantIndex: idx,
+                            occupantName: occupant.name,
+                            response
+                          });
+                          occupantWebhookResponse(`ssn${idx + 1}`, response);
                       }}
                       referenceId={`${referenceId}_occupant_${idx}`}
-                      sectionName={`occupant_${idx}_ssn`}
+                      sectionName={`occupants_ssn${idx + 1}`}
                       documentName="ssn"
                       enableWebhook={true}
                       applicationId={user?.applicantId || 'unknown'}
                       applicantId={user?.applicantId}
+                      zoneinfo={user?.zoneinfo}
                     />
-                    {(!occupant.ssnEncryptedDocument) && (
-                      <div className="text-red-600 text-xs mt-1">SSN document upload is required.</div>
-                    )}
+                    
+                    {/* Document Status and Preview Section */}
+                    <div className="mt-3">
+                      {(() => {
+                        const documentStatus = getOccupantDocumentStatus(idx, `ssn${idx + 1}`);
+                        const uploadedDocs = getOccupantUploadedDocuments(idx, `ssn${idx + 1}`);
+                        
+                        if (documentStatus.status === "uploaded" && uploadedDocs.length > 0) {
+                          return (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1 text-green-700">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span className="text-sm font-medium">Document Uploaded</span>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handlePreviewOccupantDocument(uploadedDocs[0].filename, uploadedDocs[0].webhookbodyUrl, `Occupant ${idx + 1} SSN Document`)}
+                                    className="h-7 px-2 text-xs border-green-200 text-green-700 hover:bg-green-100"
+                                  >
+                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    Preview
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => window.open(uploadedDocs[0].webhookbodyUrl, '_blank')}
+                                    className="h-7 px-2 text-xs border-blue-200 text-blue-700 hover:bg-blue-100"
+                                  >
+                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                    Open
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="mt-2 text-xs text-green-600">
+                                File: {uploadedDocs[0].filename}
+                              </div>
+                            </div>
+                          );
+                        } else if (documentStatus.status === "pending") {
+                          return (
+                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                              <div className="flex items-center gap-2 text-orange-700">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                                <span className="text-sm">Document upload pending</span>
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                              <div className="flex items-center gap-2 text-red-700">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                                <span className="text-sm">SSN document upload is required</span>
+                              </div>
+                            </div>
+                          );
+                        }
+                      })()}
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
                     <div className="flex items-end">
@@ -3496,18 +3743,58 @@ export function ApplicationForm() {
                   </div>
                 </div>
               ))}
+              <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
                   setFormData((prev: any) => ({
                     ...prev,
-                                            occupants: [...(prev.occupants || []), { name: '', relationship: '', dob: '', ssn: '', license: '', age: '', ssnDocument: null, ssnEncryptedDocument: null }]
+                      occupants: [...(prev.occupants || []), { 
+                        name: '', 
+                        relationship: '', 
+                        dob: '', 
+                        ssn: '', 
+                        license: '', 
+                        age: '', 
+                        ssnDocument: null, 
+                        ssnEncryptedDocument: null,
+                        documents: {},
+                        encryptedDocuments: {}
+                      }]
                   }));
                 }}
               >
                 Add Another Occupant
               </Button>
+                
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={logOccupantFormData}
+                  className="text-xs"
+                >
+                  📊 Log Form Data
+                </Button>
+                
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    console.log('🧪 Testing occupant preview functionality...');
+                    console.log('🧪 Current webhook responses:', formData.webhookResponses);
+                    console.log('🧪 Testing getOccupantDocumentStatus for occupant 0, ssn1:');
+                    const status = getOccupantDocumentStatus(0, 'ssn1');
+                    console.log('🧪 Status result:', status);
+                    console.log('🧪 Testing getOccupantUploadedDocuments for occupant 0, ssn1:');
+                    const docs = getOccupantUploadedDocuments(0, 'ssn1');
+                    console.log('🧪 Documents result:', docs);
+                  }}
+                  className="text-xs"
+                >
+                  🧪 Test Preview
+                </Button>
+              </div>
             </CardContent>
           </Card>
         );
@@ -3966,65 +4253,7 @@ export function ApplicationForm() {
         const guarantorDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('guarantor', documentType, files);
         const guarantorEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('guarantor', documentType, encryptedFiles);
         const guarantorWebhookResponse = (documentType: string, response: any) => {
-          console.log('Guarantor webhook response received:', documentType, response);
-          
-          // Extract file URL from webhook response
-          let fileUrl = '';
-          if (response) {
-            try {
-              // Try to parse as JSON first
-              const responseJson = JSON.parse(response);
-              if (responseJson && typeof responseJson === 'string') {
-                fileUrl = responseJson;
-              } else if (responseJson && responseJson.url) {
-                fileUrl = responseJson.url;
-              } else if (responseJson && responseJson.body) {
-                fileUrl = responseJson.body;
-              }
-            } catch (parseError) {
-              // If not JSON, treat the entire response as the URL
-              fileUrl = response.trim();
-            }
-          }
-          
-          console.log('📄 Extracted guarantor file URL from webhook response:', fileUrl);
-          
-          setWebhookResponses((prev: any) => ({
-            ...prev,
-            [`guarantor_${documentType}`]: response,
-          }));
-          
-          // Update uploadedDocuments with the file URL
-          if (fileUrl) {
-            setUploadedDocuments(prev => {
-              const safePrev = Array.isArray(prev) ? prev : [];
-              const sectionKey = `guarantor_${documentType}`;
-              
-              // Find and update the document with the file URL
-              const updatedDocs = safePrev.map(doc => {
-                if (doc.section_name === sectionKey || doc.documents === documentType) {
-                  return {
-                    ...doc,
-                    file_url: fileUrl
-                  };
-                }
-                return doc;
-              });
-              
-              // If no existing document found, add a new one
-              if (!updatedDocs.some(doc => doc.section_name === sectionKey || doc.documents === documentType)) {
-                updatedDocs.push({
-                  reference_id: `${Date.now()}-${sectionKey}`,
-                  file_name: documentType,
-                  section_name: sectionKey,
-                  documents: documentType,
-                  file_url: fileUrl
-                });
-              }
-              
-              return updatedDocs;
-            });
-          }
+          handleWebhookResponse('guarantor', documentType, response);
         };
         return (
           <Card className="form-section border-l-4 border-l-green-500">
