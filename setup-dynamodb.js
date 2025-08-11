@@ -12,8 +12,8 @@ const { DynamoDBClient, CreateTableCommand, DescribeTableCommand } = require('@a
 // Configuration - Update these values as needed
 const config = {
   region: process.env.VITE_AWS_DYNAMODB_REGION || 'us-east-1',
-  accessKeyId: process.env.VITE_AWS_DYNAMODB_ACCESS_KEY_ID || 'AKIA35BCK6ZHZC4EWVHT',
-  secretAccessKey: process.env.VITE_AWS_DYNAMODB_SECRET_ACCESS_KEY || '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',
+  accessKeyId: process.env.VITE_AWS_DYNAMODB_ACCESS_KEY_ID,
+  secretAccessKey: process.env.VITE_AWS_DYNAMODB_SECRET_ACCESS_KEY,
   tableName: process.env.VITE_AWS_DYNAMODB_TABLE_NAME || 'DraftSaved'
 };
 
