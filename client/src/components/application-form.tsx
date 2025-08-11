@@ -216,7 +216,7 @@ export function ApplicationForm() {
     applicant: {},
     coApplicant: {},
     guarantor: {},
-    occupants: [], // Each occupant: { name, relationship, dob, ssn, age, ssnDocument, ssnEncryptedDocument, documents, encryptedDocuments }
+    occupants: [], // Each occupant: { name, relationship, dob, ssn, age, ssnDocument, ssnEncryptedDocument, documents }
   });
   const [signatures, setSignatures] = useState<any>({});
   const [signatureTimestamps, setSignatureTimestamps] = useState<any>({});
@@ -569,8 +569,7 @@ export function ApplicationForm() {
           ssn: occupant.ssn,
           license: occupant.license,
           age: occupant.age,
-          documents: occupant.documents,
-          encryptedDocuments: occupant.encryptedDocuments
+          documents: occupant.documents
         });
       });
     }
@@ -756,7 +755,7 @@ export function ApplicationForm() {
   const guarantorEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('guarantor', documentType, encryptedFiles);
 
   const occupantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('occupants', documentType, files);
-  const occupantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('occupants', documentType, encryptedFiles);
+  // Removed occupantEncryptedDocumentChange - no longer needed
 
   // Enhanced webhook response handlers for each person type
   const applicantWebhookResponse = (documentType: string, response: any) => {
@@ -928,14 +927,16 @@ export function ApplicationForm() {
       // Log a safe snapshot of formData to avoid proxies/refs
       const formDataSnapshot = JSON.parse(JSON.stringify(formData));
       
-      // Enhanced FormData snapshot with webhook responses
+      // Enhanced FormData snapshot with webhook responses and application_id
       const enhancedFormDataSnapshot = {
         ...formDataSnapshot,
+        application_id: user?.zoneinfo || user?.applicantId || 'unknown',
         webhookSummary: getWebhookSummary()
       };
       
       console.log('🧾 === ENHANCED FORM DATA SNAPSHOT BEFORE ADVANCING ===');
       console.log('📊 Form Data:', enhancedFormDataSnapshot);
+      console.log('🆔 Application ID:', enhancedFormDataSnapshot.application_id);
       console.log('📈 Webhook Summary:', enhancedFormDataSnapshot.webhookSummary);
       console.log('➡️ Moving to step:', nextPlannedStep);
       console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
@@ -952,6 +953,27 @@ export function ApplicationForm() {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
+    }
+    
+    try {
+      // Log a safe snapshot of formData to avoid proxies/refs
+      const formDataSnapshot = JSON.parse(JSON.stringify(formData));
+      
+      // Enhanced FormData snapshot with webhook responses and application_id
+      const enhancedFormDataSnapshot = {
+        ...formDataSnapshot,
+        application_id: user?.zoneinfo || user?.applicantId || 'unknown',
+        webhookSummary: getWebhookSummary()
+      };
+      
+      console.log('🧾 === ENHANCED FORM DATA SNAPSHOT BEFORE GOING BACK ===');
+      console.log('📊 Form Data:', enhancedFormDataSnapshot);
+      console.log('🆔 Application ID:', enhancedFormDataSnapshot.application_id);
+      console.log('📈 Webhook Summary:', enhancedFormDataSnapshot.webhookSummary);
+      console.log('⬅️ Going back to step:', getNextAllowedStep(currentStep, -1));
+      console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
+    } catch (err) {
+      console.warn('FormData logging failed:', err);
     }
     
     setCurrentStep((prev) => getNextAllowedStep(prev, -1));
@@ -1002,6 +1024,27 @@ export function ApplicationForm() {
       return;
     }
     
+    try {
+      // Log a safe snapshot of formData to avoid proxies/refs
+      const formDataSnapshot = JSON.parse(JSON.stringify(formData));
+      
+      // Enhanced FormData snapshot with webhook responses and application_id
+      const enhancedFormDataSnapshot = {
+        ...formDataSnapshot,
+        application_id: user?.zoneinfo || user?.applicantId || 'unknown',
+        webhookSummary: getWebhookSummary()
+      };
+      
+      console.log('🧾 === ENHANCED FORM DATA SNAPSHOT BEFORE JUMPING TO STEP ===');
+      console.log('📊 Form Data:', enhancedFormDataSnapshot);
+      console.log('🆔 Application ID:', enhancedFormDataSnapshot.application_id);
+      console.log('📈 Webhook Summary:', enhancedFormDataSnapshot.webhookSummary);
+      console.log('🎯 Jumping to step:', step);
+      console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
+    } catch (err) {
+      console.warn('FormData logging failed:', err);
+    }
+    
     setCurrentStep(step);
   };
 
@@ -1017,9 +1060,7 @@ export function ApplicationForm() {
       license: '',
       age: '',
       ssnDocument: null,
-      ssnEncryptedDocument: null,
-      documents: {},
-      encryptedDocuments: {}
+      documents: {}
     };
     
     setFormData((prev: any) => ({
@@ -1061,22 +1102,7 @@ export function ApplicationForm() {
     }));
   };
 
-  const handleOccupantEncryptedDocumentChange = (index: number, documentType: string, encryptedFiles: EncryptedFile[]) => {
-    console.log(`🔐 Occupant ${index + 1} encrypted document change:`, { documentType, encryptedFilesCount: encryptedFiles.length });
-    
-    setFormData((prev: any) => ({
-      ...prev,
-      occupants: prev.occupants.map((occupant: any, i: number) => 
-        i === index ? { 
-          ...occupant, 
-          encryptedDocuments: { 
-            ...occupant.encryptedDocuments, 
-            [documentType]: encryptedFiles 
-          } 
-        } : occupant
-      )
-    }));
-  };
+  // Removed handleOccupantEncryptedDocumentChange - no longer needed
 
   const onSubmit = async (data: ApplicationFormData) => {
     console.log('🚀 Form submission started');
@@ -1126,8 +1152,7 @@ export function ApplicationForm() {
       console.log("Final otherOccupants:", formData.occupants || formData.otherOccupants || []);
       console.log("Occupants with SSN documents:", formData.occupants?.map((occ: any) => ({
         name: occ.name,
-        ssnDocument: occ.ssnDocument ? 'UPLOADED' : 'NULL',
-        ssnEncryptedDocument: occ.ssnEncryptedDocument ? 'UPLOADED' : 'NULL'
+        ssnDocument: occ.ssnDocument ? 'UPLOADED' : 'NULL'
       })));
       
       console.log("⚖️ LEGAL QUESTIONS:");
@@ -1505,8 +1530,7 @@ export function ApplicationForm() {
             license: occupant.license,
             age: occupant.age,
             // Remove large document data - will be sent via webhook
-            ssnDocument: occupant.ssnDocument ? "UPLOADED" : null,
-            ssnEncryptedDocument: occupant.ssnEncryptedDocument ? "UPLOADED" : null
+            ssnDocument: occupant.ssnDocument ? "UPLOADED" : null
           })),
           
           // Legal Questions
@@ -1867,8 +1891,7 @@ export function ApplicationForm() {
               license: occupant.license,
               age: occupant.age,
               // Remove large document data - will be sent via webhook
-              ssnDocument: occupant.ssnDocument ? "UPLOADED" : null,
-              ssnEncryptedDocument: occupant.ssnEncryptedDocument ? "UPLOADED" : null
+              ssnDocument: occupant.ssnDocument ? "UPLOADED" : null
             })),
             
             // Legal Questions
@@ -3647,15 +3670,7 @@ export function ApplicationForm() {
                         });
                           handleOccupantDocumentChange(idx, `ssn${idx + 1}`, files);
                       }}
-                      onEncryptedFilesChange={encryptedFiles => {
-                        console.log('🚀 OCCUPANT SSN ENCRYPTED DOCUMENT UPLOAD:', {
-                          occupantIndex: idx,
-                          occupantName: occupant.name,
-                          encryptedFilesCount: encryptedFiles.length,
-                          fileName: encryptedFiles[0]?.filename
-                        });
-                          handleOccupantEncryptedDocumentChange(idx, `ssn${idx + 1}`, encryptedFiles);
-                        }}
+                      // Removed onEncryptedFilesChange - no longer handling encrypted documents for occupants
                         onWebhookResponse={(response) => {
                           console.log('🚀 OCCUPANT SSN WEBHOOK RESPONSE:', {
                             occupantIndex: idx,
@@ -3780,9 +3795,7 @@ export function ApplicationForm() {
                         license: '', 
                         age: '', 
                         ssnDocument: null, 
-                        ssnEncryptedDocument: null,
-                        documents: {},
-                        encryptedDocuments: {}
+                        documents: {}
                       }]
                   }));
                 }}
