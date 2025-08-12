@@ -316,8 +316,8 @@ export default function PropertyDetailsPage() {
                       <span className="font-semibold text-gray-900">{rental.name}</span>
                     </div>
                     <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Type: {rental.unitType}</span>
-                      <span className="font-semibold text-gray-900"></span>
+                      <span className="text-gray-600 font-medium">Type: </span>
+                      <span className="font-semibold text-gray-900">{rental.unitType}</span>
                     </div>
                     <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
                       <span className="text-gray-600 font-medium">Availability:</span>
