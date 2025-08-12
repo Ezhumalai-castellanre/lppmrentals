@@ -62,33 +62,36 @@ export function AppSidebar() {
         const userZoneinfo = user.zoneinfo || user.applicantId;
         if (userZoneinfo) {
           const drafts = await dynamoDBService.getAllDrafts(userZoneinfo);
-          const hasDraft = drafts && drafts.length > 0 && drafts.some(draft => draft.status === 'draft');
-          setHasExistingDraft(hasDraft);
+          console.log('📋 All drafts found:', drafts);
           
-                                // Get the current step from the most recent draft
-          if (hasDraft) {
-            console.log('📋 Found drafts:', drafts);
-            const draftDrafts = drafts.filter(draft => draft.status === 'draft');
-            console.log('📋 Draft status drafts:', draftDrafts);
+          // Only consider drafts with 'draft' status
+          const draftDrafts = drafts ? drafts.filter(draft => draft.status === 'draft') : [];
+          console.log('📋 Draft status drafts:', draftDrafts);
+          
+          if (draftDrafts.length > 0) {
+            const mostRecentDraft = draftDrafts
+              .sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime())[0];
             
-            if (draftDrafts.length > 0) {
-              const mostRecentDraft = draftDrafts
-                .sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime())[0];
-              
-              console.log('📋 Most recent draft:', mostRecentDraft);
-              
-              if (mostRecentDraft && mostRecentDraft.current_step !== undefined) {
-                setCurrentDraftStep(mostRecentDraft.current_step);
-                console.log('📍 Found current draft step:', mostRecentDraft.current_step);
-              } else {
-                console.log('⚠️ No current_step found in most recent draft');
-                setCurrentDraftStep(null);
-              }
+            console.log('📋 Most recent draft:', mostRecentDraft);
+            
+            if (mostRecentDraft && mostRecentDraft.current_step !== undefined && mostRecentDraft.current_step !== null) {
+              setCurrentDraftStep(mostRecentDraft.current_step);
+              setHasExistingDraft(true);
+              console.log('📍 Found current draft step:', mostRecentDraft.current_step);
             } else {
-              console.log('⚠️ No drafts with status "draft" found');
+              console.log('⚠️ No valid current_step found in most recent draft');
               setCurrentDraftStep(null);
+              setHasExistingDraft(false);
             }
+          } else {
+            console.log('⚠️ No drafts with status "draft" found');
+            setCurrentDraftStep(null);
+            setHasExistingDraft(false);
           }
+        } else {
+          console.log('⚠️ No userZoneinfo found');
+          setCurrentDraftStep(null);
+          setHasExistingDraft(false);
         }
       } catch (error) {
         console.error('Error checking for existing drafts:', error);
@@ -119,7 +122,7 @@ export function AppSidebar() {
   };
 
   const navigationItems = [
-    // Only show application option if there's a draft
+    // Only show application option if there's a valid draft with step info
     ...(hasExistingDraft && currentDraftStep !== null ? [{
       title: `Continue from Step ${currentDraftStep + 1}`,
       url: "/application",

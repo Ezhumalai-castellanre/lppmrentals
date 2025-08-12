@@ -765,20 +765,20 @@ export const SupportingDocuments = ({
               const docStatus = getDocumentStatus(document.id);
               return (
                 <div key={document.id} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium text-gray-900">{document.name}</h4>
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-medium text-gray-900 break-words">{document.name}</h4>
                         {document.required && (
-                          <Badge variant="destructive" className="text-xs">Required</Badge>
+                          <Badge variant="destructive" className="text-xs flex-shrink-0">Required</Badge>
                         )}
                         {!document.required && (
-                          <Badge variant="secondary" className="text-xs">Optional</Badge>
+                          <Badge variant="secondary" className="text-xs flex-shrink-0">Optional</Badge>
                         )}
                         {/* Show person type badge */}
                         <Badge 
                           variant="outline" 
-                          className={`text-xs ${
+                          className={`text-xs flex-shrink-0 ${
                             document.id.startsWith('applicant_') ? 'border-blue-200 text-blue-700 bg-blue-50' :
                             document.id.startsWith('coApplicant_') ? 'border-purple-200 text-purple-700 bg-purple-50' :
                             document.id.startsWith('guarantor_') ? 'border-orange-200 text-orange-700 bg-orange-50' :
@@ -794,11 +794,11 @@ export const SupportingDocuments = ({
                         </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 flex-shrink-0">
                       {docStatus.status === "uploaded" ? (
-                        <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 text-green-600">
-                          <CheckCircle className="h-4 w-4" />
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                          <div className="flex items-center gap-1 text-green-600">
+                            <CheckCircle className="h-4 w-4 flex-shrink-0" />
                             <span className="text-xs font-medium">Uploaded ({docStatus.count} file{docStatus.count > 1 ? 's' : ''})</span>
                           </div>
                           {/* Preview and Re-upload buttons for uploaded documents */}
@@ -806,20 +806,20 @@ export const SupportingDocuments = ({
                             const uploadedDocs = getUploadedDocuments(document.id);
                             if (uploadedDocs.length > 0 && uploadedDocs[0]?.webhookbodyUrl) {
                               return (
-                                <div className="flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handlePreviewDocument(
-                                    uploadedDocs[0].filename, 
-                                    uploadedDocs[0].webhookbodyUrl, 
-                                    document.name
-                                  )}
-                                  className="h-6 px-2 text-xs border-green-200 text-green-700 hover:bg-green-50"
-                                >
-                                  <Eye className="h-3 w-3 mr-1" />
-                                  Preview
-                                </Button>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handlePreviewDocument(
+                                      uploadedDocs[0].filename, 
+                                      uploadedDocs[0].webhookbodyUrl, 
+                                      document.name
+                                    )}
+                                    className="h-6 px-2 text-xs border-green-200 text-green-700 hover:bg-green-50 flex-shrink-0"
+                                  >
+                                    <Eye className="h-3 w-3 mr-1" />
+                                    Preview
+                                  </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -829,7 +829,7 @@ export const SupportingDocuments = ({
                                         onWebhookResponse(document.id, null);
                                       }
                                     }}
-                                    className="h-6 px-2 text-xs border-orange-200 text-orange-700 hover:bg-orange-50"
+                                    className="h-6 px-2 text-xs border-orange-200 text-orange-700 hover:bg-orange-50 flex-shrink-0"
                                   >
                                     <Upload className="h-3 w-3 mr-1" />
                                     Re-upload
@@ -842,7 +842,7 @@ export const SupportingDocuments = ({
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 text-orange-600">
-                          <AlertCircle className="h-4 w-4" />
+                          <AlertCircle className="h-4 w-4 flex-shrink-0" />
                           <span className="text-xs">Pending</span>
                         </div>
                       )}

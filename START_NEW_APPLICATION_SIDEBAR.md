@@ -12,10 +12,11 @@ The Start New Application Sidebar is a new component that provides users with a 
 ## Features
 
 ### Application Status Section
-- **Conditional Display**: Shows application option only when draft exists
-- **If Draft Exists**: "Continue from Step X" with current step indicator
-- **If No Draft**: No application option shown (clean interface)
+- **Conditional Display**: Shows application option only when valid draft exists
+- **If Valid Draft Exists**: "Continue from Step X" with current step indicator
+- **If No Draft or Invalid Draft**: No application option shown (clean interface)
 - **Smart Navigation**: Automatically routes to continue existing draft
+- **Strict Validation**: Only shows option when both draft exists AND step is valid
 
 ### Application Steps Navigation
 - **13 Steps Total**: From Instructions to Digital Signatures
