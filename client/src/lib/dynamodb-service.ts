@@ -1048,13 +1048,61 @@ export class DynamoDBService {
         return [];
       }
 
-      // Note: This would require a GSI or scan operation
-      // For now, we'll implement a basic scan (not recommended for production)
-      // In production, you should create a GSI on applicantId
+      const client = await this.getClient();
       
-      // This is a simplified implementation - in production you'd want to use a GSI
-      console.log('⚠️ getAllDrafts requires a GSI for production use');
-      return [];
+      // Scan the table to find all drafts for this applicantId
+      // Note: In production, consider creating a GSI for better performance
+      const { ScanCommand } = await import('@aws-sdk/client-dynamodb');
+      
+      // First, let's do a debug scan to see what's in the table
+      const debugScanCommand = new ScanCommand({
+        TableName: this.tableName,
+      });
+      
+      const debugResponse = await client.send(debugScanCommand);
+      console.log('🔍 Debug scan - all items in table:', {
+        totalItems: debugResponse.Items?.length || 0,
+        items: debugResponse.Items?.map(item => unmarshall(item)) || []
+      });
+      
+      const scanCommand = new ScanCommand({
+        TableName: this.tableName,
+        FilterExpression: 'applicantId = :applicantId',
+        ExpressionAttributeValues: {
+          ':applicantId': { S: applicantId }
+        }
+      });
+
+      const response = await client.send(scanCommand);
+      
+      console.log('🔍 Scan response:', {
+        itemsCount: response.Items?.length || 0,
+        scannedCount: response.ScannedCount,
+        count: response.Count
+      });
+      
+      if (response.Items && response.Items.length > 0) {
+        console.log('🔍 Raw items from scan:', response.Items);
+        
+        const drafts = response.Items.map((item: any) => {
+          const unmarshalled = unmarshall(item) as DraftData;
+          console.log('🔍 Unmarshalled item:', unmarshalled);
+          return unmarshalled;
+        });
+        
+        // Sort by last_updated (most recent first)
+        const sortedDrafts = drafts.sort((a: DraftData, b: DraftData) => 
+          new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime()
+        );
+        
+        console.log(`✅ Found ${drafts.length} drafts for applicantId: ${applicantId}`);
+        console.log('🔍 Final sorted drafts:', sortedDrafts);
+        return sortedDrafts;
+      } else {
+        console.log(`📭 No drafts found for applicantId: ${applicantId}`);
+        console.log('🔍 Scan response details:', response);
+        return [];
+      }
     } catch (error) {
       console.error('❌ Error getting all drafts:', error);
       return [];

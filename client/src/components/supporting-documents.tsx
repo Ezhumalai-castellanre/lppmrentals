@@ -807,19 +807,19 @@ export const SupportingDocuments = ({
                             if (uploadedDocs.length > 0 && uploadedDocs[0]?.webhookbodyUrl) {
                               return (
                                 <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handlePreviewDocument(
-                                      uploadedDocs[0].filename, 
-                                      uploadedDocs[0].webhookbodyUrl, 
-                                      document.name
-                                    )}
-                                    className="h-6 px-2 text-xs border-green-200 text-green-700 hover:bg-green-50"
-                                  >
-                                    <Eye className="h-3 w-3 mr-1" />
-                                    Preview
-                                  </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handlePreviewDocument(
+                                    uploadedDocs[0].filename, 
+                                    uploadedDocs[0].webhookbodyUrl, 
+                                    document.name
+                                  )}
+                                  className="h-6 px-2 text-xs border-green-200 text-green-700 hover:bg-green-50"
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  Preview
+                                </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"

@@ -12,6 +12,7 @@ import MondayApplicationPage from "@/pages/monday-application";
 import MissingDocumentsPage from "@/pages/missing-documents";
 import MaintenancePage from "@/pages/maintenance";
 import ApplicationsPage from "@/pages/applications";
+import DraftsPage from "@/pages/drafts";
 import LoginPage from "@/pages/login";
 import ChangePasswordPage from "@/pages/change-password";
 import LandingPage from "@/pages/landing";
@@ -98,6 +99,14 @@ function Router() {
         <ProtectedRoute>
           <AppLayout>
             <ApplicationsPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/drafts">
+        <ProtectedRoute>
+          <AppLayout>
+            <DraftsPage />
           </AppLayout>
         </ProtectedRoute>
       </Route>

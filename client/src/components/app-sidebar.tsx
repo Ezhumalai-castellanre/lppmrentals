@@ -8,7 +8,8 @@ import {
   Lock, 
   LogOut,
   User,
-  Building
+  Building,
+  Clock
 } from 'lucide-react';
 
 import {
@@ -50,6 +51,11 @@ export function AppSidebar() {
       title: "Start New Application",
       url: "/application",
       icon: FileText,
+    },
+    {
+      title: "My Drafts",
+      url: "/drafts",
+      icon: Clock,
     },
     {
       title: "Missing Documents",
