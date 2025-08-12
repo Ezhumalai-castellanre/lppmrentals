@@ -335,18 +335,7 @@ export default function PropertyDetailsPage() {
                         }
                       </span>
                     </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Property Type:</span>
-                      <span className="font-semibold text-gray-900">Apartment</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Availability:</span>
-                      <span className="font-semibold text-gray-900">Immediate</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Lease Term:</span>
-                      <span className="font-semibold text-gray-900">12 Months</span>
-                    </div>
+                  
                   </div>
                 </div>
               </CardContent>
