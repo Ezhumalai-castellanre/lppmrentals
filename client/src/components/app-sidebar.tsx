@@ -164,13 +164,10 @@ export function AppSidebar() {
                   <SidebarMenuButton 
                     tooltip={item.title}
                     onClick={item.onClick || (() => setLocation(item.url))}
-                    disabled={isCheckingDrafts}
                   >
                     <item.icon />
                     <span>{item.title}</span>
-                    {isCheckingDrafts && item.title.includes('Step') && (
-                      <div className="ml-2 h-2 w-2 animate-spin rounded-full border border-current border-t-transparent" />
-                    )}
+
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -211,15 +208,12 @@ export function AppSidebar() {
                       {hasExistingDraft && currentDraftStep !== null && (
                         <DropdownMenuItem 
                           onClick={() => setLocation(`/application?continue=true&step=${currentDraftStep}`)}
-                          disabled={isCheckingDrafts}
                         >
                           <FileText className="mr-2 h-4 w-4" />
                           <span>
                             Continue from Step {currentDraftStep + 1}
                           </span>
-                          {isCheckingDrafts && (
-                            <div className="ml-2 h-2 w-2 animate-spin rounded-full border border-current border-t-transparent" />
-                          )}
+
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem onClick={() => setLocation('/change-password')}>

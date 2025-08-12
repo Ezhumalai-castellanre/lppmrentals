@@ -99,12 +99,13 @@ Redirects to /application with appropriate parameters
 
 ## Benefits
 
-1. **Cleaner Interface**: Shows only one relevant option at a time
-2. **Smart Context Awareness**: Automatically detects user's current situation
-3. **Progress Visibility**: Users can see exactly where they are in the process
-4. **Flexible Navigation**: Jump to any step without going through previous ones
-5. **Draft Management**: Seamless handling of existing vs. new applications
-6. **Consistent UI**: Follows existing sidebar design patterns
+1. **Clean Interface**: Shows application option only when needed
+2. **No Loading States**: Clean interface without spinners or loaders
+3. **Smart Context Awareness**: Automatically detects user's current situation
+4. **Progress Visibility**: Users can see exactly where they are in the process
+5. **Flexible Navigation**: Jump to any step without going through previous ones
+6. **Draft Management**: Seamless handling of existing vs. new applications
+7. **Consistent UI**: Follows existing sidebar design patterns
 
 ## Future Enhancements
 
