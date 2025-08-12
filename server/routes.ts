@@ -322,13 +322,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await response.json();
       const items = result?.data?.boards?.[0]?.items_page?.items ?? [];
 
-      const units = items.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        propertyName: item.column_values.find((c: any) => c.id === "text_mktkkbsb")?.text || "", // Address column
-        unitType: item.column_values.find((c: any) => c.id === "color_mktkdvc5")?.text || "", // Unit Type column
-        status: item.column_values.find((c: any) => c.id === "color_mktk40b8")?.text || "" // Marketing column as status
-      }));
+      const units = items.map((item: any) => {
+        // Dynamically map all column values
+        const dynamicData: any = {};
+        item.column_values.forEach((col: any) => {
+          if (col.text && col.text.trim() !== '') {
+            // Create a readable key name from column ID
+            const key = col.id.replace(/^[a-z]+_/, ''); // Remove prefix like "text_", "color_", etc.
+            dynamicData[key] = col.text;
+          }
+        });
+
+        return {
+          id: item.id,
+          name: item.name,
+          propertyName: item.column_values.find((c: any) => c.id === "text_mktkkbsb")?.text || "",
+          unitType: item.column_values.find((c: any) => c.id === "color_mktkdvc5")?.text || "",
+          status: item.column_values.find((c: any) => c.id === "color_mktk40b8")?.text || "",
+          // Add all dynamic column data
+          ...dynamicData
+        };
+      });
 
       res.json({ units });
     } catch (error) {
@@ -420,13 +434,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )
         );
 
+        // Dynamically map all column values
+        const dynamicData: any = {};
+        item.column_values.forEach((col: any) => {
+          if (col.text && col.text.trim() !== '') {
+            // Create a readable key name from column ID
+            const key = col.id.replace(/^[a-z]+_/, ''); // Remove prefix like "text_", "color_", etc.
+            dynamicData[key] = col.text;
+          }
+        });
+
         return {
           id: item.id,
           name: item.name,
-          propertyName: item.column_values.find((col: any) => col.id === "text_mktkkbsb")?.text || "", // Address column
-          unitType: item.column_values.find((col: any) => col.id === "color_mktkdvc5")?.text || "", // Unit Type column
-          status: item.column_values.find((col: any) => col.id === "color_mktk40b8")?.text || "", // Marketing column as status
-          monthlyRent: item.column_values.find((col: any) => col.id === "numeric_mktkj4pm")?.text || "", // Rent column
+          propertyName: item.column_values.find((col: any) => col.id === "text_mktkkbsb")?.text || item.column_values.find((col: any) => col.id === "text_mktkkbsb")?.value || "",
+          unitType: item.column_values.find((col: any) => col.id === "color_mktkdvc5")?.text || "",
+          status: item.column_values.find((col: any) => col.id === "color_mktk40b8")?.text || "",
+          monthlyRent: item.column_values.find((col: any) => col.id === "numeric_mktkj4pm")?.text || "",
           amenities: amenities,
           images: images,
           vacantSubitems: filteredSubitems.map((sub: any) => ({
@@ -435,7 +459,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: sub.column_values.find((cv: any) => cv.id === "status")?.label || 
                     sub.column_values.find((cv: any) => cv.id === "status")?.text || "",
             applicantType: sub.column_values.find((cv: any) => cv.id === "color_mksyqx5h")?.text || ""
-          }))
+          })),
+          // Add all dynamic column data
+          ...dynamicData
         };
       });
 
@@ -491,6 +517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!response.ok) {
         throw new Error(`Monday API error: ${response.status}`);
       }
+console.log("response", response);
 
       const result = await response.json();
       const items = result?.data?.boards?.[0]?.items_page?.items ?? [];
@@ -535,15 +562,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return null;
         }).filter(Boolean) || [];
 
+        // Dynamically map all column values
+        const dynamicData: any = {};
+        item.column_values.forEach((col: any) => {
+          if (col.text && col.text.trim() !== '') {
+            // Create a readable key name from column ID
+            const key = col.id.replace(/^[a-z]+_/, ''); // Remove prefix like "text_", "color_", etc.
+            dynamicData[key] = col.text;
+          }
+        });
+
         return {
           id: item.id,
           name: item.name,
-          propertyName: item.column_values.find((col: any) => col.id === "color_mktk40b8")?.text || "", // Marketing column
-          unitType: item.column_values.find((col: any) => col.id === "numeric_mktdfshe")?.text || "", // Bedrooms column
-          status: item.column_values.find((col: any) => col.id === "color_mktk40b8")?.text || "", // Marketing column as status
-          monthlyRent: item.column_values.find((col: any) => col.id === "numeric_mktkj4pm")?.text || "", // Rent column
+          propertyName: item.column_values.find((col: any) => col.id === "text_mktkkbsb")?.text || "",
+          unitType: item.column_values.find((col: any) => col.id === "color_mktkdvc5")?.text || "",
+          status: item.column_values.find((col: any) => col.id === "color_mktk40b8")?.text || "",
+          monthlyRent: item.column_values.find((col: any) => col.id === "numeric_mktkj4pm")?.text || "",
           amenities: amenities,
-          mediaFiles: mediaFiles
+          mediaFiles: mediaFiles,
+          // Add all dynamic column data
+          ...dynamicData
         };
       });
 

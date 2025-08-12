@@ -19,6 +19,7 @@ import ChangePasswordPage from "@/pages/change-password";
 import LandingPage from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import AvailableRentalsPage from "@/pages/available-rentals";
+import PropertyDetailsPage from "@/pages/property-details";
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
 import { DebugAuth } from "@/components/debug-auth";
@@ -66,6 +67,15 @@ function Router() {
       <Route path="/available-rentals">
         {!isAuthenticated ? (
           <AvailableRentalsPage />
+        ) : (
+          <LandingPage />
+        )}
+      </Route>
+      
+      {/* Property Details route - Only for NON-authenticated users */}
+      <Route path="/property-details">
+        {!isAuthenticated ? (
+          <PropertyDetailsPage />
         ) : (
           <LandingPage />
         )}

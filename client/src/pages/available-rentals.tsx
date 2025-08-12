@@ -6,9 +6,8 @@ import { MondayApiService, RentalItem } from '../lib/monday-api';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Eye, Send, MapPin, Home, DollarSign, Square, Wifi, Car, Shield, Wrench, ChefHat, Bath, Sparkles, Users, Clock, ChevronLeft, ChevronRight, X, Play, Image, LogIn, ShieldCheck } from 'lucide-react';
+import { Eye, Send, MapPin, Home, DollarSign, ChevronLeft, ChevronRight, Image } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { PropertyMap } from '@/components/property-map';
 
@@ -33,8 +32,6 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
   const prevImage = () => {
     setCurrentImageIndex((prev) => (prev - 1 + displayedImages.length) % displayedImages.length);
   };
-
-
 
   return (
     <div className="w-full max-w-sm mx-auto">
@@ -99,44 +96,27 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
             
             {/* Dots Indicator */}
             {hasImages && displayedImages.length > 1 && (
-              <div className="flex justify-center gap-1.5 mt-3 px-8">
+              <div className="flex justify-center mt-2 space-x-1">
                 {displayedImages.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => setCurrentImageIndex(index)}
                     className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                      index === currentImageIndex 
-                        ? 'bg-primary w-6' 
-                        : 'bg-muted-foreground/50'
+                      index === currentImageIndex ? 'bg-blue-600' : 'bg-gray-300'
                     }`}
                   />
                 ))}
               </div>
             )}
             
-
-            
-                        {/* Thumbnail Strip */}
-            {hasImages && displayedImages.length > 1 && (
-              <div className="flex gap-2 mt-3 px-8 overflow-x-auto pb-1 justify-center">
-                {displayedImages.map((src, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`relative flex-shrink-0 w-12 h-12 rounded-md overflow-hidden transition-all duration-200 ${
-                      index === currentImageIndex 
-                        ? 'ring-2 ring-primary ring-offset-1' 
-                        : 'opacity-60 hover:opacity-100'
-                    }`}
-                  >
-                    <img 
-                      src={src} 
-                      alt={`Thumbnail ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
+            {/* Show More Images Button */}
+            {hasMoreImages && !showAllImages && (
+              <button
+                onClick={() => setShowAllImages(true)}
+                className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black/60 hover:bg-black/80 text-white text-xs px-3 py-1 rounded-full transition-all duration-200"
+              >
+                +{images.length - 4} more
+              </button>
             )}
           </div>
         </div>
@@ -230,11 +210,6 @@ export default function AvailableRentalsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-
-  const [selectedRental, setSelectedRental] = useState<RentalItem | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
-
   // Redirect logged-in users
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -268,9 +243,8 @@ export default function AvailableRentalsPage() {
 
   const handleViewDetails = (rental: RentalItem) => {
     console.log('Opening detailed view for rental:', rental.name);
-    setSelectedRental(rental);
-    setCurrentMediaIndex(0);
-    setIsModalOpen(true);
+    // Navigate to property details page with rental ID
+    setLocation(`/property-details?id=${rental.id}`);
   };
 
   const handleApplyNow = (rental: RentalItem) => {
@@ -298,86 +272,9 @@ export default function AvailableRentalsPage() {
     window.open(formUrl, '_blank');
   };
 
-  const handlePreviousMedia = () => {
-    if (selectedRental && selectedRental.mediaFiles) {
-      setCurrentMediaIndex(prev => 
-        prev === 0 ? selectedRental.mediaFiles!.length - 1 : prev - 1
-      );
-    }
-  };
-
-  const handleNextMedia = () => {
-    if (selectedRental && selectedRental.mediaFiles) {
-      setCurrentMediaIndex(prev => 
-        prev === selectedRental.mediaFiles!.length - 1 ? 0 : prev + 1
-      );
-    }
-  };
-
   const getFilteredRentals = () => {
     // Return all rentals without filtering by status
     return rentals;
-  };
-
-  const renderDetailedAmenities = (amenities: string) => {
-    if (!amenities || amenities.trim() === '') {
-      return (
-        <div className="mt-4">
-          <h4 className="font-semibold text-sm mb-3 flex items-center">
-            <Home className="w-4 h-4 mr-2" />
-            Amenities
-          </h4>
-          <div className="text-sm text-gray-500 italic">
-            Amenities information not available
-          </div>
-        </div>
-      );
-    }
-    
-    // Split by newlines and filter out empty lines
-    const lines = amenities.split('\n').filter(line => line.trim() !== '');
-    
-    // Check if the text contains bullet points
-    const hasBullets = lines.some(line => line.trim().startsWith('•'));
-    
-    if (hasBullets) {
-      // Display bulleted amenities
-      const amenityList = lines.filter(line => line.trim().startsWith('•'));
-      
-      return (
-        <div className="mt-4">
-          <h4 className="font-semibold text-sm mb-3 flex items-center">
-            <Home className="w-4 h-4 mr-2" />
-            Amenities
-          </h4>
-          <div className="text-sm text-gray-700 space-y-2">
-            {amenityList.map((amenity, idx) => (
-              <div key={idx} className="flex items-start">
-                <span className="text-blue-500 mr-2 mt-0.5">•</span>
-                <span>{amenity.replace('•', '').trim()}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    } else {
-      // Display as paragraphs for non-bulleted text
-      return (
-        <div className="mt-4">
-          <h4 className="font-semibold text-sm mb-3 flex items-center">
-            <Home className="w-4 h-4 mr-2" />
-            Property Description
-          </h4>
-          <div className="text-sm text-gray-700 space-y-3">
-            {lines.map((line, idx) => (
-              <p key={idx} className="leading-relaxed">
-                {line.trim()}
-              </p>
-            ))}
-          </div>
-        </div>
-      );
-    }
   };
 
   // Show loading state while checking authentication
@@ -402,44 +299,8 @@ export default function AvailableRentalsPage() {
             onClick={fetchRentals}
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
           >
-            Retry
+            Try Again
           </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // If user is authenticated, show a message instead of rentals
-  if (isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-8">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <div className="flex justify-center mb-4">
-              <div className="bg-green-100 p-3 rounded-full">
-                <ShieldCheck className="w-8 h-8 text-green-600" />
-              </div>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Welcome Back!</h2>
-            <p className="text-gray-600 mb-6">
-              You're already logged in. Available rentals are only shown to non-authenticated users.
-            </p>
-            <div className="space-y-3">
-              <Button 
-                onClick={() => setLocation('/')}
-                className="w-full bg-primary hover:bg-primary/90"
-              >
-                Go to Applications
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={() => setLocation('/application')}
-                className="w-full"
-              >
-                Start New Application
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -470,7 +331,7 @@ export default function AvailableRentalsPage() {
           </div>
           <h1 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">Available Rentals</h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-8">
-            Discover your perfect home from our available properties
+            Discover your perfect home from our available rentals
           </p>
         </div>
 
@@ -487,7 +348,7 @@ export default function AvailableRentalsPage() {
         <div className="space-y-8 mb-16">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Available Properties
+              Available Rentals
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Browse our selection of premium rental properties in prime locations
@@ -510,68 +371,56 @@ export default function AvailableRentalsPage() {
       {/* Footer with Social Media Links */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="container mx-auto px-4 max-w-7xl">
-          <div className="text-center">
-            <div className="flex justify-center mb-6">
-              <img 
-                src="https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/image.png"
-                alt="LPPM Rentals Logo"
-                className="h-16 w-auto object-contain"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  const fallback = document.createElement('div');
-                  fallback.className = 'text-2xl font-bold text-white';
-                  fallback.textContent = 'LPPM Rentals';
-                  target.parentNode?.appendChild(fallback);
-                }}
-              />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Company Info */}
+            <div>
+              <h3 className="text-xl font-semibold mb-4">LPPM Rentals</h3>
+              <p className="text-gray-400 mb-4">
+                Your trusted partner in finding the perfect rental property in New York City.
+              </p>
+              <div className="flex space-x-4">
+                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+                  </svg>
+                </a>
+                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"/>
+                  </svg>
+                </a>
+                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.174-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.402.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.357-.629-2.746-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24.009 12.017 24.009c6.624 0 11.99-5.367 11.99-11.988C24.007 5.367 18.641.001 12.017.001z"/>
+                  </svg>
+                </a>
+              </div>
             </div>
-            <h3 className="text-2xl font-bold mb-4">Liberty Place Property Management</h3>
-            <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
-              Full service property management company located in Midtown, Manhattan. 
-              We manage a growing portfolio of residential and mixed-use retail locations 
-              throughout New York City and Westchester County.
-            </p>
-            
-            {/* Social Media Links */}
-            <div className="flex justify-center items-center gap-6 mb-8">
-              <a 
-                href="https://www.tiktok.com/@libertyplacepm?is_from_webapp=1&sender_device=pc" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.7-1.35 3.83-.82 1.13-1.87 2.02-3.07 2.71-1.2.69-2.49 1.13-3.8 1.33-.62.09-1.24.13-1.86.14-1.3-.01-2.6-.28-3.76-.77-1.16-.49-2.18-1.18-3.04-2.03-.86-.85-1.54-1.87-2.03-3.03-.49-1.16-.76-2.46-.77-3.76.01-1.3.28-2.6.77-3.76.49-1.16 1.18-2.18 2.03-3.04.86-.86 1.88-1.54 3.04-2.03 1.16-.49 2.46-.76 3.76-.77-.62-.01-1.24-.05-1.86-.14-1.31-.2-2.6-.64-3.8-1.33-1.2-.69-2.25-1.58-3.07-2.71-.81-1.13-1.27-2.43-1.35-3.83-.03-2.91-.03-5.83-.02-8.75-.52.34-1.05.67-1.62.93-1.31.62-2.76.92-4.2.97V6.11c1.54-.17 3.12-.68 4.24-1.79 1.12-1.08 1.67-2.64 1.75-4.17z"/>
-                </svg>
-                TikTok
-              </a>
-              
-              <a 
-                href="https://www.instagram.com/p/DM-yYtzohdJ/?utm_source=ig_web_copy_link" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                </svg>
-                Instagram
-              </a>
-              
-              <a 
-                href="https://www.linkedin.com/company/liberty-place-property-management/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                </svg>
-                LinkedIn
-              </a>
+
+            {/* Quick Links */}
+            <div>
+              <h3 className="text-xl font-semibold mb-4">Quick Links</h3>
+              <ul className="space-y-2">
+                <li><a href="/available-rentals" className="text-gray-400 hover:text-white transition-colors">Available Rentals</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">About Us</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Contact</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a></li>
+              </ul>
             </div>
-            
+
+            {/* Contact Info */}
+            <div>
+              <h3 className="text-xl font-semibold mb-4">Contact Information</h3>
+              <div className="space-y-2 text-gray-400">
+                <p>1841 Broadway, Suite 400</p>
+                <p>New York, NY 10023</p>
+                <p>Phone: (555) 123-4567</p>
+                <p>Email: info@lppmrentals.com</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center">
             <div className="text-gray-400 text-sm">
               <p>© 2025 Liberty Place Property Management, LLC. All rights reserved.</p>
               <p className="mt-2">1841 Broadway, Suite 400, New York, NY 10023</p>
@@ -579,209 +428,6 @@ export default function AvailableRentalsPage() {
           </div>
         </div>
       </footer>
-
-      {/* Detailed View Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>{selectedRental?.name} - {selectedRental?.propertyName}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsModalOpen(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
-          
-          {selectedRental && (
-            <div className="space-y-8">
-              {/* Media Gallery */}
-              {selectedRental.mediaFiles && selectedRental.mediaFiles.length > 0 && (
-                <div className="relative">
-                  <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                    {selectedRental.mediaFiles[currentMediaIndex]?.isVideo ? (
-                      <video 
-                        src={selectedRental.mediaFiles[currentMediaIndex]?.url}
-                        className="w-full h-full object-cover"
-                        controls
-                        preload="metadata"
-                        onError={(e) => {
-                          console.error('Video loading error:', e);
-                          const target = e.target as HTMLVideoElement;
-                          target.style.display = 'none';
-                          // Show fallback message
-                          const fallback = document.createElement('div');
-                          fallback.className = 'w-full h-full flex items-center justify-center bg-gray-200 text-gray-600';
-                          fallback.innerHTML = `
-                            <div class="text-center">
-                              <div class="text-2xl mb-2">🎥</div>
-                              <div class="text-sm">Video not available</div>
-                              <div class="text-xs text-gray-500">${selectedRental.mediaFiles?.[currentMediaIndex]?.name || 'Unknown'}</div>
-                            </div>
-                          `;
-                          target.parentNode?.appendChild(fallback);
-                        }}
-                      />
-                    ) : (
-                      <img 
-                        src={selectedRental.mediaFiles[currentMediaIndex]?.url}
-                        alt={selectedRental.mediaFiles[currentMediaIndex]?.name || 'Property image'}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          console.error('Image loading error:', e);
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          // Show fallback message
-                          const fallback = document.createElement('div');
-                          fallback.className = 'w-full h-full flex items-center justify-center bg-gray-200 text-gray-600';
-                          fallback.innerHTML = `
-                            <div class="text-center">
-                              <div class="text-2xl mb-2">🖼️</div>
-                              <div class="text-sm">Image not available</div>
-                              <div class="text-xs text-gray-500">${selectedRental.mediaFiles?.[currentMediaIndex]?.name || 'Unknown'}</div>
-                            </div>
-                          `;
-                          target.parentNode?.appendChild(fallback);
-                        }}
-                      />
-                    )}
-                  </div>
-                  
-                  {/* Navigation Controls */}
-                  {selectedRental.mediaFiles && selectedRental.mediaFiles.length > 1 && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
-                        onClick={handlePreviousMedia}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
-                        onClick={handleNextMedia}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                      
-                      {/* Media Counter */}
-                      <div className="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
-                        {currentMediaIndex + 1} / {selectedRental.mediaFiles.length}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Amenities Section - Now First */}
-              <div className="space-y-4">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">Property Description</h3>
-                {renderDetailedAmenities(selectedRental.amenities || '')}
-              </div>
-
-              {/* Property Details Section - Now Second */}
-              <div className="space-y-4">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">Property Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Unit:</span>
-                      <span className="font-semibold text-gray-900">{selectedRental.name}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Property:</span>
-                      <span className="font-semibold text-gray-900">{selectedRental.propertyName}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Type:</span>
-                      <span className="font-semibold text-gray-900">{selectedRental.unitType}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Status:</span>
-                      <Badge variant="secondary" className="bg-green-100 text-green-800">
-                        <div className="w-2 h-2 rounded-full mr-1 bg-green-500"></div>
-                        Available Now
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Monthly Rent:</span>
-                      <span className="font-bold text-green-600 text-lg">
-                        {selectedRental.monthlyRent && selectedRental.monthlyRent.trim() !== '' 
-                          ? `$${selectedRental.monthlyRent}` 
-                          : 'Contact for pricing'
-                        }
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Media Files:</span>
-                      <span className="font-semibold text-gray-900">{selectedRental.mediaFiles?.length || 0} files</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Media Files Thumbnails */}
-              {selectedRental.mediaFiles && selectedRental.mediaFiles.length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">Media Gallery</h3>
-                  <div className="grid grid-cols-4 gap-3">
-                    {selectedRental.mediaFiles?.map((media, index) => (
-                      <div
-                        key={media.id}
-                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 ${
-                          index === currentMediaIndex ? 'border-blue-500' : 'border-gray-200'
-                        }`}
-                        onClick={() => setCurrentMediaIndex(index)}
-                      >
-                        {media.isVideo ? (
-                          <div className="aspect-square bg-gray-200 flex items-center justify-center">
-                            <Play className="h-6 w-6 text-gray-600" />
-                          </div>
-                        ) : (
-                          <img
-                            src={media.url}
-                            alt={media.name || `Media ${index + 1}`}
-                            className="w-full h-24 object-cover"
-                          />
-                        )}
-                        <div className="absolute top-1 right-1 bg-black/50 text-white text-xs px-1 rounded">
-                          {index + 1}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex space-x-4 pt-6 border-t">
-                <Button 
-                  onClick={() => handleApplyNow(selectedRental)}
-                  className="flex-1 bg-primary hover:bg-primary/90 text-lg py-3"
-                >
-                  <Send className="w-5 h-5 mr-2" />
-                  Apply Now
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => setIsModalOpen(false)}
-                  className="text-lg py-3"
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

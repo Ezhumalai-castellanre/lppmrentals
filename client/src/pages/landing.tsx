@@ -275,11 +275,9 @@ export default function LandingPage() {
   };
 
   const handleViewDetails = (rental: RentalItem) => {
-    // Show detailed modal for all users
+    // Navigate to property details page with rental ID
     console.log('Opening detailed view for rental:', rental.name);
-    setSelectedRental(rental);
-    setCurrentMediaIndex(0);
-    setIsModalOpen(true);
+    setLocation(`/property-details?id=${rental.id}`);
   };
 
   const handlePreviousMedia = () => {
@@ -493,7 +491,7 @@ export default function LandingPage() {
         <div className="space-y-8">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-semibold text-gray-900 mb-2">
-              Available Properties
+              Available Rentals
             </h2>
             <p className="text-gray-600">
               Browse our selection of premium rental properties
