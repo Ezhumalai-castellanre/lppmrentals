@@ -390,7 +390,7 @@ export default function LandingPage() {
             <img 
               src="https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/image+(1).png" 
               alt="Liberty Place Property Management Logo" 
-              className="object-contain w-[120px] sm:w-[150px] h-10 sm:h-12 md:h-16 lg:h-20 xl:h-24"
+              className="object-contain w-[120px] sm:w-[150px] h-10 sm:h-12 md:h-16 lg:h-20 xl:h-24 md:mr-[76px] mr-[109px]"
             />
           </div>
         </div>
@@ -689,7 +689,7 @@ export default function LandingPage() {
               <img 
                 src="https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/image+(1).png"
                 alt="Liberty Place Property Management Logo"
-                className="h-16 w-auto object-contain"
+                className="h-16 w-auto object-contain md:mr-[76px] mr-[109px]"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';

@@ -223,36 +223,7 @@ export function FileUpload({
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Show previously uploaded files if we have an initial webhook response */}
-      {hasInitialResponse && (
-        <div className="bg-green-50 border border-green-200 rounded-md p-3">
-          <div className="flex items-center gap-2 text-green-800">
-            <CheckCircle className="w-4 h-4" />
-            <span className="text-sm font-medium">Document uploaded successfully</span>
-          </div>
-                          <p className="text-xs text-green-700 mt-1">1 file uploaded</p>
-          <div className="mt-2">
-            <div className="flex items-center text-sm text-green-600">
-              <CheckCircle className="w-4 h-4 mr-2" />
-              <span>Previously uploaded</span>
-              <input 
-                type="hidden"
-                name={`webhook_response_${sectionName}`}
-                value={typeof initialWebhookResponse === 'string' ? initialWebhookResponse : initialWebhookResponse.body || JSON.stringify(initialWebhookResponse)}
-                data-document-type={sectionName}
-                data-comment-id={commentId}
-              />
-            </div>
-          </div>
-          <input 
-            type="hidden"
-            name={`webhook_response_${sectionName}`}
-            data-document-type={sectionName}
-            data-document-name={documentName || label}
-            value={typeof initialWebhookResponse === 'string' ? initialWebhookResponse : initialWebhookResponse.body || JSON.stringify(initialWebhookResponse)}
-          />
-        </div>
-      )}
+
 
       {/* Upload Area - Always show, even after successful uploads */}
       <div

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { FileUpload } from "./ui/file-upload";
 import { Badge } from "./ui/badge";
-import { CheckCircle, AlertCircle, FileText, DollarSign, Building, User, CreditCard, Shield, UserCheck, Building2, Briefcase, GraduationCap, Eye, Download, X } from "lucide-react";
+import { CheckCircle, AlertCircle, FileText, DollarSign, Building, User, CreditCard, Shield, UserCheck, Building2, Briefcase, GraduationCap, Eye, Download, X, Upload } from "lucide-react";
 import { type EncryptedFile } from "@/lib/file-encryption";
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
@@ -801,24 +801,40 @@ export const SupportingDocuments = ({
                           <CheckCircle className="h-4 w-4" />
                             <span className="text-xs font-medium">Uploaded ({docStatus.count} file{docStatus.count > 1 ? 's' : ''})</span>
                           </div>
-                          {/* Preview button for uploaded documents */}
+                          {/* Preview and Re-upload buttons for uploaded documents */}
                           {(() => {
                             const uploadedDocs = getUploadedDocuments(document.id);
                             if (uploadedDocs.length > 0 && uploadedDocs[0]?.webhookbodyUrl) {
                               return (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handlePreviewDocument(
-                                    uploadedDocs[0].filename, 
-                                    uploadedDocs[0].webhookbodyUrl, 
-                                    document.name
-                                  )}
-                                  className="h-6 px-2 text-xs border-green-200 text-green-700 hover:bg-green-50"
-                                >
-                                  <Eye className="h-3 w-3 mr-1" />
-                                  Preview
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handlePreviewDocument(
+                                      uploadedDocs[0].filename, 
+                                      uploadedDocs[0].webhookbodyUrl, 
+                                      document.name
+                                    )}
+                                    className="h-6 px-2 text-xs border-green-200 text-green-700 hover:bg-green-50"
+                                  >
+                                    <Eye className="h-3 w-3 mr-1" />
+                                    Preview
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      // Clear the webhook response to allow re-upload
+                                      if (onWebhookResponse) {
+                                        onWebhookResponse(document.id, null);
+                                      }
+                                    }}
+                                    className="h-6 px-2 text-xs border-orange-200 text-orange-700 hover:bg-orange-50"
+                                  >
+                                    <Upload className="h-3 w-3 mr-1" />
+                                    Re-upload
+                                  </Button>
+                                </div>
                               );
                             }
                             return null;
@@ -833,269 +849,7 @@ export const SupportingDocuments = ({
                     </div>
                   </div>
                   
-                  {/* Show uploaded files info if available */}
-                  {docStatus.status === "uploaded" && (
-                    <div className="bg-green-50 border border-green-200 rounded-md p-3">
-                      <div className="flex items-center gap-2 text-green-800">
-                        <CheckCircle className="h-4 w-4" />
-                        <span className="text-sm font-medium">Document uploaded successfully</span>
-                      </div>
-                      <p className="text-xs text-green-700 mt-1">
-                        {docStatus.count} file{docStatus.count > 1 ? 's' : ''} uploaded
-                      </p>
-                      
-                      {/* Show uploaded documents with preview/download options */}
-                      {(() => {
-                        const uploadedDocs = getUploadedDocuments(document.id);
-                        if (uploadedDocs.length > 0) {
-                          // Group documents by person type based on the actual filename
-                          const groupedDocs = uploadedDocs.reduce((acc, doc) => {
-                            // Extract person type from the actual filename
-                            let personType = 'unknown';
-                            
-                            if (doc.filename.startsWith('applicant_')) {
-                              personType = 'applicant';
-                            } else if (doc.filename.startsWith('coApplicant_')) {
-                              personType = 'coApplicant';
-                            } else if (doc.filename.startsWith('guarantor_')) {
-                              personType = 'guarantor';
-                            } else if (doc.filename.startsWith('occupants_')) {
-                              personType = 'occupants';
-                            } else {
-                              // Fallback: try to determine from document ID
-                              personType = getPersonTypeFromDocumentId(document.id);
-                            }
-                            
-                            console.log(`📁 Grouping document: ${doc.filename} -> ${personType}`);
-                            
-                            if (!acc[personType]) {
-                              acc[personType] = [];
-                            }
-                            acc[personType].push(doc);
-                            return acc;
-                          }, {} as Record<string, typeof uploadedDocs>);
 
-                          console.log(`📁 Final grouped documents:`, groupedDocs);
-
-                          // Filter documents based on document-specific context
-                          const documentContext = getDocumentContext(document.id);
-                          const globalContext = getCurrentContext();
-                          console.log(`📁 Document context for ${document.id}:`, documentContext);
-                          console.log(`📁 Global context:`, globalContext);
-                          console.log(`📁 Document IDs being processed:`, requiredDocuments.flatMap(cat => cat.documents.map(doc => doc.id)));
-                          console.log(`📁 showOnlyCoApplicant:`, showOnlyCoApplicant);
-                          console.log(`📁 showOnlyGuarantor:`, showOnlyGuarantor);
-                          
-                          // Use document-specific context first, fallback to global context
-                          let effectiveContext = documentContext !== 'unknown' ? documentContext : globalContext;
-                          
-                          // Override context based on component props - this should take priority
-                          if (showOnlyApplicant) {
-                            effectiveContext = 'applicant';
-                            console.log(`🔧 Overriding context to applicant due to showOnlyApplicant prop`);
-                          } else if (showOnlyCoApplicant) {
-                            effectiveContext = 'coApplicant';
-                            console.log(`🔧 Overriding context to coApplicant due to showOnlyCoApplicant prop`);
-                          } else if (showOnlyGuarantor) {
-                            effectiveContext = 'guarantor';
-                            console.log(`🔧 Overriding context to guarantor due to showOnlyGuarantor prop`);
-                          }
-                          
-                          console.log(`📁 Effective context:`, effectiveContext);
-                          console.log(`📁 Props check - showOnlyCoApplicant: ${showOnlyCoApplicant}, showOnlyGuarantor: ${showOnlyGuarantor}`);
-                          
-                          // Only show documents for the effective context
-                          const filteredGroupedDocs: Record<string, typeof uploadedDocs> = {};
-                          
-                          // Force context-based filtering when we have a specific context
-                          if (effectiveContext === 'applicant') {
-                            if (groupedDocs.applicant) {
-                              filteredGroupedDocs.applicant = groupedDocs.applicant;
-                            }
-                            console.log(`🔧 Showing only applicant documents for effectiveContext: ${effectiveContext}`);
-                          } else if (effectiveContext === 'coApplicant') {
-                            if (groupedDocs.coApplicant) {
-                              filteredGroupedDocs.coApplicant = groupedDocs.coApplicant;
-                            }
-                            console.log(`🔧 Showing only coApplicant documents for effectiveContext: ${effectiveContext}`);
-                          } else if (effectiveContext === 'guarantor') {
-                            if (groupedDocs.guarantor) {
-                              filteredGroupedDocs.guarantor = groupedDocs.guarantor;
-                            }
-                            console.log(`🔧 Showing only guarantor documents for effectiveContext: ${effectiveContext}`);
-                          } else if (effectiveContext === 'occupants') {
-                            if (groupedDocs.occupants) {
-                              filteredGroupedDocs.occupants = groupedDocs.occupants;
-                            }
-                            console.log(`🔧 Showing only occupants documents for effectiveContext: ${effectiveContext}`);
-                          } else {
-                            // If no specific context, show all documents (fallback)
-                            Object.assign(filteredGroupedDocs, groupedDocs);
-                            console.log(`🔧 No specific context, showing all documents as fallback`);
-                          }
-
-                          console.log(`📁 Filtered grouped documents:`, filteredGroupedDocs);
-
-                          return (
-                            <div className="mt-3 space-y-3">
-                              <p className="text-xs font-medium text-green-800">
-                                Uploaded Files {effectiveContext !== 'applicant' ? `(${effectiveContext.charAt(0).toUpperCase() + effectiveContext.slice(1)})` : ''}:
-                              </p>
-                              
-                              {/* Applicant Documents */}
-                              {filteredGroupedDocs.applicant && filteredGroupedDocs.applicant.length > 0 && (
-                                <div className="space-y-2">
-                                  <div className="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">
-                                    👤 {effectiveContext === 'applicant' ? 'Applicant' : 'Applicant'} Documents
-                                  </div>
-                                  {filteredGroupedDocs.applicant.map((doc, index) => (
-                                    <div key={index} className="flex items-center justify-between bg-white rounded border p-2 ml-3">
-                                      <div className="flex items-center gap-2">
-                                        <FileText className="h-4 w-4 text-blue-600" />
-                                        <span className="text-xs text-gray-700">{doc.filename}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => handlePreviewDocument(doc.filename, doc.webhookbodyUrl, document.name)}
-                                          className="h-6 px-2 text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
-                                        >
-                                          <Eye className="h-3 w-3 mr-1" />
-                                          Preview
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => handleDownloadDocument(doc.webhookbodyUrl, doc.filename)}
-                                          className="h-6 px-2 text-xs"
-                                        >
-                                          <Download className="h-3 w-3 mr-1" />
-                                          Download
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Co-Applicant Documents */}
-                              {filteredGroupedDocs.coApplicant && filteredGroupedDocs.coApplicant.length > 0 && (
-                                <div className="space-y-2">
-                                  <div className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-1 rounded border border-purple-200">
-                                    👥 {effectiveContext === 'coApplicant' ? 'Co-Applicant' : 'Co-Applicant'} Documents
-                                  </div>
-                                  {filteredGroupedDocs.coApplicant.map((doc, index) => (
-                                    <div key={index} className="flex items-center justify-between bg-white rounded border p-2 ml-3">
-                                      <div className="flex items-center gap-2">
-                                        <FileText className="h-4 w-4 text-purple-600" />
-                                        <span className="text-xs text-gray-700">{doc.filename}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => handlePreviewDocument(doc.filename, doc.webhookbodyUrl, document.name)}
-                                          className="h-6 px-2 text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
-                                        >
-                                          <Eye className="h-3 w-3 mr-1" />
-                                          Preview
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => handleDownloadDocument(doc.webhookbodyUrl, doc.filename)}
-                                          className="h-6 px-2 text-xs"
-                                        >
-                                          <Download className="h-3 w-3 mr-1" />
-                                          Download
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Guarantor Documents */}
-                              {filteredGroupedDocs.guarantor && filteredGroupedDocs.guarantor.length > 0 && (
-                                <div className="space-y-2">
-                                  <div className="text-xs font-semibold text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-200">
-                                    🏦 {effectiveContext === 'guarantor' ? 'Guarantor' : 'Guarantor'} Documents
-                                  </div>
-                                  {filteredGroupedDocs.guarantor.map((doc, index) => (
-                                    <div key={index} className="flex items-center justify-between bg-white rounded border p-2 ml-3">
-                                      <div className="flex items-center gap-2">
-                                        <FileText className="h-4 w-4 text-orange-600" />
-                                        <span className="text-xs text-gray-700">{doc.filename}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => handlePreviewDocument(doc.filename, doc.webhookbodyUrl, document.name)}
-                                          className="h-6 px-2 text-xs border-orange-200 text-orange-700 hover:bg-orange-50"
-                                        >
-                                          <Eye className="h-3 w-3 mr-1" />
-                                          Preview
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => handleDownloadDocument(doc.webhookbodyUrl, doc.filename)}
-                                          className="h-6 px-2 text-xs"
-                                        >
-                                          <Download className="h-3 w-3 mr-1" />
-                                          Download
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Occupant Documents */}
-                              {filteredGroupedDocs.occupants && filteredGroupedDocs.occupants.length > 0 && (
-                                <div className="space-y-2">
-                                  <div className="text-xs font-semibold text-green-700 bg-green-50 px-2 py-1 rounded border border-green-200">
-                                    🏠 {effectiveContext === 'occupants' ? 'Occupant' : 'Occupant'} Documents
-                                  </div>
-                                  {filteredGroupedDocs.occupants.map((doc, index) => (
-                                    <div key={index} className="flex items-center justify-between bg-white rounded border p-2 ml-3">
-                                  <div className="flex items-center gap-2">
-                                    <FileText className="h-4 w-4 text-green-600" />
-                                    <span className="text-xs text-gray-700">{doc.filename}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                          variant="outline"
-                                      size="sm"
-                                      onClick={() => handlePreviewDocument(doc.filename, doc.webhookbodyUrl, document.name)}
-                                          className="h-6 px-2 text-xs border-green-200 text-green-700 hover:bg-green-50"
-                                    >
-                                      <Eye className="h-3 w-3 mr-1" />
-                                      Preview
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleDownloadDocument(doc.webhookbodyUrl, doc.filename)}
-                                      className="h-6 px-2 text-xs"
-                                    >
-                                      <Download className="h-3 w-3 mr-1" />
-                                      Download
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-                  )}
                   <div>
                     <FileUpload
                       onFileChange={(files) => onDocumentChange(document.id, files)}

@@ -33,8 +33,7 @@ const NavHeader: React.FC = () => {
           <img 
             src="https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/image+(1).png" 
             alt="Logo" 
-            className="h-10 w-40 object-contain"
-            style={{ width: '10rem' }}
+            className="h-10 w-40 object-contain md:mr-[76px] mr-[109px]"
           />
           <h1 className="text-xl font-semibold text-gray-900">
             Rental Applications

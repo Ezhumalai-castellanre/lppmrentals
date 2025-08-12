@@ -70,8 +70,7 @@ export function AppSidebar() {
           <img 
             src="https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/image+(1).png" 
             alt="Logo" 
-            className="h-12 w-40 object-contain"
-            style={{ width: '10rem' }}
+            className="h-12 w-40 object-contain md:mr-[76px] mr-[109px]"
           />
         </div>
       </SidebarHeader>
