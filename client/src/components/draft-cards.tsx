@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
-import { FileText, Clock, Edit, Trash2, Building, User, Calendar, DollarSign, CheckCircle, File, Eye } from "lucide-react";
+import { FileText, Clock, Edit, Trash2, Building, User, Calendar, DollarSign, CheckCircle, File, Eye, Users, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { dynamoDBService } from "@/lib/dynamodb-service";
 import { format } from "date-fns";
@@ -89,6 +89,11 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
     const extractFields = (obj: any, prefix = '') => {
       if (obj && typeof obj === 'object') {
         Object.entries(obj).forEach(([key, value]) => {
+          // Skip webhookSummary completely
+          if (key === 'webhookSummary') {
+            return;
+          }
+          
           const fieldKey = prefix ? `${prefix}_${key}` : key;
           
           if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -99,7 +104,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
               try {
                 const parsed = JSON.parse(value);
                 allFields[fieldKey] = parsed;
-                console.log(`🔍 Parsed ${fieldKey} from string:`, parsed);
+                console.log(`�� Parsed ${fieldKey} from string:`, parsed);
               } catch (e) {
                 allFields[fieldKey] = value;
                 console.log(`⚠️ Failed to parse ${fieldKey}:`, value);
@@ -205,15 +210,15 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
           <div className="flex-1">
-            <CardTitle className="text-lg font-semibold text-gray-900">
+            <CardTitle className="text-base sm:text-lg font-semibold text-gray-900">
               {draft.status === 'submitted' ? 'Submitted Application' : 'Draft Application'}
             </CardTitle>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-xs sm:text-sm text-gray-600 mt-1">
               {draft.status === 'submitted' ? 'Application has been submitted successfully' : 'Application in progress'}
             </p>
           </div>
           {draft.status === 'submitted' && (
-            <CheckCircle className="w-6 h-6 text-green-500" />
+            <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-500" />
           )}
         </div>
       </CardHeader>
@@ -221,7 +226,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
       <CardContent className="space-y-3">
         {/* Progress Bar */}
         <div className="space-y-2">
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-xs sm:text-sm">
             <span className="text-gray-600">Progress</span>
             <span className="text-gray-900 font-medium">{progressPercentage}%</span>
           </div>
@@ -239,57 +244,57 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
           <div className="space-y-4">
             
             {/* Application Section - Enhanced with all fields */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
               <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
                 <Building className="w-4 h-4 mr-2 text-blue-600" />
                 Application Details
               </h5>
               <div className="space-y-3 text-sm">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
           <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 font-medium">Address:</span>
-            <span className="text-gray-700">{formSummary.buildingAddress}</span>
+                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Address:</span>
+            <span className="text-gray-700 text-xs sm:text-sm">{formSummary.buildingAddress}</span>
           </div>
           <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 font-medium">Apt:</span>
-                    <span className="text-gray-700">{formSummary.apartmentNumber}</span>
+                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Apt:</span>
+                    <span className="text-gray-700 text-xs sm:text-sm">{formSummary.apartmentNumber}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 font-medium">Type:</span>
-                    <span className="text-gray-700">{formSummary.apartmentType}</span>
+                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Type:</span>
+                    <span className="text-gray-700 text-xs sm:text-sm">{formSummary.apartmentType}</span>
           </div>
           <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 font-medium">Rent:</span>
-            <span className="text-gray-700">
+                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Rent:</span>
+            <span className="text-gray-700 text-xs sm:text-sm">
               {typeof formSummary.monthlyRent === 'number' 
                 ? `$${formSummary.monthlyRent}/month` 
                 : formSummary.monthlyRent}
             </span>
           </div>
-                  <div className="flex items-center space-x-2 col-span-2">
-                    <span className="text-gray-600 font-medium">Move-in:</span>
-            <span className="text-gray-700">
+                  <div className="flex items-center space-x-2 col-span-1 sm:col-span-2">
+                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Move-in:</span>
+            <span className="text-gray-700 text-xs sm:text-sm">
               {formSummary.moveInDate !== 'Not specified' 
                 ? formatDate(formSummary.moveInDate) 
                 : 'Not specified'}
             </span>
           </div>
-                  <div className="flex items-center space-x-2 col-span-2">
-                    <span className="text-gray-600 font-medium">How did you hear:</span>
-                    <span className="text-gray-700">{formSummary.howDidYouHear || 'Not specified'}</span>
+                  <div className="flex items-center space-x-2 col-span-1 sm:col-span-2">
+                    <span className="text-gray-600 font-medium text-xs sm:text-sm">How did you hear:</span>
+                    <span className="text-gray-700 text-xs sm:text-sm">{formSummary.howDidYouHear || 'Not specified'}</span>
                   </div>
                 </div>
                 
                 {/* Additional application fields */}
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-2 border-t border-gray-200">
                   {Object.entries(formSummary).filter(([key, value]) => 
                     key.startsWith('application') && 
                     !['buildingAddress', 'apartmentNumber', 'apartmentType', 'monthlyRent', 'moveInDate', 'howDidYouHear'].includes(key) &&
                     value !== 'Not specified' && value !== null && value !== undefined
                   ).map(([key, value]) => (
                     <div key={key} className="flex items-center space-x-2">
-                      <span className="text-gray-600 font-medium capitalize">{key.replace('application', '').replace(/_/g, ' ')}:</span>
-                      <span className="text-gray-700">{String(value)}</span>
+                      <span className="text-gray-600 font-medium capitalize text-xs sm:text-sm">{key.replace('application', '').replace(/_/g, ' ')}:</span>
+                      <span className="text-gray-700 text-xs sm:text-sm">{String(value)}</span>
                     </div>
                   ))}
                 </div>
@@ -297,33 +302,33 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
             </div>
 
             {/* Applicant Section */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
               <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
                 <User className="w-4 h-4 mr-2 text-green-600" />
-                Primary Applicant
+                Applicant Information
               </h5>
               <div className="space-y-3 text-sm">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                   <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 font-medium">Name:</span>
-                    <span className="text-gray-700">{formSummary.applicantName}</span>
+                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Name:</span>
+                    <span className="text-gray-700 text-xs sm:text-sm">{formSummary.applicantName || 'Not specified'}</span>
           </div>
           <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 font-medium">Email:</span>
-                    <span className="text-gray-700">{formSummary.applicantEmail}</span>
+                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Email:</span>
+                    <span className="text-gray-700 text-xs sm:text-sm">{formSummary.applicantEmail || 'Not specified'}</span>
                   </div>
                 </div>
                 
-                {/* Additional applicant fields in grid */}
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-200">
+                {/* Additional applicant fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-2 border-t border-gray-200">
                   {Object.entries(formSummary).filter(([key, value]) => 
                     key.startsWith('applicant') && 
-                    !['applicantName', 'applicantEmail'].includes(key) &&
+                    !['applicantName', 'applicantEmail', 'ibankRecords', 'Id', 'BankRecords'].includes(key) &&
                     value !== 'Not specified' && value !== null && value !== undefined
                   ).map(([key, value]) => (
                     <div key={key} className="flex items-center space-x-2">
-                      <span className="text-gray-600 font-medium capitalize">{key.replace('applicant', '').replace(/_/g, ' ')}:</span>
-                      <span className="text-gray-700">{String(value)}</span>
+                      <span className="text-gray-600 font-medium capitalize text-xs sm:text-sm">{key.replace('applicant', '').replace(/_/g, ' ')}:</span>
+                      <span className="text-gray-700 text-xs sm:text-sm">{String(value)}</span>
                     </div>
                   ))}
                 </div>
@@ -331,115 +336,97 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
             </div>
 
             {/* Co-Applicant Section */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
               <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                <User className="w-4 h-4 mr-2 text-blue-600" />
-                Co-Applicant
+                <Users className="w-4 h-4 mr-2 text-purple-600" />
+                Co-Applicant Information
               </h5>
               <div className="space-y-3 text-sm">
-                {(() => {
-                  const coApplicantFields = Object.entries(formSummary).filter(([key, value]) => 
-                    key.startsWith('coApplicant') &&
-                    value !== 'Not specified' && value !== null && value !== undefined
-                  );
-                  
-                  if (coApplicantFields.length === 0) {
-                    return <span className="text-gray-500 italic">No co-applicant information</span>;
-                  }
-                  
-                  return (
-                    <div className="grid grid-cols-2 gap-3">
-                      {coApplicantFields.map(([key, value]) => (
-                        <div key={key} className="flex items-center space-x-2">
-                          <span className="text-gray-600 font-medium capitalize">{key.replace('coApplicant', '').replace(/_/g, ' ')}:</span>
-                          <span className="text-gray-700">{String(value)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
+                {Object.entries(formSummary).filter(([key, value]) => 
+                  key.startsWith('coApplicant') && 
+                  !['ibankRecords', 'Id', 'BankRecords'].includes(key) &&
+                  value !== 'Not specified' && value !== null && value !== undefined
+                ).length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                    {Object.entries(formSummary).filter(([key, value]) => 
+                      key.startsWith('coApplicant') && 
+                      !['ibankRecords', 'Id', 'BankRecords'].includes(key) &&
+                      value !== 'Not specified' && value !== null && value !== undefined
+                    ).map(([key, value]) => (
+                      <div key={key} className="flex items-center space-x-2">
+                        <span className="text-gray-600 font-medium capitalize text-xs sm:text-sm">{key.replace('coApplicant', '').replace(/_/g, ' ')}:</span>
+                        <span className="text-gray-700 text-xs sm:text-sm">{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-xs sm:text-sm italic">No co-applicant information</p>
+                )}
               </div>
             </div>
 
             {/* Guarantor Section */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
               <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                <User className="w-4 h-4 mr-2 text-orange-600" />
-                Guarantor
+                <Shield className="w-4 h-4 mr-2 text-orange-600" />
+                Guarantor Information
               </h5>
               <div className="space-y-3 text-sm">
-                {(() => {
-                  const guarantorFields = Object.entries(formSummary).filter(([key, value]) => 
-                    key.startsWith('guarantor') &&
-                    value !== 'Not specified' && value !== null && value !== undefined
-                  );
-                  
-                  if (guarantorFields.length === 0) {
-                    return <span className="text-gray-500 italic">No guarantor information</span>;
-                  }
-                  
-                  return (
-                    <div className="grid grid-cols-2 gap-3">
-                      {guarantorFields.map(([key, value]) => (
-                        <div key={key} className="flex items-center space-x-2">
-                          <span className="text-gray-600 font-medium capitalize">{key.replace('guarantor', '').replace(/_/g, ' ')}:</span>
-                          <span className="text-gray-700">{String(value)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
+                {Object.entries(formSummary).filter(([key, value]) => 
+                  key.startsWith('guarantor') && 
+                  !['ibankRecords', 'Id', 'BankRecords'].includes(key) &&
+                  value !== 'Not specified' && value !== null && value !== undefined
+                ).length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                    {Object.entries(formSummary).filter(([key, value]) => 
+                      key.startsWith('guarantor') && 
+                      !['ibankRecords', 'Id', 'BankRecords'].includes(key) &&
+                      value !== 'Not specified' && value !== null && value !== undefined
+                    ).map(([key, value]) => (
+                      <div key={key} className="flex items-center space-x-2">
+                        <span className="text-gray-600 font-medium capitalize text-xs sm:text-sm">{key.replace('guarantor', '').replace(/_/g, ' ')}:</span>
+                        <span className="text-gray-700 text-xs sm:text-sm">{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-xs sm:text-sm italic">No guarantor information</p>
+                )}
               </div>
             </div>
 
-            {/* Occupants Section - Fixed to show proper list */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            {/* Occupants Section */}
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
               <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                <User className="w-4 h-4 mr-2 text-indigo-600" />
-                Occupants
+                <Users className="w-4 h-4 mr-2 text-indigo-600" />
+                Occupants Information
               </h5>
               <div className="space-y-3 text-sm">
-                {(() => {
-                  // Handle occupants data properly
-                  const occupantsData = formSummary.occupants || formSummary.occupantsList || [];
-                  if (Array.isArray(occupantsData) && occupantsData.length > 0) {
-                    return occupantsData.map((occupant: any, index: number) => (
-                      <div key={index} className="border-l-2 border-indigo-200 pl-3 bg-white rounded-r p-2">
-                        <div className="font-medium text-gray-700 mb-2">Occupant {index + 1}</div>
-                        <div className="grid grid-cols-2 gap-2">
+                {(formSummary.occupants && Array.isArray(formSummary.occupants) && formSummary.occupants.length > 0) || 
+                 (formSummary.occupantsList && Array.isArray(formSummary.occupantsList) && formSummary.occupantsList.length > 0) ? (
+                  <div className="space-y-3">
+                    {(formSummary.occupants || formSummary.occupantsList || []).map((occupant: any, index: number) => (
+                      <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200 border-l-4 border-l-blue-500">
+                        <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Occupant {index + 1}</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
                           {Object.entries(occupant).map(([key, value]) => (
                             <div key={key} className="flex items-center space-x-2">
                               <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
-                              <span className="text-gray-700">{String(value)}</span>
+                              <span className="text-gray-700">{String(value) || 'Not specified'}</span>
                             </div>
                           ))}
                         </div>
                       </div>
-                    ));
-                  } else if (typeof occupantsData === 'object' && occupantsData !== null) {
-                    // Handle single occupant object
-                    return (
-                      <div className="border-l-2 border-indigo-200 pl-3 bg-white rounded-r p-2">
-                        <div className="font-medium text-gray-700 mb-2">Occupant</div>
-                        <div className="grid grid-cols-2 gap-2">
-                          {Object.entries(occupantsData).map(([key, value]) => (
-                            <div key={key} className="flex items-center space-x-2">
-                              <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
-                              <span className="text-gray-700">{String(value)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  } else {
-                    return <span className="text-gray-500 italic">No occupants listed</span>;
-                  }
-                })()}
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-xs sm:text-sm italic">No occupants information</p>
+                )}
               </div>
             </div>
 
             {/* Additional Information Section */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
               <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
                 <FileText className="w-4 h-4 mr-2 text-purple-600" />
                 Additional Information
@@ -449,14 +436,14 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 {/* Special handling for bank records */}
                 {formSummary.applicantBankRecords && Array.isArray(formSummary.applicantBankRecords) && (
                   <div className="space-y-2">
-                    <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1">
+                    <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
                       Applicant Bank Records ({formSummary.applicantBankRecords.length} accounts):
                     </div>
-                    <div className="grid grid-cols-1 gap-2 pl-4">
+                    <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
                       {formSummary.applicantBankRecords.map((bank: any, index: number) => (
-                        <div key={index} className="bg-white rounded p-2 border border-gray-200">
-                          <div className="font-medium text-gray-700 mb-2 text-xs">Bank Account {index + 1}</div>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200">
+                          <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Bank Account {index + 1}</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
                             {Object.entries(bank).map(([key, value]) => (
                               <div key={key} className="flex items-center space-x-2">
                                 <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
@@ -473,14 +460,14 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 {/* Co-Applicant Bank Records */}
                 {formSummary.coApplicantBankRecords && Array.isArray(formSummary.coApplicantBankRecords) && (
                   <div className="space-y-2">
-                    <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1">
+                    <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
                       Co-Applicant Bank Records ({formSummary.coApplicantBankRecords.length} accounts):
                     </div>
-                    <div className="grid grid-cols-1 gap-2 pl-4">
+                    <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
                       {formSummary.coApplicantBankRecords.map((bank: any, index: number) => (
-                        <div key={index} className="bg-white rounded p-2 border border-gray-200">
-                          <div className="font-medium text-gray-700 mb-2 text-xs">Bank Account {index + 1}</div>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200">
+                          <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Bank Account {index + 1}</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
                             {Object.entries(bank).map(([key, value]) => (
                               <div key={key} className="flex items-center space-x-2">
                                 <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
@@ -497,14 +484,14 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 {/* Guarantor Bank Records */}
                 {formSummary.guarantorBankRecords && Array.isArray(formSummary.guarantorBankRecords) && (
                   <div className="space-y-2">
-                    <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1">
+                    <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
                       Guarantor Bank Records ({formSummary.guarantorBankRecords.length} accounts):
                     </div>
-                    <div className="grid grid-cols-1 gap-2 pl-4">
+                    <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
                       {formSummary.guarantorBankRecords.map((bank: any, index: number) => (
-                        <div key={index} className="bg-white rounded p-2 border border-gray-200">
-                          <div className="font-medium text-gray-700 mb-2 text-xs">Bank Account {index + 1}</div>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200">
+                          <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Bank Account {index + 1}</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
                             {Object.entries(bank).map(([key, value]) => (
                               <div key={key} className="flex items-center space-x-2">
                                 <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
@@ -514,37 +501,6 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Webhook Summary Section */}
-                {formSummary.webhookSummary && (
-                  <div className="space-y-2">
-                    <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1">
-                      Document Processing Summary:
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 pl-4">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-600 font-medium">Total:</span>
-                        <span className="text-gray-700">{formSummary.webhookSummary.totalResponses || 0}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-600 font-medium">Applicant:</span>
-                        <span className="text-gray-700">{formSummary.webhookSummary.responsesByPerson?.applicant || 0}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-600 font-medium">Co-Applicant:</span>
-                        <span className="text-gray-700">{formSummary.webhookSummary.responsesByPerson?.coApplicant || 0}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-600 font-medium">Guarantor:</span>
-                        <span className="text-gray-700">{formSummary.webhookSummary.responsesByPerson?.guarantor || 0}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-600 font-medium">Occupants:</span>
-                        <span className="text-gray-700">{formSummary.webhookSummary.responsesByPerson?.occupants || 0}</span>
-                      </div>
                     </div>
                   </div>
                 )}
@@ -562,14 +518,14 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                   if (Array.isArray(value)) {
                     return (
                       <div key={key} className="space-y-2">
-                        <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1">
+                        <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
                           {key.replace(/_/g, ' ')}:
                         </div>
-                        <div className="grid grid-cols-1 gap-2 pl-4">
+                        <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
                           {value.map((item: any, index: number) => (
-                            <div key={index} className="bg-white rounded p-2 border border-gray-200">
+                            <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200">
                               {typeof item === 'object' && item !== null ? (
-                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="grid grid-cols-1 gap-2 text-xs sm:text-sm">
                                   {Object.entries(item).map(([itemKey, itemValue]) => (
                                     <div key={itemKey} className="flex items-center space-x-2">
                                       <span className="text-gray-600 font-medium capitalize">{itemKey.replace(/_/g, ' ')}:</span>
@@ -595,14 +551,14 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                       if (Array.isArray(parsedValue)) {
                         return (
                           <div key={key} className="space-y-2">
-                            <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1">
+                            <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
                               {key.replace(/_/g, ' ')}:
                             </div>
-                            <div className="grid grid-cols-1 gap-2 pl-4">
+                            <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
                               {parsedValue.map((item: any, index: number) => (
-                                <div key={index} className="bg-white rounded p-2 border border-gray-200">
+                                <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200">
                                   {typeof item === 'object' && item !== null ? (
-                                    <div className="grid grid-cols-1 gap-2 text-xs">
+                                    <div className="grid grid-cols-1 gap-2 text-xs sm:text-sm">
                                       {Object.entries(item).map(([itemKey, itemValue]) => (
                                         <div key={itemKey} className="flex items-center space-x-2">
                                           <span className="text-gray-600 font-medium capitalize">{itemKey.replace(/_/g, ' ')}:</span>
@@ -629,14 +585,14 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                   if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
                     return (
                       <div key={key} className="space-y-2">
-                        <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1">
+                        <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
                           {key.replace(/_/g, ' ')}:
                         </div>
-                        <div className="grid grid-cols-2 gap-2 pl-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-2 sm:pl-4">
                           {Object.entries(value).map(([itemKey, itemValue]) => (
                             <div key={itemKey} className="flex items-center space-x-2">
-                              <span className="text-gray-600 font-medium capitalize">{itemKey.replace(/_/g, ' ')}:</span>
-                              <span className="text-gray-700">{String(itemValue)}</span>
+                              <span className="text-gray-600 font-medium capitalize text-xs sm:text-sm">{itemKey.replace(/_/g, ' ')}:</span>
+                              <span className="text-gray-700 text-xs sm:text-sm">{String(itemValue)}</span>
                             </div>
                           ))}
                         </div>
@@ -647,8 +603,8 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                   // Handle regular string/number fields
                   return (
                     <div key={key} className="flex items-center space-x-2">
-                      <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
-                      <span className="text-gray-700">{String(value)}</span>
+                      <span className="text-gray-600 font-medium capitalize text-xs sm:text-sm">{key.replace(/_/g, ' ')}:</span>
+                      <span className="text-gray-700 text-xs sm:text-sm">{String(value)}</span>
                     </div>
                   );
                 })}
@@ -658,7 +614,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
         </div>
 
         {/* Preview All Button - Replaces Uploaded Documents section */}
-        {draft.status === 'submitted' && (
+        {draft.status === 'draft' && (
           <div className="pt-4 border-t border-gray-100">
             <div className="text-center">
               <Button 
@@ -696,25 +652,18 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
           </Button>
           <Button 
                 onClick={handleDelete}
-                variant="outline"
-                size="sm"
-                disabled={isDeleting}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {isDeleting ? 'Deleting...' : 'Delete'}
-              </Button>
-            </>
-          ) : (
-            <Button
-              onClick={() => onEdit(draft)}
             variant="outline" 
             size="sm"
-              className="flex-1"
+                disabled={isDeleting}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
           >
-              <FileText className="w-4 h-4 mr-2" />
-              View Full Application
+                <Trash2 className="w-4 h-4 mr-2" />
+                {isDeleting ? 'Deleting...' : 'Delete'}
           </Button>
+            </>
+          ) : (
+            // Hide View Full Application button for submitted applications
+            null
           )}
         </div>
       </CardContent>
@@ -845,15 +794,15 @@ export const DraftCards = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+      <div className="max-w-full mx-auto px-3 sm:px-4 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
                   <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
             My Applications
           </h1>
-          <p className="text-gray-600 mb-4">
+          <p className="text-sm sm:text-base text-gray-600 mb-4">
             Continue working on your saved applications
           </p>
         </div>
@@ -861,7 +810,7 @@ export const DraftCards = () => {
 
         {/* Drafts Grid */}
         {drafts && drafts.length > 0 ? (
-          <div className="grid grid-cols-1 gap-8">
+          <div className="grid grid-cols-1 gap-4 sm:gap-8">
             {drafts.map((draft) => (
               <DraftCard 
                 key={draft.reference_id} 
@@ -872,11 +821,11 @@ export const DraftCards = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <div className="bg-white rounded-lg shadow-sm p-8 max-w-md mx-auto">
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Draft Applications</h3>
-              <p className="text-gray-600 mb-4">
+          <div className="text-center py-8 sm:py-12">
+            <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8 max-w-md mx-auto">
+              <FileText className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No Draft Applications</h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-4">
                 You don't have any saved draft applications yet.
               </p>
               <Button asChild>
