@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { PropertyAmenitiesMap } from '@/components/property-amenities-map';
 import { 
   Eye, 
   Send, 
@@ -28,7 +29,13 @@ import {
   ArrowLeft,
   Phone,
   Mail,
-  Calendar
+  Calendar,
+  Utensils,
+  ShoppingBag,
+  GraduationCap,
+  Bus,
+  TreePine,
+  Building2
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -39,6 +46,25 @@ export default function PropertyDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Generate coordinates for the property (in a real app, this would come from the database)
+  const getPropertyCoordinates = (propertyName: string): [number, number] => {
+    // Generate consistent coordinates based on property name hash
+    const hash = propertyName.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    
+    // Base coordinates (Manhattan area)
+    const baseLat = 40.7589;
+    const baseLng = -73.9851;
+    
+    // Add small variations based on hash
+    const lat = baseLat + (hash % 100) * 0.001;
+    const lng = baseLng + (hash % 100) * 0.001;
+    
+    return [lat, lng];
+  };
 
   useEffect(() => {
     // Get rental ID from URL parameters
@@ -341,14 +367,86 @@ export default function PropertyDetailsPage() {
               </CardContent>
             </Card>
 
-            {/* Amenities */}
-            {rental.amenities && (
-              <Card>
-                <CardContent className="pt-6">
-                  {renderAmenities(rental.amenities)}
-                </CardContent>
-              </Card>
-            )}
+            {/* Amenities & Location Benefits */}
+            <Card>
+              <CardHeader>
+                <h2 className="text-2xl font-semibold text-gray-900">Amenities & Location Benefits</h2>
+                <p className="text-gray-600">Discover the property features and why this location is perfect for your lifestyle</p>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                {/* Property Amenities */}
+                {rental.amenities && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Property Features</h3>
+                    {renderAmenities(rental.amenities)}
+                  </div>
+                )}
+
+                {/* Location Benefits Grid */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Nearby Amenities</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <Utensils className="w-5 h-5 text-white" />
+                      </div>
+                      <h4 className="font-medium text-gray-900 mb-1">Dining & Entertainment</h4>
+                      <p className="text-xs text-gray-600">Restaurants within walking distance</p>
+                    </div>
+                    
+                    <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <ShoppingBag className="w-5 h-5 text-white" />
+                      </div>
+                      <h4 className="font-medium text-gray-900 mb-1">Shopping & Retail</h4>
+                      <p className="text-xs text-gray-600">Convenient shopping access</p>
+                    </div>
+                    
+                    <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                      <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <GraduationCap className="w-5 h-5 text-white" />
+                      </div>
+                      <h4 className="font-medium text-gray-900 mb-1">Education</h4>
+                      <p className="text-xs text-gray-600">Top-rated schools nearby</p>
+                    </div>
+                    
+                    <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <Bus className="w-5 h-5 text-white" />
+                      </div>
+                      <h4 className="font-medium text-gray-900 mb-1">Transportation</h4>
+                      <p className="text-xs text-gray-600">Easy transit access</p>
+                    </div>
+                    
+                    <div className="text-center p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                      <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <TreePine className="w-5 h-5 text-white" />
+                      </div>
+                      <h4 className="font-medium text-gray-900 mb-1">Recreation</h4>
+                      <p className="text-xs text-gray-600">Parks & outdoor spaces</p>
+                    </div>
+                    
+                    <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+                      <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <Building2 className="w-5 h-5 text-white" />
+                      </div>
+                      <h4 className="font-medium text-gray-900 mb-1">Healthcare</h4>
+                      <p className="text-xs text-gray-600">Medical facilities nearby</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI-Powered Interactive Map */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Interactive Location Map</h3>
+                  <PropertyAmenitiesMap
+                    propertyName={rental.propertyName || rental.name}
+                    propertyCoordinates={getPropertyCoordinates(rental.propertyName || rental.name)}
+                    className="border-0 shadow-none"
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Contact Information */}
             <Card>
@@ -447,7 +545,7 @@ export default function PropertyDetailsPage() {
             {/* Location Info */}
             <Card>
               <CardHeader>
-                <h3 className="text-xl font-semibold text-gray-900">Location</h3>
+                <h3 className="text-xl font-semibold text-gray-900">Prime Location</h3>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -459,11 +557,36 @@ export default function PropertyDetailsPage() {
                     </div>
                   </div>
                   <Separator />
-                  <div className="text-sm text-gray-600">
-                    <p>• Walking distance to shopping centers</p>
-                    <p>• Close to public transportation</p>
-                    <p>• Near parks and recreational areas</p>
-                    <p>• Excellent school district</p>
+                  <div className="text-sm text-gray-600 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                      <span>Restaurants & dining options</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>Shopping centers & retail</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span>Top-rated schools nearby</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span>Public transportation access</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                      <span>Parks & recreation areas</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                      <span>Healthcare facilities</span>
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg">
+                    <p className="font-medium text-blue-800 mb-1">📍 Walking Distance</p>
+                    <p>Most amenities are within 0.5 miles - perfect for daily convenience!</p>
                   </div>
                 </div>
               </CardContent>
