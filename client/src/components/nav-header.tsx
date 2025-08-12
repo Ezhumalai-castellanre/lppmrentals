@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, Home, Lock, FileText, TestTube } from 'lucide-react';
+import { LogOut, Home, Lock, FileText, TestTube, Wrench } from 'lucide-react';
 import LogoutButton from './logout-button';
 import { useLocation } from 'wouter';
 

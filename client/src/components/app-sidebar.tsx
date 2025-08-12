@@ -10,7 +10,8 @@ import {
   LogOut,
   User,
   Building,
-  Clock
+  Clock,
+  Plus
 } from 'lucide-react';
 
 import {
@@ -118,16 +119,13 @@ export function AppSidebar() {
   };
 
   const navigationItems = [
-    {
-      title: hasExistingDraft 
-        ? (currentDraftStep !== null 
-            ? `Continue from Step ${currentDraftStep + 1}` 
-            : "Continue Application")
-        : "Start New Application",
+    // Only show application option if there's a draft
+    ...(hasExistingDraft && currentDraftStep !== null ? [{
+      title: `Continue from Step ${currentDraftStep + 1}`,
       url: "/application",
       icon: FileText,
-      onClick: handleApplicationNavigation,
-    },
+      onClick: () => setLocation(`/application?continue=true&step=${currentDraftStep}`),
+    }] : []),
     {
       title: "My Applications",
       url: "/drafts",
@@ -170,7 +168,7 @@ export function AppSidebar() {
                   >
                     <item.icon />
                     <span>{item.title}</span>
-                    {isCheckingDrafts && item.title.includes('Application') && (
+                    {isCheckingDrafts && item.title.includes('Step') && (
                       <div className="ml-2 h-2 w-2 animate-spin rounded-full border border-current border-t-transparent" />
                     )}
                   </SidebarMenuButton>
@@ -210,20 +208,20 @@ export function AppSidebar() {
                         </div>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleApplicationNavigation} disabled={isCheckingDrafts}>
-                        <FileText className="mr-2 h-4 w-4" />
-                        <span>
-                          {hasExistingDraft 
-                            ? (currentDraftStep !== null 
-                                ? `Continue from Step ${currentDraftStep + 1}` 
-                                : "Continue Application")
-                            : "Start New Application"
-                          }
-                        </span>
-                        {isCheckingDrafts && (
-                          <div className="ml-2 h-2 w-2 animate-spin rounded-full border border-current border-t-transparent" />
-                        )}
-                      </DropdownMenuItem>
+                      {hasExistingDraft && currentDraftStep !== null && (
+                        <DropdownMenuItem 
+                          onClick={() => setLocation(`/application?continue=true&step=${currentDraftStep}`)}
+                          disabled={isCheckingDrafts}
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          <span>
+                            Continue from Step {currentDraftStep + 1}
+                          </span>
+                          {isCheckingDrafts && (
+                            <div className="ml-2 h-2 w-2 animate-spin rounded-full border border-current border-t-transparent" />
+                          )}
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onClick={() => setLocation('/change-password')}>
                         <Lock className="mr-2 h-4 w-4" />
                         <span>Change Password</span>

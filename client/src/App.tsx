@@ -13,6 +13,7 @@ import MissingDocumentsPage from "@/pages/missing-documents";
 import MaintenancePage from "@/pages/maintenance";
 import ApplicationsPage from "@/pages/applications";
 import DraftsPage from "@/pages/drafts";
+import StartNewApplicationPage from "@/pages/start-new-application";
 import LoginPage from "@/pages/login";
 import ChangePasswordPage from "@/pages/change-password";
 import LandingPage from "@/pages/landing";
@@ -107,6 +108,14 @@ function Router() {
         <ProtectedRoute>
           <AppLayout>
             <DraftsPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/start-new-application">
+        <ProtectedRoute>
+          <AppLayout>
+            <StartNewApplicationPage />
           </AppLayout>
         </ProtectedRoute>
       </Route>
