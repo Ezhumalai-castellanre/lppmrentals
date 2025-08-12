@@ -3408,6 +3408,24 @@ export function ApplicationForm() {
     }
   }, [formData.application?.apartmentType, form]);
 
+  // Ensure apartmentNumber in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('apartmentNumber');
+    const stateValue = formData.application?.apartmentNumber;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('apartmentNumber', stateValue || '');
+    }
+  }, [formData.application?.apartmentNumber, form]);
+
+  // Ensure buildingAddress in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('buildingAddress');
+    const stateValue = formData.application?.buildingAddress;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('buildingAddress', stateValue || '');
+    }
+  }, [formData.application?.buildingAddress, form]);
+
   // Ensure landlord fields in formData and react-hook-form stay in sync
   useEffect(() => {
     const formValue = form.watch('applicantLandlordName');
@@ -3553,6 +3571,17 @@ export function ApplicationForm() {
       landlordState: landlordStateValue,
       landlordZip: landlordZipValue
     });
+
+    // Synchronize form values back to formData state
+    if (apartmentNumberValue !== formData.application?.apartmentNumber) {
+      updateFormData('application', 'apartmentNumber', apartmentNumberValue);
+    }
+    if (apartmentTypeValue !== formData.application?.apartmentType) {
+      updateFormData('application', 'apartmentType', apartmentTypeValue);
+    }
+    if (buildingAddressValue !== formData.application?.buildingAddress) {
+      updateFormData('application', 'buildingAddress', buildingAddressValue);
+    }
     
     console.log('🔍 Apartment, address, and landlord field values in formData:', {
       apartmentNumber: formData.application?.apartmentNumber,
