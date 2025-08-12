@@ -168,9 +168,9 @@ export default function PropertyDetailsPage() {
           <Home className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Property Not Found</h2>
           <p className="text-gray-600 mb-4">{error || 'The requested property could not be found.'}</p>
-          <Button onClick={() => setLocation('/available-rentals')}>
+          <Button onClick={() => setLocation('/')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Available Rentals
+            Back to Home
           </Button>
         </div>
       </div>
@@ -187,11 +187,11 @@ export default function PropertyDetailsPage() {
         <div className="mb-8">
           <Button 
             variant="ghost" 
-            onClick={() => setLocation('/available-rentals')}
+            onClick={() => setLocation('/')}
             className="mb-4 hover:bg-gray-100"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Available Rentals
+            Back to Home
           </Button>
           
           <div className="flex items-center justify-between">
