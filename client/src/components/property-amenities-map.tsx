@@ -444,32 +444,30 @@ export function PropertyAmenitiesMap({
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {amenities.slice(0, 6).map((amenity) => (
-              <Card key={amenity.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${amenityColors[amenity.type]} text-white flex-shrink-0`}>
-                      {amenityIcons[amenity.type]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h5 className="font-semibold text-sm text-gray-900 mb-1 truncate">
-                        {amenity.name}
-                      </h5>
-                      <p className="text-xs text-gray-600 mb-2">
-                        {amenity.distance} • {getAmenityTypeLabel(amenity.type)}
-                      </p>
-                      <p className="text-xs text-gray-700 leading-relaxed">
-                        {amenity.aiDescription || amenity.description}
-                      </p>
-                      {amenity.rating && (
-                        <div className="flex items-center gap-1 mt-2">
-                          <span className="text-yellow-600 text-xs">★</span>
-                          <span className="text-xs text-gray-600">{amenity.rating}/5</span>
-                        </div>
-                      )}
-                    </div>
+              <div key={amenity.id} className="p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+                <div className="flex items-start gap-3">
+                  <div className={`p-2 rounded-lg ${amenityColors[amenity.type]} text-white flex-shrink-0`}>
+                    {amenityIcons[amenity.type]}
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="flex-1 min-w-0">
+                    <h5 className="font-semibold text-sm text-gray-900 mb-1 truncate">
+                      {amenity.name}
+                    </h5>
+                    <p className="text-xs text-gray-600 mb-2">
+                      {amenity.distance} • {getAmenityTypeLabel(amenity.type)}
+                    </p>
+                    <p className="text-xs text-gray-700 leading-relaxed">
+                      {amenity.aiDescription || amenity.description}
+                    </p>
+                    {amenity.rating && (
+                      <div className="flex items-center gap-1 mt-2">
+                        <span className="text-yellow-600 text-xs">★</span>
+                        <span className="text-xs text-gray-600">{amenity.rating}/5</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </div>
