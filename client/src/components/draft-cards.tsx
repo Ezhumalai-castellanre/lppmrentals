@@ -188,7 +188,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
             onClick={() => onEdit(draft)}
           >
             <Edit className="h-3 w-3 mr-1" />
-            Continue
+            Continue from Step {draft.current_step + 1}
           </Button>
           <Button 
             variant="outline" 
@@ -270,8 +270,10 @@ export const DraftCards = () => {
     // Store the draft reference ID in sessionStorage for the application form to pick up
     sessionStorage.setItem('draftToLoad', draft.reference_id);
     
-    // Navigate to the application form
-    setLocation('/application');
+    // Navigate to the application form with the current step parameter
+    // This will ensure the user continues from where they left off
+    const currentStep = draft.current_step || 0;
+    setLocation(`/application?step=${currentStep}&continue=true`);
   };
 
   const handleDelete = async (draftId: string) => {

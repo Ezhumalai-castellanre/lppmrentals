@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
+import { dynamoDBService } from '@/lib/dynamodb-service';
 import { 
   Home, 
   FileText, 
@@ -32,6 +33,9 @@ import LogoutButton from './logout-button';
 export function AppSidebar() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [hasExistingDraft, setHasExistingDraft] = useState(false);
+  const [isCheckingDrafts, setIsCheckingDrafts] = useState(false);
+  const [currentDraftStep, setCurrentDraftStep] = useState<number | null>(null);
 
   if (!user) {
     return null;
@@ -46,14 +50,86 @@ export function AppSidebar() {
       .slice(0, 2);
   };
 
+  // Check for existing drafts when user changes
+  useEffect(() => {
+    const checkForExistingDrafts = async () => {
+      if (!user) return;
+      
+      setIsCheckingDrafts(true);
+      try {
+        // Check if user has existing drafts
+        const userZoneinfo = user.zoneinfo || user.applicantId;
+        if (userZoneinfo) {
+          const drafts = await dynamoDBService.getAllDrafts(userZoneinfo);
+          const hasDraft = drafts && drafts.length > 0 && drafts.some(draft => draft.status === 'draft');
+          setHasExistingDraft(hasDraft);
+          
+                                // Get the current step from the most recent draft
+          if (hasDraft) {
+            console.log('📋 Found drafts:', drafts);
+            const draftDrafts = drafts.filter(draft => draft.status === 'draft');
+            console.log('📋 Draft status drafts:', draftDrafts);
+            
+            if (draftDrafts.length > 0) {
+              const mostRecentDraft = draftDrafts
+                .sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime())[0];
+              
+              console.log('📋 Most recent draft:', mostRecentDraft);
+              
+              if (mostRecentDraft && mostRecentDraft.current_step !== undefined) {
+                setCurrentDraftStep(mostRecentDraft.current_step);
+                console.log('📍 Found current draft step:', mostRecentDraft.current_step);
+              } else {
+                console.log('⚠️ No current_step found in most recent draft');
+                setCurrentDraftStep(null);
+              }
+            } else {
+              console.log('⚠️ No drafts with status "draft" found');
+              setCurrentDraftStep(null);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for existing drafts:', error);
+        setHasExistingDraft(false);
+      } finally {
+        setIsCheckingDrafts(false);
+      }
+    };
+
+    checkForExistingDrafts();
+  }, [user]);
+
+  // Handle application navigation
+  const handleApplicationNavigation = () => {
+    if (hasExistingDraft && currentDraftStep !== null) {
+      // If there's an existing draft with a current step, navigate to continue it at that step
+      console.log('🔄 Navigating to continue application at step:', currentDraftStep);
+      setLocation(`/application?continue=true&step=${currentDraftStep}`);
+    } else if (hasExistingDraft) {
+      // If there's an existing draft but no step info, navigate to continue it
+      console.log('🔄 Navigating to continue application (no step info)');
+      setLocation('/application?continue=true');
+    } else {
+      // If no draft exists, start fresh
+      console.log('🆕 Starting new application');
+      setLocation('/application');
+    }
+  };
+
   const navigationItems = [
     {
-      title: "Start New Application",
+      title: hasExistingDraft 
+        ? (currentDraftStep !== null 
+            ? `Continue from Step ${currentDraftStep + 1}` 
+            : "Continue Application")
+        : "Start New Application",
       url: "/application",
       icon: FileText,
+      onClick: handleApplicationNavigation,
     },
     {
-              title: "My Applications",
+      title: "My Applications",
       url: "/drafts",
       icon: Clock,
     },
@@ -89,10 +165,14 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     tooltip={item.title}
-                    onClick={() => setLocation(item.url)}
+                    onClick={item.onClick || (() => setLocation(item.url))}
+                    disabled={isCheckingDrafts}
                   >
                     <item.icon />
                     <span>{item.title}</span>
+                    {isCheckingDrafts && item.title.includes('Application') && (
+                      <div className="ml-2 h-2 w-2 animate-spin rounded-full border border-current border-t-transparent" />
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -130,9 +210,19 @@ export function AppSidebar() {
                         </div>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setLocation('/application')}>
+                      <DropdownMenuItem onClick={handleApplicationNavigation} disabled={isCheckingDrafts}>
                         <FileText className="mr-2 h-4 w-4" />
-                        <span>Start New Application</span>
+                        <span>
+                          {hasExistingDraft 
+                            ? (currentDraftStep !== null 
+                                ? `Continue from Step ${currentDraftStep + 1}` 
+                                : "Continue Application")
+                            : "Start New Application"
+                          }
+                        </span>
+                        {isCheckingDrafts && (
+                          <div className="ml-2 h-2 w-2 animate-spin rounded-full border border-current border-t-transparent" />
+                        )}
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setLocation('/change-password')}>
                         <Lock className="mr-2 h-4 w-4" />

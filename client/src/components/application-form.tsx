@@ -225,9 +225,47 @@ export function ApplicationForm() {
       howDidYouHear: '',
       howDidYouHearOther: ''
     },
-    applicant: {},
-    coApplicant: {},
-    guarantor: {},
+    applicant: {
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      dob: undefined,
+      ssn: '',
+      license: '',
+      licenseState: '',
+      lengthAtAddressYears: undefined,
+      lengthAtAddressMonths: undefined,
+      landlordName: '',
+      landlordAddressLine1: '',
+      landlordAddressLine2: '',
+      landlordCity: '',
+      landlordState: '',
+      landlordZipCode: '',
+      landlordPhone: '',
+      landlordEmail: '',
+      currentRent: undefined,
+      reasonForMoving: ''
+    },
+    coApplicant: {
+      email: '',
+      phone: '',
+      zip: '',
+      landlordZipCode: '',
+      landlordPhone: '',
+      landlordEmail: ''
+    },
+    guarantor: {
+      email: '',
+      phone: '',
+      zip: '',
+      landlordZipCode: '',
+      landlordPhone: '',
+      landlordEmail: ''
+    },
     occupants: [], // Each occupant: { name, relationship, dob, ssn, age, ssnDocument, ssnEncryptedDocument, documents }
   });
   const [signatures, setSignatures] = useState<any>({});
@@ -288,9 +326,14 @@ export function ApplicationForm() {
   useEffect(() => {
     if (units.length > 0 && formData.application?.buildingAddress) {
       console.log('🏠 Units loaded, restoring building selection for:', formData.application.buildingAddress);
-      handleBuildingSelect(formData.application.buildingAddress);
+      // Use restoreBuildingSelection to preserve original apartment selection
+      restoreBuildingSelection(
+        formData.application.buildingAddress,
+        formData.application.apartmentNumber,
+        formData.application.apartmentType
+      );
     }
-  }, [units, formData.application?.buildingAddress]);
+  }, [units, formData.application?.buildingAddress, formData.application?.apartmentNumber, formData.application?.apartmentType]);
 
 
 
@@ -598,6 +641,13 @@ export function ApplicationForm() {
               form.setValue('apartmentType', app.apartmentType || '');
               console.log('🏘️ Set apartmentType:', app.apartmentType || '');
             }
+            
+            // Log the apartment fields that were restored
+            console.log('🏠 Apartment fields restored from draft:', {
+              apartmentNumber: app.apartmentNumber,
+              apartmentType: app.apartmentType,
+              buildingAddress: app.buildingAddress
+            });
             if (app.monthlyRent) {
               form.setValue('monthlyRent', app.monthlyRent);
               console.log('💰 Set monthlyRent:', app.monthlyRent);
@@ -644,18 +694,127 @@ export function ApplicationForm() {
           
           if (parsedFormData.applicant) {
             const applicant = parsedFormData.applicant;
-            if (applicant.name) form.setValue('applicantName', applicant.name);
-            if (applicant.email) form.setValue('applicantEmail', applicant.email);
-            if (applicant.phone) form.setValue('applicantPhone', applicant.phone);
-            if (applicant.address) form.setValue('applicantAddress', applicant.address);
-            if (applicant.city) form.setValue('applicantCity', applicant.city);
-            if (applicant.state) form.setValue('applicantState', applicant.state);
-            if (applicant.zip) form.setValue('applicantZip', applicant.zip);
+            if (applicant.name !== undefined) form.setValue('applicantName', applicant.name || '');
+            if (applicant.email !== undefined) form.setValue('applicantEmail', applicant.email || '');
+            if (applicant.phone !== undefined) form.setValue('applicantPhone', applicant.phone || '');
+            if (applicant.address !== undefined) form.setValue('applicantAddress', applicant.address || '');
+            if (applicant.city !== undefined) {
+              form.setValue('applicantCity', applicant.city || '');
+              console.log('🏙️ Set applicantCity:', applicant.city || '');
+              console.log('🏙️ applicant.city value:', applicant.city);
+              console.log('🏙️ applicant.city type:', typeof applicant.city);
+            }
+            if (applicant.state !== undefined) {
+              form.setValue('applicantState', applicant.state || '');
+              console.log('🏛️ Set applicantState:', applicant.state || '');
+            }
+            if (applicant.zip !== undefined) {
+              form.setValue('applicantZip', applicant.zip || '');
+              console.log('📮 Set applicantZip:', applicant.zip || '');
+            }
             if (applicant.dob) {
               const dob = new Date(applicant.dob);
               if (!isNaN(dob.getTime())) {
                 form.setValue('applicantDob', dob);
               }
+            }
+            
+            // Restore length of stay fields
+            if (applicant.lengthAtAddressYears !== undefined) {
+              form.setValue('applicantLengthAtAddressYears', applicant.lengthAtAddressYears);
+              console.log('⏰ Set applicantLengthAtAddressYears:', applicant.lengthAtAddressYears);
+            }
+            if (applicant.lengthAtAddressMonths !== undefined) {
+              form.setValue('applicantLengthAtAddressMonths', applicant.lengthAtAddressMonths);
+              console.log('⏰ Set applicantLengthAtAddressMonths:', applicant.lengthAtAddressMonths);
+            }
+            
+            // Restore landlord information
+            if (applicant.landlordName !== undefined) {
+              form.setValue('applicantLandlordName', applicant.landlordName || '');
+              console.log('🏠 Set applicantLandlordName:', applicant.landlordName || '');
+            }
+            if (applicant.landlordAddressLine1 !== undefined) {
+              form.setValue('applicantLandlordAddressLine1', applicant.landlordAddressLine1 || '');
+              console.log('🏠 Set applicantLandlordAddressLine1:', applicant.landlordAddressLine1 || '');
+            }
+            if (applicant.landlordAddressLine2 !== undefined) {
+              form.setValue('applicantLandlordAddressLine2', applicant.landlordAddressLine2 || '');
+              console.log('🏠 Set applicantLandlordAddressLine2:', applicant.landlordAddressLine2 || '');
+            }
+            if (applicant.landlordCity !== undefined) {
+              form.setValue('applicantLandlordCity', applicant.landlordCity || '');
+              console.log('🏠 Set applicantLandlordCity:', applicant.landlordCity || '');
+            }
+            if (applicant.landlordState !== undefined) {
+              form.setValue('applicantLandlordState', applicant.landlordState || '');
+              console.log('🏠 Set applicantLandlordState:', applicant.landlordState || '');
+            }
+            if (applicant.landlordZipCode !== undefined) {
+              form.setValue('applicantLandlordZipCode', applicant.landlordZipCode || '');
+              console.log('🏠 Set applicantLandlordZipCode:', applicant.landlordZipCode || '');
+            }
+            if (applicant.landlordPhone !== undefined) {
+              form.setValue('applicantLandlordPhone', applicant.landlordPhone || '');
+              console.log('🏠 Set applicantLandlordPhone:', applicant.landlordPhone || '');
+            }
+            if (applicant.landlordEmail !== undefined) {
+              form.setValue('applicantLandlordEmail', applicant.landlordEmail || '');
+              console.log('🏠 Set applicantLandlordEmail:', applicant.landlordEmail || '');
+            }
+            
+            // Restore current rent and reason for moving
+            if (applicant.currentRent !== undefined) {
+              form.setValue('applicantCurrentRent', applicant.currentRent);
+              console.log('💰 Set applicantCurrentRent:', applicant.currentRent);
+            }
+            if (applicant.reasonForMoving !== undefined) {
+              form.setValue('applicantReasonForMoving', applicant.reasonForMoving || '');
+              console.log('🏠 Set applicantReasonForMoving:', applicant.reasonForMoving || '');
+            }
+          }
+          
+          // Restore co-applicant information (only fields that exist in schema)
+          if (parsedFormData.coApplicant) {
+            const coApplicant = parsedFormData.coApplicant;
+            if (coApplicant.email !== undefined) form.setValue('coApplicantEmail', coApplicant.email || '');
+            if (coApplicant.phone !== undefined) form.setValue('coApplicantPhone', coApplicant.phone || '');
+            if (coApplicant.zip !== undefined) form.setValue('coApplicantZip', coApplicant.zip || '');
+            
+            // Restore co-applicant landlord information (only fields that exist in schema)
+            if (coApplicant.landlordZipCode !== undefined) {
+              form.setValue('coApplicantLandlordZipCode', coApplicant.landlordZipCode || '');
+              console.log('🏠 Set coApplicantLandlordZipCode:', coApplicant.landlordZipCode || '');
+            }
+            if (coApplicant.landlordPhone !== undefined) {
+              form.setValue('coApplicantLandlordPhone', coApplicant.landlordPhone || '');
+              console.log('🏠 Set coApplicantLandlordPhone:', coApplicant.landlordPhone || '');
+            }
+            if (coApplicant.landlordEmail !== undefined) {
+              form.setValue('coApplicantLandlordEmail', coApplicant.landlordEmail || '');
+              console.log('🏠 Set coApplicantLandlordEmail:', coApplicant.landlordEmail || '');
+            }
+          }
+          
+          // Restore guarantor information (only fields that exist in schema)
+          if (parsedFormData.guarantor) {
+            const guarantor = parsedFormData.guarantor;
+            if (guarantor.email !== undefined) form.setValue('guarantorEmail', guarantor.email || '');
+            if (guarantor.phone !== undefined) form.setValue('guarantorPhone', guarantor.phone || '');
+            if (guarantor.zip !== undefined) form.setValue('guarantorZip', guarantor.zip || '');
+            
+            // Restore guarantor landlord information (only fields that exist in schema)
+            if (guarantor.landlordZipCode !== undefined) {
+              form.setValue('guarantorLandlordZipCode', guarantor.landlordZipCode || '');
+              console.log('🏠 Set guarantorLandlordZipCode:', guarantor.landlordZipCode || '');
+            }
+            if (guarantor.landlordPhone !== undefined) {
+              form.setValue('guarantorLandlordPhone', guarantor.landlordPhone || '');
+              console.log('🏠 Set guarantorLandlordPhone:', guarantor.landlordPhone || '');
+            }
+            if (guarantor.landlordEmail !== undefined) {
+              form.setValue('guarantorLandlordEmail', guarantor.landlordEmail || '');
+              console.log('🏠 Set guarantorLandlordEmail:', guarantor.landlordEmail || '');
             }
           }
           
@@ -667,16 +826,129 @@ export function ApplicationForm() {
             setHasGuarantor(parsedFormData.hasGuarantor);
           }
           
-          // Force form to re-render with the restored values
-          setTimeout(() => {
-            form.reset(form.getValues());
-          }, 100);
+              // Force form to re-render with the restored values
+    setTimeout(() => {
+      form.reset(form.getValues());
+      console.log('🔄 Form reset completed with values:', form.getValues());
+      
+          // Ensure apartment fields are properly synchronized after form reset
+    if (parsedFormData.application?.apartmentNumber) {
+      form.setValue('apartmentNumber', parsedFormData.application.apartmentNumber);
+      console.log('🏠 Re-syncing apartmentNumber after form reset:', parsedFormData.application.apartmentNumber);
+    }
+    if (parsedFormData.application?.apartmentType) {
+      form.setValue('apartmentType', parsedFormData.application.apartmentType);
+      console.log('🏠 Re-syncing apartmentType after form reset:', parsedFormData.application.apartmentType);
+    }
+    
+    // Ensure city, state, and zip fields are properly synchronized after form reset
+    if (parsedFormData.applicant?.city !== undefined) {
+      form.setValue('applicantCity', parsedFormData.applicant.city || '');
+      console.log('🏙️ Re-syncing applicantCity after form reset:', parsedFormData.applicant.city || '');
+      console.log('🏙️ parsedFormData.applicant.city value:', parsedFormData.applicant.city);
+      console.log('🏙️ parsedFormData.applicant.city type:', typeof parsedFormData.applicant.city);
+    }
+    if (parsedFormData.applicant?.state !== undefined) {
+      form.setValue('applicantState', parsedFormData.applicant.state || '');
+      console.log('🏛️ Re-syncing applicantState after form reset:', parsedFormData.applicant.state || '');
+    }
+    if (parsedFormData.applicant?.zip !== undefined) {
+      form.setValue('applicantZip', parsedFormData.applicant.zip || '');
+      console.log('📮 Re-syncing applicantZip after form reset:', parsedFormData.applicant.zip || '');
+    }
+    
+    // Ensure landlord fields are properly synchronized after form reset
+    if (parsedFormData.applicant?.landlordName !== undefined) {
+      form.setValue('applicantLandlordName', parsedFormData.applicant.landlordName || '');
+      console.log('🏠 Re-syncing applicantLandlordName after form reset:', parsedFormData.applicant.landlordName || '');
+    }
+    if (parsedFormData.applicant?.landlordAddressLine1 !== undefined) {
+      form.setValue('applicantLandlordAddressLine1', parsedFormData.applicant.landlordAddressLine1 || '');
+      console.log('🏠 Re-syncing applicantLandlordAddressLine1 after form reset:', parsedFormData.applicant.landlordAddressLine1 || '');
+    }
+    if (parsedFormData.applicant?.landlordAddressLine2 !== undefined) {
+      form.setValue('applicantLandlordAddressLine2', parsedFormData.applicant.landlordAddressLine2 || '');
+      console.log('🏠 Re-syncing applicantLandlordAddressLine2 after form reset:', parsedFormData.applicant.landlordAddressLine2 || '');
+    }
+    if (parsedFormData.applicant?.landlordCity !== undefined) {
+      form.setValue('applicantLandlordCity', parsedFormData.applicant.landlordCity || '');
+      console.log('🏠 Re-syncing applicantLandlordCity after form reset:', parsedFormData.applicant.landlordCity || '');
+      console.log('🏠 parsedFormData.applicant.landlordCity value:', parsedFormData.applicant.landlordCity);
+      console.log('🏠 parsedFormData.applicant.landlordCity type:', typeof parsedFormData.applicant.landlordCity);
+    }
+    if (parsedFormData.applicant?.landlordState !== undefined) {
+      form.setValue('applicantLandlordState', parsedFormData.applicant.landlordState || '');
+      console.log('🏠 Re-syncing applicantLandlordState after form reset:', parsedFormData.applicant.landlordState || '');
+    }
+    if (parsedFormData.applicant?.landlordZipCode !== undefined) {
+      form.setValue('applicantLandlordZipCode', parsedFormData.applicant.landlordZipCode || '');
+      console.log('🏠 Re-syncing applicantLandlordZipCode after form reset:', parsedFormData.applicant.landlordZipCode || '');
+    }
+    if (parsedFormData.applicant?.landlordPhone !== undefined) {
+      form.setValue('applicantLandlordPhone', parsedFormData.applicant.landlordPhone || '');
+      console.log('🏠 Re-syncing applicantLandlordPhone after form reset:', parsedFormData.applicant.landlordPhone || '');
+    }
+    if (parsedFormData.applicant?.landlordEmail !== undefined) {
+      form.setValue('applicantLandlordEmail', parsedFormData.applicant.landlordEmail || '');
+      console.log('🏠 Re-syncing applicantLandlordEmail after form reset:', parsedFormData.applicant.landlordEmail || '');
+    }
+    
+    // Ensure other applicant fields are properly synchronized after form reset
+    if (parsedFormData.applicant?.currentRent !== undefined) {
+      form.setValue('applicantCurrentRent', parsedFormData.applicant.currentRent);
+      console.log('💰 Re-syncing applicantCurrentRent after form reset:', parsedFormData.applicant.currentRent);
+    }
+    if (parsedFormData.applicant?.reasonForMoving !== undefined) {
+      form.setValue('applicantReasonForMoving', parsedFormData.applicant.reasonForMoving || '');
+      console.log('🏠 Re-syncing applicantReasonForMoving after form reset:', parsedFormData.applicant.reasonForMoving || '');
+    }
+    if (parsedFormData.applicant?.lengthAtAddressYears !== undefined) {
+      form.setValue('applicantLengthAtAddressYears', parsedFormData.applicant.lengthAtAddressYears);
+      console.log('⏰ Re-syncing applicantLengthAtAddressYears after form reset:', parsedFormData.applicant.lengthAtAddressYears);
+    }
+    if (parsedFormData.applicant?.lengthAtAddressMonths !== undefined) {
+      form.setValue('applicantLengthAtAddressMonths', parsedFormData.applicant.lengthAtAddressMonths);
+      console.log('⏰ Re-syncing applicantLengthAtAddressMonths after form reset:', parsedFormData.applicant.lengthAtAddressMonths);
+    }
+    
+    // Force a re-render by updating the formData state
+    setFormData(prev => ({
+      ...prev,
+      application: {
+        ...prev.application,
+        apartmentNumber: parsedFormData.application?.apartmentNumber || '',
+        apartmentType: parsedFormData.application?.apartmentType || ''
+      },
+      applicant: {
+        ...prev.applicant,
+        city: parsedFormData.applicant?.city || '',
+        state: parsedFormData.applicant?.state || '',
+        zip: parsedFormData.applicant?.zip || '',
+        landlordName: parsedFormData.applicant?.landlordName || '',
+        landlordAddressLine1: parsedFormData.applicant?.landlordAddressLine1 || '',
+        landlordAddressLine2: parsedFormData.applicant?.landlordAddressLine2 || '',
+        landlordCity: parsedFormData.applicant?.landlordCity || '',
+        landlordState: parsedFormData.applicant?.landlordState || '',
+        landlordZipCode: parsedFormData.applicant?.landlordZipCode || '',
+        landlordPhone: parsedFormData.applicant?.landlordPhone || '',
+        landlordEmail: parsedFormData.applicant?.landlordEmail || '',
+        currentRent: parsedFormData.applicant?.currentRent,
+        reasonForMoving: parsedFormData.applicant?.reasonForMoving || '',
+        lengthAtAddressYears: parsedFormData.applicant?.lengthAtAddressYears,
+        lengthAtAddressMonths: parsedFormData.applicant?.lengthAtAddressMonths
+      }
+    }));
+    }, 100);
           
           // If we have building data, ensure the apartments are loaded
           if (parsedFormData.application?.buildingAddress) {
             console.log('🏠 Restoring building and apartment selection...');
-            // Trigger building selection to load apartments
-            handleBuildingSelect(parsedFormData.application.buildingAddress);
+            // Restore building selection without auto-selecting first unit
+            await restoreBuildingSelection(
+              parsedFormData.application.buildingAddress,
+              parsedFormData.application.apartmentNumber,
+              parsedFormData.application.apartmentType
+            );
           }
           
           toast({
@@ -703,9 +975,84 @@ export function ApplicationForm() {
       const userName = user.name || user.given_name || user.email?.split('@')[0] || 'User';
       setWelcomeMessage(`Welcome back, ${userName}!`);
       
-      // Load draft data from DynamoDB if available
-      if (user.applicantId) {
-        loadDraftData(user.applicantId);
+      // Check if we should continue an existing application
+      const urlParams = new URLSearchParams(window.location.search);
+      const shouldContinue = urlParams.get('continue') === 'true';
+      const stepParam = urlParams.get('step');
+      
+      if (shouldContinue) {
+        console.log('🔄 Continue parameter detected, loading existing draft...');
+        // Load draft data from DynamoDB if available
+        if (user.applicantId) {
+          loadDraftData(user.applicantId);
+        }
+        
+        // If a specific step is provided, navigate to it after draft is loaded
+        if (stepParam) {
+          const targetStep = parseInt(stepParam, 10);
+          if (!isNaN(targetStep) && targetStep >= 0 && targetStep < STEPS.length) {
+            console.log('🎯 Step parameter detected, will navigate to step:', targetStep);
+            // Set the target step - it will be applied after draft data is loaded
+            setCurrentStep(targetStep);
+          }
+        }
+      } else {
+        console.log('🆕 No continue parameter, starting fresh...');
+        // Clear any existing draft data and start fresh
+        setFormData({
+          application: {
+            buildingAddress: '',
+            apartmentNumber: '',
+            apartmentType: '',
+            monthlyRent: undefined,
+            moveInDate: undefined,
+            howDidYouHear: '',
+            howDidYouHearOther: ''
+          },
+          applicant: {
+            name: '',
+            email: '',
+            phone: '',
+            address: '',
+            city: '',
+            state: '',
+            zip: '',
+            dob: undefined,
+            ssn: '',
+            license: '',
+            licenseState: '',
+            lengthAtAddressYears: undefined,
+            lengthAtAddressMonths: undefined,
+            landlordName: '',
+            landlordAddressLine1: '',
+            landlordAddressLine2: '',
+            landlordCity: '',
+            landlordState: '',
+            landlordZipCode: '',
+            landlordPhone: '',
+            landlordEmail: '',
+            currentRent: undefined,
+            reasonForMoving: ''
+          },
+          coApplicant: {
+            email: '',
+            phone: '',
+            zip: '',
+            landlordZipCode: '',
+            landlordPhone: '',
+            landlordEmail: ''
+          },
+          guarantor: {
+            email: '',
+            phone: '',
+            zip: '',
+            landlordZipCode: '',
+            landlordPhone: '',
+            landlordEmail: ''
+          },
+          occupants: []
+        });
+        setCurrentStep(0);
       }
       
       // Hide welcome message after 5 minutes
@@ -739,20 +1086,8 @@ export function ApplicationForm() {
     }
   }, [form]);
 
-  // Start auto-save when form data changes
-
-
-  // Debounced save function to prevent multiple rapid saves
-  const debouncedSaveRef = useRef<NodeJS.Timeout>();
-  
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (debouncedSaveRef.current) {
-        clearTimeout(debouncedSaveRef.current);
-      }
-    };
-  }, []);
+  // Draft saving is now only triggered on navigation (Next, Previous, GoTo buttons)
+  // This prevents unnecessary saves on every field change
 
 
 
@@ -769,14 +1104,8 @@ export function ApplicationForm() {
       return newFormData;
     });
 
-    // Debounce the save operation to prevent multiple rapid saves
-    if (debouncedSaveRef.current) {
-      clearTimeout(debouncedSaveRef.current);
-    }
-    
-    debouncedSaveRef.current = setTimeout(() => {
-      saveDraftToDynamoDB();
-    }, 1000); // Wait 1 second after last change before saving
+    // Remove automatic draft saving - only save when Next button is clicked
+    // This prevents unnecessary saves on every field change
   };
 
   // Handle building selection
@@ -805,6 +1134,59 @@ export function ApplicationForm() {
     form.setValue('buildingAddress', buildingAddress);
     form.setValue('apartmentNumber', firstUnit?.name || '');
     form.setValue('apartmentType', firstUnit?.unitType || '');
+  };
+
+  // Restore building selection from draft data without auto-selecting first unit
+  const restoreBuildingSelection = async (buildingAddress: string, apartmentNumber?: string, apartmentType?: string) => {
+    setSelectedBuilding(buildingAddress);
+    
+    // Wait for units to be loaded if they're not available yet
+    if (units.length === 0) {
+      console.log('⏳ Units not loaded yet, waiting...');
+      return;
+    }
+    
+    const unitsForBuilding = MondayApiService.getUnitsByBuilding(units, buildingAddress);
+    setAvailableApartments(unitsForBuilding);
+    
+    // Find the specific apartment that was previously selected
+    let selectedUnit = null;
+    if (apartmentNumber) {
+      selectedUnit = unitsForBuilding.find(unit => unit.name === apartmentNumber);
+      console.log('🏠 Found previously selected apartment:', selectedUnit);
+    }
+    
+    // If no specific apartment found, don't auto-select anything
+    setSelectedUnit(selectedUnit || null);
+    
+    // Update form data with the original values (don't override with first unit)
+    await updateFormData('application', 'buildingAddress', buildingAddress);
+    if (apartmentNumber) {
+      await updateFormData('application', 'apartmentNumber', apartmentNumber);
+    }
+    if (apartmentType) {
+      await updateFormData('application', 'apartmentType', apartmentType);
+    }
+    
+    // Update form fields with the original values
+    form.setValue('buildingAddress', buildingAddress);
+    if (apartmentNumber) {
+      form.setValue('apartmentNumber', apartmentNumber);
+      console.log('🏠 Restored apartmentNumber:', apartmentNumber);
+    }
+    if (apartmentType) {
+      form.setValue('apartmentType', apartmentType);
+      console.log('🏠 Restored apartmentType:', apartmentType);
+    }
+    
+    // Verify the form values were actually set
+    setTimeout(() => {
+      console.log('🔍 Verifying form values after restoration:', {
+        buildingAddress: form.getValues('buildingAddress'),
+        apartmentNumber: form.getValues('apartmentNumber'),
+        apartmentType: form.getValues('apartmentType')
+      });
+    }, 100);
   };
 
   // Handle apartment selection
@@ -3017,6 +3399,165 @@ export function ApplicationForm() {
       form.setValue('apartmentType', stateValue || '');
     }
   }, [formData.application?.apartmentType, form]);
+
+  // Ensure landlord fields in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordName');
+    const stateValue = formData.applicant?.landlordName;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordName', stateValue || '');
+    }
+  }, [formData.applicant?.landlordName, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordAddressLine1');
+    const stateValue = formData.applicant?.landlordAddressLine1;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordAddressLine1', stateValue || '');
+    }
+  }, [formData.applicant?.landlordAddressLine1, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordAddressLine2');
+    const stateValue = formData.applicant?.landlordAddressLine2;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordAddressLine2', stateValue || '');
+    }
+  }, [formData.applicant?.landlordAddressLine2, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordCity');
+    const stateValue = formData.applicant?.landlordCity;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordCity', stateValue || '');
+    }
+  }, [formData.applicant?.landlordCity, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordState');
+    const stateValue = formData.applicant?.landlordState;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordState', stateValue || '');
+    }
+  }, [formData.applicant?.landlordState, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordZipCode');
+    const stateValue = formData.applicant?.landlordZipCode;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordZipCode', stateValue || '');
+    }
+  }, [formData.applicant?.landlordZipCode, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordPhone');
+    const stateValue = formData.applicant?.landlordPhone;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordPhone', stateValue || '');
+    }
+  }, [formData.applicant?.landlordPhone, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordEmail');
+    const stateValue = formData.applicant?.landlordEmail;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordEmail', stateValue || '');
+    }
+  }, [formData.applicant?.landlordEmail, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantCurrentRent');
+    const stateValue = formData.applicant?.currentRent;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantCurrentRent', stateValue);
+    }
+  }, [formData.applicant?.currentRent, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantReasonForMoving');
+    const stateValue = formData.applicant?.reasonForMoving;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantReasonForMoving', stateValue || '');
+    }
+  }, [formData.applicant?.reasonForMoving, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLengthAtAddressYears');
+    const stateValue = formData.applicant?.lengthAtAddressYears;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLengthAtAddressYears', stateValue);
+    }
+  }, [formData.applicant?.lengthAtAddressYears, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLengthAtAddressMonths');
+    const stateValue = formData.applicant?.lengthAtAddressMonths;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLengthAtAddressMonths', stateValue);
+    }
+  }, [formData.applicant?.lengthAtAddressMonths, form]);
+
+  // Ensure city, state, and zip fields in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('applicantCity');
+    const stateValue = formData.applicant?.city;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantCity', stateValue || '');
+    }
+  }, [formData.applicant?.city, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantState');
+    const stateValue = formData.applicant?.state;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantState', stateValue || '');
+    }
+  }, [formData.applicant?.state, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantZip');
+    const stateValue = formData.applicant?.zip;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantZip', stateValue || '');
+    }
+  }, [formData.applicant?.zip, form]);
+
+  // Debug apartment, address, and landlord field values
+  useEffect(() => {
+    const apartmentNumberValue = form.watch('apartmentNumber');
+    const apartmentTypeValue = form.watch('apartmentType');
+    const buildingAddressValue = form.watch('buildingAddress');
+    const cityValue = form.watch('applicantCity');
+    const stateValue = form.watch('applicantState');
+    const zipValue = form.watch('applicantZip');
+    const landlordCityValue = form.watch('applicantLandlordCity');
+    const landlordStateValue = form.watch('applicantLandlordState');
+    const landlordZipValue = form.watch('applicantLandlordZipCode');
+    
+    console.log('🔍 Apartment, address, and landlord field values in form:', {
+      apartmentNumber: apartmentNumberValue,
+      apartmentType: apartmentTypeValue,
+      buildingAddress: buildingAddressValue,
+      city: cityValue,
+      state: stateValue,
+      zip: zipValue,
+      landlordCity: landlordCityValue,
+      landlordState: landlordStateValue,
+      landlordZip: landlordZipValue
+    });
+    
+    console.log('🔍 Apartment, address, and landlord field values in formData:', {
+      apartmentNumber: formData.application?.apartmentNumber,
+      apartmentType: formData.application?.apartmentType,
+      buildingAddress: formData.application?.buildingAddress,
+      city: formData.applicant?.city,
+      state: formData.applicant?.state,
+      zip: formData.applicant?.zip,
+      landlordCity: formData.applicant?.landlordCity,
+      landlordState: formData.applicant?.landlordState,
+      landlordZipCode: formData.applicant?.landlordZipCode
+    });
+  }, [form.watch('apartmentNumber'), form.watch('apartmentType'), form.watch('buildingAddress'), form.watch('applicantCity'), form.watch('applicantState'), form.watch('applicantZip'), form.watch('applicantLandlordCity'), form.watch('applicantLandlordState'), form.watch('applicantLandlordZipCode'), formData.application?.apartmentNumber, formData.application?.apartmentType, formData.application?.buildingAddress, formData.applicant?.city, formData.applicant?.state, formData.applicant?.zip, formData.applicant?.landlordCity, formData.applicant?.landlordState, formData.applicant?.landlordZipCode]);
 
   // Refactor renderStep to accept a stepIdx argument
   const renderStep = (stepIdx = currentStep) => {
