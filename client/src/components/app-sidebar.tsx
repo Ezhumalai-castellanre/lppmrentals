@@ -53,7 +53,7 @@ export function AppSidebar() {
       icon: FileText,
     },
     {
-      title: "My Drafts",
+              title: "My Applications",
       url: "/drafts",
       icon: Clock,
     },

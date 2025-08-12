@@ -216,7 +216,15 @@ export function ApplicationForm() {
 
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<any>({
-    application: {},
+    application: {
+      buildingAddress: '',
+      apartmentNumber: '',
+      apartmentType: '',
+      monthlyRent: undefined,
+      moveInDate: undefined,
+      howDidYouHear: '',
+      howDidYouHearOther: ''
+    },
     applicant: {},
     coApplicant: {},
     guarantor: {},
@@ -275,6 +283,14 @@ export function ApplicationForm() {
 
     fetchUnits();
   }, []); // ✅ Add empty dependency array to run only once on mount
+
+  // Restore building selection once units are loaded
+  useEffect(() => {
+    if (units.length > 0 && formData.application?.buildingAddress) {
+      console.log('🏠 Units loaded, restoring building selection for:', formData.application.buildingAddress);
+      handleBuildingSelect(formData.application.buildingAddress);
+    }
+  }, [units, formData.application?.buildingAddress]);
 
 
 
@@ -570,17 +586,17 @@ export function ApplicationForm() {
             console.log('🔧 Restoring application form values:', app);
             
             // Restore all application fields
-            if (app.buildingAddress) {
-              form.setValue('buildingAddress', app.buildingAddress);
-              console.log('🏢 Set buildingAddress:', app.buildingAddress);
+            if (app.buildingAddress !== undefined) {
+              form.setValue('buildingAddress', app.buildingAddress || '');
+              console.log('🏢 Set buildingAddress:', app.buildingAddress || '');
             }
-            if (app.apartmentNumber) {
-              form.setValue('apartmentNumber', app.apartmentNumber);
-              console.log('🏠 Set apartmentNumber:', app.apartmentNumber);
+            if (app.apartmentNumber !== undefined) {
+              form.setValue('apartmentNumber', app.apartmentNumber || '');
+              console.log('🏠 Set apartmentNumber:', app.apartmentNumber || '');
             }
-            if (app.apartmentType) {
-              form.setValue('apartmentType', app.apartmentType);
-              console.log('🏘️ Set apartmentType:', app.apartmentType);
+            if (app.apartmentType !== undefined) {
+              form.setValue('apartmentType', app.apartmentType || '');
+              console.log('🏘️ Set apartmentType:', app.apartmentType || '');
             }
             if (app.monthlyRent) {
               form.setValue('monthlyRent', app.monthlyRent);
@@ -656,8 +672,8 @@ export function ApplicationForm() {
             form.reset(form.getValues());
           }, 100);
           
-          // If we have building and apartment data, ensure the apartments are loaded
-          if (parsedFormData.application?.buildingAddress && parsedFormData.application?.apartmentNumber) {
+          // If we have building data, ensure the apartments are loaded
+          if (parsedFormData.application?.buildingAddress) {
             console.log('🏠 Restoring building and apartment selection...');
             // Trigger building selection to load apartments
             handleBuildingSelect(parsedFormData.application.buildingAddress);
@@ -766,6 +782,13 @@ export function ApplicationForm() {
   // Handle building selection
   const handleBuildingSelect = async (buildingAddress: string) => {
     setSelectedBuilding(buildingAddress);
+    
+    // Wait for units to be loaded if they're not available yet
+    if (units.length === 0) {
+      console.log('⏳ Units not loaded yet, waiting...');
+      return;
+    }
+    
     const unitsForBuilding = MondayApiService.getUnitsByBuilding(units, buildingAddress);
     setAvailableApartments(unitsForBuilding);
     
@@ -1021,7 +1044,10 @@ export function ApplicationForm() {
     if (data.application) {
       cleaned.application = {};
       Object.entries(data.application).forEach(([key, value]) => {
-        if (value !== '' && value !== null && value !== undefined) {
+        // Always preserve apartment fields even if they're empty strings
+        if (key === 'apartmentNumber' || key === 'apartmentType' || key === 'buildingAddress') {
+          cleaned.application[key] = value || '';
+        } else if (value !== '' && value !== null && value !== undefined) {
           cleaned.application[key] = value;
         }
       });
@@ -2968,9 +2994,9 @@ export function ApplicationForm() {
     const formValue = form.watch('apartmentNumber');
     const stateValue = formData.application?.apartmentNumber;
     console.log('🏠 apartmentNumber sync check - formValue:', formValue, 'stateValue:', stateValue);
-    if (stateValue && formValue !== stateValue) {
+    if (stateValue !== undefined && formValue !== stateValue) {
       console.log('🏠 Setting apartmentNumber:', stateValue);
-      form.setValue('apartmentNumber', stateValue);
+      form.setValue('apartmentNumber', stateValue || '');
     }
   }, [formData.application?.apartmentNumber, form]);
 
@@ -2987,8 +3013,8 @@ export function ApplicationForm() {
   useEffect(() => {
     const formValue = form.watch('apartmentType');
     const stateValue = formData.application?.apartmentType;
-    if (stateValue && formValue !== stateValue) {
-      form.setValue('apartmentType', stateValue);
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('apartmentType', stateValue || '');
     }
   }, [formData.application?.apartmentType, form]);
 
@@ -3141,7 +3167,7 @@ export function ApplicationForm() {
                           {...field}
                           className="input-field bg-gray-50"
                           readOnly
-                          value={field.value || selectedUnit?.unitType || ''}
+                          value={field.value || formData.application?.apartmentType || selectedUnit?.unitType || ''}
                         />
                       </FormControl>
                       <FormMessage />

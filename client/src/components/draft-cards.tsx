@@ -83,68 +83,6 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
     
     if (!formData) return {} as any;
     
-    // Calculate annual income based on pay frequency
-    const calculateAnnualIncome = (income: any, otherIncome: any, payFrequency: string = 'monthly') => {
-      if (!income || income === 'Not specified') return 'Not specified';
-      
-      const numIncome = parseFloat(income) || 0;
-      const numOtherIncome = parseFloat(otherIncome) || 0;
-      const totalIncome = numIncome + numOtherIncome;
-      
-      if (totalIncome === 0) return 'Not specified';
-      
-      // If the income values seem unusually high (over $100,000), they might already be annual
-      // This is a heuristic to handle cases where frequency wasn't specified
-      const isLikelyAnnual = totalIncome > 100000;
-      
-      let annualIncome: number;
-      if (isLikelyAnnual && payFrequency === 'monthly') {
-        // If income seems high and frequency is monthly, assume it's already annual
-        annualIncome = totalIncome;
-        console.log('💰 High income detected, assuming already annual:', totalIncome);
-      } else {
-        switch (payFrequency.toLowerCase()) {
-          case 'weekly':
-            annualIncome = totalIncome * 52;
-            break;
-          case 'bi-weekly':
-          case 'biweekly':
-          case 'every 2 weeks':
-            annualIncome = totalIncome * 26;
-            break;
-          case 'monthly':
-          default:
-            annualIncome = totalIncome * 12;
-            break;
-          case 'quarterly':
-            annualIncome = totalIncome * 4;
-            break;
-          case 'yearly':
-            annualIncome = totalIncome * 1;
-            break;
-        }
-      }
-      
-      return Math.round(annualIncome);
-    };
-    
-    // Get income data from applicant section
-    const applicantIncome = formData.applicant?.income ?? 'Not specified';
-    const applicantOtherIncome = formData.applicant?.otherIncome ?? 'Not specified';
-    
-    // Try to get pay frequency from various possible field names
-    const payFrequency = formData.applicant?.incomeFrequency ?? 
-                        formData.applicant?.payFrequency ?? 
-                        'monthly'; // Default to monthly if not specified
-    
-    // Log the income calculation for debugging
-    console.log('💰 Income calculation:', {
-      income: applicantIncome,
-      otherIncome: applicantOtherIncome,
-      payFrequency: payFrequency,
-      calculatedAnnual: calculateAnnualIncome(applicantIncome, applicantOtherIncome, payFrequency)
-    });
-    
     return {
       // Prefer top-level fields, fallback to application.*
       buildingAddress: formData.buildingAddress ?? formData.application?.buildingAddress ?? 'Not specified',
@@ -152,8 +90,6 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
       apartmentType: formData.apartmentType ?? formData.application?.apartmentType ?? 'Not specified',
       monthlyRent: formData.monthlyRent ?? formData.application?.monthlyRent ?? 'Not specified',
       moveInDate: formData.moveInDate ?? formData.application?.moveInDate ?? 'Not specified',
-      annualIncome: calculateAnnualIncome(applicantIncome, applicantOtherIncome, payFrequency),
-      incomeFrequency: payFrequency, // Add this for display purposes
       applicantName: formData.applicant?.name ?? 'Not specified',
       applicantEmail: formData.applicant?.email ?? 'Not specified'
     };
@@ -224,21 +160,6 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 ? formatDate(formSummary.moveInDate) 
                 : 'Not specified'}
             </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <DollarSign className="w-4 h-4 text-gray-500" />
-            <div className="flex flex-col">
-              <span className="text-gray-700">
-                {typeof formSummary.annualIncome === 'number' 
-                  ? `$${formSummary.annualIncome.toLocaleString()}/year` 
-                  : formSummary.annualIncome}
-              </span>
-              {typeof formSummary.annualIncome === 'number' && (
-                <span className="text-xs text-gray-500">
-                  Based on {formSummary.incomeFrequency} income
-                </span>
-              )}
-            </div>
           </div>
           <div className="flex items-center space-x-2">
             <FileText className="w-4 h-4 text-gray-500" />
@@ -381,10 +302,10 @@ export const DraftCards = () => {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">My Draft Applications</h1>
-            <p className="text-gray-600">Loading your draft applications...</p>
-          </div>
+                  <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Applications</h1>
+          <p className="text-gray-600">Loading your applications...</p>
+        </div>
         </div>
       </div>
     );
@@ -408,14 +329,14 @@ export const DraftCards = () => {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              My Draft Applications
-            </h1>
-            <p className="text-gray-600 mb-4">
-              Continue working on your saved applications
-            </p>
-          </div>
+                  <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            My Applications
+          </h1>
+          <p className="text-gray-600 mb-4">
+            Continue working on your saved applications
+          </p>
+        </div>
         </div>
 
         {/* Drafts Grid */}
