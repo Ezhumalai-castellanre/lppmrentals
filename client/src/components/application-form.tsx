@@ -1092,6 +1092,8 @@ export function ApplicationForm() {
 
 
   const updateFormData = async (section: string, field: string, value: any) => {
+    console.log(`🔄 updateFormData called: section=${section}, field=${field}, value=`, value);
+    
     setFormData((prev: any) => {
       const newFormData = {
         ...prev,
@@ -1100,6 +1102,9 @@ export function ApplicationForm() {
           [field]: value,
         },
       };
+      
+      console.log(`🔄 Updated formData.${section}.${field}:`, value);
+      console.log(`🔄 New formData.${section}:`, newFormData[section]);
       
       return newFormData;
     });
@@ -1356,6 +1361,7 @@ export function ApplicationForm() {
       });
 
       const draftData: DraftData = {
+        zoneinfo: currentUserZoneinfo, // Source of truth - user's zoneinfo value
         applicantId: currentUserZoneinfo, // Use zoneinfo for DynamoDB partition key
         reference_id: referenceId,
         form_data: enhancedFormDataSnapshot,
@@ -1648,6 +1654,7 @@ export function ApplicationForm() {
         };
 
         const draftData: DraftData = {
+          zoneinfo: user.applicantId,
           applicantId: user.applicantId,
           reference_id: referenceId,
           form_data: enhancedFormDataSnapshot,
@@ -1693,6 +1700,7 @@ export function ApplicationForm() {
         };
 
         const draftData: DraftData = {
+          zoneinfo: user.applicantId,
           applicantId: user.applicantId,
           reference_id: referenceId,
           form_data: enhancedFormDataSnapshot,
