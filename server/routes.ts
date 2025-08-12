@@ -336,7 +336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return {
           id: item.id,
           name: item.name,
-          propertyName: item.column_values.find((c: any) => c.id === "text_mktkkbsb")?.text || "",
+          propertyName: item.column_values.find((c: any) => c.id === "text_mktkkbsb")?.text || item.column_values.find((c: any) => c.id === "text_mktkkbsb")?.value || "",
           unitType: item.column_values.find((c: any) => c.id === "color_mktkdvc5")?.text || "",
           status: item.column_values.find((c: any) => c.id === "color_mktk40b8")?.text || "",
           // Add all dynamic column data
@@ -575,7 +575,7 @@ console.log("response", response);
         return {
           id: item.id,
           name: item.name,
-          propertyName: item.column_values.find((col: any) => col.id === "text_mktkkbsb")?.text || "",
+          propertyName: item.column_values.find((col: any) => col.id === "text_mktkkbsb")?.text || item.column_values.find((col: any) => col.id === "text_mktkkbsb")?.value || "",
           unitType: item.column_values.find((col: any) => col.id === "color_mktkdvc5")?.text || "",
           status: item.column_values.find((col: any) => col.id === "color_mktk40b8")?.text || "",
           monthlyRent: item.column_values.find((col: any) => col.id === "numeric_mktkj4pm")?.text || "",
