@@ -4,8 +4,6 @@
 
 The Amenities Map feature provides an interactive map view for property details, showing nearby amenities like restaurants, shopping centers, schools, transportation, parks, and healthcare facilities. This feature helps potential tenants understand the convenience and lifestyle benefits of a property's location.
 
-**NEW: AI-Powered Content Generation** - The feature now integrates with Google's Gemini AI to automatically generate compelling descriptions and dynamic location captions.
-
 ## Features
 
 ### 🗺️ Interactive Map
@@ -34,17 +32,10 @@ The Amenities Map feature provides an interactive map view for property details,
   - Name and type
   - Distance from property
   - Ratings (when available)
-  - AI-generated descriptions
+  - Descriptions
   - Category badges
 - **Color-coded markers** for easy identification
 - **Distance information** in miles for convenience
-
-### 🤖 AI-Powered Features (NEW!)
-- **Gemini AI Integration** - Uses Google's Gemini 2.0 Flash model
-- **Dynamic Descriptions** - Each amenity gets a unique, engaging description
-- **Location Captions** - Intelligent captions that adapt to each property
-- **Real-time Regeneration** - Click "Regenerate AI" for fresh content
-- **Contextual Content** - AI considers property name, amenity type, and distance
 
 ## Implementation
 
@@ -54,17 +45,11 @@ The Amenities Map feature provides an interactive map view for property details,
    - Main map component with filtering and display logic
    - Handles amenity data generation and filtering
    - Manages map state and interactions
-   - **NEW**: Integrates Gemini AI for content generation
 
 2. **Property Details Page** (`client/src/pages/property-details.tsx`)
    - Integrates the amenities map
    - Shows location benefits and highlights
    - Displays prime location information
-
-3. **Amenities Demo Page** (`client/src/pages/amenities-demo.tsx`)
-   - **NEW**: Standalone demo showcasing AI-powered features
-   - Multiple property examples with different locations
-   - Interactive demonstration of AI capabilities
 
 ### Dependencies
 
@@ -72,7 +57,6 @@ The Amenities Map feature provides an interactive map view for property details,
 - **React-Leaflet** - React wrapper for Leaflet
 - **Lucide React** - Icons for amenity types
 - **Tailwind CSS** - Styling and responsive design
-- **Google Gemini AI API** - **NEW**: AI content generation
 
 ### Data Structure
 
@@ -83,60 +67,9 @@ interface Amenity {
   type: 'restaurant' | 'shopping' | 'school' | 'transportation' | 'park' | 'healthcare';
   coordinates: [number, number];
   rating?: number;
-  distance: string; // Required field
-  description?: string; // Fallback description
-  aiDescription?: string; // NEW: AI-generated description
+  distance?: string;
+  description?: string;
 }
-```
-
-## AI Integration
-
-### Gemini AI API
-
-The feature integrates with Google's Gemini 2.0 Flash model for intelligent content generation:
-
-```typescript
-// Generate amenity descriptions
-const generateAmenityDescription = async (
-  amenityType: string, 
-  amenityName: string, 
-  distance: string
-): Promise<string>
-
-// Generate location captions
-const generateLocationCaption = async (
-  propertyName: string, 
-  amenityCount: number
-): Promise<string>
-```
-
-### API Endpoint
-
-```bash
-POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
-```
-
-### API Key
-
-The feature uses the provided Gemini AI API key:
-- **Key**: `AIzaSyBrcXjJl74fJwtDLgVtZJ3UrEEjUCgaK1U`
-- **Model**: `gemini-2.0-flash`
-- **Rate Limiting**: Handled gracefully with fallback content
-
-### Content Generation Prompts
-
-#### Amenity Descriptions
-```
-Generate a brief, engaging description for a {amenityType} called "{amenityName}" 
-that is {distance} away from a residential property. Make it sound appealing and 
-highlight what makes this location convenient. Keep it under 100 characters.
-```
-
-#### Location Captions
-```
-Generate a compelling, short caption (under 60 characters) for a property called 
-"{propertyName}" that highlights its prime location with {amenityCount} nearby 
-amenities. Make it sound attractive for potential renters.
 ```
 
 ## Usage
@@ -148,23 +81,28 @@ The amenities map automatically appears on property detail pages, showing:
 - Nearby amenities within walking distance
 - Filterable view of different amenity types
 - Walking radius visualization
-- **NEW**: AI-generated amenity descriptions and location captions
 
-### AI Content Management
+### Customization
 
-Users can interact with AI-generated content:
-- **View AI Descriptions**: Each amenity shows AI-generated descriptions in cards and popups
-- **Regenerate Content**: Click "Regenerate AI" button for fresh, unique content
-- **Dynamic Captions**: Location captions automatically adapt to each property
-- **Fallback Content**: Original descriptions remain as backup if AI generation fails
+To customize the amenities map:
 
-### Demo Page
+1. **Modify amenity data** in `generateNearbyAmenities()` function
+2. **Adjust coordinates** for different property locations
+3. **Add new amenity types** by extending the type definitions
+4. **Customize styling** using Tailwind CSS classes
+5. **Change map tiles** by modifying the TileLayer URL
 
-Access the dedicated demo page to:
-- Experience AI-powered features with multiple property examples
-- See how content generation works across different locations
-- Understand the AI integration workflow
-- Test regeneration functionality
+### Integration with Real APIs
+
+For production use, replace the sample data with real API calls:
+
+```typescript
+// Example: Google Places API integration
+const fetchNearbyAmenities = async (coordinates: [number, number]) => {
+  const response = await fetch(`/api/places/nearby?lat=${coordinates[0]}&lng=${coordinates[1]}`);
+  return response.json();
+};
+```
 
 ## Styling
 
@@ -182,12 +120,6 @@ Access the dedicated demo page to:
 - **Walking radius**: Blue circle with 10% opacity
 - **Popups**: Rounded corners with shadows and proper spacing
 
-### AI Content Display
-- **Amenity Cards**: Beautiful grid layout with AI-generated descriptions
-- **Sparkles Icon**: Purple sparkles icon indicates AI-generated content
-- **Regenerate Button**: Prominent button for refreshing AI content
-- **Loading States**: Visual feedback during AI content generation
-
 ## Future Enhancements
 
 ### Planned Features
@@ -197,13 +129,6 @@ Access the dedicated demo page to:
 - **Amenity photos** in popup displays
 - **Search functionality** for specific amenity types
 - **Distance calculations** using actual walking routes
-
-### AI Enhancements
-- **Multi-language support** for international properties
-- **Sentiment analysis** for amenity descriptions
-- **Personalized content** based on user preferences
-- **Batch processing** for multiple properties
-- **Content optimization** based on user engagement
 
 ### API Integration
 - **Google Places API** for comprehensive amenity data
@@ -224,8 +149,6 @@ Access the dedicated demo page to:
 - **Efficient filtering** with React state management
 - **Optimized rendering** for large numbers of amenities
 - **Memory management** for map instances
-- **AI API caching** to reduce redundant requests
-- **Fallback content** for offline or API failure scenarios
 
 ## Accessibility
 
@@ -234,7 +157,6 @@ Access the dedicated demo page to:
 - **High contrast** color schemes
 - **Alternative text** for map elements
 - **Focus management** for interactive elements
-- **AI content labeling** for screen readers
 
 ## Testing
 
@@ -244,16 +166,12 @@ Access the dedicated demo page to:
 3. Test filter functionality for each amenity type
 4. Click on markers to verify popup information
 5. Test responsive design on different screen sizes
-6. **NEW**: Test AI content generation and regeneration
-7. **NEW**: Verify AI descriptions appear in amenity cards
 
 ### Automated Testing
 - Component rendering tests
 - Filter functionality tests
 - Map interaction tests
 - Responsive design tests
-- **NEW**: AI API integration tests
-- **NEW**: Content generation tests
 
 ## Troubleshooting
 
@@ -262,13 +180,6 @@ Access the dedicated demo page to:
 2. **Markers not appearing**: Verify coordinate data and marker creation
 3. **Filters not working**: Check state management and filter logic
 4. **Styling issues**: Verify Tailwind CSS classes and custom styles
-5. **AI content not generating**: Check Gemini API key and network connectivity
-
-### AI-Specific Issues
-1. **API rate limiting**: Implement exponential backoff and retry logic
-2. **Content generation failures**: Fallback to original descriptions
-3. **Network timeouts**: Set appropriate timeout values for API calls
-4. **API key validation**: Verify API key permissions and quotas
 
 ### Debug Mode
 Enable console logging for debugging:
@@ -277,7 +188,6 @@ const DEBUG = true;
 if (DEBUG) {
   console.log('Amenities:', amenities);
   console.log('Active filters:', activeFilters);
-  console.log('AI content:', aiDescriptions);
 }
 ```
 
@@ -290,16 +200,7 @@ When adding new features to the amenities map:
 3. **Include accessibility features** for new interactions
 4. **Test on multiple devices** and screen sizes
 5. **Update documentation** for new features
-6. **Handle AI API failures** gracefully with fallbacks
-7. **Optimize API calls** to minimize rate limiting issues
 
 ## License
 
 This feature is part of the LPPM Rentals application and follows the same licensing terms.
-
-## AI Integration Credits
-
-- **Gemini AI Model**: Google's Gemini 2.0 Flash
-- **API Endpoint**: Google Generative Language API
-- **Content Generation**: Intelligent amenity descriptions and location captions
-- **Real-time Updates**: Dynamic content regeneration capabilities

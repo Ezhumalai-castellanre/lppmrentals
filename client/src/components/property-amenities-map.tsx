@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import { Icon } from 'leaflet';
-
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,7 +17,6 @@ import {
   TreePine, 
   Building2,
   Filter,
-  Sparkles,
   X
 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
@@ -27,7 +26,7 @@ delete (Icon.Default.prototype as any)._getIconUrl;
 Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
 interface Amenity {
@@ -36,9 +35,8 @@ interface Amenity {
   type: 'restaurant' | 'shopping' | 'school' | 'transportation' | 'park' | 'healthcare';
   coordinates: [number, number];
   rating?: number;
-  distance: string; // Made required since we always provide it
+  distance?: string;
   description?: string;
-  aiDescription?: string;
 }
 
 interface PropertyAmenitiesMapProps {
@@ -46,82 +44,6 @@ interface PropertyAmenitiesMapProps {
   propertyCoordinates: [number, number];
   className?: string;
 }
-
-// Gemini AI API integration for generating amenity descriptions
-const generateAmenityDescription = async (amenityType: string, amenityName: string, distance: string): Promise<string> => {
-  try {
-    const prompt = `Generate a brief, engaging description for a ${amenityType} called "${amenityName}" that is ${distance} away from a residential property. Make it sound appealing and highlight what makes this location convenient. Keep it under 100 characters.`;
-    
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-goog-api-key': 'AIzaSyBrcXjJl74fJwtDLgVtZJ3UrEEjUCgaK1U'
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt
-              }
-            ]
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch from Gemini API');
-    }
-
-    const data = await response.json();
-    const description = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    
-    return description || `Convenient ${amenityType} located ${distance} away`;
-  } catch (error) {
-    console.warn('Gemini API error, using fallback description:', error);
-    return `Convenient ${amenityType} located ${distance} away`;
-  }
-};
-
-// Generate location caption using Gemini AI
-const generateLocationCaption = async (propertyName: string, amenityCount: number): Promise<string> => {
-  try {
-    const prompt = `Generate a compelling, short caption (under 60 characters) for a property called "${propertyName}" that highlights its prime location with ${amenityCount} nearby amenities. Make it sound attractive for potential renters.`;
-    
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-goog-api-key': 'AIzaSyBrcXjJl74fJwtDLgVtZJ3UrEEjUCgaK1U'
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt
-              }
-            ]
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch from Gemini API');
-    }
-
-    const data = await response.json();
-    const caption = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    
-    return caption || `Prime location with ${amenityCount} nearby amenities`;
-  } catch (error) {
-    console.warn('Gemini API error, using fallback caption:', error);
-    return `Prime location with ${amenityCount} nearby amenities`;
-  }
-};
 
 // Sample amenity data - in a real app, this would come from a mapping API like Google Places or Foursquare
 const generateNearbyAmenities = (propertyCoords: [number, number]): Amenity[] => {
@@ -282,52 +204,13 @@ export function PropertyAmenitiesMap({
   propertyCoordinates, 
   className = "" 
 }: PropertyAmenitiesMapProps) {
-  const [amenities, setAmenities] = useState<Amenity[]>([]);
-  const [filteredAmenities, setFilteredAmenities] = useState<Amenity[]>([]);
+  const [amenities] = useState<Amenity[]>(() => generateNearbyAmenities(propertyCoordinates));
+  const [filteredAmenities, setFilteredAmenities] = useState<Amenity[]>(amenities);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set([
     'restaurant', 'shopping', 'school', 'transportation', 'park', 'healthcare'
   ]));
   const [showFilters, setShowFilters] = useState(false);
-  const [locationCaption, setLocationCaption] = useState<string>('');
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const mapRef = useRef<any>(null);
-
-  useEffect(() => {
-    const loadAmenities = async () => {
-      const baseAmenities = generateNearbyAmenities(propertyCoordinates);
-      
-      // Generate AI descriptions for each amenity
-      const amenitiesWithAI = await Promise.all(
-        baseAmenities.map(async (amenity) => {
-          try {
-            const aiDescription = await generateAmenityDescription(
-              amenity.type, 
-              amenity.name, 
-              amenity.distance
-            );
-            return { ...amenity, aiDescription };
-          } catch (error) {
-            console.warn(`Failed to generate AI description for ${amenity.name}:`, error);
-            return amenity;
-          }
-        })
-      );
-      
-      setAmenities(amenitiesWithAI);
-      setFilteredAmenities(amenitiesWithAI);
-      
-      // Generate location caption
-      try {
-        const caption = await generateLocationCaption(propertyName || 'Property', amenitiesWithAI.length);
-        setLocationCaption(caption);
-      } catch (error) {
-        console.warn('Failed to generate location caption:', error);
-        setLocationCaption(`Prime location with ${amenitiesWithAI.length} nearby amenities`);
-      }
-    };
-
-    loadAmenities();
-  }, [propertyName, propertyCoordinates]);
 
   useEffect(() => {
     const filtered = amenities.filter(amenity => activeFilters.has(amenity.type));
@@ -364,48 +247,15 @@ export function PropertyAmenitiesMap({
     return labels[type] || type;
   };
 
-  const regenerateAIContent = async () => {
-    setIsGeneratingAI(true);
-    try {
-      // Regenerate AI descriptions for all amenities
-      const amenitiesWithAI = await Promise.all(
-        amenities.map(async (amenity) => {
-          try {
-            const aiDescription = await generateAmenityDescription(
-              amenity.type, 
-              amenity.name, 
-              amenity.distance
-            );
-            return { ...amenity, aiDescription };
-          } catch (error) {
-            console.warn(`Failed to regenerate AI description for ${amenity.name}:`, error);
-            return amenity;
-          }
-        })
-      );
-      
-      setAmenities(amenitiesWithAI);
-      setFilteredAmenities(amenitiesWithAI.filter(amenity => activeFilters.has(amenity.type)));
-      
-      // Regenerate location caption
-      const caption = await generateLocationCaption(propertyName || 'Property', amenitiesWithAI.length);
-      setLocationCaption(caption);
-    } catch (error) {
-      console.error('Failed to regenerate AI content:', error);
-    } finally {
-      setIsGeneratingAI(false);
-    }
-  };
-
   return (
-    <div className={className}>
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
+    <Card className={className}>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-blue-600" />
-            <h4 className="font-medium text-gray-900">AI-Powered Amenities Map</h4>
-          </div>
-          <div className="flex gap-2">
+            Nearby Amenities
+          </CardTitle>
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -415,63 +265,14 @@ export function PropertyAmenitiesMap({
               <Filter className="w-4 h-4" />
               Filters
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={regenerateAIContent}
-              disabled={isGeneratingAI}
-              className="flex items-center gap-2"
-            >
-              <Sparkles className="w-4 h-4" />
-              {isGeneratingAI ? 'Generating...' : 'Regenerate AI'}
-            </Button>
           </div>
         </div>
         <p className="text-sm text-gray-600">
-          {locationCaption || `Prime location with easy access to restaurants, shopping, schools, and more`}
+          Prime location with easy access to restaurants, shopping, schools, and more
         </p>
-      </div>
+      </CardHeader>
       
-      <div>
-        {/* AI-Generated Amenity Cards */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="font-medium text-gray-900 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-600" />
-              AI-Generated Amenity Highlights
-            </h4>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {amenities.slice(0, 6).map((amenity) => (
-              <div key={amenity.id} className="p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
-                <div className="flex items-start gap-3">
-                  <div className={`p-2 rounded-lg ${amenityColors[amenity.type]} text-white flex-shrink-0`}>
-                    {amenityIcons[amenity.type]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h5 className="font-semibold text-sm text-gray-900 mb-1 truncate">
-                      {amenity.name}
-                    </h5>
-                    <p className="text-xs text-gray-600 mb-2">
-                      {amenity.distance} • {getAmenityTypeLabel(amenity.type)}
-                    </p>
-                    <p className="text-xs text-gray-700 leading-relaxed">
-                      {amenity.aiDescription || amenity.description}
-                    </p>
-                    {amenity.rating && (
-                      <div className="flex items-center gap-1 mt-2">
-                        <span className="text-yellow-600 text-xs">★</span>
-                        <span className="text-xs text-gray-600">{amenity.rating}/5</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
+      <CardContent>
         {/* Filter Panel */}
         {showFilters && (
           <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
@@ -582,9 +383,9 @@ export function PropertyAmenitiesMap({
                           </div>
                         )}
                         
-                        <p className="text-xs text-gray-600">
-                          {amenity.aiDescription || amenity.description}
-                        </p>
+                        {amenity.description && (
+                          <p className="text-xs text-gray-600">{amenity.description}</p>
+                        )}
                       </div>
                       
                       <Badge 
@@ -651,7 +452,7 @@ export function PropertyAmenitiesMap({
             Click on amenity markers for details • Blue circle shows 0.5 mile walking radius
           </p>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
