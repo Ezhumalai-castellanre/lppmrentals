@@ -196,7 +196,7 @@ export default function MaintenancePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-white py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -359,11 +359,11 @@ export default function MaintenancePage() {
                   <FileUpload
                     onFileChange={(files) => setFormData(prev => ({ ...prev, images: Array.from(files) }))}
                     accept=".jpg,.jpeg,.png"
-                    multiple={true}
-                    maxFiles={5}
+                    multiple={false}
+                    maxFiles={1}
                     maxSize={5}
-                    label="Upload Photos"
-                    description="Upload photos of the issue (max 5MB each)"
+                    label="Upload Photo"
+                    description="Upload a photo of the issue (max 5MB)"
                   />
                 </div>
 

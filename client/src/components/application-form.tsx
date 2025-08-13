@@ -267,6 +267,10 @@ export function ApplicationForm() {
       landlordEmail: ''
     },
     occupants: [], // Each occupant: { name, relationship, dob, ssn, age, ssnDocument, ssnEncryptedDocument, documents }
+    
+    // Conditional flags
+    hasCoApplicant: false,
+    hasGuarantor: false,
   });
   const [signatures, setSignatures] = useState<any>({});
   const [signatureTimestamps, setSignatureTimestamps] = useState<any>({});
@@ -295,6 +299,7 @@ export function ApplicationForm() {
   // Welcome message state
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(true);
   const [welcomeMessage, setWelcomeMessage] = useState('');
+  const [isDataAutoMapped, setIsDataAutoMapped] = useState(false);
   
 
 
@@ -334,6 +339,8 @@ export function ApplicationForm() {
       );
     }
   }, [units, formData.application?.buildingAddress, formData.application?.apartmentNumber, formData.application?.apartmentType]);
+
+
 
 
 
@@ -411,10 +418,53 @@ export function ApplicationForm() {
     mode: "onChange", // Enable real-time validation
   });
 
+  // Sync checkbox states with form field values
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'hasCoApplicant') {
+        console.log('👀 Form field hasCoApplicant changed:', value.hasCoApplicant);
+        setHasCoApplicant(value.hasCoApplicant || false);
+      }
+      if (name === 'hasGuarantor') {
+        console.log('👀 Form field hasGuarantor changed:', value.hasGuarantor);
+        setHasGuarantor(value.hasGuarantor || false);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
   // Helper function to get current user's zoneinfo (source of truth for LPPM numbers)
   const getCurrentUserZoneinfo = useCallback(() => {
     return user?.zoneinfo || user?.applicantId;
   }, [user?.zoneinfo, user?.applicantId]);
+
+  // Helper function to check if co-applicant has meaningful data
+  const hasCoApplicantData = useCallback((coApplicant: any) => {
+    if (!coApplicant) return false;
+    
+    // Check for any meaningful co-applicant data
+    const hasBasicInfo = coApplicant.name || coApplicant.email || coApplicant.phone || coApplicant.ssn;
+    const hasAddressInfo = coApplicant.address || coApplicant.city || coApplicant.state || coApplicant.zip;
+    const hasEmploymentInfo = coApplicant.employmentType || coApplicant.employerName || coApplicant.employerPhone;
+    const hasFinancialInfo = coApplicant.monthlyIncome || coApplicant.bankRecords;
+    const hasDocuments = coApplicant.documents && Object.keys(coApplicant.documents).length > 0;
+    
+    return hasBasicInfo || hasAddressInfo || hasEmploymentInfo || hasFinancialInfo || hasDocuments;
+  }, []);
+
+  // Helper function to check if guarantor has meaningful data
+  const hasGuarantorData = useCallback((guarantor: any) => {
+    if (!guarantor) return false;
+    
+    // Check for any meaningful guarantor data
+    const hasBasicInfo = guarantor.name || guarantor.email || guarantor.phone || guarantor.ssn;
+    const hasAddressInfo = guarantor.address || guarantor.city || guarantor.state || guarantor.zip;
+    const hasEmploymentInfo = guarantor.employmentType || guarantor.employerName || guarantor.employerPhone;
+    const hasFinancialInfo = guarantor.monthlyIncome || guarantor.bankRecords;
+    const hasDocuments = guarantor.documents && Object.keys(guarantor.documents).length > 0;
+    
+    return hasBasicInfo || hasAddressInfo || hasEmploymentInfo || hasFinancialInfo || hasDocuments;
+  }, []);
 
   // Auto-map user information to Primary Applicant Information
   useEffect(() => {
@@ -433,6 +483,11 @@ export function ApplicationForm() {
         if (fullName) {
           form.setValue('applicantName', fullName);
           updateFormData('applicant', 'name', fullName);
+          // Also update the formData directly to ensure consistency
+          setFormData((prev: any) => ({
+            ...prev,
+            applicantName: fullName
+          }));
           console.log('✅ Mapped user name:', fullName);
         } else {
           console.log('ℹ️ No user name available for auto-mapping');
@@ -442,6 +497,11 @@ export function ApplicationForm() {
         if (user.email) {
           form.setValue('applicantEmail', user.email);
           updateFormData('applicant', 'email', user.email);
+          // Also update the formData directly to ensure consistency
+          setFormData((prev: any) => ({
+            ...prev,
+            applicantEmail: user.email
+          }));
           console.log('✅ Mapped user email:', user.email);
         } else {
           console.log('ℹ️ No user email available for auto-mapping');
@@ -451,10 +511,18 @@ export function ApplicationForm() {
         if (user.phone_number) {
           form.setValue('applicantPhone', user.phone_number);
           updateFormData('applicant', 'phone', user.phone_number);
+          // Also update the formData directly to ensure consistency
+          setFormData((prev: any) => ({
+            ...prev,
+            applicantPhone: user.phone_number
+          }));
           console.log('✅ Mapped user phone:', user.phone_number);
         } else {
           console.log('ℹ️ No user phone available for auto-mapping');
         }
+        
+        // Set flag that data was auto-mapped (not loaded from draft)
+        setIsDataAutoMapped(true);
         
         console.log('✅ Auto-mapping completed for user:', user.username);
         console.log('📊 Auto-mapping summary:', {
@@ -561,6 +629,9 @@ export function ApplicationForm() {
           }
           
           setFormData(parsedFormData);
+          
+          // Reset auto-mapped flag since we're loading from draft (not auto-mapping)
+          setIsDataAutoMapped(false);
           
           // Restore current step
           if (draftData.current_step !== undefined) {
@@ -794,6 +865,18 @@ export function ApplicationForm() {
               form.setValue('coApplicantLandlordEmail', coApplicant.landlordEmail || '');
               console.log('🏠 Set coApplicantLandlordEmail:', coApplicant.landlordEmail || '');
             }
+            
+            // Auto-check co-applicant checkbox if there's co-applicant data but no explicit flag
+            if (parsedFormData.hasCoApplicant === undefined && hasCoApplicantData(coApplicant)) {
+              console.log('🔍 Auto-detected co-applicant data, checking checkbox');
+              setHasCoApplicant(true);
+              form.setValue('hasCoApplicant', true);
+              // Also update formData state
+              setFormData((prev: any) => ({
+                ...prev,
+                hasCoApplicant: true
+              }));
+            }
           }
           
           // Restore guarantor information (only fields that exist in schema)
@@ -816,14 +899,32 @@ export function ApplicationForm() {
               form.setValue('guarantorLandlordEmail', guarantor.landlordEmail || '');
               console.log('🏠 Set guarantorLandlordEmail:', guarantor.landlordEmail || '');
             }
+            
+            // Auto-check guarantor checkbox if there's guarantor data but no explicit flag
+            if (parsedFormData.hasGuarantor === undefined && hasGuarantorData(guarantor)) {
+              console.log('🔍 Auto-detected guarantor data, checking checkbox');
+              setHasGuarantor(true);
+              form.setValue('hasGuarantor', true);
+              // Also update formData state
+              setFormData((prev: any) => ({
+                ...prev,
+                hasGuarantor: true
+              }));
+            }
           }
           
           // Restore co-applicant and guarantor flags
           if (parsedFormData.hasCoApplicant !== undefined) {
+            console.log('🔄 Restoring hasCoApplicant:', parsedFormData.hasCoApplicant);
             setHasCoApplicant(parsedFormData.hasCoApplicant);
+            // Also set the form field value to keep them in sync
+            form.setValue('hasCoApplicant', parsedFormData.hasCoApplicant);
           }
           if (parsedFormData.hasGuarantor !== undefined) {
+            console.log('🔄 Restoring hasGuarantor:', parsedFormData.hasGuarantor);
             setHasGuarantor(parsedFormData.hasGuarantor);
+            // Also set the form field value to keep them in sync
+            form.setValue('hasGuarantor', parsedFormData.hasGuarantor);
           }
           
               // Force form to re-render with the restored values
@@ -831,7 +932,21 @@ export function ApplicationForm() {
       form.reset(form.getValues());
       console.log('🔄 Form reset completed with values:', form.getValues());
       
-          // Ensure apartment fields are properly synchronized after form reset
+      // Re-sync checkbox values after form reset to ensure they're properly maintained
+      if (parsedFormData.hasCoApplicant !== undefined) {
+        form.setValue('hasCoApplicant', parsedFormData.hasCoApplicant);
+        console.log('✅ Re-syncing hasCoApplicant after form reset:', parsedFormData.hasCoApplicant);
+        // Also ensure the state is in sync
+        setHasCoApplicant(parsedFormData.hasCoApplicant);
+      }
+      if (parsedFormData.hasGuarantor !== undefined) {
+        form.setValue('hasGuarantor', parsedFormData.hasGuarantor);
+        console.log('✅ Re-syncing hasGuarantor after form reset:', parsedFormData.hasGuarantor);
+        // Also ensure the state is in sync
+        setHasGuarantor(parsedFormData.hasGuarantor);
+      }
+      
+      // Ensure apartment fields are properly synchronized after form reset
     if (parsedFormData.application?.apartmentNumber) {
       form.setValue('apartmentNumber', parsedFormData.application.apartmentNumber);
       console.log('🏠 Re-syncing apartmentNumber after form reset:', parsedFormData.application.apartmentNumber);
@@ -911,10 +1026,18 @@ export function ApplicationForm() {
       console.log('⏰ Re-syncing applicantLengthAtAddressMonths after form reset:', parsedFormData.applicant.lengthAtAddressMonths);
     }
     
-    // Force a re-render by updating the formData state
-    setFormData(prev => ({
-      ...prev,
-      application: {
+          // Log the final checkbox states after restoration
+      console.log('🎯 Final checkbox states after restoration:', {
+        hasCoApplicant: parsedFormData.hasCoApplicant,
+        hasGuarantor: parsedFormData.hasGuarantor,
+        coApplicantDataExists: parsedFormData.coApplicant ? hasCoApplicantData(parsedFormData.coApplicant) : false,
+        guarantorDataExists: parsedFormData.guarantor ? hasGuarantorData(parsedFormData.guarantor) : false
+      });
+      
+      // Force a re-render by updating the formData state
+      setFormData((prev: any) => ({
+        ...prev,
+        application: {
         ...prev.application,
         apartmentNumber: parsedFormData.application?.apartmentNumber || '',
         apartmentType: parsedFormData.application?.apartmentType || ''
@@ -2057,42 +2180,12 @@ export function ApplicationForm() {
       // Log a safe snapshot of formData to avoid proxies/refs
       const formDataSnapshot = JSON.parse(JSON.stringify(formData));
       
-      // Enhanced FormData snapshot with webhook responses and application_id
-      const enhancedFormDataSnapshot = {
-        ...formDataSnapshot,
-        application_id: user?.zoneinfo || user?.applicantId || 'unknown',
-        webhookSummary: getWebhookSummary()
-      };
-      
-      console.log('🧾 === ENHANCED FORM DATA SNAPSHOT BEFORE JUMPING TO STEP ===');
-      console.log('📊 Form Data:', enhancedFormDataSnapshot);
-      console.log('🆔 Application ID:', enhancedFormDataSnapshot.application_id);
-      console.log('📈 Webhook Summary:', enhancedFormDataSnapshot.webhookSummary);
+      console.log('🧾 === FORM DATA SNAPSHOT BEFORE JUMPING TO STEP ===');
+      console.log('📊 Form Data:', formDataSnapshot);
       console.log('🎯 Jumping to step:', step);
-      console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
+      console.log('=== END FORM DATA SNAPSHOT ===');
 
-      // Save draft to DynamoDB before jumping to step
-      if (user?.applicantId) {
-        const draftData: DraftData = {
-          applicantId: user.applicantId,
-          reference_id: referenceId,
-          form_data: enhancedFormDataSnapshot,
-          current_step: currentStep,
-          last_updated: new Date().toISOString(),
-          status: 'draft',
-          uploaded_files_metadata: uploadedFilesMetadata,
-          webhook_responses: webhookResponses,
-          signatures: signatures,
-          encrypted_documents: encryptedDocuments,
-        };
-
-        const saveResult = await dynamoDBService.saveDraft(draftData);
-        if (saveResult) {
-          console.log('💾 Draft saved to DynamoDB before jumping to step:', step);
-        } else {
-          console.warn('⚠️ Failed to save draft to DynamoDB');
-        }
-      }
+      // No draft saving - just navigate to step
 
     } catch (err) {
       console.warn('FormData logging failed:', err);
@@ -3829,8 +3922,8 @@ export function ApplicationForm() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-8">
-              {/* Auto-mapping notification */}
-              {user && (user.email || user.phone_number || user.name || (user.given_name && user.family_name)) && (
+              {/* Auto-mapping notification - only show when data was actually auto-mapped */}
+              {isDataAutoMapped && user && (user.email || user.phone_number || user.name || (user.given_name && user.family_name)) && (
                 <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-md">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center text-blue-800">
@@ -3850,6 +3943,8 @@ export function ApplicationForm() {
                         updateFormData('applicant', 'name', '');
                         updateFormData('applicant', 'email', '');
                         updateFormData('applicant', 'phone', '');
+                        // Reset the auto-mapped flag
+                        setIsDataAutoMapped(false);
                         toast({
                           title: "Auto-filled data cleared",
                           description: "You can now enter your information manually",
@@ -4488,8 +4583,15 @@ export function ApplicationForm() {
                     id="hasCoApplicant"
                     checked={hasCoApplicant}
                     onCheckedChange={(checked) => {
-                      setHasCoApplicant(checked as boolean);
-                      form.setValue('hasCoApplicant', checked as boolean);
+                      const isChecked = checked as boolean;
+                      console.log('🔘 Co-Applicant checkbox changed:', isChecked);
+                      setHasCoApplicant(isChecked);
+                      form.setValue('hasCoApplicant', isChecked);
+                      // Also update the formData state to keep everything in sync
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        hasCoApplicant: isChecked
+                      }));
                     }}
                   />
                   <Label htmlFor="hasCoApplicant" className="text-base font-medium">
@@ -5268,8 +5370,15 @@ export function ApplicationForm() {
                     id="hasGuarantor"
                     checked={hasGuarantor}
                     onCheckedChange={(checked) => {
-                      setHasGuarantor(checked as boolean);
-                      form.setValue('hasGuarantor', checked as boolean);
+                      const isChecked = checked as boolean;
+                      console.log('🔘 Guarantor checkbox changed:', isChecked);
+                      setHasGuarantor(isChecked);
+                      form.setValue('hasGuarantor', isChecked);
+                      // Also update the formData state to keep everything in sync
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        hasGuarantor: isChecked
+                      }));
                     }}
                   />
                   <Label htmlFor="hasGuarantor" className="text-base font-medium">
@@ -5821,7 +5930,7 @@ export function ApplicationForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 sm:bg-gradient-to-br sm:from-blue-50 sm:to-gray-100 sm:dark:from-gray-900 sm:dark:to-gray-800">
+    <div className="min-h-screen bg-white">
       {/* Welcome Message */}
       {showWelcomeMessage && user && (
         <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">

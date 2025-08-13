@@ -96,6 +96,9 @@ export const SupportingDocuments = ({
     fileType: ''
   });
 
+  // Track which documents have been requested for re-upload
+  const [reuploadRequested, setReuploadRequested] = useState<Record<string, boolean>>({});
+
   const requiredDocuments: CategoryInfo[] = [
     {
       category: "Identity Documents",
@@ -135,8 +138,7 @@ export const SupportingDocuments = ({
           id: "pay_stubs",
           name: "Pay Stubs (Last 2-4)",
           required: true,
-          acceptedTypes: ".jpg,.jpeg,.png,.pdf",
-          multiple: true
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         }
       ]
     },
@@ -154,8 +156,7 @@ export const SupportingDocuments = ({
           id: "bank_statements",
           name: "Bank Statements",
           required: true,
-          acceptedTypes: ".jpg,.jpeg,.png,.pdf",
-          multiple: true
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         },
         {
           id: "accountant_letter",
@@ -824,10 +825,11 @@ export const SupportingDocuments = ({
                                     variant="outline"
                                     size="sm"
                                     onClick={() => {
-                                      // Clear the webhook response to allow re-upload
-                                      if (onWebhookResponse) {
-                                        onWebhookResponse(document.id, null);
-                                      }
+                                      // Set re-upload state to show upload option
+                                      setReuploadRequested(prev => ({
+                                        ...prev,
+                                        [document.id]: true
+                                      }));
                                     }}
                                     className="h-6 px-2 text-xs border-orange-200 text-orange-700 hover:bg-orange-50 flex-shrink-0"
                                   >
@@ -851,26 +853,57 @@ export const SupportingDocuments = ({
                   
 
                   <div>
-                    <FileUpload
-                      onFileChange={(files) => onDocumentChange(document.id, files)}
-                      onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
-                      onWebhookResponse={(response) => onWebhookResponse?.(document.id, response)}
-                      initialWebhookResponse={formData.webhookResponses?.[document.id]}
-                      accept={document.acceptedTypes}
-                      multiple={document.multiple || false}
-                      maxFiles={document.multiple ? 4 : 1}
-                      maxSize={10}
-                      label={`Upload ${document.name}`}
-                      className="mt-2"
-                      enableEncryption={true}
-                      referenceId={referenceId}
-                      sectionName={document.id}
-                      documentName={document.name}
-                      enableWebhook={enableWebhook}
-                      applicationId={applicationId}
-                      zoneinfo={zoneinfo}
-                      commentId={document.id}
-                    />
+                    {/* Only show FileUpload when re-upload is requested or no webhook response exists */}
+                    {(!formData.webhookResponses?.[document.id] || reuploadRequested[document.id]) && (
+                      <>
+                        <FileUpload
+                          onFileChange={(files) => onDocumentChange(document.id, files)}
+                          onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
+                          onWebhookResponse={(response) => {
+                            // Clear re-upload state when file is uploaded
+                            setReuploadRequested(prev => ({
+                              ...prev,
+                              [document.id]: false
+                            }));
+                            onWebhookResponse?.(document.id, response);
+                          }}
+                          initialWebhookResponse={formData.webhookResponses?.[document.id]}
+                          accept={document.acceptedTypes}
+                          multiple={false}
+                          maxFiles={1}
+                          maxSize={10}
+                          label={`Upload ${document.name}`}
+                          className="mt-2"
+                          enableEncryption={true}
+                          referenceId={referenceId}
+                          sectionName={document.id}
+                          documentName={document.name}
+                          enableWebhook={enableWebhook}
+                          applicationId={applicationId}
+                          zoneinfo={zoneinfo}
+                          commentId={document.id}
+                        />
+                        {/* Show cancel button when re-upload is requested */}
+                        {reuploadRequested[document.id] && (
+                          <div className="mt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setReuploadRequested(prev => ({
+                                  ...prev,
+                                  [document.id]: false
+                                }));
+                              }}
+                              className="h-6 px-2 text-xs border-gray-200 text-gray-700 hover:bg-gray-50 flex-shrink-0"
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              Cancel Re-upload
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
                     {/* Hidden input field for webhook response data */}
                     {formData.webhookResponses?.[document.id] && (
                       <input 

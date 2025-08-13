@@ -41,10 +41,10 @@ const LoginPage: React.FC = () => {
   const [generatedUsername, setGeneratedUsername] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<UnitItem | null>(null);
 
-  // Redirect to home page if already authenticated
+  // Redirect to drafts page if already authenticated
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      setLocation('/');
+      setLocation('/drafts');
     }
   }, [isAuthenticated, isLoading, setLocation]);
 
@@ -285,17 +285,17 @@ const LoginPage: React.FC = () => {
   // Don't show login form if already authenticated (redirect will happen via useEffect)
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f2f8fe' }}>
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Redirecting to application...</p>
+          <p className="text-gray-600">Redirecting to drafts...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ backgroundColor: '#f2f8fe' }}>
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-white">
       {/* Logo in Left Corner - Hidden on mobile */}
       <div className="absolute top-8 left-8 z-20 hidden md:block">
         <img 

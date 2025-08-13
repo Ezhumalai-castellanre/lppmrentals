@@ -214,7 +214,7 @@ export default function AvailableRentalsPage() {
   useEffect(() => {
     if (isAuthenticated && user) {
       console.log('User is logged in, redirecting from Available Rentals');
-      setLocation('/'); // Redirect to root where authenticated users see Applications
+      setLocation('/drafts'); // Redirect to drafts page for authenticated users
     }
   }, [isAuthenticated, user, setLocation]);
 
@@ -309,7 +309,7 @@ export default function AvailableRentalsPage() {
   const filteredRentals = getFilteredRentals();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header Section */}
         <div className="text-center mb-12">

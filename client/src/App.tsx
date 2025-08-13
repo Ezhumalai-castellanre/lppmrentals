@@ -30,7 +30,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#f2f8fe' }}>
+      <div className="min-h-screen bg-white">
         <main>
           {children}
         </main>
@@ -48,7 +48,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
             <h1 className="text-lg font-semibold">Rental Applications</h1>
           </div>
         </div>
-        <div className="flex-1 p-4" style={{ backgroundColor: '#f2f8fe' }}>
+        <div className="flex-1 p-4 bg-white">
           {children}
         </div>
       </main>
@@ -154,7 +154,7 @@ function Router() {
         {isAuthenticated ? (
           <ProtectedRoute>
             <AppLayout>
-              <ApplicationForm />
+              <DraftsPage />
             </AppLayout>
           </ProtectedRoute>
         ) : (

@@ -12,7 +12,7 @@ export default function StartNewApplicationPage() {
             <h1 className="text-lg font-semibold">Start New Application</h1>
           </div>
         </div>
-        <div className="flex-1 p-4" style={{ backgroundColor: '#f2f8fe' }}>
+        <div className="flex-1 p-4 bg-white">
           <div className="container mx-auto max-w-4xl">
             <div className="text-center py-12">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">

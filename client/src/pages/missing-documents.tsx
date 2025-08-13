@@ -14,6 +14,21 @@ import { WebhookService } from '@/lib/webhook-service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { getAllApplicantIdFormats, isValidLppmNumber } from '@/lib/utils';
 
+// Helper function to determine if a document type supports multiple files
+const isMultipleFileDocument = (documentName: string): boolean => {
+  const multipleFileDocuments = [
+    'Pay Stubs',
+    'Pay Stubs (Last 2-4)',
+    'Tax Returns',
+    'Tax Returns (Previous Year)',
+    'Bank Statements',
+    'Bank Statement'
+  ];
+  return multipleFileDocuments.some(name => 
+    documentName.toLowerCase().includes(name.toLowerCase())
+  );
+};
+
 interface MissingSubitem {
   id: string;
   name: string;
@@ -396,7 +411,7 @@ export default function MissingDocumentsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-white py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -643,14 +658,15 @@ export default function MissingDocumentsPage() {
                                 <FileUpload
                                   onFileChange={(files) => {
                                     // Only handle file change for non-encrypted uploads
+                                    // Encrypted uploads are handled by onEncryptedFilesChange
                                   }}
                                   onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
                                   accept=".pdf,.jpg,.jpeg,.png"
-                                  multiple={false}
-                                  maxFiles={1}
+                                  multiple={isMultipleFileDocument(item.name)}
+                                  maxFiles={isMultipleFileDocument(item.name) ? 5 : 1}
                                   maxSize={10}
                                   label={`Upload ${item.name}`}
-                                  description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
+                                  description={`Max 10MB. Accepted: PDF, JPG, PNG - Encrypted${isMultipleFileDocument(item.name) ? ' - Multiple files allowed' : ''}`}
                                   className="mb-3"
                                   enableEncryption={true}
                                   referenceId={applicantId}
@@ -691,11 +707,11 @@ export default function MissingDocumentsPage() {
                                   }}
                                   onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
                                   accept=".pdf,.jpg,.jpeg,.png"
-                                  multiple={false}
-                                  maxFiles={1}
+                                  multiple={isMultipleFileDocument(item.name)}
+                                  maxFiles={isMultipleFileDocument(item.name) ? 5 : 1}
                                   maxSize={10}
                                   label={`Upload ${item.name}`}
-                                  description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
+                                  description={`Max 10MB. Accepted: PDF, JPG, PNG - Encrypted${isMultipleFileDocument(item.name) ? ' - Multiple files allowed' : ''}`}
                                   className="mb-3"
                                   enableEncryption={true}
                                   referenceId={applicantId}
@@ -854,11 +870,11 @@ export default function MissingDocumentsPage() {
                                   }}
                                   onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
                                   accept=".pdf,.jpg,.jpeg,.png"
-                                  multiple={false}
-                                  maxFiles={1}
+                                  multiple={isMultipleFileDocument(item.name)}
+                                  maxFiles={isMultipleFileDocument(item.name) ? 5 : 1}
                                   maxSize={10}
                                   label={`Upload ${item.name}`}
-                                  description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
+                                  description={`Max 10MB. Accepted: PDF, JPG, PNG - Encrypted${isMultipleFileDocument(item.name) ? ' - Multiple files allowed' : ''}`}
                                   className="mb-3"
                                   enableEncryption={true}
                                   referenceId={applicantId}
@@ -899,11 +915,11 @@ export default function MissingDocumentsPage() {
                                   }}
                                   onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
                                   accept=".pdf,.jpg,.jpeg,.png"
-                                  multiple={false}
-                                  maxFiles={1}
+                                  multiple={isMultipleFileDocument(item.name)}
+                                  maxFiles={isMultipleFileDocument(item.name) ? 5 : 1}
                                   maxSize={10}
                                   label={`Upload ${item.name}`}
-                                  description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
+                                  description={`Max 10MB. Accepted: PDF, JPG, PNG - Encrypted${isMultipleFileDocument(item.name) ? ' - Multiple files allowed' : ''}`}
                                   className="mb-3"
                                   enableEncryption={true}
                                   referenceId={applicantId}

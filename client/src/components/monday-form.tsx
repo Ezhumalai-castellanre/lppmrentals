@@ -34,7 +34,7 @@ export function MondayForm({ propertyName, unitNumber }: MondayFormProps) {
   }, [propertyName, unitNumber]);
 
   const handleBack = () => {
-    setLocation('/');
+    setLocation('/drafts');
   };
 
   const handleOpenInNewTab = () => {
@@ -44,7 +44,7 @@ export function MondayForm({ propertyName, unitNumber }: MondayFormProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-white py-8">
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Header */}
         <div className="mb-6">
@@ -54,7 +54,7 @@ export function MondayForm({ propertyName, unitNumber }: MondayFormProps) {
             className="mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Rentals
+            Back to Drafts
           </Button>
           
           <Card>

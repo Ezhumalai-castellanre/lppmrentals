@@ -37,20 +37,17 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
     {
       key: "payStubs",
       label: "Pay Stubs (Last 2-4)",
-      accept: ".pdf",
-      multiple: true
+      accept: ".pdf"
     },
     {
       key: "taxReturns",
       label: "Tax Returns (Previous Year)",
-      accept: ".pdf",
-      multiple: true
+      accept: ".pdf"
     },
     {
       key: "bankStatements",
       label: "Bank Statements",
-      accept: ".pdf",
-      multiple: true
+      accept: ".pdf"
     }
   ];
 
@@ -68,9 +65,9 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
             <span className="font-medium">📁 File Upload Limits:</span>
           </p>
           <div className="text-xs text-blue-700 mt-1 space-y-1">
-            <p>• <strong>Single file documents:</strong> Driver's License, Social Security Card, W9 Form, Employment Letter</p>
-            <p>• <strong>Multiple file documents:</strong> Pay Stubs, Tax Returns, Bank Statements (up to 5 files each)</p>
-            <p>• <strong>File size limit:</strong> 10MB per file • <strong>Accepted formats:</strong> JPG, PNG, PDF</p>
+            <p>• <strong>All documents:</strong> Single file upload only</p>
+            <p>• <strong>File size limit:</strong> 10MB per file</p>
+            <p>• <strong>Accepted formats:</strong> JPG, PNG, PDF</p>
           </div>
         </div>
       </CardHeader>
@@ -81,8 +78,8 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
               <FileUpload
                 label={docType.label}
                 accept={docType.accept}
-                multiple={docType.multiple || false}
-                maxFiles={docType.multiple ? 5 : 1}
+                multiple={false}
+                maxFiles={1}
                 maxSize={10}
                 onFileChange={(files) => onDocumentChange(person, docType.key, files)}
                 onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(person, docType.key, encryptedFiles)}

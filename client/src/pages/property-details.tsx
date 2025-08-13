@@ -123,34 +123,11 @@ export default function PropertyDetailsPage() {
     }
   };
 
-  const handleApplyNow = (rental: RentalItem) => {
-    // Build Monday.com form URL with property name and unit number
-    const baseUrl = 'https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1';
-    const params = new URLSearchParams();
-    
-    // Map property name to color_mktgkr4e parameter (e.g., "East 30th Street")
-    if (rental.propertyName) {
-      params.append('color_mktgkr4e', rental.propertyName);
-    }
-    
-    // Map unit number to short_text800omovg parameter (e.g., "6B")
-    if (rental.name) {
-      params.append('short_text800omovg', rental.name);
-    }
-    
-    // Construct the final URL
-    const formUrl = params.toString() ? `${baseUrl}&${params.toString()}` : baseUrl;
-    
-    console.log('Opening Monday.com form in new tab for rental:', rental.name);
-    console.log('Form URL:', formUrl);
-    
-    // Open the form in a new tab
-    window.open(formUrl, '_blank');
-  };
+
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading property details...</p>
@@ -161,14 +138,14 @@ export default function PropertyDetailsPage() {
 
   if (error || !rental) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <Home className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Property Not Found</h2>
           <p className="text-gray-600 mb-4">{error || 'The requested property could not be found.'}</p>
-          <Button onClick={() => setLocation('/')}>
+          <Button onClick={() => setLocation('/drafts')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
+            Go to Drafts
           </Button>
         </div>
       </div>
@@ -197,7 +174,7 @@ export default function PropertyDetailsPage() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <Button variant="ghost" onClick={() => setLocation('/')} className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Back to Listings
+            Back to Home
           </Button>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm">
@@ -324,7 +301,7 @@ export default function PropertyDetailsPage() {
               <p className="text-gray-600 leading-relaxed">
                 This stunning property offers the perfect blend of comfort and convenience. 
                 Located in a prime area, you'll have easy access to all the amenities you need.
-                Contact us to schedule a tour and learn more about this exceptional property.
+                Contact us to learn more about this exceptional property.
               </p>
             </div>
 
@@ -392,22 +369,7 @@ export default function PropertyDetailsPage() {
                   <div className="text-gray-500">per month</div>
                 </div>
 
-                <div className="space-y-3 mb-6">
-                  <Button className="w-full bg-cyan-600 hover:bg-cyan-700">Schedule Tour</Button>
-                  <Button
-                    variant="outline"
-                    className="w-full border-cyan-200 text-cyan-700 hover:bg-cyan-50 bg-transparent"
-                  >
-                    Contact Owner
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full bg-transparent"
-                    onClick={() => handleApplyNow(rental)}
-                  >
-                    Apply Now
-                  </Button>
-                </div>
+                {/* Contact buttons removed as requested */}
 
                 <div className="text-center text-sm text-gray-500">
                   <p>Response time: Usually within 2 hours</p>
