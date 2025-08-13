@@ -200,7 +200,6 @@ export function RentalListings() {
         <div className="bg-white/95 backdrop-blur-sm rounded-xl p-6 max-w-2xl mx-auto shadow-2xl mb-12">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
                   type="text"
                   placeholder="Enter location or property type"
@@ -216,7 +215,7 @@ export function RentalListings() {
               onClick={handleSearch}
             >
               <Search className="h-5 w-5 mr-2" />
-              Search Rentals
+              Search 
             </Button>
           </div>
         </div>
