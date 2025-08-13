@@ -824,9 +824,9 @@ export const DraftCards = () => {
           <div className="text-center py-8 sm:py-12">
             <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8 max-w-md mx-auto">
               <FileText className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No Draft Applications</h3>
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No Applications Yet</h3>
               <p className="text-sm sm:text-base text-gray-600 mb-4">
-                You don't have any saved draft applications yet.
+                You haven't started any applications yet.
               </p>
               <Button asChild>
                 <a href="/application">Start New Application</a>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { 
@@ -7,6 +7,7 @@ import {
   Lock, 
   Clock
 } from 'lucide-react';
+import { dynamoDBService } from '@/lib/dynamodb-service';
 
 import {
   Sidebar,
@@ -27,7 +28,36 @@ import LogoutButton from './logout-button';
 export function AppSidebar() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [hasApplications, setHasApplications] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
+  useEffect(() => {
+    const checkApplications = async () => {
+      if (!user) return;
+      
+      try {
+        setIsLoading(true);
+        let applications: any[] = [];
+        
+        // Check for drafts and submitted applications
+        if (user?.applicantId) {
+          applications = await dynamoDBService.getAllDrafts(user.applicantId);
+        } else if (user?.zoneinfo) {
+          applications = await dynamoDBService.getAllDrafts(user.zoneinfo);
+        }
+        
+        // Set hasApplications to true if there are any applications (draft or submitted)
+        setHasApplications(applications && applications.length > 0);
+      } catch (err) {
+        console.error('Error checking applications:', err);
+        setHasApplications(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkApplications();
+  }, [user]);
 
   if (!user) {
     return null;
@@ -50,16 +80,18 @@ export function AppSidebar() {
       url: "/drafts",
       icon: Clock,
     },
-    {
+    // Only show Missing Documents when there are applications
+    ...(hasApplications ? [{
       title: "Missing Documents",
       url: "/missing-documents",
       icon: FileText,
-    },
-    {
+    }] : []),
+    // Only show Maintenance when there are applications
+    ...(hasApplications ? [{
       title: "Maintenance",
       url: "/maintenance",
       icon: Wrench,
-    },
+    }] : []),
   ];
 
   return (

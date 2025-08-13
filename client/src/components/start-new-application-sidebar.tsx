@@ -57,6 +57,7 @@ export function StartNewApplicationSidebar() {
   const [hasExistingDraft, setHasExistingDraft] = useState(false);
   const [currentDraftStep, setCurrentDraftStep] = useState<number | null>(null);
   const [isCheckingDrafts, setIsCheckingDrafts] = useState(false);
+  const [hasApplications, setHasApplications] = useState(false);
 
   if (!user) {
     return null;
@@ -75,6 +76,9 @@ export function StartNewApplicationSidebar() {
           const drafts = await dynamoDBService.getAllDrafts(userZoneinfo);
           const hasDraft = drafts && drafts.length > 0 && drafts.some(draft => draft.status === 'draft');
           setHasExistingDraft(hasDraft);
+          
+          // Set hasApplications to true if there are any applications (draft or submitted)
+          setHasApplications(drafts && drafts.length > 0);
           
           // Get the current step from the most recent draft
           if (hasDraft) {
@@ -236,18 +240,24 @@ export function StartNewApplicationSidebar() {
                   <span>My Applications</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={() => setLocation('/missing-documents')}>
-                  <FileText className="h-4 w-4" />
-                  <span>Missing Documents</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={() => setLocation('/maintenance')}>
-                  <Wrench className="h-4 w-4" />
-                  <span>Maintenance</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {/* Only show Missing Documents when there are applications */}
+              {hasApplications && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={() => setLocation('/missing-documents')}>
+                    <FileText className="h-4 w-4" />
+                    <span>Missing Documents</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {/* Only show Maintenance when there are applications */}
+              {hasApplications && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={() => setLocation('/maintenance')}>
+                    <Wrench className="h-4 w-4" />
+                    <span>Maintenance</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

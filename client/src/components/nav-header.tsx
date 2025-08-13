@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -7,11 +7,38 @@ import { Badge } from '@/components/ui/badge';
 import { LogOut, Home, Lock, FileText, TestTube, Wrench } from 'lucide-react';
 import LogoutButton from './logout-button';
 import { useLocation } from 'wouter';
+import { dynamoDBService } from '@/lib/dynamodb-service';
 
 const NavHeader: React.FC = () => {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [hasApplications, setHasApplications] = useState(false);
+
+  useEffect(() => {
+    const checkApplications = async () => {
+      if (!user) return;
+      
+      try {
+        let applications: any[] = [];
+        
+        // Check for drafts and submitted applications
+        if (user?.applicantId) {
+          applications = await dynamoDBService.getAllDrafts(user.applicantId);
+        } else if (user?.zoneinfo) {
+          applications = await dynamoDBService.getAllDrafts(user.zoneinfo);
+        }
+        
+        // Set hasApplications to true if there are any applications (draft or submitted)
+        setHasApplications(applications && applications.length > 0);
+      } catch (err) {
+        console.error('Error checking applications:', err);
+        setHasApplications(false);
+      }
+    };
+
+    checkApplications();
+  }, [user]);
 
   if (!user) {
     return null;
@@ -41,25 +68,31 @@ const NavHeader: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-4">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setLocation('/missing-documents')}
-            className="flex items-center space-x-2"
-          >
-            <FileText className="h-4 w-4" />
-            <span>Missing Documents</span>
-          </Button>
+          {/* Only show Missing Documents when there are applications */}
+          {hasApplications && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setLocation('/missing-documents')}
+              className="flex items-center space-x-2"
+            >
+              <FileText className="h-4 w-4" />
+              <span>Missing Documents</span>
+            </Button>
+          )}
           
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setLocation('/maintenance')}
-            className="flex items-center space-x-2"
-          >
-            <Wrench className="h-4 w-4" />
-            <span>Maintenance</span>
-          </Button>
+          {/* Only show Maintenance when there are applications */}
+          {hasApplications && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setLocation('/maintenance')}
+              className="flex items-center space-x-2"
+            >
+              <Wrench className="h-4 w-4" />
+              <span>Maintenance</span>
+            </Button>
+          )}
           
           <Button 
             variant="outline" 
