@@ -17,7 +17,7 @@ export function Header() {
 
           {/* Contact Info & CTA */}
           <div className="hidden lg:flex items-center space-x-4">
-            <Button className="bg-cyan-600 hover:bg-cyan-700">Get Started</Button>
+            <Button className="bg-cyan-600 hover:bg-cyan-700">Apply Now</Button>
           </div>
 
           {/* Mobile Menu Button */}
