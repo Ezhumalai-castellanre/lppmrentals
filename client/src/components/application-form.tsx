@@ -299,9 +299,6 @@ export function ApplicationForm() {
   // Welcome message state
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(true);
   const [welcomeMessage, setWelcomeMessage] = useState('');
-  const [isDataAutoMapped, setIsDataAutoMapped] = useState(false);
-  
-
 
   // Monday.com API state
   const [units, setUnits] = useState<UnitItem[]>([]);
@@ -386,6 +383,8 @@ export function ApplicationForm() {
       applicantLandlordEmail: "",
       applicantCurrentRent: undefined,
       applicantReasonForMoving: "",
+      
+
 
       // Co-Applicant
       coApplicantSsn: "",
@@ -465,79 +464,6 @@ export function ApplicationForm() {
     
     return hasBasicInfo || hasAddressInfo || hasEmploymentInfo || hasFinancialInfo || hasDocuments;
   }, []);
-
-  // Auto-map user information to Primary Applicant Information
-  useEffect(() => {
-    if (user) {
-      try {
-        console.log('🔄 Auto-mapping user information to Primary Applicant Information:', user);
-        
-        // Map user name (combine given_name and family_name if available, fallback to name)
-        let fullName = '';
-        if (user.given_name && user.family_name) {
-          fullName = `${user.given_name} ${user.family_name}`;
-        } else if (user.name) {
-          fullName = user.name;
-        }
-        
-        if (fullName) {
-          form.setValue('applicantName', fullName);
-          updateFormData('applicant', 'name', fullName);
-          // Also update the formData directly to ensure consistency
-          setFormData((prev: any) => ({
-            ...prev,
-            applicantName: fullName
-          }));
-          console.log('✅ Mapped user name:', fullName);
-        } else {
-          console.log('ℹ️ No user name available for auto-mapping');
-        }
-        
-        // Map user email
-        if (user.email) {
-          form.setValue('applicantEmail', user.email);
-          updateFormData('applicant', 'email', user.email);
-          // Also update the formData directly to ensure consistency
-          setFormData((prev: any) => ({
-            ...prev,
-            applicantEmail: user.email
-          }));
-          console.log('✅ Mapped user email:', user.email);
-        } else {
-          console.log('ℹ️ No user email available for auto-mapping');
-        }
-        
-        // Map user phone number
-        if (user.phone_number) {
-          form.setValue('applicantPhone', user.phone_number);
-          updateFormData('applicant', 'phone', user.phone_number);
-          // Also update the formData directly to ensure consistency
-          setFormData((prev: any) => ({
-            ...prev,
-            applicantPhone: user.phone_number
-          }));
-          console.log('✅ Mapped user phone:', user.phone_number);
-        } else {
-          console.log('ℹ️ No user phone available for auto-mapping');
-        }
-        
-        // Set flag that data was auto-mapped (not loaded from draft)
-        setIsDataAutoMapped(true);
-        
-        console.log('✅ Auto-mapping completed for user:', user.username);
-        console.log('📊 Auto-mapping summary:', {
-          name: !!fullName,
-          email: !!user.email,
-          phone: !!user.phone_number
-        });
-      } catch (error) {
-        console.error('❌ Error during auto-mapping:', error);
-        // Continue with form functionality even if auto-mapping fails
-      }
-    } else {
-      console.log('ℹ️ No user available for auto-mapping');
-    }
-  }, [user, form]); // Dependencies: user (when user changes) and form (for setValue)
 
   // Ensure form data always uses current user's zoneinfo
   useEffect(() => {
@@ -630,8 +556,7 @@ export function ApplicationForm() {
           
           setFormData(parsedFormData);
           
-          // Reset auto-mapped flag since we're loading from draft (not auto-mapping)
-          setIsDataAutoMapped(false);
+          // Draft data loaded successfully
           
           // Restore current step
           if (draftData.current_step !== undefined) {
@@ -1220,19 +1145,32 @@ export function ApplicationForm() {
 
   const updateFormData = async (section: string, field: string, value: any) => {
     console.log(`🔄 updateFormData called: section=${section}, field=${field}, value=`, value);
+    console.log(`🔄 Current formData before update:`, formData);
     
     setFormData((prev: any) => {
-      const newFormData = {
-        ...prev,
-        [section]: {
-          ...prev[section],
+      let newFormData;
+      
+      if (section === '') {
+        // Handle top-level fields
+        newFormData = {
+          ...prev,
           [field]: value,
-        },
-      };
+        };
+        console.log(`🔄 Updated top-level formData.${field}:`, value);
+      } else {
+        // Handle nested section fields
+        newFormData = {
+          ...prev,
+          [section]: {
+            ...(prev[section] || {}), // Initialize section if it doesn't exist
+            [field]: value,
+          },
+        };
+        console.log(`🔄 Updated formData.${section}.${field}:`, value);
+        console.log(`🔄 New formData.${section}:`, newFormData[section]);
+      }
       
-      console.log(`🔄 Updated formData.${section}.${field}:`, value);
-      console.log(`🔄 New formData.${section}:`, newFormData[section]);
-      
+      console.log(`🔄 Complete new formData:`, newFormData);
       return newFormData;
     });
 
@@ -3929,41 +3867,7 @@ export function ApplicationForm() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-8">
-              {/* Auto-mapping notification - only show when data was actually auto-mapped */}
-              {isDataAutoMapped && user && (user.email || user.phone_number || user.name || (user.given_name && user.family_name)) && (
-                <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center text-blue-800">
-                      <UserCheck className="w-4 h-4 mr-2" />
-                      <span className="text-sm font-medium">
-                        Your information has been automatically filled from your account
-                      </span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        // Clear auto-filled data
-                        form.setValue('applicantName', '');
-                        form.setValue('applicantEmail', '');
-                        form.setValue('applicantPhone', '');
-                        updateFormData('applicant', 'name', '');
-                        updateFormData('applicant', 'email', '');
-                        updateFormData('applicant', 'phone', '');
-                        // Reset the auto-mapped flag
-                        setIsDataAutoMapped(false);
-                        toast({
-                          title: "Auto-filled data cleared",
-                          description: "You can now enter your information manually",
-                        });
-                      }}
-                      className="text-blue-600 border-blue-300 hover:bg-blue-100"
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                 <div className="col-span-1 md:col-span-2">
                   <FormField
@@ -3977,12 +3881,17 @@ export function ApplicationForm() {
                         <FormControl>
                           <Input 
                             placeholder="Enter full name" 
-                            {...field}
+                            value={field.value || ''}
                             className="input-field w-full mt-1"
                             onChange={(e) => {
                               field.onChange(e);
                               updateFormData('applicant', 'name', e.target.value);
+                              // Also update the top-level field for compatibility
+                              updateFormData('', 'applicantName', e.target.value);
                             }}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
                           />
                         </FormControl>
                         <FormMessage />
@@ -4088,6 +3997,8 @@ export function ApplicationForm() {
                           onChange={(value) => {
                             field.onChange(value);
                             updateFormData('applicant', 'email', value);
+                            // Also update the top-level field for compatibility
+                            updateFormData('', 'applicantEmail', value);
                           }}
                           required={true}
                           className="w-full mt-1"

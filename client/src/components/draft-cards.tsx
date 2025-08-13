@@ -56,6 +56,20 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
   let normalizedFormData: any = {};
   try {
     normalizedFormData = typeof rawFormData === 'string' ? JSON.parse(rawFormData) : (rawFormData || {});
+    console.log('🔍 Raw form_data:', rawFormData);
+    console.log('🔍 Normalized form_data:', normalizedFormData);
+    console.log('🔍 Form_data type:', typeof rawFormData);
+    
+    // Deep inspection of the applicant section
+    if (normalizedFormData.applicant) {
+      console.log('🔍 Applicant section found:', normalizedFormData.applicant);
+      console.log('🔍 Applicant name:', normalizedFormData.applicant.name);
+      console.log('🔍 Applicant email:', normalizedFormData.applicant.email);
+      console.log('🔍 Applicant section keys:', Object.keys(normalizedFormData.applicant));
+    } else {
+      console.log('⚠️ No applicant section found in normalizedFormData');
+      console.log('🔍 Available top-level keys:', Object.keys(normalizedFormData));
+    }
   } catch (e) {
     console.warn('Failed to parse draft.form_data JSON:', e);
     normalizedFormData = {};
@@ -119,6 +133,24 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
     
     extractFields(formData);
     
+    // Debug logging for extracted fields
+    console.log('🔍 All extracted fields:', allFields);
+    console.log('🔍 Applicant fields in allFields:', {
+      applicantName: allFields.applicantName,
+      applicantEmail: allFields.applicantEmail,
+      applicant_name: allFields.applicant_name,
+      applicant_email: allFields.applicant_email
+    });
+    
+    // Debug the extractFields function specifically for applicant data
+    console.log('🔍 ExtractFields debugging for applicant:', {
+      formDataHasApplicant: !!formData.applicant,
+      formDataApplicantType: typeof formData.applicant,
+      formDataApplicantKeys: formData.applicant ? Object.keys(formData.applicant) : [],
+      extractedApplicantKeys: Object.keys(allFields).filter(key => key.startsWith('applicant')),
+      allExtractedKeys: Object.keys(allFields)
+    });
+    
     // Special handling for bankRecords - extract from nested structure
     if (formData.applicant && formData.applicant.bankRecords) {
       allFields.applicantBankRecords = formData.applicant.bankRecords;
@@ -140,6 +172,54 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
       console.log('🏦 bankRecords isArray:', Array.isArray(allFields.bankRecords));
     }
     
+    // Enhanced applicant field extraction with comprehensive fallbacks
+    const applicantName = formData.applicant?.name ?? 
+                         formData.applicantName ?? 
+                         allFields.applicant_name ?? 
+                         allFields.applicantName ?? 
+                         allFields.name ?? 
+                         'Not specified';
+                         
+    const applicantEmail = formData.applicant?.email ?? 
+                          formData.applicantEmail ?? 
+                          allFields.applicant_email ?? 
+                          allFields.applicantEmail ?? 
+                          allFields.email ?? 
+                          'Not specified';
+    
+    // Direct debugging of the applicant section
+    console.log('🔍 Direct applicant section check:', {
+      formDataApplicant: formData.applicant,
+      applicantNameDirect: formData.applicant?.name,
+      applicantEmailDirect: formData.applicant?.email,
+      applicantSectionKeys: formData.applicant ? Object.keys(formData.applicant) : [],
+      applicantSectionValues: formData.applicant ? Object.values(formData.applicant) : []
+    });
+    
+    console.log('🔍 Enhanced applicant field extraction:', {
+      applicantName,
+      applicantEmail,
+      sources: {
+        nested: formData.applicant?.name,
+        topLevel: formData.applicantName,
+        extracted_name: allFields.applicant_name,
+        extracted_applicantName: allFields.applicantName,
+        extracted_name_direct: allFields.name,
+        extracted_email_direct: allFields.email
+      }
+    });
+    
+    // Additional debugging for the specific issue
+    console.log('🔍 FormData structure analysis:', {
+      hasApplicantSection: !!formData.applicant,
+      applicantSectionType: typeof formData.applicant,
+      applicantSectionKeys: formData.applicant ? Object.keys(formData.applicant) : [],
+      applicantNameValue: formData.applicant?.name,
+      applicantEmailValue: formData.applicant?.email,
+      allFieldsKeys: Object.keys(allFields),
+      applicantRelatedKeys: Object.keys(allFields).filter(key => key.includes('applicant') || key.includes('name') || key.includes('email'))
+    });
+    
     return {
       // Core application fields
       buildingAddress: formData.buildingAddress ?? formData.application?.buildingAddress ?? 'Not specified',
@@ -147,8 +227,8 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
       apartmentType: formData.apartmentType ?? formData.application?.apartmentType ?? 'Not specified',
       monthlyRent: formData.monthlyRent ?? formData.application?.monthlyRent ?? 'Not specified',
       moveInDate: formData.moveInDate ?? formData.application?.moveInDate ?? 'Not specified',
-      applicantName: formData.applicant?.name ?? formData.applicantName ?? 'Not specified',
-      applicantEmail: formData.applicant?.email ?? formData.applicantEmail ?? 'Not specified',
+      applicantName,
+      applicantEmail,
       
       // All other fields
       ...allFields
@@ -191,6 +271,59 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
   console.log('🔍 Full draft object:', draft);
   console.log('🔍 Draft form_data (JSON):', JSON.stringify(normalizedFormData, null, 2));
   console.log('🔍 Draft form_data type:', typeof draft.form_data);
+  
+  // Check if the draft actually contains applicant data
+  console.log('🔍 Draft data completeness check:', {
+    hasFormData: !!draft.form_data,
+    formDataKeys: Object.keys(normalizedFormData),
+    hasApplicantSection: !!normalizedFormData.applicant,
+    applicantData: normalizedFormData.applicant,
+    applicantNameInDraft: normalizedFormData.applicant?.name,
+    applicantEmailInDraft: normalizedFormData.applicant?.email,
+    draftStatus: draft.status,
+    lastUpdated: draft.last_updated
+  });
+  
+  // Deep dive into the applicant section structure
+  if (normalizedFormData.applicant) {
+    console.log('🔍 Applicant section deep dive:', {
+      applicantSection: normalizedFormData.applicant,
+      applicantSectionType: typeof normalizedFormData.applicant,
+      applicantSectionKeys: Object.keys(normalizedFormData.applicant),
+      applicantNameValue: normalizedFormData.applicant.name,
+      applicantEmailValue: normalizedFormData.applicant.email,
+      applicantNameType: typeof normalizedFormData.applicant.name,
+      applicantEmailType: typeof normalizedFormData.applicant.email
+    });
+  } else {
+    console.log('⚠️ No applicant section found in normalizedFormData');
+    console.log('🔍 Available top-level keys:', Object.keys(normalizedFormData));
+    console.log('🔍 Looking for applicant-related keys:', Object.keys(normalizedFormData).filter(key => key.includes('applicant') || key.includes('name') || key.includes('email')));
+  }
+  
+  // Debug logging for applicant fields specifically
+  console.log('🔍 Applicant fields debug:', {
+    applicantName: normalizedFormData.applicantName,
+    applicantEmail: normalizedFormData.applicantEmail,
+    applicantNameFromNested: normalizedFormData.applicant?.name,
+    applicantEmailFromNested: normalizedFormData.applicant?.email,
+    allApplicantFields: normalizedFormData.applicant,
+    applicantSection: normalizedFormData.applicant
+  });
+  
+  console.log('🔍 Form summary applicant fields:', {
+    applicantName: formSummary.applicantName,
+    applicantEmail: formSummary.applicantEmail
+  });
+  
+  // Additional debugging for the specific fields mentioned by user
+  console.log('🔍 User mentioned fields debug:', {
+    fullName: normalizedFormData.applicant?.name,
+    email: normalizedFormData.applicant?.email,
+    phone: normalizedFormData.applicant?.phone,
+    ssn: normalizedFormData.applicant?.ssn,
+    dob: normalizedFormData.applicant?.dob
+  });
   
   const progressPercentage = Math.round((draft.current_step / 12) * 100); // Assuming 8 total steps
 
@@ -617,7 +750,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
         {draft.status === 'draft' && (
           <div className="pt-4 border-t border-gray-100">
             <div className="text-center">
-          
+           
             </div>
           </div>
         )}
