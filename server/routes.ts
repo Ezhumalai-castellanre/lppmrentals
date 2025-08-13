@@ -621,7 +621,7 @@ console.log("response", response);
                 subitems {
                   id
                   name
-                  column_values(ids: ["status", "color_mksyqx5h"]) {
+                  column_values(ids: ["status", "color_mksyqx5h", "text_mkt9gepz", "text_mkt9x4qd", "text_mktanfxj", "link_mktsj2d"]) {
                     id
                     text
                     ... on StatusValue {
@@ -711,19 +711,43 @@ console.log("response", response);
       
       console.log(`🔍 Searching for applicant IDs: ${searchApplicantIds.join(', ')}`);
       
-      // Find items matching any of the possible applicant IDs
+      // Find items that have subitems matching any of the possible applicant IDs
       const matchingItems = items.filter((item: any) => {
-        const itemApplicantId = item.column_values.find((cv: any) => cv.id === "text_mksxyax3")?.text;
-        const matches = searchApplicantIds.includes(itemApplicantId);
+        const subitems = item.subitems || [];
         
-        if (matches) {
-          console.log(`✅ Found matching item: ${item.name} with applicant ID: ${itemApplicantId}`);
+        // Check if any subitem has the matching applicant ID
+        const hasMatchingSubitem = subitems.some((sub: any) => {
+          const subitemApplicantId = sub.column_values.find((cv: any) => cv.id === "text_mkt9gepz")?.text;
+          const matches = searchApplicantIds.includes(subitemApplicantId);
+          
+          if (matches) {
+            console.log(`🔍 Found matching subitem in ${item.name}: ${sub.name} with applicant ID: "${subitemApplicantId}"`);
+          }
+          
+          return matches;
+        });
+        
+        if (hasMatchingSubitem) {
+          console.log(`✅ Found matching item: ${item.name} with matching subitems`);
         }
         
-        return matches;
+        return hasMatchingSubitem;
       });
 
       console.log('📊 Found', matchingItems.length, 'items matching applicant ID', `"${applicantId}"`);
+
+      // Debug: Log all subitems and their applicant IDs for matching items
+      for (const item of matchingItems) {
+        console.log(`🔍 Item: ${item.name} (ID: ${item.id})`);
+        const subitems = item.subitems || [];
+        console.log(`  - Has ${subitems.length} subitems`);
+        
+        subitems.forEach((sub: any, index: number) => {
+          const subitemApplicantId = sub.column_values.find((cv: any) => cv.id === "text_mkt9gepz")?.text;
+          const status = sub.column_values.find((cv: any) => cv.id === "status")?.label || sub.column_values.find((cv: any) => cv.id === "status")?.text;
+          console.log(`    Subitem ${index + 1}: ${sub.name} - Applicant ID: "${subitemApplicantId}", Status: "${status}"`);
+        });
+      }
 
       const results = [];
 
@@ -743,23 +767,59 @@ console.log("response", response);
           const statusValue = sub.column_values.find((cv: any) => cv.id === "status");
           const status = statusValue?.label || statusValue?.text;
           const applicantType = sub.column_values.find((cv: any) => cv.id === "color_mksyqx5h")?.text || "Unknown";
+          const subitemApplicantId = sub.column_values.find((cv: any) => cv.id === "text_mkt9gepz")?.text;
           
-          if (["Missing", "Received", "Rejected"].includes(status)) {
+          console.log(`🔍 Processing subitem: ${sub.name} - Applicant ID: "${subitemApplicantId}", Status: "${status}", Type: "${applicantType}"`);
+          
+          // Only include subitems that match the requested applicant ID
+          if (searchApplicantIds.includes(subitemApplicantId) && ["Missing", "Received", "Rejected"].includes(status)) {
+            console.log(`✅ Adding subitem to results: ${sub.name} (${status}) for applicant ${subitemApplicantId}`);
+            
+            // Extract additional useful information from subitem column values
+            const documentType = sub.column_values.find((cv: any) => cv.id === "text_mkt9x4qd")?.text || null;
+            const applicantId = subitemApplicantId;
+            const documentKey = sub.column_values.find((cv: any) => cv.id === "text_mktanfxj")?.text || null;
+            const fileLink = sub.column_values.find((cv: any) => cv.id === "link_mktsj2d")?.text || null;
+            
             results.push({
               id: sub.id,
               name: sub.name,
               status,
+              applicantType,
+              documentType,
+              applicantId,
+              documentKey,
+              fileLink,
               parentItemId,
               parentItemName,
-              applicantType,
               coApplicantName,
               guarantorName
             });
+          } else {
+            if (!searchApplicantIds.includes(subitemApplicantId)) {
+              console.log(`❌ Skipping subitem: ${sub.name} - Applicant ID "${subitemApplicantId}" doesn't match search criteria`);
+            } else if (!["Missing", "Received", "Rejected"].includes(status)) {
+              console.log(`❌ Skipping subitem: ${sub.name} - Status "${status}" not in allowed list`);
+            }
           }
         }
       }
 
       console.log('✅ Final Results:', results.length, 'missing subitems found');
+      
+      // Log summary of what was found
+      if (results.length > 0) {
+        console.log('📋 Summary of found subitems:');
+        results.forEach((result, index) => {
+          console.log(`  ${index + 1}. ${result.name} (${result.status}) - ${result.applicantType} - ${result.documentType}`);
+        });
+      } else {
+        console.log('⚠️  No results found. This could mean:');
+        console.log('   - No subitems match the applicant ID');
+        console.log('   - All matching subitems have status other than Missing/Received/Rejected');
+        console.log('   - There\'s an issue with the column mapping');
+      }
+      
       res.json(results);
 
     } catch (error) {
