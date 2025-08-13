@@ -58,6 +58,7 @@ export function StartNewApplicationSidebar() {
   const [currentDraftStep, setCurrentDraftStep] = useState<number | null>(null);
   const [isCheckingDrafts, setIsCheckingDrafts] = useState(false);
   const [hasApplications, setHasApplications] = useState(false);
+  const [hasSubmittedApplications, setHasSubmittedApplications] = useState(false);
 
   if (!user) {
     return null;
@@ -78,7 +79,12 @@ export function StartNewApplicationSidebar() {
           setHasExistingDraft(hasDraft);
           
           // Set hasApplications to true if there are any applications (draft or submitted)
-          setHasApplications(drafts && drafts.length > 0);
+          const hasAnyApplications = drafts && drafts.length > 0;
+          setHasApplications(hasAnyApplications);
+          
+          // Set hasSubmittedApplications to true only if there are submitted applications
+          const submittedApps = drafts?.filter(draft => draft.status === 'submitted') || [];
+          setHasSubmittedApplications(submittedApps.length > 0);
           
           // Get the current step from the most recent draft
           if (hasDraft) {
@@ -240,8 +246,8 @@ export function StartNewApplicationSidebar() {
                   <span>My Applications</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {/* Only show Missing Documents when there are applications */}
-              {hasApplications && (
+              {/* Only show Missing Documents when there are submitted applications */}
+              {hasSubmittedApplications && (
                 <SidebarMenuItem>
                   <SidebarMenuButton onClick={() => setLocation('/missing-documents')}>
                     <FileText className="h-4 w-4" />
@@ -249,8 +255,8 @@ export function StartNewApplicationSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              {/* Only show Maintenance when there are applications */}
-              {hasApplications && (
+              {/* Only show Maintenance when there are submitted applications */}
+              {hasSubmittedApplications && (
                 <SidebarMenuItem>
                   <SidebarMenuButton onClick={() => setLocation('/maintenance')}>
                     <Wrench className="h-4 w-4" />

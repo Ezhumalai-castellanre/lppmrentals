@@ -947,14 +947,18 @@ export function ApplicationForm() {
       }
       
       // Ensure apartment fields are properly synchronized after form reset
-    if (parsedFormData.application?.apartmentNumber) {
-      form.setValue('apartmentNumber', parsedFormData.application.apartmentNumber);
-      console.log('🏠 Re-syncing apartmentNumber after form reset:', parsedFormData.application.apartmentNumber);
-    }
-    if (parsedFormData.application?.apartmentType) {
-      form.setValue('apartmentType', parsedFormData.application.apartmentType);
-      console.log('🏠 Re-syncing apartmentType after form reset:', parsedFormData.application.apartmentType);
-    }
+      if (parsedFormData.application?.buildingAddress) {
+        form.setValue('buildingAddress', parsedFormData.application.buildingAddress);
+        console.log('🏢 Re-syncing buildingAddress after form reset:', parsedFormData.application.buildingAddress);
+      }
+      if (parsedFormData.application?.apartmentNumber) {
+        form.setValue('apartmentNumber', parsedFormData.application.apartmentNumber);
+        console.log('🏠 Re-syncing apartmentNumber after form reset:', parsedFormData.application.apartmentNumber);
+      }
+      if (parsedFormData.application?.apartmentType) {
+        form.setValue('apartmentType', parsedFormData.application.apartmentType);
+        console.log('🏘️ Re-syncing apartmentType after form reset:', parsedFormData.application.apartmentType);
+      }
     
     // Ensure city, state, and zip fields are properly synchronized after form reset
     if (parsedFormData.applicant?.city !== undefined) {
@@ -3713,12 +3717,13 @@ export function ApplicationForm() {
                       <FormLabel>Building Address</FormLabel>
                       <FormControl>
                         <Select 
-                          value={field.value}
+                          value={field.value || formData.application?.buildingAddress || ''}
                           onValueChange={(value) => {
                             field.onChange(value);
                             handleBuildingSelect(value);
                           }}
                           disabled={isLoadingUnits}
+                          key={`buildingAddress-${formData.application?.buildingAddress || 'empty'}`}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder={isLoadingUnits ? "Loading..." : "Select building address"} />
@@ -3745,18 +3750,19 @@ export function ApplicationForm() {
                       <FormLabel>Apartment #</FormLabel>
                       <FormControl>
                         <Select 
-                          value={field.value || ''}
+                          value={field.value || formData.application?.apartmentNumber || ''}
                           onValueChange={(value) => {
                             field.onChange(value);
                             handleApartmentSelect(value);
                           }}
                           disabled={!selectedBuilding || availableApartments.length === 0}
+                          key={`apartmentNumber-${formData.application?.apartmentNumber || 'empty'}`}
                         >
                           <SelectTrigger>
                             <SelectValue 
                               placeholder={
-                                field.value 
-                                  ? field.value 
+                                field.value || formData.application?.apartmentNumber
+                                  ? (field.value || formData.application?.apartmentNumber)
                                   : !selectedBuilding 
                                     ? "Select building first" 
                                     : availableApartments.length === 0 
@@ -3839,6 +3845,7 @@ export function ApplicationForm() {
                           className="input-field bg-gray-50"
                           readOnly
                           value={field.value || formData.application?.apartmentType || selectedUnit?.unitType || ''}
+                          key={`apartmentType-${formData.application?.apartmentType || 'empty'}`}
                         />
                       </FormControl>
                       <FormMessage />

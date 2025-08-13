@@ -14,6 +14,7 @@ const NavHeader: React.FC = () => {
   const [, setLocation] = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [hasApplications, setHasApplications] = useState(false);
+  const [hasSubmittedApplications, setHasSubmittedApplications] = useState(false);
 
   useEffect(() => {
     const checkApplications = async () => {
@@ -30,7 +31,12 @@ const NavHeader: React.FC = () => {
         }
         
         // Set hasApplications to true if there are any applications (draft or submitted)
-        setHasApplications(applications && applications.length > 0);
+        const hasAnyApplications = applications && applications.length > 0;
+        setHasApplications(hasAnyApplications);
+        
+        // Set hasSubmittedApplications to true only if there are submitted applications
+        const submittedApps = applications?.filter(app => app.status === 'submitted') || [];
+        setHasSubmittedApplications(submittedApps.length > 0);
       } catch (err) {
         console.error('Error checking applications:', err);
         setHasApplications(false);
@@ -68,8 +74,8 @@ const NavHeader: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-4">
-          {/* Only show Missing Documents when there are applications */}
-          {hasApplications && (
+          {/* Only show Missing Documents when there are submitted applications */}
+          {hasSubmittedApplications && (
             <Button 
               variant="outline" 
               size="sm"
@@ -81,8 +87,8 @@ const NavHeader: React.FC = () => {
             </Button>
           )}
           
-          {/* Only show Maintenance when there are applications */}
-          {hasApplications && (
+          {/* Only show Maintenance when there are submitted applications */}
+          {hasSubmittedApplications && (
             <Button 
               variant="outline" 
               size="sm"

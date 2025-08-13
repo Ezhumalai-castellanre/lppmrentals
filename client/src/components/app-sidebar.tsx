@@ -29,6 +29,7 @@ export function AppSidebar() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [hasApplications, setHasApplications] = useState(false);
+  const [hasSubmittedApplications, setHasSubmittedApplications] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -47,10 +48,23 @@ export function AppSidebar() {
         }
         
         // Set hasApplications to true if there are any applications (draft or submitted)
-        setHasApplications(applications && applications.length > 0);
+        const hasAnyApplications = applications && applications.length > 0;
+        setHasApplications(hasAnyApplications);
+        
+        // Set hasSubmittedApplications to true only if there are submitted applications
+        const submittedApps = applications?.filter(app => app.status === 'submitted') || [];
+        setHasSubmittedApplications(submittedApps.length > 0);
+        
+        console.log('🔍 App Sidebar - Application Check:', {
+          totalApplications: applications?.length || 0,
+          hasApplications: hasAnyApplications,
+          hasSubmittedApplications: submittedApps.length > 0,
+          applications: applications?.map(app => ({ id: app.reference_id, status: app.status }))
+        });
       } catch (err) {
         console.error('Error checking applications:', err);
         setHasApplications(false);
+        setHasSubmittedApplications(false);
       } finally {
         setIsLoading(false);
       }
@@ -80,14 +94,14 @@ export function AppSidebar() {
       url: "/drafts",
       icon: Clock,
     },
-    // Only show Missing Documents when there are applications
-    ...(hasApplications ? [{
+    // Only show Missing Documents when there are submitted applications
+    ...(hasSubmittedApplications ? [{
       title: "Missing Documents",
       url: "/missing-documents",
       icon: FileText,
     }] : []),
-    // Only show Maintenance when there are applications
-    ...(hasApplications ? [{
+    // Only show Maintenance when there are submitted applications
+    ...(hasSubmittedApplications ? [{
       title: "Maintenance",
       url: "/maintenance",
       icon: Wrench,
