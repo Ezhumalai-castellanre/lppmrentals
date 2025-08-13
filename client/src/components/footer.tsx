@@ -111,11 +111,11 @@ export function Footer() {
             <div className="space-y-3">
               <div className="flex items-center space-x-3 text-gray-300">
                 <Phone className="h-4 w-4 text-cyan-400" />
-                <span>(555) 123-4567</span>
+                <span>(212) 221-1111</span>
               </div>
               <div className="flex items-center space-x-3 text-gray-300">
                 <Mail className="h-4 w-4 text-cyan-400" />
-                <span>hello@rentalhub.com</span>
+                <span>leasing@libertyplacepm.com</span>
               </div>
               <div className="flex items-start space-x-3 text-gray-300">
                 <MapPin className="h-4 w-4 text-cyan-400 mt-1" />
@@ -149,7 +149,7 @@ export function Footer() {
       <div className="border-t border-cyan-800">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <p className="text-gray-400 text-sm">© 2024 RentalHub. All rights reserved.</p>
+            <p className="text-gray-400 text-sm">© 2024 LPPM. All rights reserved.</p>
             <div className="flex space-x-6 text-sm">
               <a href="#" className="text-gray-400 hover:text-cyan-400 transition-colors">
                 Accessibility
