@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
-import { Icon } from 'leaflet';
+import { Icon, divIcon } from 'leaflet';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
+
+
 // Fix for default markers in react-leaflet
 delete (Icon.Default.prototype as any)._getIconUrl;
 Icon.Default.mergeOptions({
@@ -28,6 +30,37 @@ Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
+
+// Custom amenity marker icons
+const createAmenityIcon = (type: string, color: string) => {
+  const emoji = type === 'restaurant' ? '🍽️' : 
+                type === 'shopping' ? '🛍️' : 
+                type === 'school' ? '🎓' : 
+                type === 'transportation' ? '🚌' : 
+                type === 'park' ? '🌳' : 
+                type === 'healthcare' ? '🏥' : '📍';
+  
+  return divIcon({
+    html: `<div style="
+      background-color: ${color};
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-family: Arial, sans-serif;
+    ">${emoji}</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -12],
+    className: 'custom-amenity-marker'
+  });
+};
 
 interface Amenity {
   id: string;
@@ -199,6 +232,15 @@ const amenityColors: Record<string, string> = {
   healthcare: 'bg-red-500'
 };
 
+const amenityHexColors: Record<string, string> = {
+  restaurant: '#f97316', // orange-500
+  shopping: '#3b82f6',   // blue-500
+  school: '#22c55e',     // green-500
+  transportation: '#a855f7', // purple-500
+  park: '#10b981',       // emerald-500
+  healthcare: '#ef4444'  // red-500
+};
+
 export function PropertyAmenitiesMap({ 
   propertyName, 
   propertyCoordinates, 
@@ -211,6 +253,8 @@ export function PropertyAmenitiesMap({
   ]));
   const [showFilters, setShowFilters] = useState(false);
   const mapRef = useRef<any>(null);
+
+
 
   useEffect(() => {
     const filtered = amenities.filter(amenity => activeFilters.has(amenity.type));
@@ -354,12 +398,7 @@ export function PropertyAmenitiesMap({
                 <Marker
                   key={amenity.id}
                   position={amenity.coordinates}
-                  icon={new Icon({
-                    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-                    iconSize: [20, 32],
-                    iconAnchor: [10, 32],
-                    popupAnchor: [1, -34],
-                  })}
+                  icon={createAmenityIcon(amenity.type, amenityHexColors[amenity.type])}
                 >
                   <Popup>
                     <div className="min-w-48">

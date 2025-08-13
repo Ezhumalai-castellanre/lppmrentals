@@ -1,35 +1,21 @@
+"use client"
+
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { MondayApiService, RentalItem } from '../lib/monday-api';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { PropertyAmenitiesMap } from '@/components/property-amenities-map';
 import { 
-  Eye, 
-  Send, 
-  MapPin, 
-  Home, 
-  DollarSign, 
-  Square, 
-  Wifi, 
-  Car, 
-  Shield, 
-  Wrench, 
-  ChefHat, 
-  Bath, 
-  Sparkles, 
-  Users, 
-  Clock, 
-  ChevronLeft, 
-  ChevronRight, 
-  X, 
-  Image, 
   ArrowLeft,
-  Phone,
-  Mail,
-  Calendar,
+  MapPin,
+  Heart,
+  Share2,
+  Home,
+  DollarSign,
+  Square,
+  Car,
+  Filter,
   Utensils,
   ShoppingBag,
   GraduationCap,
@@ -37,34 +23,73 @@ import {
   TreePine,
   Building2
 } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
+import { PropertyAmenitiesMap } from '@/components/property-amenities-map'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 export default function PropertyDetailsPage() {
   const [, setLocation] = useLocation();
-  const { isAuthenticated } = useAuth();
   const [rental, setRental] = useState<RentalItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedAmenityFilter, setSelectedAmenityFilter] = useState<string | null>(null);
+  const [openGalleryDialog, setOpenGalleryDialog] = useState(false);
 
-  // Generate coordinates for the property (in a real app, this would come from the database)
-  const getPropertyCoordinates = (propertyName: string): [number, number] => {
-    // Generate consistent coordinates based on property name hash
-    const hash = propertyName.split('').reduce((a, b) => {
-      a = ((a << 5) - a) + b.charCodeAt(0);
-      return a & a;
-    }, 0);
-    
-    // Base coordinates (Manhattan area)
-    const baseLat = 40.7589;
-    const baseLng = -73.9851;
-    
-    // Add small variations based on hash
-    const lat = baseLat + (hash % 100) * 0.001;
-    const lng = baseLng + (hash % 100) * 0.001;
-    
-    return [lat, lng];
+  // Generate nearby amenities data based on property location
+  const generateNearbyAmenities = () => {
+    const baseAmenities = {
+      dining: [
+        "The Gourmet Bistro - 0.2 miles",
+        "Café Luna - 0.3 miles",
+        "Steakhouse Prime - 0.4 miles",
+        "Sushi Zen - 0.5 miles",
+      ],
+      shopping: [
+        "Downtown Mall - 0.3 miles",
+        "Whole Foods Market - 0.4 miles",
+        "Target - 0.6 miles",
+        "Local Boutiques - 0.2 miles",
+      ],
+      education: [
+        "Lincoln Elementary - 0.5 miles",
+        "Central High School - 0.8 miles",
+        "Downtown University - 1.2 miles",
+        "Public Library - 0.3 miles",
+      ],
+      transportation: [
+        "Metro Station - 0.2 miles",
+        "Bus Stop - 0.1 miles",
+        "Highway Access - 0.5 miles",
+        "Bike Share Station - 0.1 miles",
+      ],
+      recreation: [
+        "Central Park - 0.3 miles",
+        "Riverside Trail - 0.4 miles",
+        "Community Center - 0.6 miles",
+        "Tennis Courts - 0.5 miles",
+      ],
+      healthcare: [
+        "City Medical Center - 0.7 miles",
+        "Urgent Care Clinic - 0.4 miles",
+        "Downtown Pharmacy - 0.2 miles",
+        "Dental Office - 0.3 miles",
+      ],
+    };
+    return baseAmenities;
   };
+
+  const amenityCategories = [
+    { key: "dining", label: "Dining & Entertainment", icon: Utensils, color: "text-orange-600" },
+    { key: "shopping", label: "Shopping & Retail", icon: ShoppingBag, color: "text-purple-600" },
+    { key: "education", label: "Education", icon: GraduationCap, color: "text-blue-600" },
+    { key: "transportation", label: "Transportation", icon: Bus, color: "text-green-600" },
+    { key: "recreation", label: "Recreation", icon: TreePine, color: "text-teal-600" },
+    { key: "healthcare", label: "Healthcare", icon: Building2, color: "text-red-600" },
+  ];
+
+  const nearbyAmenities = generateNearbyAmenities();
+  const filteredAmenities = selectedAmenityFilter
+    ? amenityCategories.filter((cat) => cat.key === selectedAmenityFilter)
+    : amenityCategories;
 
   useEffect(() => {
     // Get rental ID from URL parameters
@@ -103,12 +128,12 @@ export default function PropertyDetailsPage() {
     const baseUrl = 'https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1';
     const params = new URLSearchParams();
     
-    // Map property name to color_mktgkr4e parameter
+    // Map property name to color_mktgkr4e parameter (e.g., "East 30th Street")
     if (rental.propertyName) {
       params.append('color_mktgkr4e', rental.propertyName);
     }
     
-    // Map unit number to short_text800omovg parameter
+    // Map unit number to short_text800omovg parameter (e.g., "6B")
     if (rental.name) {
       params.append('short_text800omovg', rental.name);
     }
@@ -123,64 +148,11 @@ export default function PropertyDetailsPage() {
     window.open(formUrl, '_blank');
   };
 
-  const handlePreviousImage = () => {
-    if (rental && rental.mediaFiles) {
-      setCurrentImageIndex(prev => 
-        prev === 0 ? rental.mediaFiles!.length - 1 : prev - 1
-      );
-    }
-  };
-
-  const handleNextImage = () => {
-    if (rental && rental.mediaFiles) {
-      setCurrentImageIndex(prev => 
-        prev === rental.mediaFiles!.length - 1 ? 0 : prev + 1
-      );
-    }
-  };
-
-  const renderAmenities = (amenities: string) => {
-    if (!amenities) return null;
-    
-    const amenityList = amenities.split(',').map(item => item.trim()).filter(Boolean);
-    
-    if (amenityList.length === 0) return null;
-
-    const amenityIcons: { [key: string]: React.ReactNode } = {
-      'wifi': <Wifi className="w-4 h-4" />,
-      'parking': <Car className="w-4 h-4" />,
-      'security': <Shield className="w-4 h-4" />,
-      'maintenance': <Wrench className="w-4 h-4" />,
-      'kitchen': <ChefHat className="w-4 h-4" />,
-      'bathroom': <Bath className="w-4 h-4" />,
-      'luxury': <Sparkles className="w-4 h-4" />,
-      'community': <Users className="w-4 h-4" />,
-      '24/7': <Clock className="w-4 h-4" />,
-    };
-
-    return (
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900">Amenities</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {amenityList.map((amenity, index) => {
-            const icon = amenityIcons[amenity.toLowerCase()] || <Square className="w-4 h-4" />;
-            return (
-              <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                <div className="text-blue-600">{icon}</div>
-                <span className="text-sm font-medium text-gray-700 capitalize">{amenity}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading property details...</p>
         </div>
       </div>
@@ -205,382 +177,240 @@ export default function PropertyDetailsPage() {
 
   const images = rental.mediaFiles?.map(file => file.url) || [];
   const hasImages = images.length > 0;
+  
+  const getPropertyCoordinates = (propertyName: string): [number, number] => {
+    const hash = propertyName.split('').reduce((acc, ch) => {
+      acc = ((acc << 5) - acc) + ch.charCodeAt(0);
+      return acc & acc;
+    }, 0);
+    const baseLat = 40.7589;
+    const baseLng = -73.9851;
+    const lat = baseLat + ((hash % 100) * 0.001);
+    const lng = baseLng + (((hash >> 3) % 100) * 0.001);
+    return [lat, lng];
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header with Back Button */}
-        <div className="mb-8">
-          <Button 
-            variant="ghost" 
-            onClick={() => setLocation('/')}
-            className="mb-4 hover:bg-gray-100"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <div className="bg-white border-b sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          <Button variant="ghost" onClick={() => setLocation('/')} className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Listings
           </Button>
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">{rental.name}</h1>
-              <div className="flex items-center gap-2 text-gray-600">
-                <MapPin className="w-4 h-4" />
-                <span className="text-lg">{rental.propertyName}</span>
-              </div>
-            </div>
-            <Badge 
-              variant="secondary" 
-              className="bg-green-100 text-green-800 hover:bg-green-100 text-lg px-4 py-2"
-            >
-              <div className="w-3 h-3 rounded-full mr-2 bg-green-500"></div>
-              Available Now
-            </Badge>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm">
+              <Share2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm">
+              <Heart className="h-4 w-4" />
+            </Button>
           </div>
         </div>
+      </div>
 
+      {/* Image Gallery */}
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+          <div className="aspect-[4/3] rounded-lg overflow-hidden">
+            <img
+              src={images[0] || "/placeholder.svg"}
+              alt={rental.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="aspect-[4/3] rounded-lg overflow-hidden">
+              <img
+                src={images[1] || "/placeholder.svg?height=300&width=400"}
+                alt={`${rental.name} - Image 2`}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="aspect-[4/3] rounded-lg overflow-hidden">
+              <img
+                src={images[2] || "/placeholder.svg?height=300&width=400"}
+                alt={`${rental.name} - Image 3`}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="col-span-2">
+              <Button variant="outline" className="w-full h-20 bg-transparent" onClick={() => setOpenGalleryDialog(true)}>
+                View All Photos
+              </Button>
+            </div>
+          </div>
+        </div>
+        <Dialog open={openGalleryDialog} onOpenChange={setOpenGalleryDialog}>
+          <DialogContent className="max-w-5xl">
+            <DialogHeader>
+              <DialogTitle>Photos — {rental.name}</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {images.length > 0 ? (
+                images.map((src, idx) => (
+                  <div key={idx} className="aspect-[4/3] rounded-lg overflow-hidden bg-gray-100">
+                    <img src={src} alt={`${rental.name} - Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-600 py-12">No photos available</div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content - Left Column */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Image Gallery */}
-            <Card>
-              <CardHeader>
-                <h2 className="text-2xl font-semibold text-gray-900">Property Photos</h2>
-              </CardHeader>
-              <CardContent>
-                {hasImages ? (
-                  <div className="relative">
-                    <div className="relative h-96 bg-gray-100 rounded-lg overflow-hidden">
-                      <img 
-                        src={images[currentImageIndex]} 
-                        alt={`Property image ${currentImageIndex + 1}`}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const fallback = document.createElement('div');
-                          fallback.className = 'w-full h-full flex items-center justify-center bg-gray-200 text-gray-600';
-                          fallback.innerHTML = `
-                            <div class="text-center">
-                              <div class="text-4xl mb-2">🖼️</div>
-                              <div class="text-lg">Image not available</div>
-                            </div>
-                          `;
-                          target.parentNode?.appendChild(fallback);
-                        }}
-                      />
-                      
-                      {/* Navigation Arrows */}
-                      {images.length > 1 && (
-                        <>
-                          <button
-                            onClick={handlePreviousImage}
-                            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200"
-                          >
-                            <ChevronLeft className="w-6 h-6" />
-                          </button>
-                          <button
-                            onClick={handleNextImage}
-                            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all duration-200"
-                          >
-                            <ChevronRight className="w-6 h-6" />
-                          </button>
-                        </>
-                      )}
-                      
-                      {/* Image Counter */}
-                      {images.length > 1 && (
-                        <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                          {currentImageIndex + 1} / {images.length}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Thumbnail Navigation */}
-                    {images.length > 1 && (
-                      <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
-                        {images.map((image, index) => (
-                          <button
-                            key={index}
-                            onClick={() => setCurrentImageIndex(index)}
-                            className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                              index === currentImageIndex 
-                                ? 'border-blue-500 ring-2 ring-blue-200' 
-                                : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                          >
-                            <img 
-                              src={image} 
-                              alt={`Thumbnail ${index + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="h-96 flex items-center justify-center bg-gray-200 rounded-lg">
-                    <div className="text-center text-gray-600">
-                      <Image className="w-16 h-16 mx-auto mb-4" />
-                      <p className="text-lg">No images available</p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          {/* Main Content */}
+          <div className="lg:col-span-2">
+            {/* Title and Rating */}
+            <div className="mb-6">
+              <h1 className="font-serif text-3xl font-bold text-gray-900 mb-2">{rental.name}</h1>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center text-gray-600">
+                  <MapPin className="h-4 w-4 mr-1" />
+                  <span>{rental.propertyName}</span>
+                </div>
+              </div>
+            </div>
 
             {/* Property Details */}
-            <Card>
-              <CardHeader>
-                <h2 className="text-2xl font-semibold text-gray-900">Property Details</h2>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Unit:</span>
-                      <span className="font-semibold text-gray-900">{rental.name}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Type: </span>
-                      <span className="font-semibold text-gray-900">{rental.unitType}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Availability:</span>
-                      <span className="font-semibold text-gray-900">Available Now</span>
+            <Card className="mb-6">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="flex items-center gap-2">
+                    <Home className="h-5 w-5 text-gray-400" />
+                    <div>
+                      <div className="font-medium">{rental.unitType || 'STD'}</div>
+                      <div className="text-sm text-gray-500">Type</div>
                     </div>
                   </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600 font-medium">Monthly Rent:</span>
-                      <span className="font-bold text-lg text-green-600">
-                        {rental.monthlyRent && rental.monthlyRent.trim() !== '' 
-                          ? `$${rental.monthlyRent}` 
-                          : 'Contact for pricing'
-                        }
-                      </span>
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-gray-400" />
+                    <div>
+                      <div className="font-medium">{rental.monthlyRent || 'Contact'}</div>
+                      <div className="text-sm text-gray-500">Monthly Rent</div>
                     </div>
-                  
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Square className="h-5 w-5 text-gray-400" />
+                    <div>
+                      <div className="font-medium">Contact</div>
+                      <div className="text-sm text-gray-500">Sq Ft</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Car className="h-5 w-5 text-gray-400" />
+                    <div>
+                      <div className="font-medium">Yes</div>
+                      <div className="text-sm text-gray-500">Parking</div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Description */}
+            <div className="mb-6">
+              <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-4">About This Property</h2>
+              <p className="text-gray-600 leading-relaxed mb-4">
+                {rental.amenities ? 
+                  rental.amenities.split('\n').slice(0, 3).join(' ') : 
+                  'Beautiful property with modern amenities. Contact us for more details.'
+                }
+              </p>
+              <p className="text-gray-600 leading-relaxed">
+                This stunning property offers the perfect blend of comfort and convenience. 
+                Located in a prime area, you'll have easy access to all the amenities you need.
+                Contact us to schedule a tour and learn more about this exceptional property.
+              </p>
+            </div>
+
+            {/* Features */}
+            <div className="mb-6">
+              <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-4">Features</h2>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary" className="px-3 py-1">
+                  {rental.unitType || 'Standard'}
+                </Badge>
+                {rental.mediaFiles && rental.mediaFiles.length > 0 && (
+                  <Badge variant="secondary" className="px-3 py-1">
+                    {rental.mediaFiles.length} Photos
+                  </Badge>
+                )}
+                <Badge variant="secondary" className="px-3 py-1">
+                  Available Now
+                </Badge>
+              </div>
+            </div>
 
             {/* Amenities */}
-            {rental.amenities && (
-              <Card>
-                <CardContent className="pt-6">
-                  {renderAmenities(rental.amenities)}
+            <div className="mb-6">
+              <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-4">Amenities</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {rental.amenities ? 
+                  rental.amenities.split('\n').slice(0, 6).map((amenity, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-cyan-600 rounded-full"></div>
+                      <span className="text-gray-600">{amenity.trim()}</span>
+                    </div>
+                  )) : 
+                  ['WiFi', 'Air Conditioning', 'Modern Kitchen', 'Balcony', 'Elevator', 'Security'].map((amenity, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-cyan-600 rounded-full"></div>
+                      <span className="text-gray-600">{amenity}</span>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-4">Location & Nearby</h2>
+              <Card className="mb-6">
+                <CardContent className="p-0">
+                  <PropertyAmenitiesMap
+                    propertyName={rental.propertyName || rental.name}
+                    propertyCoordinates={getPropertyCoordinates(rental.propertyName || rental.name)}
+                    className="w-full"
+                  />
                 </CardContent>
               </Card>
-            )}
-
-            {/* Location Benefits */}
-            <Card>
-              <CardHeader>
-                <h2 className="text-2xl font-semibold text-gray-900">Location Benefits</h2>
-                <p className="text-gray-600">Discover why this location is perfect for your lifestyle</p>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
-                    <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Utensils className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Dining & Entertainment</h3>
-                    <p className="text-sm text-gray-600">Multiple restaurants within walking distance, from casual to fine dining</p>
-                  </div>
-                  
-                  <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <ShoppingBag className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Shopping & Retail</h3>
-                    <p className="text-sm text-gray-600">Convenient access to shopping centers, grocery stores, and boutiques</p>
-                  </div>
-                  
-                  <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <GraduationCap className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Education</h3>
-                    <p className="text-sm text-gray-600">Top-rated schools nearby, perfect for families with children</p>
-                  </div>
-                  
-                  <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-                    <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Bus className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Transportation</h3>
-                    <p className="text-sm text-gray-600">Easy access to public transit, major highways, and parking options</p>
-                  </div>
-                  
-                  <div className="text-center p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                    <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <TreePine className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Recreation</h3>
-                    <p className="text-sm text-gray-600">Beautiful parks, walking trails, and outdoor spaces nearby</p>
-                  </div>
-                  
-                  <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
-                    <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Building2 className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Healthcare</h3>
-                    <p className="text-sm text-gray-600">Medical facilities and urgent care centers within easy reach</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Nearby Amenities Map */}
-            <PropertyAmenitiesMap
-              propertyName={rental.propertyName || rental.name}
-              propertyCoordinates={getPropertyCoordinates(rental.propertyName || rental.name)}
-            />
-
-            {/* Contact Information */}
-            <Card>
-              <CardHeader>
-                <h2 className="text-2xl font-semibold text-gray-900">Contact Information</h2>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
-                    <Phone className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="font-medium text-gray-900">Phone</p>
-                      <p className="text-gray-600">(555) 123-4567</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
-                    <Mail className="w-5 h-5 text-green-600" />
-                    <div>
-                      <p className="font-medium text-gray-900">Email</p>
-                      <p className="text-gray-600">info@lppmrentals.com</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 bg-purple-50 rounded-lg">
-                    <Calendar className="w-5 h-5 text-purple-600" />
-                    <div>
-                      <p className="font-medium text-gray-900">Office Hours</p>
-                      <p className="text-gray-600">Monday - Friday: 9:00 AM - 6:00 PM</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            </div>
           </div>
 
-          {/* Sidebar - Right Column */}
-          <div className="space-y-6">
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-xl font-semibold text-gray-900">Quick Actions</h3>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-3"
-                  onClick={() => handleApplyNow(rental)}
-                >
-                  <Send className="w-5 h-5 mr-2" />
-                  Apply Now
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full text-lg py-3"
-                  onClick={() => window.open('tel:+15551234567')}
-                >
-                  <Phone className="w-5 h-5 mr-2" />
-                  Call Now
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full text-lg py-3"
-                  onClick={() => window.open('mailto:info@lppmrentals.com')}
-                >
-                  <Mail className="w-5 h-5 mr-2" />
-                  Send Email
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Property Highlights */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-xl font-semibold text-gray-900">Property Highlights</h3>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>Available for immediate move-in</span>
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-24">
+              <CardContent className="p-6">
+                <div className="text-center mb-6">
+                  <div className="text-3xl font-bold text-cyan-600 mb-1">
+                    {rental.monthlyRent ? `$${rental.monthlyRent}` : 'Contact'}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span>Pet-friendly community</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    <span>24/7 maintenance support</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    <span>On-site parking available</span>
-                  </div>
+                  <div className="text-gray-500">per month</div>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Location Info */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-xl font-semibold text-gray-900">Prime Location</h3>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
-                    <MapPin className="w-5 h-5 text-red-500 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-gray-900">{rental.propertyName}</p>
-                      <p className="text-sm text-gray-600">Prime location with easy access to amenities</p>
-                    </div>
-                  </div>
-                  <Separator />
-                  <div className="text-sm text-gray-600 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                      <span>Restaurants & dining options</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span>Shopping centers & retail</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span>Top-rated schools nearby</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                      <span>Public transportation access</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                      <span>Parks & recreation areas</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      <span>Healthcare facilities</span>
-                    </div>
-                  </div>
-                  <Separator />
-                  <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg">
-                    <p className="font-medium text-blue-800 mb-1">📍 Walking Distance</p>
-                    <p>Most amenities are within 0.5 miles - perfect for daily convenience!</p>
-                  </div>
+                <div className="space-y-3 mb-6">
+                  <Button className="w-full bg-cyan-600 hover:bg-cyan-700">Schedule Tour</Button>
+                  <Button
+                    variant="outline"
+                    className="w-full border-cyan-200 text-cyan-700 hover:bg-cyan-50 bg-transparent"
+                  >
+                    Contact Owner
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full bg-transparent"
+                    onClick={() => handleApplyNow(rental)}
+                  >
+                    Apply Now
+                  </Button>
+                </div>
+
+                <div className="text-center text-sm text-gray-500">
+                  <p>Response time: Usually within 2 hours</p>
                 </div>
               </CardContent>
             </Card>
