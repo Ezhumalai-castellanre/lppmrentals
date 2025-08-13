@@ -662,11 +662,11 @@ export default function MissingDocumentsPage() {
                                   }}
                                   onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
                                   accept=".pdf,.jpg,.jpeg,.png"
-                                  multiple={isMultipleFileDocument(item.name)}
-                                  maxFiles={isMultipleFileDocument(item.name) ? 5 : 1}
+                                  multiple={false}
+                                  maxFiles={1}
                                   maxSize={10}
                                   label={`Upload ${item.name}`}
-                                  description={`Max 10MB. Accepted: PDF, JPG, PNG - Encrypted${isMultipleFileDocument(item.name) ? ' - Multiple files allowed' : ''}`}
+                                  description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
                                   className="mb-3"
                                   enableEncryption={true}
                                   referenceId={applicantId}
@@ -707,11 +707,11 @@ export default function MissingDocumentsPage() {
                                   }}
                                   onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
                                   accept=".pdf,.jpg,.jpeg,.png"
-                                  multiple={isMultipleFileDocument(item.name)}
-                                  maxFiles={isMultipleFileDocument(item.name) ? 5 : 1}
+                                  multiple={false}
+                                  maxFiles={1}
                                   maxSize={10}
                                   label={`Upload ${item.name}`}
-                                  description={`Max 10MB. Accepted: PDF, JPG, PNG - Encrypted${isMultipleFileDocument(item.name) ? ' - Multiple files allowed' : ''}`}
+                                  description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
                                   className="mb-3"
                                   enableEncryption={true}
                                   referenceId={applicantId}

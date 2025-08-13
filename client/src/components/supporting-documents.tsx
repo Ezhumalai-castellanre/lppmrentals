@@ -13,6 +13,7 @@ interface DocumentInfo {
   required: boolean;
   acceptedTypes: string;
   multiple?: boolean;
+  isPayStubs?: boolean;
 }
 
 interface CategoryInfo {
@@ -40,9 +41,9 @@ interface SupportingDocumentsProps {
       guarantor?: Record<string, any[]>;
       coApplicant?: Record<string, any[]>;
     };
-    applicant?: { employmentType?: string };
-    coApplicant?: { employmentType?: string };
-    guarantor?: { employmentType?: string };
+    applicant?: { employmentType?: string; incomeFrequency?: string };
+    coApplicant?: { employmentType?: string; incomeFrequency?: string };
+    guarantor?: { employmentType?: string; incomeFrequency?: string };
     otherOccupants?: any[];
     uploadedFilesMetadata?: Record<string, any[]>;
   };
@@ -99,6 +100,45 @@ export const SupportingDocuments = ({
   // Track which documents have been requested for re-upload
   const [reuploadRequested, setReuploadRequested] = useState<Record<string, boolean>>({});
 
+  // Pay Stubs frequency options and their corresponding counts
+  const payStubsFrequencyOptions = [
+    { value: 'weekly', label: 'Weekly', count: 4 },
+    { value: 'bi-weekly', label: 'Every 2 weeks', count: 2 },
+    { value: 'monthly', label: 'Monthly', count: 1 },
+    { value: 'quarterly', label: 'Quarterly', count: 1 },
+    { value: 'yearly', label: 'Yearly', count: 1 }
+  ];
+
+  // Function to get current income frequency based on context
+  const getCurrentIncomeFrequency = (): string => {
+    if (showOnlyCoApplicant && formData.coApplicant?.incomeFrequency) {
+      return formData.coApplicant.incomeFrequency;
+    } else if (showOnlyGuarantor && formData.guarantor?.incomeFrequency) {
+      return formData.guarantor.incomeFrequency;
+    } else if (formData.applicant?.incomeFrequency) {
+      return formData.applicant.incomeFrequency;
+    }
+    return 'monthly'; // Default fallback
+  };
+
+  // Function to generate Pay Stubs sections based on frequency
+  const generatePayStubsSections = (frequency: string): DocumentInfo[] => {
+    const count = payStubsFrequencyOptions.find(opt => opt.value === frequency)?.count || 1;
+    const sections: DocumentInfo[] = [];
+    
+    for (let i = 1; i <= count; i++) {
+      sections.push({
+        id: `pay_stubs_${i}`,
+        name: `Pay Stubs ${i}`,
+        required: true,
+        acceptedTypes: ".jpg,.jpeg,.png,.pdf",
+        isPayStubs: true
+      });
+    }
+    
+    return sections;
+  };
+
   const requiredDocuments: CategoryInfo[] = [
     {
       category: "Identity Documents",
@@ -136,9 +176,10 @@ export const SupportingDocuments = ({
         },
         {
           id: "pay_stubs",
-          name: "Pay Stubs (Last 2-4)",
+          name: "Pay Stubs",
           required: true,
-          acceptedTypes: ".jpg,.jpeg,.png,.pdf"
+          acceptedTypes: ".jpg,.jpeg,.png,.pdf",
+          isPayStubs: true
         }
       ]
     },
@@ -181,6 +222,58 @@ export const SupportingDocuments = ({
   ];
 
   const getDocumentStatus = (documentId: string): DocumentStatus => {
+    // Special handling for Pay Stubs sections
+    if (documentId.startsWith('pay_stubs_')) {
+      // Check if this specific Pay Stubs section has been uploaded
+      const webhookResponse = formData.webhookResponses?.[documentId];
+      if (webhookResponse) {
+        let fileUrl = '';
+        if (typeof webhookResponse === 'string') {
+          fileUrl = webhookResponse;
+        } else if (webhookResponse && webhookResponse.body) {
+          fileUrl = webhookResponse.body;
+        } else if (webhookResponse && webhookResponse.url) {
+          fileUrl = webhookResponse.url;
+        }
+        
+        if (fileUrl && fileUrl.trim()) {
+          return {
+            status: "uploaded",
+            count: 1
+          };
+        }
+      }
+      
+      // Check for documents with person prefix
+      const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_', 'occupants_'];
+      for (const prefix of personPrefixes) {
+        const prefixedDocumentId = prefix + documentId;
+        const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+        if (prefixedWebhookResponse) {
+          let fileUrl = '';
+          if (typeof prefixedWebhookResponse === 'string') {
+            fileUrl = prefixedWebhookResponse;
+          } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+            fileUrl = prefixedWebhookResponse.body;
+          } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+            fileUrl = prefixedWebhookResponse.url;
+          }
+          
+          if (fileUrl && fileUrl.trim()) {
+            return {
+              status: "uploaded",
+              count: 1
+            };
+          }
+        }
+      }
+      
+      return {
+        status: "pending",
+        count: 0
+      };
+    }
+    
     // First check webhookResponses for direct S3 URLs
     const webhookResponse = formData.webhookResponses?.[documentId];
     if (webhookResponse) {
@@ -317,6 +410,65 @@ export const SupportingDocuments = ({
     // Get the current context to filter documents appropriately
     const currentContext = getCurrentContext();
     console.log(`🔍 getUploadedDocuments called for documentId: ${documentId}, currentContext: ${currentContext}`);
+    
+    // Special handling for Pay Stubs sections
+    if (documentId.startsWith('pay_stubs_')) {
+      // Check webhookResponses for this specific Pay Stubs section
+      const webhookResponse = formData.webhookResponses?.[documentId];
+      if (webhookResponse) {
+        let fileUrl = '';
+        if (typeof webhookResponse === 'string') {
+          fileUrl = webhookResponse;
+        } else if (webhookResponse && webhookResponse.body) {
+          fileUrl = webhookResponse.body;
+        } else if (webhookResponse && webhookResponse.url) {
+          fileUrl = webhookResponse.url;
+        }
+        
+        if (fileUrl && fileUrl.trim()) {
+          const filename = `${currentContext}_${documentId}_document`;
+          console.log(`📁 Adding Pay Stubs document with context-aware filename: ${filename}`);
+          uploadedDocs.push({
+            filename: filename,
+            webhookbodyUrl: fileUrl
+          });
+        }
+      }
+      
+      // Check for documents with person prefix
+      const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_', 'occupants_'];
+      for (const prefix of personPrefixes) {
+        // Only process documents for the current context
+        if (currentContext === 'applicant' && prefix !== 'applicant_') continue;
+        if (currentContext === 'coApplicant' && prefix !== 'coApplicant_') continue;
+        if (currentContext === 'guarantor' && prefix !== 'guarantor_') continue;
+        if (currentContext === 'occupants' && prefix !== 'occupants_') continue;
+        
+        const prefixedDocumentId = prefix + documentId;
+        const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+        if (prefixedWebhookResponse) {
+          let fileUrl = '';
+          if (typeof prefixedWebhookResponse === 'string') {
+            fileUrl = prefixedWebhookResponse;
+          } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+            fileUrl = prefixedWebhookResponse.body;
+          } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+            fileUrl = prefixedWebhookResponse.url;
+          }
+          
+          if (fileUrl && fileUrl.trim()) {
+            const filename = `${prefixedDocumentId}_document`;
+            console.log(`📁 Adding Pay Stubs document with prefixed filename: ${filename} for ${prefixedDocumentId}`);
+            uploadedDocs.push({
+              filename: filename,
+              webhookbodyUrl: fileUrl
+            });
+          }
+        }
+      }
+      
+      return uploadedDocs;
+    }
     
     // First check webhookResponses for direct S3 URLs (this handles the case where webhookResponses are already filtered by person type)
     const webhookResponse = formData.webhookResponses?.[documentId];
@@ -734,9 +886,26 @@ export const SupportingDocuments = ({
   // Filter documents based on the relevant employment type
   const filteredDocuments = filterDocumentsByEmploymentType(requiredDocuments, relevantEmploymentType);
 
+  // Process Pay Stubs sections based on frequency
+  const processedDocuments = filteredDocuments.map(category => {
+    if (category.category === 'Employment Documents') {
+      return {
+        ...category,
+        documents: category.documents.flatMap(document => {
+          if (document.isPayStubs) {
+            // Generate Pay Stubs sections based on frequency
+            return generatePayStubsSections(getCurrentIncomeFrequency());
+          }
+          return [document];
+        })
+      };
+    }
+    return category;
+  });
+
   // Add Other Occupant Documents category if there are other occupants
   const otherOccupants = Array.isArray(formData?.otherOccupants) ? formData.otherOccupants : [];
-  let filteredDocumentsWithOccupants = [...filteredDocuments];
+  let filteredDocumentsWithOccupants = [...processedDocuments];
   if (otherOccupants.length > 0) {
     filteredDocumentsWithOccupants.push({
       category: 'Other Occupant Documents',
@@ -760,6 +929,17 @@ export const SupportingDocuments = ({
             {category.icon}
             <h3 className="font-medium text-gray-800">{category.category}</h3>
           </div>
+          
+          {/* Pay Stubs Info Note */}
+          {category.category === 'Employment Documents' && (
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+              <div className="text-xs text-blue-700">
+                <span className="font-medium">Pay Stubs Info:</span> Based on your income frequency selection in the Financial Information section, {payStubsFrequencyOptions.find(opt => opt.value === getCurrentIncomeFrequency())?.count} Pay Stubs section{payStubsFrequencyOptions.find(opt => opt.value === getCurrentIncomeFrequency())?.count !== 1 ? 's' : ''} will be created for you to upload.
+              </div>
+            </div>
+          )}
+          
+
           
           <div className="grid grid-cols-1 gap-4">
             {category.documents.map((document) => {
