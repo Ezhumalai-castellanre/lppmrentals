@@ -13,158 +13,187 @@ export interface FileUploadWebhookData {
 export interface FormDataWebhookData {
   reference_id: string;
   application_id: string;
-  form_data: any;
+  form_data: {
+    application?: {
+      buildingAddress?: string;
+      apartmentNumber?: string;
+      apartmentType?: string;
+      monthlyRent?: string | number;
+      moveInDate?: string;
+      howDidYouHear?: string;
+      howDidYouHearOther?: string;
+    };
+    applicant?: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      zip?: string;
+      dob?: string;
+      ssn?: string;
+      license?: string;
+      licenseState?: string;
+      lengthAtAddressYears?: number;
+      lengthAtAddressMonths?: number;
+      landlordName?: string;
+      landlordAddressLine1?: string;
+      landlordAddressLine2?: string;
+      landlordCity?: string;
+      landlordState?: string;
+      landlordZipCode?: string;
+      landlordPhone?: string;
+      landlordEmail?: string;
+      currentRent?: number;
+      reasonForMoving?: string;
+      age?: number;
+      employmentType?: string;
+      employer?: string;
+      position?: string;
+      employmentStart?: string;
+      income?: string;
+      incomeFrequency?: string;
+      otherIncome?: string;
+      otherIncomeSource?: string;
+      bankRecords?: Array<{
+        bankName?: string;
+        accountType?: string;
+        accountNumber?: string;
+      }>;
+    };
+    coApplicant?: {
+      email?: string;
+      phone?: string;
+      zip?: string;
+      landlordZipCode?: string;
+      landlordPhone?: string;
+      landlordEmail?: string;
+      city?: string;
+      landlordCity?: string;
+      name?: string;
+      licenseState?: string;
+      state?: string;
+      relationship?: string;
+      dob?: string;
+      age?: number;
+      ssn?: string;
+      license?: string;
+      lengthAtAddressYears?: number;
+      lengthAtAddressMonths?: number;
+      landlordName?: string;
+      landlordAddressLine1?: string;
+      landlordAddressLine2?: string;
+      landlordState?: string;
+      currentRent?: number;
+      reasonForMoving?: string;
+      employmentType?: string;
+      employer?: string;
+      position?: string;
+      employmentStart?: string;
+      income?: string;
+      incomeFrequency?: string;
+      otherIncome?: string;
+      otherIncomeSource?: string;
+      bankRecords?: Array<{
+        bankName?: string;
+        accountType?: string;
+        accountNumber?: string;
+      }>;
+    };
+    guarantor?: {
+      email?: string;
+      phone?: string;
+      zip?: string;
+      landlordZipCode?: string;
+      landlordPhone?: string;
+      landlordEmail?: string;
+      city?: string;
+      landlordCity?: string;
+      name?: string;
+      licenseState?: string;
+      address?: string;
+      state?: string;
+      relationship?: string;
+      dob?: string;
+      age?: number;
+      ssn?: string;
+      license?: string;
+      lengthAtAddressYears?: number;
+      lengthAtAddressMonths?: number;
+      landlordName?: string;
+      landlordAddressLine1?: string;
+      landlordState?: string;
+      landlordAddressLine2?: string;
+      currentRent?: number;
+      reasonForMoving?: string;
+      employmentType?: string;
+      businessName?: string;
+      businessType?: string;
+      yearsInBusiness?: string;
+      income?: string;
+      incomeFrequency?: string;
+      otherIncome?: string;
+      otherIncomeSource?: string;
+      bankRecords?: Array<{
+        bankName?: string;
+        accountType?: string;
+        accountNumber?: string;
+      }>;
+    };
+    occupants?: Array<{
+      name?: string;
+      relationship?: string;
+      dob?: string;
+      ssn?: string;
+      license?: string;
+      age?: number;
+      documents?: any;
+    }>;
+    applicantName?: string;
+    applicantEmail?: string;
+    application_id?: string;
+    applicantId?: string;
+    zoneinfo?: string;
+    hasCoApplicant?: boolean;
+    hasGuarantor?: boolean;
+    webhookSummary?: {
+      totalResponses?: number;
+      responsesByPerson?: {
+        applicant?: number;
+        coApplicant?: number;
+        guarantor?: number;
+        occupants?: number;
+      };
+      webhookResponses?: Record<string, string>;
+    };
+  };
   uploaded_files: {
-    supporting_w9_forms: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    supporting_photo_id: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    supporting_social_security: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    supporting_bank_statement: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    supporting_tax_returns: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    supporting_employment_letter: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    supporting_pay_stubs: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    supporting_credit_report: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    coApplicant_w9_forms: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    coApplicant_photo_id: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    coApplicant_social_security: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    coApplicant_bank_statement: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    coApplicant_tax_returns: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    coApplicant_employment_letter: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    coApplicant_pay_stubs: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    coApplicant_credit_report: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    guarantor_w9_forms: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    guarantor_photo_id: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    guarantor_social_security: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    guarantor_bank_statement: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    guarantor_tax_returns: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    guarantor_employment_letter: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    guarantor_pay_stubs: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    guarantor_credit_report: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
-    other_occupants_identity: {
-      file_name: string;
-      file_size: number;
-      mime_type: string;
-      upload_date: string;
-    }[];
+    supporting_w9_forms: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    supporting_photo_id: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    supporting_social_security: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    supporting_bank_statement: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    supporting_tax_returns: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    supporting_employment_letter: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    supporting_pay_stubs: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    supporting_credit_report: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    coApplicant_w9_forms: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    coApplicant_photo_id: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    coApplicant_social_security: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    coApplicant_bank_statement: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    coApplicant_tax_returns: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    coApplicant_employment_letter: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    coApplicant_pay_stubs: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    coApplicant_credit_report: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    guarantor_w9_forms: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    guarantor_photo_id: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    guarantor_social_security: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    guarantor_bank_statement: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    guarantor_tax_returns: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    guarantor_employment_letter: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    guarantor_pay_stubs: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    guarantor_credit_report: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
+    other_occupants_identity: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
   };
   submission_type: 'form_data';
 }
@@ -588,14 +617,14 @@ export class WebhookService {
     this.ongoingSubmissions.add(submissionId);
     
     try {
-      // Clean the form data to remove sensitive information
-      const cleanFormData = cleanObject({ ...formData });
+      // Transform the data into the exact structure needed for the webhook
+      const transformedData = this.transformFormDataToWebhookFormat(formData, uploadedFiles);
       
       // Format data for external webhook
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: zoneinfo || applicationId,
-        form_data: cleanFormData,
+        form_data: transformedData,
         uploaded_files: {
           supporting_w9_forms: uploadedFiles?.supporting_w9_forms || [],
           supporting_photo_id: uploadedFiles?.supporting_photo_id || [],
@@ -703,6 +732,204 @@ export class WebhookService {
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
+  }
+
+  /**
+   * Transforms form data into the exact webhook format structure
+   */
+  private static transformFormDataToWebhookFormat(formData: any, uploadedFiles?: any): any {
+    // Extract webhook responses from the form data
+    const webhookResponses = formData.webhookResponses || {};
+    
+    // Count total responses and responses by person
+    let totalResponses = 0;
+    const responsesByPerson: { [key: string]: number } = {
+      applicant: 0,
+      coApplicant: 0,
+      guarantor: 0,
+      occupants: 0
+    };
+
+    // Count responses for each person type
+    Object.keys(webhookResponses).forEach(key => {
+      if (webhookResponses[key]) {
+        totalResponses++;
+        if (key.startsWith('applicant_')) {
+          responsesByPerson.applicant++;
+        } else if (key.startsWith('coApplicant_')) {
+          responsesByPerson.coApplicant++;
+        } else if (key.startsWith('guarantor_')) {
+          responsesByPerson.guarantor++;
+        } else if (key.startsWith('occupants_')) {
+          responsesByPerson.occupants++;
+        }
+      }
+    });
+
+    // Transform the data into the exact structure needed
+    const transformedData = {
+      // Application section
+      application: {
+        buildingAddress: formData.buildingAddress,
+        apartmentNumber: formData.apartmentNumber,
+        apartmentType: formData.apartmentType,
+        monthlyRent: formData.monthlyRent,
+        moveInDate: formData.moveInDate,
+        howDidYouHear: formData.howDidYouHear,
+        howDidYouHearOther: formData.howDidYouHearOther || ""
+      },
+
+      // Applicant section
+      applicant: {
+        name: formData.applicantName,
+        email: formData.applicantEmail,
+        phone: formData.applicantPhone,
+        address: formData.applicantAddress,
+        city: formData.applicantCity,
+        state: formData.applicantState,
+        zip: formData.applicantZip,
+        dob: formData.applicantDob,
+        ssn: formData.applicantSsn,
+        license: formData.applicantLicense,
+        licenseState: formData.applicantLicenseState,
+        lengthAtAddressYears: formData.applicantLengthAtAddressYears,
+        lengthAtAddressMonths: formData.applicantLengthAtAddressMonths,
+        landlordName: formData.applicantLandlordName,
+        landlordAddressLine1: formData.applicantLandlordAddressLine1,
+        landlordAddressLine2: formData.applicantLandlordAddressLine2,
+        landlordCity: formData.applicantLandlordCity,
+        landlordState: formData.applicantLandlordState,
+        landlordZipCode: formData.applicantLandlordZipCode,
+        landlordPhone: formData.applicantLandlordPhone,
+        landlordEmail: formData.applicantLandlordEmail,
+        currentRent: formData.applicantCurrentRent,
+        reasonForMoving: formData.applicantReasonForMoving,
+        age: formData.applicantAge || 0,
+        employmentType: formData.applicantEmploymentType,
+        employer: formData.applicantEmployerName,
+        position: formData.applicantPosition,
+        employmentStart: formData.applicantStartDate,
+        income: formData.applicantSalary,
+        incomeFrequency: formData.applicantIncomeFrequency || "monthly",
+        otherIncome: formData.applicantOtherIncome || "",
+        otherIncomeSource: formData.applicantOtherIncomeSource || "",
+        bankRecords: formData.applicantBankRecords || []
+      },
+
+      // Co-Applicant section (if exists)
+      coApplicant: formData.hasCoApplicant ? {
+        email: formData.coApplicantEmail,
+        phone: formData.coApplicantPhone,
+        zip: formData.coApplicantZip,
+        landlordZipCode: formData.coApplicantLandlordZipCode,
+        landlordPhone: formData.coApplicantLandlordPhone,
+        landlordEmail: formData.coApplicantLandlordEmail,
+        city: formData.coApplicantCity,
+        landlordCity: formData.coApplicantLandlordCity,
+        name: formData.coApplicantName,
+        licenseState: formData.coApplicantLicenseState,
+        state: formData.coApplicantState,
+        relationship: formData.coApplicantRelationship,
+        dob: formData.coApplicantDob,
+        age: formData.coApplicantAge || 0,
+        ssn: formData.coApplicantSsn,
+        license: formData.coApplicantLicense,
+        lengthAtAddressYears: formData.coApplicantLengthAtAddressYears,
+        lengthAtAddressMonths: formData.coApplicantLengthAtAddressMonths,
+        landlordName: formData.coApplicantLandlordName,
+        landlordAddressLine1: formData.coApplicantLandlordAddressLine1,
+        landlordAddressLine2: formData.coApplicantLandlordAddressLine2,
+        landlordState: formData.coApplicantLandlordState,
+        currentRent: formData.coApplicantCurrentRent,
+        reasonForMoving: formData.coApplicantReasonForMoving,
+        employmentType: formData.coApplicantEmploymentType,
+        employer: formData.coApplicantEmployerName,
+        position: formData.coApplicantPosition,
+        employmentStart: formData.coApplicantStartDate,
+        income: formData.coApplicantSalary,
+        incomeFrequency: formData.coApplicantIncomeFrequency || "monthly",
+        otherIncome: formData.coApplicantOtherIncome || "",
+        otherIncomeSource: formData.coApplicantOtherIncomeSource || "",
+        bankRecords: formData.coApplicantBankRecords || []
+      } : undefined,
+
+      // Guarantor section (if exists)
+      guarantor: formData.hasGuarantor ? {
+        email: formData.guarantorEmail,
+        phone: formData.guarantorPhone,
+        zip: formData.guarantorZip,
+        landlordZipCode: formData.guarantorLandlordZipCode,
+        landlordPhone: formData.guarantorLandlordPhone,
+        landlordEmail: formData.guarantorLandlordEmail,
+        city: formData.guarantorCity,
+        landlordCity: formData.guarantorLandlordCity,
+        name: formData.guarantorName,
+        licenseState: formData.guarantorLicenseState,
+        address: formData.guarantorAddress,
+        state: formData.guarantorState,
+        relationship: formData.guarantorRelationship,
+        dob: formData.guarantorDob,
+        age: formData.guarantorAge || 0,
+        ssn: formData.guarantorSsn,
+        license: formData.guarantorLicense,
+        lengthAtAddressYears: formData.guarantorLengthAtAddressYears,
+        lengthAtAddressMonths: formData.guarantorLengthAtAddressMonths,
+        landlordName: formData.guarantorLandlordName,
+        landlordAddressLine1: formData.guarantorLandlordAddressLine1,
+        landlordState: formData.guarantorLandlordState,
+        landlordAddressLine2: formData.guarantorLandlordAddressLine2,
+        currentRent: formData.guarantorCurrentRent,
+        reasonForMoving: formData.guarantorReasonForMoving,
+        employmentType: formData.guarantorEmploymentType,
+        businessName: formData.guarantorBusinessName || "",
+        businessType: formData.guarantorBusinessType || "",
+        yearsInBusiness: formData.guarantorYearsInBusiness || "",
+        income: formData.guarantorSalary,
+        incomeFrequency: formData.guarantorIncomeFrequency || "monthly",
+        otherIncome: formData.guarantorOtherIncome || "",
+        otherIncomeSource: formData.guarantorOtherIncomeSource || "",
+        bankRecords: formData.guarantorBankRecords || []
+      } : undefined,
+
+      // Occupants section
+      occupants: (formData.otherOccupants || []).map((occupant: any) => ({
+        name: occupant.name,
+        relationship: occupant.relationship,
+        dob: occupant.dob,
+        ssn: occupant.ssn,
+        license: occupant.license,
+        age: occupant.age || 0,
+        documents: {
+          ssn1: [{}] // Placeholder for document structure
+        }
+      })),
+
+      // Applicant summary fields
+      applicantName: formData.applicantName,
+      applicantEmail: formData.applicantEmail,
+      application_id: formData.application_id || formData.applicantId,
+      applicantId: formData.applicantId,
+      zoneinfo: formData.zoneinfo || formData.applicantId,
+      hasCoApplicant: formData.hasCoApplicant,
+      hasGuarantor: formData.hasGuarantor,
+
+      // Webhook summary
+      webhookSummary: {
+        totalResponses,
+        responsesByPerson,
+        webhookResponses
+      }
+    };
+
+    // Remove undefined sections
+    if (!transformedData.coApplicant) {
+      delete transformedData.coApplicant;
+    }
+    if (!transformedData.guarantor) {
+      delete transformedData.guarantor;
+    }
+
+    return transformedData;
   }
 
   /**

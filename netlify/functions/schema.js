@@ -105,12 +105,41 @@ const occupantSchema = z.object({
   documents: z.any().optional(),
 });
 
-// Webhook summary schema
+// Webhook summary schema - updated to match exact structure
 const webhookSummarySchema = z.object({
   totalResponses: z.number().optional(),
-  responsesByPerson: z.record(z.number()).optional(),
+  responsesByPerson: z.object({
+    applicant: z.number().optional(),
+    coApplicant: z.number().optional(),
+    guarantor: z.number().optional(),
+    occupants: z.number().optional(),
+  }).optional(),
   webhookResponses: z.record(z.string()).optional(),
 });
+
+// Comprehensive validation schema that matches the actual application data for webhook submission
+export const webhookSubmissionSchema = z.object({
+  // Required fields
+  applicantId: z.string().min(1, "Applicant ID is required"),
+  applicantName: z.string().min(1, "Applicant name is required"),
+  applicantEmail: z.string().email("Valid email is required"),
+  application_id: z.string().min(1, "Application ID is required"),
+  
+  // Nested objects
+  application: applicationSchema.optional(),
+  applicant: applicantSchema.optional(),
+  coApplicant: coApplicantSchema.optional(),
+  guarantor: guarantorSchema.optional(),
+  occupants: z.array(occupantSchema).optional(),
+  webhookSummary: webhookSummarySchema.optional(),
+  
+  // Additional fields
+  zoneinfo: z.string().optional(),
+  hasCoApplicant: z.boolean().optional(),
+  hasGuarantor: z.boolean().optional(),
+  
+  // Allow passthrough for extra fields that might be added
+}).passthrough();
 
 // Comprehensive validation schema that matches the actual application data
 export const insertRentalApplicationSchema = z.object({
