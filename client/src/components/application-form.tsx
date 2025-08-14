@@ -3083,7 +3083,7 @@ export function ApplicationForm() {
             applicantEmployerPhone: formData.applicant?.employerPhone,
             applicantPosition: formData.applicant?.position,
             applicantStartDate: safeDateToISO(formData.applicant?.startDate),
-            applicantSalary: formData.applicant?.salary,
+            applicantSalary: formData.applicant?.income,
             applicantIncomeFrequency: formData.applicant?.incomeFrequency,
             applicantOtherIncome: formData.applicant?.otherIncome,
             applicantOtherIncomeSource: formData.applicant?.otherIncomeSource,
@@ -3131,7 +3131,7 @@ export function ApplicationForm() {
               coApplicantEmployerPhone: formData.coApplicant?.employerPhone,
               coApplicantPosition: formData.coApplicant?.position,
               coApplicantStartDate: safeDateToISO(formData.coApplicant?.startDate),
-              coApplicantSalary: formData.coApplicant?.salary,
+              coApplicantSalary: formData.coApplicant?.income,
               coApplicantBankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
                 bankName: record.bankName,
                 accountType: record.accountType
@@ -3173,7 +3173,7 @@ export function ApplicationForm() {
               guarantorEmployerPhone: formData.guarantor?.employerPhone,
               guarantorPosition: formData.guarantor?.position,
               guarantorStartDate: safeDateToISO(formData.guarantor?.startDate),
-              guarantorSalary: formData.guarantor?.salary,
+              guarantorSalary: formData.guarantor?.income,
               guarantorBankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
                 bankName: record.bankName,
                 accountType: record.accountType
