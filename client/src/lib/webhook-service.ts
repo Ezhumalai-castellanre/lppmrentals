@@ -868,11 +868,11 @@ export class WebhookService {
         employer: formData.applicantEmployerName,
         position: formData.applicantPosition,
         employmentStart: formData.applicantStartDate,
-        // Fix: Use nested form data structure for income fields with fallbacks
-        income: formData.applicant?.income || formData.applicant?.salary || formData.applicantSalary || "",
-        incomeFrequency: formData.applicant?.incomeFrequency || formData.applicantIncomeFrequency || "",
-        otherIncome: formData.applicant?.otherIncome || formData.applicantOtherIncome || "",
-        otherIncomeSource: formData.applicant?.otherIncomeSource || formData.applicantOtherIncomeSource || "",
+        // Fix: Use flat fields first since that's where the data actually is
+        income: formData.applicantSalary || formData.applicant?.income || formData.applicant?.salary || "",
+        incomeFrequency: formData.applicantIncomeFrequency || formData.applicant?.incomeFrequency || "",
+        otherIncome: formData.applicantOtherIncome || formData.applicant?.otherIncome || "",
+        otherIncomeSource: formData.applicantOtherIncomeSource || formData.applicant?.otherIncomeSource || "",
         bankRecords: formData.applicantBankRecords || []
       },
 
@@ -907,11 +907,11 @@ export class WebhookService {
         employer: formData.coApplicantEmployerName,
         position: formData.coApplicantPosition,
         employmentStart: formData.coApplicantStartDate,
-        // Fix: Use nested form data structure for income fields with fallbacks
-        income: formData.coApplicant?.income || formData.coApplicant?.salary || formData.coApplicantSalary || "",
-        incomeFrequency: formData.coApplicant?.incomeFrequency || formData.coApplicantIncomeFrequency || "",
-        otherIncome: formData.coApplicant?.otherIncome || formData.coApplicantOtherIncome || "",
-        otherIncomeSource: formData.coApplicant?.otherIncomeSource || formData.coApplicantOtherIncomeSource || "",
+        // Fix: Use flat fields first since that's where the data actually is
+        income: formData.coApplicantSalary || formData.coApplicant?.income || formData.coApplicant?.salary || "",
+        incomeFrequency: formData.coApplicantIncomeFrequency || formData.coApplicant?.incomeFrequency || "",
+        otherIncome: formData.coApplicantOtherIncome || formData.coApplicant?.otherIncome || "",
+        otherIncomeSource: formData.coApplicantOtherIncomeSource || formData.coApplicant?.otherIncomeSource || "",
         bankRecords: formData.coApplicantBankRecords || []
       } : undefined,
 
@@ -946,11 +946,11 @@ export class WebhookService {
         businessName: formData.guarantorBusinessName || "",
         businessType: formData.guarantorBusinessType || "",
         yearsInBusiness: formData.guarantorYearsInBusiness || "",
-        // Fix: Use nested form data structure for income fields with fallbacks
-        income: formData.guarantor?.income || formData.guarantor?.salary || formData.guarantorSalary || "",
-        incomeFrequency: formData.guarantor?.incomeFrequency || formData.guarantorIncomeFrequency || "",
-        otherIncome: formData.guarantor?.otherIncome || formData.guarantorOtherIncome || "",
-        otherIncomeSource: formData.guarantor?.otherIncomeSource || formData.guarantorOtherIncomeSource || "",
+        // Fix: Use flat fields first since that's where the data actually is
+        income: formData.guarantorSalary || formData.guarantor?.income || formData.guarantor?.salary || "",
+        incomeFrequency: formData.guarantorIncomeFrequency || formData.guarantor?.incomeFrequency || "",
+        otherIncome: formData.guarantorOtherIncome || formData.guarantor?.otherIncome || "",
+        otherIncomeSource: formData.guarantorOtherIncomeSource || formData.guarantor?.otherIncomeSource || "",
         bankRecords: formData.guarantorBankRecords || []
       } : undefined,
 
