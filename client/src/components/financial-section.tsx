@@ -16,8 +16,18 @@ interface FinancialSectionProps {
 
 export function FinancialSection({ title, person, formData, updateFormData }: FinancialSectionProps) {
   const personData = formData[person] || {};
+  
+  // Debug logging for current person data
+  console.log(`💰 Financial Section - ${person} current data:`, {
+    income: personData.income,
+    incomeFrequency: personData.incomeFrequency,
+    otherIncome: personData.otherIncome,
+    otherIncomeFrequency: personData.otherIncomeFrequency,
+    otherIncomeSource: personData.otherIncomeSource
+  });
 
   const handleChange = (field: string, value: string) => {
+    console.log(`💰 Financial Section - ${person} ${field}:`, value);
     updateFormData(person, field, value);
   };
 

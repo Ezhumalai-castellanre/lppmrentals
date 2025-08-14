@@ -744,6 +744,10 @@ export class WebhookService {
     
     // Debug logging for income fields
     console.log('🔍 === INCOME FIELD DEBUG ===');
+    console.log('📊 Form data keys:', Object.keys(formData));
+    console.log('📊 Form data applicant section:', formData.applicant);
+    console.log('📊 Form data coApplicant section:', formData.coApplicant);
+    console.log('📊 Form data guarantor section:', formData.guarantor);
     console.log('📊 Applicant income fields:', {
       nestedIncome: formData.applicant?.income,
       nestedSalary: formData.applicant?.salary,
@@ -784,18 +788,18 @@ export class WebhookService {
     console.log('  - formData.applicant exists:', !!formData.applicant);
     console.log('  - formData.applicant.incomeFrequency:', formData.applicant?.incomeFrequency);
     console.log('  - formData.applicantIncomeFrequency:', formData.applicantIncomeFrequency);
-    console.log('  - Final applicant frequency will be:', formData.applicant?.incomeFrequency || formData.applicantIncomeFrequency || "undefined");
+    console.log('  - Final applicant frequency will be:', formData.applicant?.incomeFrequency || formData.applicantIncomeFrequency || "monthly");
     
     if (formData.hasCoApplicant) {
       console.log('  - formData.coApplicant.incomeFrequency:', formData.coApplicant?.incomeFrequency);
       console.log('  - formData.coApplicantIncomeFrequency:', formData.coApplicantIncomeFrequency);
-      console.log('  - Final co-applicant frequency will be:', formData.coApplicant?.incomeFrequency || formData.coApplicantIncomeFrequency || "undefined");
+      console.log('  - Final co-applicant frequency will be:', formData.coApplicant?.incomeFrequency || formData.coApplicantIncomeFrequency || "monthly");
     }
     
     if (formData.hasGuarantor) {
       console.log('  - formData.guarantor.incomeFrequency:', formData.guarantor?.incomeFrequency);
       console.log('  - formData.guarantorIncomeFrequency:', formData.guarantorIncomeFrequency);
-      console.log('  - Final guarantor frequency will be:', formData.guarantor?.incomeFrequency || formData.guarantorIncomeFrequency || "undefined");
+      console.log('  - Final guarantor frequency will be:', formData.guarantor?.incomeFrequency || formData.guarantorIncomeFrequency || "monthly");
     }
     console.log('=== END DETAILED INCOME FREQUENCY DEBUG ===');
     console.log('=== END INCOME FIELD DEBUG ===');
@@ -870,7 +874,7 @@ export class WebhookService {
         employmentStart: formData.applicantStartDate,
         // Fix: Use flat fields first since that's where the data actually is
         income: formData.applicantSalary || formData.applicant?.income || formData.applicant?.salary || "",
-        incomeFrequency: formData.applicantIncomeFrequency || formData.applicant?.incomeFrequency || "",
+        incomeFrequency: formData.applicantIncomeFrequency || formData.applicant?.incomeFrequency || "monthly",
         otherIncome: formData.applicantOtherIncome || formData.applicant?.otherIncome || "",
         otherIncomeSource: formData.applicantOtherIncomeSource || formData.applicant?.otherIncomeSource || "",
         bankRecords: formData.applicantBankRecords || []
@@ -909,7 +913,7 @@ export class WebhookService {
         employmentStart: formData.coApplicantStartDate,
         // Fix: Use flat fields first since that's where the data actually is
         income: formData.coApplicantSalary || formData.coApplicant?.income || formData.coApplicant?.salary || "",
-        incomeFrequency: formData.coApplicantIncomeFrequency || formData.coApplicant?.incomeFrequency || "",
+        incomeFrequency: formData.coApplicantIncomeFrequency || formData.coApplicant?.incomeFrequency || "monthly",
         otherIncome: formData.coApplicantOtherIncome || formData.coApplicant?.otherIncome || "",
         otherIncomeSource: formData.coApplicantOtherIncomeSource || formData.coApplicant?.otherIncomeSource || "",
         bankRecords: formData.coApplicantBankRecords || []
@@ -948,7 +952,7 @@ export class WebhookService {
         yearsInBusiness: formData.guarantorYearsInBusiness || "",
         // Fix: Use flat fields first since that's where the data actually is
         income: formData.guarantorSalary || formData.guarantor?.income || formData.guarantor?.salary || "",
-        incomeFrequency: formData.guarantorIncomeFrequency || formData.guarantor?.incomeFrequency || "",
+        incomeFrequency: formData.guarantorIncomeFrequency || formData.guarantor?.incomeFrequency || "monthly",
         otherIncome: formData.guarantorOtherIncome || formData.guarantor?.otherIncome || "",
         otherIncomeSource: formData.guarantorOtherIncomeSource || formData.guarantor?.otherIncomeSource || "",
         bankRecords: formData.guarantorBankRecords || []
