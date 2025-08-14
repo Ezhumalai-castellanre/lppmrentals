@@ -33,6 +33,7 @@ export default function PropertyDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedAmenityFilter, setSelectedAmenityFilter] = useState<string | null>(null);
   const [openGalleryDialog, setOpenGalleryDialog] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
   // Generate nearby amenities data based on property location
   const generateNearbyAmenities = () => {
@@ -238,6 +239,79 @@ export default function PropertyDetailsPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Email Contact Form Dialog */}
+        <Dialog open={showEmailForm} onOpenChange={setShowEmailForm}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Contact About {rental.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  placeholder="Enter your name"
+                />
+              </div>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Your Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  placeholder="Enter your email"
+                />
+              </div>
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number (Optional)
+                </label>
+                <input
+                  type="tel"
+                  id="phone"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  placeholder="Enter your phone number"
+                />
+              </div>
+              <div>
+                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                  Message
+                </label>
+                <textarea
+                  id="message"
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  placeholder="Tell us about your interest in this property..."
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button 
+                  className="flex-1 bg-cyan-600 hover:bg-cyan-700"
+                  onClick={() => {
+                    // Handle email submission here
+                    alert('Thank you! We will contact you soon.');
+                    setShowEmailForm(false);
+                  }}
+                >
+                  Send Message
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowEmailForm(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
@@ -285,6 +359,7 @@ export default function PropertyDetailsPage() {
                       <div className="text-sm text-gray-500">Parking</div>
                     </div>
                   </div>
+
                 </div>
               </CardContent>
             </Card>
@@ -321,6 +396,51 @@ export default function PropertyDetailsPage() {
                   Available Now
                 </Badge>
               </div>
+            </div>
+
+            {/* Contact Information */}
+            <div className="mb-6">
+              <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-4">Contact Information</h2>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3">Property Manager</h3>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600">📞 Phone:</span>
+                          <a href="tel:+1234567890" className="text-cyan-600 hover:text-cyan-700 font-medium">
+                            +1 (234) 567-8900
+                          </a>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600">✉️ Email:</span>
+                          <a href="mailto:info@lppmrentals.com" className="text-cyan-600 hover:text-cyan-700 font-medium">
+                            info@lppmrentals.com
+                          </a>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600">🏢 Office:</span>
+                          <span className="text-gray-900">123 Main Street, Suite 100</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3">Office Hours</h3>
+                      <div className="space-y-1 text-gray-600">
+                        <div>Monday - Friday: 9:00 AM - 6:00 PM</div>
+                        <div>Saturday: 10:00 AM - 4:00 PM</div>
+                        <div>Sunday: Closed</div>
+                      </div>
+                      <div className="mt-4 p-3 bg-cyan-50 rounded-lg">
+                        <p className="text-sm text-cyan-800">
+                          💡 <strong>Tip:</strong> For immediate assistance, call us during business hours or send us an email anytime!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Amenities */}
@@ -369,7 +489,30 @@ export default function PropertyDetailsPage() {
                   <div className="text-gray-500">per month</div>
                 </div>
 
-                {/* Contact buttons removed as requested */}
+                {/* Contact Section */}
+                <div className="space-y-4 mb-6">
+                  <Button 
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => window.open('tel:+1234567890', '_self')}
+                  >
+                    📞 Call Now
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => setShowEmailForm(true)}
+                  >
+                    ✉️ Send Email
+                  </Button>
+
+                  <Button 
+                    className="w-full bg-cyan-600 hover:bg-cyan-700 text-white"
+                    onClick={() => window.open('https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1&color_mktgkr4e=East+30th+Street&short_text800omovg=6B', '_blank')}
+                  >
+                    📝 Apply Now
+                  </Button>
+                </div>
 
                 <div className="text-center text-sm text-gray-500">
                   <p>Response time: Usually within 2 hours</p>
@@ -378,6 +521,16 @@ export default function PropertyDetailsPage() {
             </Card>
           </div>
         </div>
+      </div>
+
+      {/* Floating Apply Button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button
+          className="w-16 h-16 rounded-full bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+          onClick={() => window.open('https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1&color_mktgkr4e=East+30th+Street&short_text800omovg=6B', '_blank')}
+        >
+          <span className="text-2xl">📝</span>
+        </Button>
       </div>
     </div>
   );
