@@ -2261,6 +2261,8 @@ export function ApplicationForm() {
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [submissionReferenceId, setSubmissionReferenceId] = useState<string | null>(null);
 
   // Enhanced occupants handling with document uploads
   const addOccupant = async () => {
@@ -3414,11 +3416,15 @@ export function ApplicationForm() {
               title: "Application Submitted & Sent",
               description: "Your rental application has been submitted and sent to the webhook successfully.",
             });
-            } else {
+            setShowSuccessPopup(true);
+            setSubmissionReferenceId(submissionResult.reference_id);
+          } else {
             toast({
               title: "Application Submitted",
               description: "Your rental application has been submitted, but webhook delivery failed.",
             });
+            setShowSuccessPopup(true);
+            setSubmissionReferenceId(submissionResult.reference_id);
           }
         } catch (webhookError) {
           console.error('Webhook error:', webhookError);
@@ -3426,6 +3432,8 @@ export function ApplicationForm() {
             title: "Application Submitted",
               description: "Your rental application has been submitted, but webhook delivery failed.",
           });
+          setShowSuccessPopup(true);
+          setSubmissionReferenceId(submissionResult.reference_id);
         }
 
         generatePDF();
@@ -6140,6 +6148,34 @@ export function ApplicationForm() {
           </form>
         </Form>
       </div>
+
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center shadow-xl">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="w-8 h-8 text-green-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Application Submitted Successfully!
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Your rental application has been submitted and is now being processed. 
+              Reference ID: <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{submissionReferenceId}</span>
+            </p>
+            <Button
+              onClick={() => {
+                setShowSuccessPopup(false);
+                // Reload the app
+                window.location.reload();
+              }}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+            >
+              OK
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 } // end ApplicationForm
