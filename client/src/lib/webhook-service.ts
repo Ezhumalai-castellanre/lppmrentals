@@ -65,6 +65,7 @@ export interface FormDataWebhookData {
     coApplicant?: {
       email?: string;
       phone?: string;
+      address?: string;
       zip?: string;
       landlordZipCode?: string;
       landlordPhone?: string;
@@ -104,6 +105,7 @@ export interface FormDataWebhookData {
     guarantor?: {
       email?: string;
       phone?: string;
+      address?: string;
       zip?: string;
       landlordZipCode?: string;
       landlordPhone?: string;
@@ -112,7 +114,6 @@ export interface FormDataWebhookData {
       landlordCity?: string;
       name?: string;
       licenseState?: string;
-      address?: string;
       state?: string;
       relationship?: string;
       dob?: string;
@@ -741,6 +742,40 @@ export class WebhookService {
     // Extract webhook responses from the form data
     const webhookResponses = formData.webhookResponses || {};
     
+    // Debug logging for income fields
+    console.log('🔍 === INCOME FIELD DEBUG ===');
+    console.log('📊 Applicant income fields:', {
+      nestedIncome: formData.applicant?.income,
+      flatIncome: formData.applicantSalary,
+      nestedFrequency: formData.applicant?.incomeFrequency,
+      flatFrequency: formData.applicantIncomeFrequency,
+      nestedOtherIncome: formData.applicant?.otherIncome,
+      flatOtherIncome: formData.applicantOtherIncome
+    });
+    
+    if (formData.hasCoApplicant) {
+      console.log('📊 Co-Applicant income fields:', {
+        nestedIncome: formData.coApplicant?.income,
+        flatIncome: formData.coApplicantSalary,
+        nestedFrequency: formData.coApplicant?.incomeFrequency,
+        flatFrequency: formData.coApplicantIncomeFrequency,
+        nestedOtherIncome: formData.coApplicant?.otherIncome,
+        flatOtherIncome: formData.coApplicantOtherIncome
+      });
+    }
+    
+    if (formData.hasGuarantor) {
+      console.log('📊 Guarantor income fields:', {
+        nestedIncome: formData.guarantor?.income,
+        flatIncome: formData.guarantorSalary,
+        nestedFrequency: formData.guarantor?.incomeFrequency,
+        flatFrequency: formData.guarantorIncomeFrequency,
+        nestedOtherIncome: formData.guarantor?.otherIncome,
+        flatOtherIncome: formData.guarantorOtherIncome
+      });
+    }
+    console.log('=== END INCOME FIELD DEBUG ===');
+    
     // Count total responses and responses by person
     let totalResponses = 0;
     const responsesByPerson: { [key: string]: number } = {
@@ -809,10 +844,11 @@ export class WebhookService {
         employer: formData.applicantEmployerName,
         position: formData.applicantPosition,
         employmentStart: formData.applicantStartDate,
-        income: formData.applicantSalary,
-        incomeFrequency: formData.applicantIncomeFrequency || "monthly",
-        otherIncome: formData.applicantOtherIncome || "",
-        otherIncomeSource: formData.applicantOtherIncomeSource || "",
+        // Fix: Use nested form data structure for income fields with fallbacks
+        income: formData.applicant?.income || formData.applicantSalary || "",
+        incomeFrequency: formData.applicant?.incomeFrequency || formData.applicantIncomeFrequency || "monthly",
+        otherIncome: formData.applicant?.otherIncome || formData.applicantOtherIncome || "",
+        otherIncomeSource: formData.applicant?.otherIncomeSource || formData.applicantOtherIncomeSource || "",
         bankRecords: formData.applicantBankRecords || []
       },
 
@@ -820,6 +856,7 @@ export class WebhookService {
       coApplicant: formData.hasCoApplicant ? {
         email: formData.coApplicantEmail,
         phone: formData.coApplicantPhone,
+        address: formData.coApplicantAddress || formData.coApplicant?.address || "",
         zip: formData.coApplicantZip,
         landlordZipCode: formData.coApplicantLandlordZipCode,
         landlordPhone: formData.coApplicantLandlordPhone,
@@ -846,10 +883,11 @@ export class WebhookService {
         employer: formData.coApplicantEmployerName,
         position: formData.coApplicantPosition,
         employmentStart: formData.coApplicantStartDate,
-        income: formData.coApplicantSalary,
-        incomeFrequency: formData.coApplicantIncomeFrequency || "monthly",
-        otherIncome: formData.coApplicantOtherIncome || "",
-        otherIncomeSource: formData.coApplicantOtherIncomeSource || "",
+        // Fix: Use nested form data structure for income fields with fallbacks
+        income: formData.coApplicant?.income || formData.coApplicantSalary || "",
+        incomeFrequency: formData.coApplicant?.incomeFrequency || formData.coApplicantIncomeFrequency || "monthly",
+        otherIncome: formData.coApplicant?.otherIncome || formData.coApplicantOtherIncome || "",
+        otherIncomeSource: formData.coApplicant?.otherIncomeSource || formData.coApplicantOtherIncomeSource || "",
         bankRecords: formData.coApplicantBankRecords || []
       } : undefined,
 
@@ -857,6 +895,7 @@ export class WebhookService {
       guarantor: formData.hasGuarantor ? {
         email: formData.guarantorEmail,
         phone: formData.guarantorPhone,
+        address: formData.guarantorAddress || formData.guarantor?.address || "",
         zip: formData.guarantorZip,
         landlordZipCode: formData.guarantorLandlordZipCode,
         landlordPhone: formData.guarantorLandlordPhone,
@@ -865,7 +904,6 @@ export class WebhookService {
         landlordCity: formData.guarantorLandlordCity,
         name: formData.guarantorName,
         licenseState: formData.guarantorLicenseState,
-        address: formData.guarantorAddress,
         state: formData.guarantorState,
         relationship: formData.guarantorRelationship,
         dob: formData.guarantorDob,
@@ -884,10 +922,11 @@ export class WebhookService {
         businessName: formData.guarantorBusinessName || "",
         businessType: formData.guarantorBusinessType || "",
         yearsInBusiness: formData.guarantorYearsInBusiness || "",
-        income: formData.guarantorSalary,
-        incomeFrequency: formData.guarantorIncomeFrequency || "monthly",
-        otherIncome: formData.guarantorOtherIncome || "",
-        otherIncomeSource: formData.guarantorOtherIncomeSource || "",
+        // Fix: Use nested form data structure for income fields with fallbacks
+        income: formData.guarantor?.income || formData.guarantorSalary || "",
+        incomeFrequency: formData.guarantor?.incomeFrequency || formData.guarantorIncomeFrequency || "monthly",
+        otherIncome: formData.guarantor?.otherIncome || formData.guarantorOtherIncome || "",
+        otherIncomeSource: formData.guarantor?.otherIncomeSource || formData.guarantorOtherIncomeSource || "",
         bankRecords: formData.guarantorBankRecords || []
       } : undefined,
 
@@ -928,6 +967,34 @@ export class WebhookService {
     if (!transformedData.guarantor) {
       delete transformedData.guarantor;
     }
+
+    // Debug logging for transformed income fields
+    console.log('🔍 === TRANSFORMED INCOME FIELDS DEBUG ===');
+    console.log('📊 Transformed Applicant income:', {
+      income: transformedData.applicant.income,
+      incomeFrequency: transformedData.applicant.incomeFrequency,
+      otherIncome: transformedData.applicant.otherIncome,
+      otherIncomeSource: transformedData.applicant.otherIncomeSource
+    });
+    
+    if (transformedData.coApplicant) {
+      console.log('📊 Transformed Co-Applicant income:', {
+        income: transformedData.coApplicant.income,
+        incomeFrequency: transformedData.coApplicant.incomeFrequency,
+        otherIncome: transformedData.coApplicant.otherIncome,
+        otherIncomeSource: transformedData.coApplicant.otherIncomeSource
+      });
+    }
+    
+    if (transformedData.guarantor) {
+      console.log('📊 Transformed Guarantor income:', {
+        income: transformedData.guarantor.income,
+        incomeFrequency: transformedData.guarantor.incomeFrequency,
+        otherIncome: transformedData.guarantor.otherIncome,
+        otherIncomeSource: transformedData.guarantor.otherIncomeSource
+      });
+    }
+    console.log('=== END TRANSFORMED INCOME FIELDS DEBUG ===');
 
     return transformedData;
   }

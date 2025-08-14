@@ -3299,7 +3299,7 @@ export function ApplicationForm() {
               title: "Application Submitted & Sent",
               description: "Your rental application has been submitted and sent to the webhook successfully.",
             });
-            } else {
+          } else {
             toast({
               title: "Application Submitted",
               description: "Your rental application has been submitted, but webhook delivery failed.",
