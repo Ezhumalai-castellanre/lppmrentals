@@ -249,26 +249,20 @@ export function ApplicationForm() {
       landlordEmail: '',
       currentRent: undefined,
       reasonForMoving: '',
-      // Financial Information
+      // Employment & Financial Information
       employmentType: '',
       employer: '',
       position: '',
       employmentStart: undefined,
       income: '',
       incomeFrequency: 'yearly',
-      otherIncome: '',
-      otherIncomeFrequency: 'monthly',
-      otherIncomeSource: '',
       businessName: '',
       businessType: '',
       yearsInBusiness: '',
-      // Bank Information
-      bankRecords: [],
-      // IncomeWithFrequency combined field
-      IncomeWithFrequency: {
-        amount: '',
-        frequency: 'yearly'
-      }
+      otherIncome: '',
+      otherIncomeFrequency: 'monthly',
+      otherIncomeSource: '',
+      bankRecords: []
     },
     coApplicant: {
       email: '',
@@ -277,26 +271,20 @@ export function ApplicationForm() {
       landlordZipCode: '',
       landlordPhone: '',
       landlordEmail: '',
-      // Financial Information
+      // Employment & Financial Information
       employmentType: '',
       employer: '',
       position: '',
       employmentStart: undefined,
       income: '',
       incomeFrequency: 'yearly',
-      otherIncome: '',
-      otherIncomeFrequency: 'monthly',
-      otherIncomeSource: '',
       businessName: '',
       businessType: '',
       yearsInBusiness: '',
-      // Bank Information
-      bankRecords: [],
-      // IncomeWithFrequency combined field
-      IncomeWithFrequency: {
-        amount: '',
-        frequency: 'yearly'
-      }
+      otherIncome: '',
+      otherIncomeFrequency: 'monthly',
+      otherIncomeSource: '',
+      bankRecords: []
     },
     guarantor: {
       email: '',
@@ -305,26 +293,20 @@ export function ApplicationForm() {
       landlordZipCode: '',
       landlordPhone: '',
       landlordEmail: '',
-      // Financial Information
+      // Employment & Financial Information
       employmentType: '',
       employer: '',
       position: '',
       employmentStart: undefined,
       income: '',
       incomeFrequency: 'yearly',
-      otherIncome: '',
-      otherIncomeFrequency: 'monthly',
-      otherIncomeSource: '',
       businessName: '',
       businessType: '',
       yearsInBusiness: '',
-      // Bank Information
-      bankRecords: [],
-      // IncomeWithFrequency combined field
-      IncomeWithFrequency: {
-        amount: '',
-        frequency: 'yearly'
-      }
+      otherIncome: '',
+      otherIncomeFrequency: 'monthly',
+      otherIncomeSource: '',
+      bankRecords: []
     },
     occupants: [], // Each occupant: { name, relationship, dob, ssn, age, ssnDocument, ssnEncryptedDocument, documents }
     
