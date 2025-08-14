@@ -774,6 +774,27 @@ export class WebhookService {
         flatOtherIncome: formData.guarantorOtherIncome
       });
     }
+    
+    // Additional debugging for the specific issue
+    console.log('🔍 === DETAILED INCOME FREQUENCY DEBUG ===');
+    console.log('📊 Form data structure check:');
+    console.log('  - formData.applicant exists:', !!formData.applicant);
+    console.log('  - formData.applicant.incomeFrequency:', formData.applicant?.incomeFrequency);
+    console.log('  - formData.applicantIncomeFrequency:', formData.applicantIncomeFrequency);
+    console.log('  - Final applicant frequency will be:', formData.applicant?.incomeFrequency || formData.applicantIncomeFrequency || "monthly");
+    
+    if (formData.hasCoApplicant) {
+      console.log('  - formData.coApplicant.incomeFrequency:', formData.coApplicant?.incomeFrequency);
+      console.log('  - formData.coApplicantIncomeFrequency:', formData.coApplicantIncomeFrequency);
+      console.log('  - Final co-applicant frequency will be:', formData.coApplicant?.incomeFrequency || formData.coApplicantIncomeFrequency || "monthly");
+    }
+    
+    if (formData.hasGuarantor) {
+      console.log('  - formData.guarantor.incomeFrequency:', formData.guarantor?.incomeFrequency);
+      console.log('  - formData.guarantorIncomeFrequency:', formData.guarantorIncomeFrequency);
+      console.log('  - Final guarantor frequency will be:', formData.guarantor?.incomeFrequency || formData.guarantorIncomeFrequency || "monthly");
+    }
+    console.log('=== END DETAILED INCOME FREQUENCY DEBUG ===');
     console.log('=== END INCOME FIELD DEBUG ===');
     
     // Count total responses and responses by person

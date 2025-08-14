@@ -2745,6 +2745,17 @@ export function ApplicationForm() {
                 accountType: record.accountType,
                 accountNumber: record.accountNumber || ""
               })),
+              coApplicantPosition: formData.coApplicant?.position,
+              coApplicantStartDate: safeDateToISO(formData.coApplicant?.startDate),
+              coApplicantSalary: formData.coApplicant?.salary,
+              // Add missing income frequency and other income fields for co-applicant
+              coApplicantIncomeFrequency: formData.coApplicant?.incomeFrequency,
+              coApplicantOtherIncome: formData.coApplicant?.otherIncome,
+              coApplicantOtherIncomeSource: formData.coApplicant?.otherIncomeSource,
+              coApplicantBankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
+                bankName: record.bankName,
+                accountType: record.accountType
+              })),
             }
           } : {}),
           
@@ -2788,6 +2799,17 @@ export function ApplicationForm() {
                 bankName: record.bankName,
                 accountType: record.accountType,
                 accountNumber: record.accountNumber || ""
+              })),
+              guarantorPosition: formData.guarantor?.position,
+              guarantorStartDate: safeDateToISO(formData.guarantor?.startDate),
+              guarantorSalary: formData.guarantor?.salary,
+              // Add missing income frequency and other income fields for guarantor
+              guarantorIncomeFrequency: formData.guarantor?.incomeFrequency,
+              guarantorOtherIncome: formData.guarantor?.otherIncome,
+              guarantorOtherIncomeSource: formData.guarantor?.otherIncomeSource,
+              guarantorBankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
+                bankName: record.bankName,
+                accountType: record.accountType
               })),
             }
           } : {}),
@@ -3062,6 +3084,9 @@ export function ApplicationForm() {
             applicantPosition: formData.applicant?.position,
             applicantStartDate: safeDateToISO(formData.applicant?.startDate),
             applicantSalary: formData.applicant?.salary,
+            applicantIncomeFrequency: formData.applicant?.incomeFrequency,
+            applicantOtherIncome: formData.applicant?.otherIncome,
+            applicantOtherIncomeSource: formData.applicant?.otherIncomeSource,
             applicantBankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
               bankName: record.bankName,
               accountType: record.accountType
@@ -3241,6 +3266,16 @@ export function ApplicationForm() {
           const payloadSizeMB = Math.round(payloadSize / (1024 * 1024) * 100) / 100;
           console.log(`📦 Raw webhook payload size: ${payloadSizeMB}MB`);
           
+          // Debug income frequency values
+          console.log('🔍 === INCOME FREQUENCY DEBUG IN APPLICATION FORM ===');
+          console.log('📊 Applicant income frequency:', (webhookPayload as any).applicantIncomeFrequency);
+          console.log('📊 Co-Applicant income frequency:', (webhookPayload as any).coApplicantIncomeFrequency);
+          console.log('📊 Guarantor income frequency:', (webhookPayload as any).guarantorIncomeFrequency);
+          console.log('📊 Form data applicant income frequency:', formData.applicant?.incomeFrequency);
+          console.log('📊 Form data co-applicant income frequency:', formData.coApplicant?.incomeFrequency);
+          console.log('📊 Form data guarantor income frequency:', formData.guarantor?.incomeFrequency);
+          console.log('=== END INCOME FREQUENCY DEBUG ===');
+          
           if (payloadSize > 10 * 1024 * 1024) { // 10MB limit
             console.warn('⚠️ Raw webhook payload is very large:', payloadSizeMB, 'MB');
             console.warn('⚠️ Large data will be cleaned by webhook service');
@@ -3299,7 +3334,7 @@ export function ApplicationForm() {
               title: "Application Submitted & Sent",
               description: "Your rental application has been submitted and sent to the webhook successfully.",
             });
-          } else {
+            } else {
             toast({
               title: "Application Submitted",
               description: "Your rental application has been submitted, but webhook delivery failed.",
