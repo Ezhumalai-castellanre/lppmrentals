@@ -746,6 +746,7 @@ export class WebhookService {
     console.log('🔍 === INCOME FIELD DEBUG ===');
     console.log('📊 Applicant income fields:', {
       nestedIncome: formData.applicant?.income,
+      nestedSalary: formData.applicant?.salary,
       flatIncome: formData.applicantSalary,
       nestedFrequency: formData.applicant?.incomeFrequency,
       flatFrequency: formData.applicantIncomeFrequency,
@@ -756,6 +757,7 @@ export class WebhookService {
     if (formData.hasCoApplicant) {
       console.log('📊 Co-Applicant income fields:', {
         nestedIncome: formData.coApplicant?.income,
+        nestedSalary: formData.coApplicant?.salary,
         flatIncome: formData.coApplicantSalary,
         nestedFrequency: formData.coApplicant?.incomeFrequency,
         flatFrequency: formData.coApplicantIncomeFrequency,
@@ -767,6 +769,7 @@ export class WebhookService {
     if (formData.hasGuarantor) {
       console.log('📊 Guarantor income fields:', {
         nestedIncome: formData.guarantor?.income,
+        nestedSalary: formData.guarantor?.salary,
         flatIncome: formData.guarantorSalary,
         nestedFrequency: formData.guarantor?.incomeFrequency,
         flatFrequency: formData.guarantorIncomeFrequency,
@@ -781,18 +784,18 @@ export class WebhookService {
     console.log('  - formData.applicant exists:', !!formData.applicant);
     console.log('  - formData.applicant.incomeFrequency:', formData.applicant?.incomeFrequency);
     console.log('  - formData.applicantIncomeFrequency:', formData.applicantIncomeFrequency);
-    console.log('  - Final applicant frequency will be:', formData.applicant?.incomeFrequency || formData.applicantIncomeFrequency || "monthly");
+    console.log('  - Final applicant frequency will be:', formData.applicant?.incomeFrequency || formData.applicantIncomeFrequency || "undefined");
     
     if (formData.hasCoApplicant) {
       console.log('  - formData.coApplicant.incomeFrequency:', formData.coApplicant?.incomeFrequency);
       console.log('  - formData.coApplicantIncomeFrequency:', formData.coApplicantIncomeFrequency);
-      console.log('  - Final co-applicant frequency will be:', formData.coApplicant?.incomeFrequency || formData.coApplicantIncomeFrequency || "monthly");
+      console.log('  - Final co-applicant frequency will be:', formData.coApplicant?.incomeFrequency || formData.coApplicantIncomeFrequency || "undefined");
     }
     
     if (formData.hasGuarantor) {
       console.log('  - formData.guarantor.incomeFrequency:', formData.guarantor?.incomeFrequency);
       console.log('  - formData.guarantorIncomeFrequency:', formData.guarantorIncomeFrequency);
-      console.log('  - Final guarantor frequency will be:', formData.guarantor?.incomeFrequency || formData.guarantorIncomeFrequency || "monthly");
+      console.log('  - Final guarantor frequency will be:', formData.guarantor?.incomeFrequency || formData.guarantorIncomeFrequency || "undefined");
     }
     console.log('=== END DETAILED INCOME FREQUENCY DEBUG ===');
     console.log('=== END INCOME FIELD DEBUG ===');
@@ -866,8 +869,8 @@ export class WebhookService {
         position: formData.applicantPosition,
         employmentStart: formData.applicantStartDate,
         // Fix: Use nested form data structure for income fields with fallbacks
-        income: formData.applicant?.income || formData.applicantSalary || "",
-        incomeFrequency: formData.applicant?.incomeFrequency || formData.applicantIncomeFrequency || "monthly",
+        income: formData.applicant?.income || formData.applicant?.salary || formData.applicantSalary || "",
+        incomeFrequency: formData.applicant?.incomeFrequency || formData.applicantIncomeFrequency || "",
         otherIncome: formData.applicant?.otherIncome || formData.applicantOtherIncome || "",
         otherIncomeSource: formData.applicant?.otherIncomeSource || formData.applicantOtherIncomeSource || "",
         bankRecords: formData.applicantBankRecords || []
@@ -905,8 +908,8 @@ export class WebhookService {
         position: formData.coApplicantPosition,
         employmentStart: formData.coApplicantStartDate,
         // Fix: Use nested form data structure for income fields with fallbacks
-        income: formData.coApplicant?.income || formData.coApplicantSalary || "",
-        incomeFrequency: formData.coApplicant?.incomeFrequency || formData.coApplicantIncomeFrequency || "monthly",
+        income: formData.coApplicant?.income || formData.coApplicant?.salary || formData.coApplicantSalary || "",
+        incomeFrequency: formData.coApplicant?.incomeFrequency || formData.coApplicantIncomeFrequency || "",
         otherIncome: formData.coApplicant?.otherIncome || formData.coApplicantOtherIncome || "",
         otherIncomeSource: formData.coApplicant?.otherIncomeSource || formData.coApplicantOtherIncomeSource || "",
         bankRecords: formData.coApplicantBankRecords || []
@@ -944,8 +947,8 @@ export class WebhookService {
         businessType: formData.guarantorBusinessType || "",
         yearsInBusiness: formData.guarantorYearsInBusiness || "",
         // Fix: Use nested form data structure for income fields with fallbacks
-        income: formData.guarantor?.income || formData.guarantorSalary || "",
-        incomeFrequency: formData.guarantor?.incomeFrequency || formData.guarantorIncomeFrequency || "monthly",
+        income: formData.guarantor?.income || formData.guarantor?.salary || formData.guarantorSalary || "",
+        incomeFrequency: formData.guarantor?.incomeFrequency || formData.guarantorIncomeFrequency || "",
         otherIncome: formData.guarantor?.otherIncome || formData.guarantorOtherIncome || "",
         otherIncomeSource: formData.guarantor?.otherIncomeSource || formData.guarantorOtherIncomeSource || "",
         bankRecords: formData.guarantorBankRecords || []
