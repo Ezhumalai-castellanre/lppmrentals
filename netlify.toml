@@ -36,6 +36,21 @@
   to = "/.netlify/functions/test-schema"
   status = 200
 
+[[redirects]]
+  from = "/api/save-draft"
+  to = "/.netlify/functions/save-draft"
+  status = 200
+
+[[redirects]]
+  from = "/api/get-draft"
+  to = "/.netlify/functions/get-draft"
+  status = 200
+
+[[redirects]]
+  from = "/api/test-draft"
+  to = "/.netlify/functions/test-draft"
+  status = 200
+
 
 
 [[redirects]]

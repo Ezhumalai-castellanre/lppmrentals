@@ -16,18 +16,21 @@ interface FormData {
 
 export class ResetPDFGenerator {
   private doc: jsPDF;
-  private yPosition: number = 25;
+  private yPosition: number = 30;
   private readonly pageWidth: number = 210;
   private readonly pageHeight: number = 297;
-  private readonly marginLeft: number = 25;
-  private readonly marginRight: number = 25;
-  private readonly contentWidth: number = 160;
+  private readonly marginLeft: number = 10; // Updated to 10px margin
+  private readonly marginRight: number = 10; // Updated to 10px margin
+  private readonly marginTop: number = 10; // Added top margin
+  private readonly marginBottom: number = 10; // Added bottom margin
+  private readonly contentWidth: number = 190; // Increased content width due to smaller margins
+  private readonly contentHeight: number = 277; // Page height minus top and bottom margins
   
   // Clean, professional color scheme
-  private readonly primaryColor: number[] = [0, 51, 102]; // Deep blue
-  private readonly secondaryColor: number[] = [64, 64, 64]; // Dark gray
-  private readonly accentColor: number[] = [0, 102, 204]; // Bright blue
-  private readonly lightGray: number[] = [248, 249, 250]; // Very light gray
+  private readonly primaryColor: number[] = [0, 102, 204]; // Blue
+  private readonly secondaryColor: number[] = [51, 51, 51]; // Dark gray
+  private readonly accentColor: number[] = [255, 193, 7]; // Gold
+  private readonly lightGray: number[] = [245, 245, 245];
   private readonly borderColor: number[] = [220, 220, 220]; // Light border
 
   constructor() {
@@ -88,9 +91,9 @@ export class ResetPDFGenerator {
 
   private addFieldRow(label: string, value: any, highlight: boolean = false): void {
     const displayValue = (value !== undefined && value !== null && value !== '') ? String(value) : 'Not provided';
-    const labelWidth = 75; // Adjusted label width for better alignment
-    const valueStartX = this.marginLeft + labelWidth + 8; // 8px gap between label and value
-    const valueWidth = this.contentWidth - labelWidth - 8; // Available width for value
+    const labelWidth = 50; // Reduced label width for better alignment
+    const valueStartX = this.marginLeft + labelWidth + 4; // Reduced gap between label and value to 4px
+    const valueWidth = this.contentWidth - labelWidth - 4; // Available width for value
     
     // Label
     this.doc.setFontSize(9);
@@ -227,15 +230,16 @@ export class ResetPDFGenerator {
     }
     
     // Landlord Information section
-    if (person.landlordName || person.landlordAddressLine1 || person.landlordAddressLine2 || person.landlordCity || person.landlordState || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
-      this.yPosition += 4;
-      this.addText("Landlord Information:", 9, true);
-      this.yPosition += 4;
+    if (person.landlordName || person.landlordAddressLine1 || person.landlordAddressLine2 || person.landlordCity || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
+      this.yPosition += 8; // More spacing before landlord section
+      
+      // Create a separate section for Landlord Information
+      this.addSection("Landlord Information");
+      
       this.addFieldRow("Landlord Name", person.landlordName);
       this.addFieldRow("Landlord Address Line 1", person.landlordAddressLine1);
       this.addFieldRow("Landlord Address Line 2", person.landlordAddressLine2);
       this.addFieldRow("Landlord City", person.landlordCity);
-      this.addFieldRow("Landlord State", person.landlordState);
       this.addFieldRow("Landlord ZIP Code", person.landlordZipCode);
       this.addFieldRow("Landlord Phone", person.landlordPhone);
       this.addFieldRow("Landlord Email", person.landlordEmail);
@@ -347,44 +351,45 @@ export class ResetPDFGenerator {
 
   private addFooter(): void {
     this.checkPageBreak();
-    this.yPosition += 10;
     
     // Footer line
-    this.doc.setDrawColor(this.borderColor[0], this.borderColor[1], this.borderColor[2]);
+    this.doc.setDrawColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
     this.doc.setLineWidth(0.5);
     this.doc.line(this.marginLeft, this.yPosition, this.pageWidth - this.marginRight, this.yPosition);
-    this.yPosition += 8;
+    this.yPosition += 4; // Reduced spacing
     
-    // Footer text
-    this.doc.setFontSize(8);
+    // Footer text with top and bottom margins
+    this.doc.setFontSize(7); // Reduced font size
     this.doc.setFont('helvetica', 'normal');
-    this.doc.setTextColor(this.secondaryColor[0], this.secondaryColor[1], this.secondaryColor[2]);
-    this.doc.text("Liberty Place Property Management - Rental Application", this.pageWidth / 2, this.yPosition, { align: 'center' });
-    this.doc.text("This document was generated electronically", this.pageWidth / 2, this.yPosition + 4, { align: 'center' });
+    this.doc.setTextColor(128, 128, 128);
+    this.doc.text("This application was submitted electronically on " + new Date().toLocaleString(), this.marginLeft, this.yPosition);
+    this.yPosition += 3; // Reduced spacing
+    this.doc.text("Liberty Place Property Management - Rental Application", this.marginLeft, this.yPosition);
+    this.yPosition += 3; // Reduced spacing
+    this.doc.text("All information is encrypted and secure", this.marginLeft, this.yPosition);
   }
 
   private checkPageBreak(): void {
-    if (this.yPosition > 270) {
+    if (this.yPosition > this.pageHeight - this.marginBottom - 20) { // Updated to respect bottom margin
       this.doc.addPage();
-      this.yPosition = 25;
+      this.yPosition = this.marginTop + 20; // Start with top margin
       this.addPageHeader();
     }
   }
 
   private addPageHeader(): void {
+    // Add page number
     const pageCount = this.doc.getNumberOfPages();
-    
-    // Page number
     this.doc.setFontSize(8);
     this.doc.setFont('helvetica', 'normal');
-    this.doc.setTextColor(this.secondaryColor[0], this.secondaryColor[1], this.secondaryColor[2]);
-    this.doc.text(`Page ${pageCount}`, this.pageWidth - 35, 15);
+    this.doc.setTextColor(128, 128, 128);
+    this.doc.text(`Page ${pageCount}`, this.pageWidth - 20, this.marginTop + 5); // Updated position for top margin
     
-    // Company name
+    // Add company name in header
     this.doc.setFontSize(10);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
-    this.doc.text('Liberty Place Property Management', this.marginLeft, 15);
+    this.doc.text('Liberty Place Property Management', this.marginLeft, this.marginTop + 5); // Updated position for top margin
   }
 
   private addJSONPayload(data: FormData): void {

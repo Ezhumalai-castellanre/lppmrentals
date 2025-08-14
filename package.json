@@ -12,7 +12,8 @@
     "start": "NODE_ENV=production node dist/index.js",
     "dev:netlify": "netlify dev",
     "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "setup:dynamodb": "node setup-dynamodb.js"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.11.2",
