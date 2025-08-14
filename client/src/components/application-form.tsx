@@ -349,15 +349,103 @@ export function ApplicationForm() {
   const [availableApartments, setAvailableApartments] = useState<UnitItem[]>([]);
   const [isLoadingUnits, setIsLoadingUnits] = useState(false);
 
-  // Fetch units from Monday.com API
+  // Fetch units from NYC listings API
   useEffect(() => {
     const fetchUnits = async () => {
       setIsLoadingUnits(true);
       try {
-        const fetchedUnits = await MondayApiService.fetchVacantUnits();
-        setUnits(fetchedUnits);
+        console.log('Fetching from NYC listings API...');
+        const nycResponse = await fetch('https://5sdpaqwf0f.execute-api.us-east-1.amazonaws.com/dev/getnyclisting', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            "Stage": "Active"
+          }),
+        });
+
+        if (nycResponse.ok) {
+          const nycResult = await nycResponse.json();
+          console.log('NYC listings API response:', nycResult);
+          
+          // Handle the new API response structure
+          let fetchedUnits: UnitItem[] = [];
+          
+          if (nycResult.body) {
+            try {
+              // Parse the body if it's a JSON string
+              const bodyData = typeof nycResult.body === 'string' ? JSON.parse(nycResult.body) : nycResult.body;
+              
+              // Check if we have items array
+              if (bodyData.items && Array.isArray(bodyData.items)) {
+                fetchedUnits = bodyData.items.map((item: any) => {
+                  const monthlyRent = item.price ? Number(item.price) : 0;
+                  console.log(`🏠 Mapping item ${item.name}: price=${item.price}, monthlyRent=${monthlyRent}`);
+                  
+                  return {
+                    id: item.id || String(Math.random()),
+                    name: item.name || 'Unknown Unit',
+                    propertyName: item.address || 'Unknown Property',
+                    unitType: item.unit_type || 'Unknown',
+                    status: item.Stage || 'Available',
+                    monthlyRent: monthlyRent,
+                    amenities: item.description || item.short_description || '',
+                    images: (item.subitems || []).map((subitem: any) => ({
+                      id: subitem.id || String(Math.random()),
+                      name: subitem.name || 'Media',
+                      url: subitem.url || '',
+                      text: 'Media'
+                    }))
+                  };
+                });
+              }
+            } catch (parseError) {
+              console.error('Error parsing API response body:', parseError);
+            }
+          }
+          
+          // Fallback: check if result has items directly
+          if (fetchedUnits.length === 0 && nycResult.items && Array.isArray(nycResult.items)) {
+            fetchedUnits = nycResult.items.map((item: any) => {
+              const monthlyRent = item.price ? Number(item.price) : 0;
+              console.log(`🏠 Fallback mapping item ${item.name}: price=${item.price}, monthlyRent=${monthlyRent}`);
+              
+              return {
+                id: item.id || String(Math.random()),
+                name: item.name || 'Unknown Unit',
+                propertyName: item.address || 'Unknown Property',
+                unitType: item.unit_type || 'Unknown',
+                status: item.Stage || 'Available',
+                monthlyRent: monthlyRent,
+                amenities: item.description || item.short_description || '',
+                images: (item.subitems || []).map((subitem: any) => ({
+                  id: subitem.id || String(Math.random()),
+                  name: subitem.name || 'Media',
+                  url: subitem.url || '',
+                  text: 'Media'
+                }))
+              };
+            });
+          }
+          
+          console.log('Processed units from NYC listings API:', fetchedUnits);
+          setUnits(fetchedUnits);
+        } else {
+          // Fallback to Monday.com API if NYC API fails
+          console.log('NYC API failed, falling back to Monday.com API...');
+          const fetchedUnits = await MondayApiService.fetchVacantUnits();
+          setUnits(fetchedUnits);
+        }
       } catch (error) {
         console.error('Failed to fetch units:', error);
+        // Final fallback to Monday.com API
+        try {
+          const fetchedUnits = await MondayApiService.fetchVacantUnits();
+          setUnits(fetchedUnits);
+        } catch (fallbackError) {
+          console.error('Fallback to Monday.com API also failed:', fallbackError);
+        }
       } finally {
         setIsLoadingUnits(false);
       }
@@ -1237,12 +1325,7 @@ export function ApplicationForm() {
     const firstUnit = unitsForBuilding[0] || null;
     setSelectedUnit(firstUnit);
     
-    // Update form data
-    await updateFormData('application', 'buildingAddress', buildingAddress);
-    await updateFormData('application', 'apartmentNumber', firstUnit?.name || '');
-    await updateFormData('application', 'apartmentType', firstUnit?.unitType || '');
-    
-    // Update form fields
+    // Update form fields directly - the useEffect will handle formData synchronization
     form.setValue('buildingAddress', buildingAddress);
     form.setValue('apartmentNumber', firstUnit?.name || '');
     form.setValue('apartmentType', firstUnit?.unitType || '');
@@ -1271,16 +1354,7 @@ export function ApplicationForm() {
     // If no specific apartment found, don't auto-select anything
     setSelectedUnit(selectedUnit || null);
     
-    // Update form data with the original values (don't override with first unit)
-    await updateFormData('application', 'buildingAddress', buildingAddress);
-    if (apartmentNumber) {
-      await updateFormData('application', 'apartmentNumber', apartmentNumber);
-    }
-    if (apartmentType) {
-      await updateFormData('application', 'apartmentType', apartmentType);
-    }
-    
-    // Update form fields with the original values
+    // Update form fields directly - the useEffect will handle formData synchronization
     form.setValue('buildingAddress', buildingAddress);
     if (apartmentNumber) {
       form.setValue('apartmentNumber', apartmentNumber);
@@ -1306,14 +1380,11 @@ export function ApplicationForm() {
     console.log('🏠 handleApartmentSelect called with:', apartmentName);
     const selectedApartment = availableApartments.find(unit => unit.name === apartmentName);
     console.log('🏠 selectedApartment:', selectedApartment);
+    console.log('🏠 selectedApartment.monthlyRent:', selectedApartment?.monthlyRent);
+    console.log('🏠 selectedApartment.monthlyRent type:', typeof selectedApartment?.monthlyRent);
     setSelectedUnit(selectedApartment || null);
     
-    // Update form data
-    await updateFormData('application', 'apartmentNumber', apartmentName);
-    await updateFormData('application', 'apartmentType', selectedApartment?.unitType || '');
-    await updateFormData('application', 'monthlyRent', selectedApartment?.monthlyRent || undefined);
-    
-    // Update form fields
+    // Update form fields directly - the useEffect will handle formData synchronization
     console.log('🏠 Setting form values:');
     console.log('  - apartmentNumber:', apartmentName);
     console.log('  - apartmentType:', selectedApartment?.unitType || '');
@@ -1322,6 +1393,15 @@ export function ApplicationForm() {
     form.setValue('apartmentNumber', apartmentName);
     form.setValue('apartmentType', selectedApartment?.unitType || '');
     form.setValue('monthlyRent', selectedApartment?.monthlyRent || undefined);
+    
+    // Verify the form values were actually set
+    setTimeout(() => {
+      console.log('🔍 Verifying form values after apartment selection:', {
+        apartmentNumber: form.getValues('apartmentNumber'),
+        apartmentType: form.getValues('apartmentType'),
+        monthlyRent: form.getValues('monthlyRent')
+      });
+    }, 100);
   };
 
   const handleDocumentChange = async (person: string, documentType: string, files: File[]) => {
@@ -3829,7 +3909,7 @@ export function ApplicationForm() {
                           placeholder="0.00"
                           {...field}
                           className="input-field"
-                          value={field.value?.toString() || formData.application?.monthlyRent?.toString() || ''}
+                          value={field.value?.toString() || formData.application?.monthlyRent?.toString() || selectedUnit?.monthlyRent?.toString() || ''}
                           disabled
                         />
                       </FormControl>

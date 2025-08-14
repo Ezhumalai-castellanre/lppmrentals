@@ -118,12 +118,14 @@ export class MondayApiService {
   // Method to fetch available rentals with media files
   static async fetchAvailableRentals(): Promise<RentalItem[]> {
     try {
-      const endpoint = this.getEndpoint('available-rentals');
-      const response = await fetch(endpoint, {
-        method: this.isDevelopment() ? 'GET' : 'POST',
+      const response = await fetch('https://5sdpaqwf0f.execute-api.us-east-1.amazonaws.com/dev/getnyclisting', {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          "Stage": "Active"
+        }),
       });
 
       if (!response.ok) {
@@ -131,8 +133,66 @@ export class MondayApiService {
       }
 
       const result = await response.json();
-      console.log(`API response from ${endpoint}:`, result);
-      return result.rentals || [];
+      console.log('API response from NYC listings endpoint:', result);
+      
+      // Handle the new API response structure
+      let rentals: RentalItem[] = [];
+      
+      if (result.body) {
+        try {
+          // Parse the body if it's a JSON string
+          const bodyData = typeof result.body === 'string' ? JSON.parse(result.body) : result.body;
+          
+          // Check if we have items array
+          if (bodyData.items && Array.isArray(bodyData.items)) {
+            rentals = bodyData.items.map((item: any) => ({
+              id: item.id || String(Math.random()),
+              name: item.name || 'Unknown Unit',
+              propertyName: item.address || 'Unknown Property',
+              unitType: item.unit_type || 'Unknown',
+              status: item.Stage || 'Available',
+              monthlyRent: item.price ? `$${item.price}` : 'Contact',
+              amenities: item.description || item.short_description || '',
+              mediaFiles: (item.subitems || []).map((subitem: any) => ({
+                id: subitem.id || String(Math.random()),
+                name: subitem.name || 'Media',
+                url: subitem.url || '',
+                type: 'Media',
+                isVideo: false
+              }))
+            }));
+          }
+        } catch (parseError) {
+          console.error('Error parsing API response body:', parseError);
+        }
+      }
+      
+      // Fallback: check if result has rentals or items directly
+      if (rentals.length === 0) {
+        if (result.rentals && Array.isArray(result.rentals)) {
+          rentals = result.rentals;
+        } else if (result.items && Array.isArray(result.items)) {
+          rentals = result.items.map((item: any) => ({
+            id: item.id || String(Math.random()),
+            name: item.name || 'Unknown Unit',
+            propertyName: item.address || 'Unknown Property',
+            unitType: item.unit_type || 'Unknown',
+            status: item.Stage || 'Available',
+            monthlyRent: item.price ? `$${item.price}` : 'Contact',
+            amenities: item.description || item.short_description || '',
+            mediaFiles: (item.subitems || []).map((subitem: any) => ({
+              id: subitem.id || String(Math.random()),
+              name: subitem.name || 'Media',
+              url: subitem.url || '',
+              type: 'Media',
+              isVideo: false
+            }))
+          }));
+        }
+      }
+      
+      console.log('Processed rentals:', rentals);
+      return rentals;
     } catch (error) {
       console.error('Error fetching available rentals:', error);
       return [];

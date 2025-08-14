@@ -190,7 +190,7 @@ export function RentalListings() {
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="text-center mb-12">
-          <h2 className="font-serif text-4xl font-bold text-gray-900 mb-4">Available Rentals</h2>
+          <h2 className="font-serif text-4xl font-bold text-gray-900 mb-4">Available Units</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Discover carefully curated properties that match your lifestyle and preferences
           </p>

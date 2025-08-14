@@ -475,6 +475,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Monday.com available rentals endpoint
   app.get("/api/monday/available-rentals", async (req, res) => {
     try {
+      // Try to fetch from the new NYC listings API first
+      console.log('Fetching from NYC listings API...');
+      const nycResponse = await fetch('https://5sdpaqwf0f.execute-api.us-east-1.amazonaws.com/dev/getnyclisting', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          "Stage": "Active"
+        }),
+      });
+
+      if (nycResponse.ok) {
+        const nycResult = await nycResponse.json();
+        console.log('NYC listings API response:', JSON.stringify(nycResult, null, 2));
+        
+        // Handle the new API response structure
+        let rentals = [];
+        
+        if (nycResult.body) {
+          try {
+            // Parse the body if it's a JSON string
+            const bodyData = typeof nycResult.body === 'string' ? JSON.parse(nycResult.body) : nycResult.body;
+            
+            // Check if we have items array
+            if (bodyData.items && Array.isArray(bodyData.items)) {
+              rentals = bodyData.items.map((item: any) => ({
+                id: item.id || String(Math.random()),
+                name: item.name || 'Unknown Unit',
+                propertyName: item.address || 'Unknown Property',
+                unitType: item.unit_type || 'Unknown',
+                status: item.Stage || 'Available',
+                monthlyRent: item.price ? `$${item.price}` : 'Contact',
+                amenities: item.description || item.short_description || '',
+                mediaFiles: (item.subitems || []).map((subitem: any) => ({
+                  id: subitem.id || String(Math.random()),
+                  name: subitem.name || 'Media',
+                  url: subitem.url || '',
+                  type: 'Media',
+                  isVideo: false
+                }))
+              }));
+            }
+          } catch (parseError) {
+            console.error('Error parsing API response body:', parseError);
+          }
+        }
+        
+        // Fallback: check if result has rentals or items directly
+        if (rentals.length === 0) {
+          if (nycResult.rentals && Array.isArray(nycResult.rentals)) {
+            rentals = nycResult.rentals;
+          } else if (nycResult.items && Array.isArray(nycResult.items)) {
+            rentals = nycResult.items.map((item: any) => ({
+              id: item.id || String(Math.random()),
+              name: item.name || 'Unknown Unit',
+              propertyName: item.address || 'Unknown Property',
+              unitType: item.unit_type || 'Unknown',
+              status: item.Stage || 'Available',
+              monthlyRent: item.price ? `$${item.price}` : 'Contact',
+              amenities: item.description || item.short_description || '',
+              mediaFiles: (item.subitems || []).map((subitem: any) => ({
+                id: subitem.id || String(Math.random()),
+                name: subitem.name || 'Media',
+                url: subitem.url || '',
+                type: 'Media',
+                isVideo: false
+              }))
+            }));
+          }
+        }
+        
+        // If the new API returns data, use it
+        if (rentals.length > 0) {
+          console.log('Returning rentals from NYC listings API:', rentals.length);
+          return res.json({ rentals });
+        }
+      }
+
+      // Fallback to Monday.com API if NYC API fails or returns no data
+      console.log('Falling back to Monday.com API...');
       const MONDAY_API_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjUzOTcyMTg4NCwiYWFpIjoxMSwidWlkIjo3ODE3NzU4NCwiaWFkIjoiMjAyNS0wNy0xNlQxMjowMDowOC4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NTUxNjQ0NSwicmduIjoidXNlMSJ9.s43_kjRmv-QaZ92LYdRlEvrq9CYqxKhh3XXpR-8nhKU";
       const BOARD_ID = "9769934634";
 
@@ -586,10 +667,11 @@ console.log("response", response);
         };
       });
 
+      console.log('Returning available rentals from Monday.com fallback:', rentals.length);
       res.json({ rentals });
     } catch (error) {
-      console.error('Monday API proxy error:', error);
-      res.status(500).json({ error: "Failed to fetch available rentals from Monday.com" });
+      console.error('API proxy error:', error);
+      res.status(500).json({ error: "Failed to fetch available rentals from both NYC listings API and Monday.com" });
     }
   });
 
