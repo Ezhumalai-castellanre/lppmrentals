@@ -248,7 +248,27 @@ export function ApplicationForm() {
       landlordPhone: '',
       landlordEmail: '',
       currentRent: undefined,
-      reasonForMoving: ''
+      reasonForMoving: '',
+      // Financial Information
+      employmentType: '',
+      employer: '',
+      position: '',
+      employmentStart: undefined,
+      income: '',
+      incomeFrequency: 'yearly',
+      otherIncome: '',
+      otherIncomeFrequency: 'monthly',
+      otherIncomeSource: '',
+      businessName: '',
+      businessType: '',
+      yearsInBusiness: '',
+      // Bank Information
+      bankRecords: [],
+      // IncomeWithFrequency combined field
+      IncomeWithFrequency: {
+        amount: '',
+        frequency: 'yearly'
+      }
     },
     coApplicant: {
       email: '',
@@ -256,7 +276,27 @@ export function ApplicationForm() {
       zip: '',
       landlordZipCode: '',
       landlordPhone: '',
-      landlordEmail: ''
+      landlordEmail: '',
+      // Financial Information
+      employmentType: '',
+      employer: '',
+      position: '',
+      employmentStart: undefined,
+      income: '',
+      incomeFrequency: 'yearly',
+      otherIncome: '',
+      otherIncomeFrequency: 'monthly',
+      otherIncomeSource: '',
+      businessName: '',
+      businessType: '',
+      yearsInBusiness: '',
+      // Bank Information
+      bankRecords: [],
+      // IncomeWithFrequency combined field
+      IncomeWithFrequency: {
+        amount: '',
+        frequency: 'yearly'
+      }
     },
     guarantor: {
       email: '',
@@ -264,7 +304,27 @@ export function ApplicationForm() {
       zip: '',
       landlordZipCode: '',
       landlordPhone: '',
-      landlordEmail: ''
+      landlordEmail: '',
+      // Financial Information
+      employmentType: '',
+      employer: '',
+      position: '',
+      employmentStart: undefined,
+      income: '',
+      incomeFrequency: 'yearly',
+      otherIncome: '',
+      otherIncomeFrequency: 'monthly',
+      otherIncomeSource: '',
+      businessName: '',
+      businessType: '',
+      yearsInBusiness: '',
+      // Bank Information
+      bankRecords: [],
+      // IncomeWithFrequency combined field
+      IncomeWithFrequency: {
+        amount: '',
+        frequency: 'yearly'
+      }
     },
     occupants: [], // Each occupant: { name, relationship, dob, ssn, age, ssnDocument, ssnEncryptedDocument, documents }
     

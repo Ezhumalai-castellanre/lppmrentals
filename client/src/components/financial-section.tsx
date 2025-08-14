@@ -25,6 +25,14 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
     updateFormData(person, field, date?.toISOString());
   };
 
+  const handleIncomeWithFrequencyChange = (field: 'amount' | 'frequency', value: string) => {
+    const currentIncomeWithFrequency = personData.IncomeWithFrequency || { amount: '', frequency: 'yearly' };
+    updateFormData(person, 'IncomeWithFrequency', {
+      ...currentIncomeWithFrequency,
+      [field]: value
+    });
+  };
+
   return (
     <Card className="mb-6">
       <CardHeader>
@@ -157,6 +165,42 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
             onValueChange={(value) => handleChange("otherIncome", value)}
             onFrequencyChange={(frequency) => handleChange("otherIncomeFrequency", frequency)}
           />
+        </div>
+
+        {/* IncomeWithFrequency Combined Field */}
+        <div className="form-field">
+          <Label className="text-sm font-medium">Income With Frequency (Combined)</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-field">
+              <Label htmlFor={`${person}-incomeWithFrequency-amount`}>Amount ($)</Label>
+              <Input
+                id={`${person}-incomeWithFrequency-amount`}
+                type="number"
+                placeholder="0.00"
+                value={personData.IncomeWithFrequency?.amount || ""}
+                onChange={(e) => handleIncomeWithFrequencyChange('amount', e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="form-field">
+              <Label htmlFor={`${person}-incomeWithFrequency-frequency`}>Frequency</Label>
+              <Select
+                value={personData.IncomeWithFrequency?.frequency || "yearly"}
+                onValueChange={(value) => handleIncomeWithFrequencyChange('frequency', value)}
+              >
+                <SelectTrigger className="input-field">
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="bi-weekly">Every 2 weeks</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
         <div className="form-field">
           <Label htmlFor={`${person}-otherIncomeSource`}>Other Income Source</Label>
