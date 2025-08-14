@@ -26,160 +26,117 @@ const dateStringToDate = z.union([
   return null;
 }).refine((val) => val !== null, "Date is required");
 
-// Comprehensive validation schema that matches the actual application data
-export const insertRentalApplicationSchema = z.object({
-  // Application Info
-  buildingAddress: z.string().min(1, "Building address is required"),
-  apartmentNumber: z.string().min(1, "Apartment number is required"),
-  moveInDate: dateStringToDate,
+// Bank record schema
+const bankRecordSchema = z.object({
+  bankName: z.string().optional(),
+  accountType: z.string().optional(),
+  accountNumber: z.string().optional(),
+});
+
+// Application schema
+const applicationSchema = z.object({
+  buildingAddress: z.string().optional(),
+  apartmentNumber: z.string().optional(),
+  apartmentType: z.string().optional(),
   monthlyRent: z.union([
-    z.number().positive("Monthly rent must be positive"),
-    z.string().transform((val) => {
-      const num = parseFloat(val);
-      if (isNaN(num) || num <= 0) {
-        throw new Error("Monthly rent must be a positive number");
-      }
-      return num;
-    })
-  ]),
-  apartmentType: z.string().min(1, "Apartment type is required"),
+    z.number(),
+    z.string().transform((val) => parseFloat(val) || 0)
+  ]).optional(),
+  moveInDate: z.string().optional(),
   howDidYouHear: z.string().optional(),
   howDidYouHearOther: z.string().optional(),
+});
 
-  // Primary Applicant
+// Applicant schema
+const applicantSchema = z.object({
+  name: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zip: z.string().optional(),
+  dob: z.string().optional(),
+  ssn: z.string().optional(),
+  license: z.string().optional(),
+  licenseState: z.string().optional(),
+  lengthAtAddressYears: z.number().optional(),
+  lengthAtAddressMonths: z.number().optional(),
+  landlordName: z.string().optional(),
+  landlordAddressLine1: z.string().optional(),
+  landlordAddressLine2: z.string().optional(),
+  landlordCity: z.string().optional(),
+  landlordState: z.string().optional(),
+  landlordZipCode: z.string().optional(),
+  landlordPhone: z.string().optional(),
+  landlordEmail: z.string().optional(),
+  currentRent: z.number().optional(),
+  reasonForMoving: z.string().optional(),
+  age: z.number().optional(),
+  employmentType: z.string().optional(),
+  employer: z.string().optional(),
+  position: z.string().optional(),
+  employmentStart: z.string().optional(),
+  income: z.string().optional(),
+  incomeFrequency: z.string().optional(),
+  otherIncome: z.string().optional(),
+  otherIncomeSource: z.string().optional(),
+  bankRecords: z.array(bankRecordSchema).optional(),
+});
+
+// Co-Applicant schema (same as applicant)
+const coApplicantSchema = applicantSchema;
+
+// Guarantor schema (extends applicant with business fields)
+const guarantorSchema = applicantSchema.extend({
+  businessName: z.string().optional(),
+  businessType: z.string().optional(),
+  yearsInBusiness: z.string().optional(),
+});
+
+// Occupant schema
+const occupantSchema = z.object({
+  name: z.string().optional(),
+  relationship: z.string().optional(),
+  dob: z.string().optional(),
+  ssn: z.string().optional(),
+  license: z.string().optional(),
+  age: z.number().optional(),
+  documents: z.any().optional(),
+});
+
+// Webhook summary schema
+const webhookSummarySchema = z.object({
+  totalResponses: z.number().optional(),
+  responsesByPerson: z.record(z.number()).optional(),
+  webhookResponses: z.record(z.string()).optional(),
+});
+
+// Comprehensive validation schema that matches the actual application data
+export const insertRentalApplicationSchema = z.object({
+  // Required fields
+  applicantId: z.string().min(1, "Applicant ID is required"),
   applicantName: z.string().min(1, "Applicant name is required"),
-  applicantDob: dateStringToDate,
-  applicantSsn: z.string().optional().nullable(),
-  applicantPhone: z.string().optional().nullable(),
   applicantEmail: z.string().email("Valid email is required"),
-  applicantLicense: z.string().optional().nullable(),
-  applicantLicenseState: z.string().optional().nullable(),
-  applicantAddress: z.string().min(1, "Address is required"),
-  applicantCity: z.string().min(1, "City is required"),
-  applicantState: z.string().min(1, "State is required"),
-  applicantZip: z.string().min(1, "ZIP code is required"),
-  applicantLengthAtAddressYears: z.number().optional().nullable(),
-  applicantLengthAtAddressMonths: z.number().optional().nullable(),
-  applicantLandlordName: z.string().optional().nullable(),
-  applicantLandlordAddressLine1: z.string().optional().nullable(),
-  applicantLandlordAddressLine2: z.string().optional().nullable(),
-  applicantLandlordCity: z.string().optional().nullable(),
-  applicantLandlordState: z.string().optional().nullable(),
-  applicantLandlordZipCode: z.string().optional().nullable(),
-  applicantLandlordPhone: z.string().optional().nullable(),
-  applicantLandlordEmail: z.string().optional().nullable(),
-  applicantCurrentRent: z.number().optional().nullable(),
-  applicantReasonForMoving: z.string().optional().nullable(),
-
-  // Primary Applicant Employment & Financial
-  applicantEmploymentType: z.string().optional().nullable(),
-  applicantEmployerName: z.string().optional().nullable(),
-  applicantEmployerAddress: z.string().optional().nullable(),
-  applicantEmployerCity: z.string().optional().nullable(),
-  applicantEmployerState: z.string().optional().nullable(),
-  applicantEmployerZip: z.string().optional().nullable(),
-  applicantEmployerPhone: z.string().optional().nullable(),
-  applicantPosition: z.string().optional().nullable(),
-  applicantStartDate: dateStringToDate.optional().nullable(),
-  applicantSalary: z.number().optional().nullable(),
-  applicantBankRecords: z.array(z.any()).optional().nullable(),
-
-  // Co-Applicant
+  application_id: z.string().min(1, "Application ID is required"),
+  
+  // Nested objects
+  application: applicationSchema.optional(),
+  applicant: applicantSchema.optional(),
+  coApplicant: coApplicantSchema.optional(),
+  guarantor: guarantorSchema.optional(),
+  occupants: z.array(occupantSchema).optional(),
+  webhookSummary: webhookSummarySchema.optional(),
+  
+  // Additional fields
+  zoneinfo: z.string().optional(),
   hasCoApplicant: z.boolean().optional(),
-  coApplicantName: z.string().optional().nullable(),
-  coApplicantRelationship: z.string().optional().nullable(),
-  coApplicantDob: dateStringToDate.optional().nullable(),
-  coApplicantSsn: z.string().optional().nullable(),
-  coApplicantPhone: z.string().optional().nullable(),
-  coApplicantEmail: z.string().optional().nullable(),
-  coApplicantLicense: z.string().optional().nullable(),
-  coApplicantLicenseState: z.string().optional().nullable(),
-  coApplicantAddress: z.string().optional().nullable(),
-  coApplicantCity: z.string().optional().nullable(),
-  coApplicantState: z.string().optional().nullable(),
-  coApplicantZip: z.string().optional().nullable(),
-  coApplicantLengthAtAddressYears: z.number().optional().nullable(),
-  coApplicantLengthAtAddressMonths: z.number().optional().nullable(),
-  coApplicantLandlordName: z.string().optional().nullable(),
-  coApplicantLandlordAddressLine1: z.string().optional().nullable(),
-  coApplicantLandlordAddressLine2: z.string().optional().nullable(),
-  coApplicantLandlordCity: z.string().optional().nullable(),
-  coApplicantLandlordState: z.string().optional().nullable(),
-  coApplicantLandlordZipCode: z.string().optional().nullable(),
-  coApplicantLandlordPhone: z.string().optional().nullable(),
-  coApplicantLandlordEmail: z.string().optional().nullable(),
-  coApplicantCurrentRent: z.number().optional().nullable(),
-  coApplicantReasonForMoving: z.string().optional().nullable(),
-
-  // Co-Applicant Employment & Financial
-  coApplicantEmploymentType: z.string().optional().nullable(),
-  coApplicantEmployerName: z.string().optional().nullable(),
-  coApplicantEmployerAddress: z.string().optional().nullable(),
-  coApplicantEmployerCity: z.string().optional().nullable(),
-  coApplicantEmployerState: z.string().optional().nullable(),
-  coApplicantEmployerZip: z.string().optional().nullable(),
-  coApplicantEmployerPhone: z.string().optional().nullable(),
-  coApplicantPosition: z.string().optional().nullable(),
-  coApplicantStartDate: dateStringToDate.optional().nullable(),
-  coApplicantSalary: z.number().optional().nullable(),
-  coApplicantBankRecords: z.array(z.any()).optional().nullable(),
-
-  // Guarantor
   hasGuarantor: z.boolean().optional(),
-  guarantorName: z.string().optional().nullable(),
-  guarantorRelationship: z.string().optional().nullable(),
-  guarantorDob: dateStringToDate.optional().nullable(),
-  guarantorSsn: z.string().optional().nullable(),
-  guarantorPhone: z.string().optional().nullable(),
-  guarantorEmail: z.string().optional().nullable(),
-  guarantorLicense: z.string().optional().nullable(),
-  guarantorAddress: z.string().optional().nullable(),
-  guarantorCity: z.string().optional().nullable(),
-  guarantorState: z.string().optional().nullable(),
-  guarantorZip: z.string().optional().nullable(),
-  guarantorLengthAtAddressYears: z.number().optional().nullable(),
-  guarantorLengthAtAddressMonths: z.number().optional().nullable(),
-  guarantorLandlordName: z.string().optional().nullable(),
-  guarantorLandlordAddressLine1: z.string().optional().nullable(),
-  guarantorLandlordAddressLine2: z.string().optional().nullable(),
-  guarantorLandlordCity: z.string().optional().nullable(),
-  guarantorLandlordState: z.string().optional().nullable(),
-  guarantorLandlordZipCode: z.string().optional().nullable(),
-  guarantorLandlordPhone: z.string().optional().nullable(),
-  guarantorLandlordEmail: z.string().optional().nullable(),
-  guarantorCurrentRent: z.number().optional().nullable(),
-  guarantorReasonForMoving: z.string().optional().nullable(),
-
-  // Guarantor Employment & Financial
-  guarantorEmploymentType: z.string().optional().nullable(),
-  guarantorEmployerName: z.string().optional().nullable(),
-  guarantorEmployerAddress: z.string().optional().nullable(),
-  guarantorEmployerCity: z.string().optional().nullable(),
-  guarantorEmployerState: z.string().optional().nullable(),
-  guarantorEmployerZip: z.string().optional().nullable(),
-  guarantorEmployerPhone: z.string().optional().nullable(),
-  guarantorPosition: z.string().optional().nullable(),
-  guarantorStartDate: dateStringToDate.optional().nullable(),
-  guarantorSalary: z.number().optional().nullable(),
-  guarantorBankRecords: z.array(z.any()).optional().nullable(),
-
-  // Other Occupants
-  otherOccupants: z.array(z.any()).optional().nullable(),
-
-  // Legal Questions
-  landlordTenantLegalAction: z.string().optional().nullable(),
-  landlordTenantLegalActionExplanation: z.string().optional().nullable(),
-  brokenLease: z.string().optional().nullable(),
-  brokenLeaseExplanation: z.string().optional().nullable(),
-
-  // Signatures
-  signatures: z.any().optional().nullable(),
-  signatureTimestamps: z.any().optional().nullable(),
-
-  // Documents
+  
+  // Documents and encrypted data
   documents: z.any().optional().nullable(),
-  encryptedDocuments: z.any().optional().nullable(),
-
+  encryptedData: z.any().optional().nullable(),
+  
   // Status
   status: z.string().optional().default("draft"),
 
