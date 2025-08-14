@@ -6,6 +6,7 @@ import { Button } from "./ui/button";
 import { DatePicker } from "./ui/date-picker";
 import { IncomeWithFrequencyInput } from "./ui/validated-input";
 import { Plus, Trash2 } from "lucide-react";
+import { useEffect } from "react";
 
 interface FinancialSectionProps {
   title: string;
@@ -23,8 +24,22 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
     incomeFrequency: personData.incomeFrequency,
     otherIncome: personData.otherIncome,
     otherIncomeFrequency: personData.otherIncomeFrequency,
-    otherIncomeSource: personData.otherIncomeSource
+    otherIncomeSource: personData.otherIncomeSource,
+    employmentType: personData.employmentType
   });
+
+  // Auto-set default frequency values when component mounts or employment type changes
+  useEffect(() => {
+    if (personData.employmentType && !personData.incomeFrequency) {
+      const defaultFrequency = personData.employmentType === 'salaried' ? 'yearly' : 'monthly';
+      console.log(`💰 Auto-setting default income frequency for ${person}:`, defaultFrequency);
+      handleChange('incomeFrequency', defaultFrequency);
+    }
+    if (!personData.otherIncomeFrequency) {
+      console.log(`💰 Auto-setting default other income frequency for ${person}: monthly`);
+      handleChange('otherIncomeFrequency', 'monthly');
+    }
+  }, [personData.employmentType, personData.incomeFrequency, personData.otherIncomeFrequency]);
 
   const handleChange = (field: string, value: string) => {
     console.log(`💰 Financial Section - ${person} ${field}:`, value);
@@ -46,7 +61,19 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
           <Label htmlFor={`${person}-employmentType`}>Employment Type *</Label>
           <Select
             value={personData.employmentType || ''}
-            onValueChange={(value) => handleChange('employmentType', value)}
+            onValueChange={(value) => {
+              handleChange('employmentType', value);
+              // Auto-set default frequency values when employment type changes
+              if (value === 'salaried' && !personData.incomeFrequency) {
+                handleChange('incomeFrequency', 'yearly');
+              } else if (value === 'self-employed' && !personData.incomeFrequency) {
+                handleChange('incomeFrequency', 'monthly');
+              }
+              // Auto-set default other income frequency if not set
+              if (!personData.otherIncomeFrequency) {
+                handleChange('otherIncomeFrequency', 'monthly');
+              }
+            }}
           >
             <SelectTrigger className="input-field">
               <SelectValue placeholder="Select employment type" />
