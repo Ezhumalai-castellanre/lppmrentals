@@ -1364,6 +1364,12 @@ export function ApplicationForm() {
       form.setValue('apartmentType', apartmentType);
       console.log('🏠 Restored apartmentType:', apartmentType);
     }
+    // If we successfully found the unit, restore monthlyRent as well
+    if (selectedUnit && typeof selectedUnit.monthlyRent !== 'undefined') {
+      form.setValue('monthlyRent', selectedUnit.monthlyRent as any);
+      updateFormData('application', 'monthlyRent', selectedUnit.monthlyRent as any);
+      console.log('🏠 Restored monthlyRent:', selectedUnit.monthlyRent);
+    }
     
     // Verify the form values were actually set
     setTimeout(() => {
@@ -1393,6 +1399,7 @@ export function ApplicationForm() {
     form.setValue('apartmentNumber', apartmentName);
     form.setValue('apartmentType', selectedApartment?.unitType || '');
     form.setValue('monthlyRent', selectedApartment?.monthlyRent || undefined);
+    updateFormData('application', 'monthlyRent', selectedApartment?.monthlyRent || undefined);
     
     // Verify the form values were actually set
     setTimeout(() => {
@@ -2293,6 +2300,7 @@ export function ApplicationForm() {
         };
 
         const draftData: DraftData = {
+          zoneinfo: user.applicantId,
           applicantId: user.applicantId,
           reference_id: referenceId,
           form_data: enhancedFormDataSnapshot,
@@ -2334,6 +2342,7 @@ export function ApplicationForm() {
         };
 
         const draftData: DraftData = {
+          zoneinfo: user.applicantId,
           applicantId: user.applicantId,
           reference_id: referenceId,
           form_data: enhancedFormDataSnapshot,
@@ -2377,6 +2386,7 @@ export function ApplicationForm() {
         };
 
         const draftData: DraftData = {
+          zoneinfo: user.applicantId,
           applicantId: user.applicantId,
           reference_id: referenceId,
           form_data: enhancedFormDataSnapshot,
@@ -2428,6 +2438,7 @@ export function ApplicationForm() {
         };
 
         const draftData: DraftData = {
+          zoneinfo: user.applicantId,
           applicantId: user.applicantId,
           reference_id: referenceId,
           form_data: enhancedFormDataSnapshot,
@@ -3754,6 +3765,7 @@ export function ApplicationForm() {
   useEffect(() => {
     const apartmentNumberValue = form.watch('apartmentNumber');
     const apartmentTypeValue = form.watch('apartmentType');
+    const monthlyRentValue = form.watch('monthlyRent');
     const buildingAddressValue = form.watch('buildingAddress');
     const cityValue = form.watch('applicantCity');
     const stateValue = form.watch('applicantState');
@@ -3784,6 +3796,9 @@ export function ApplicationForm() {
     if (buildingAddressValue !== formData.application?.buildingAddress) {
       updateFormData('application', 'buildingAddress', buildingAddressValue);
     }
+    if (monthlyRentValue !== formData.application?.monthlyRent) {
+      updateFormData('application', 'monthlyRent', monthlyRentValue);
+    }
     
     console.log('🔍 Apartment, address, and landlord field values in formData:', {
       apartmentNumber: formData.application?.apartmentNumber,
@@ -3796,7 +3811,7 @@ export function ApplicationForm() {
       landlordState: formData.applicant?.landlordState,
       landlordZipCode: formData.applicant?.landlordZipCode
     });
-  }, [form.watch('apartmentNumber'), form.watch('apartmentType'), form.watch('buildingAddress'), form.watch('applicantCity'), form.watch('applicantState'), form.watch('applicantZip'), form.watch('applicantLandlordCity'), form.watch('applicantLandlordState'), form.watch('applicantLandlordZipCode'), formData.application?.apartmentNumber, formData.application?.apartmentType, formData.application?.buildingAddress, formData.applicant?.city, formData.applicant?.state, formData.applicant?.zip, formData.applicant?.landlordCity, formData.applicant?.landlordState, formData.applicant?.landlordZipCode]);
+  }, [form.watch('apartmentNumber'), form.watch('apartmentType'), form.watch('buildingAddress'), form.watch('monthlyRent'), form.watch('applicantCity'), form.watch('applicantState'), form.watch('applicantZip'), form.watch('applicantLandlordCity'), form.watch('applicantLandlordState'), form.watch('applicantLandlordZipCode'), formData.application?.apartmentNumber, formData.application?.apartmentType, formData.application?.buildingAddress, formData.application?.monthlyRent, formData.applicant?.city, formData.applicant?.state, formData.applicant?.zip, formData.applicant?.landlordCity, formData.applicant?.landlordState, formData.applicant?.landlordZipCode]);
 
   // Refactor renderStep to accept a stepIdx argument
   const renderStep = (stepIdx = currentStep) => {
@@ -5286,7 +5301,7 @@ export function ApplicationForm() {
                       accept=".pdf,.jpg,.jpeg,.png"
                       multiple={false}
                       maxFiles={1}
-                      maxSize={10}
+                      maxSize={3}
                       enableEncryption={true}
                       onFileChange={files => {
                         console.log('🚀 OCCUPANT SSN DOCUMENT UPLOAD:', {
