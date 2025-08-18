@@ -15,14 +15,14 @@ export class S3Service {
 
   private static getS3Client(): S3Client {
     if (!this.s3Client) {
-      this.bucketName = process.env.AWS_S3_BUCKET_NAME || 'lppm-rentals-documents';
-      this.region = process.env.AWS_REGION || 'us-east-1';
+      this.bucketName = import.meta.env.VITE_AWS_S3_BUCKET_NAME || 'supportingdocuments-storage-2025';
+      this.region = import.meta.env.VITE_AWS_REGION || 'us-east-1';
       
       this.s3Client = new S3Client({
         region: this.region,
         credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+          accessKeyId: import.meta.env.VITE_AWS_ACCESS_KEY_ID || '',
+          secretAccessKey: import.meta.env.VITE_AWS_SECRET_ACCESS_KEY || '',
         },
       });
     }

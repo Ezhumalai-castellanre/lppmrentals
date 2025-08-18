@@ -1063,7 +1063,7 @@ console.log("response", response);
       await s3Client.send(uploadCommand);
       
       // Generate clean S3 URL and presigned URL
-      const cleanS3Url = `https://${bucketName}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
+      const cleanS3Url = `https://${bucketName}.s3.${process.env.VITE_AWS_REGION || process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
       
       const getCommand = new GetObjectCommand({
         Bucket: bucketName,

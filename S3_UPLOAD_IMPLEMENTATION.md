@@ -33,12 +33,20 @@ Frontend → S3 Upload Function → AWS S3 → Webhook Proxy → Make.com
 Add these to your `.env` file:
 
 ```bash
-# AWS Configuration
+# AWS Configuration (Server-side)
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your_access_key_here
 AWS_SECRET_ACCESS_KEY=your_secret_key_here
-AWS_S3_BUCKET_NAME=lppm-rentals-documents
+AWS_S3_BUCKET_NAME=supportingdocuments-storage-2025
+
+# AWS Configuration (Client-side with VITE prefix)
+VITE_AWS_REGION=us-east-1
+VITE_AWS_ACCESS_KEY_ID=your_access_key_here
+VITE_AWS_SECRET_ACCESS_KEY=your_secret_key_here
+VITE_AWS_S3_BUCKET_NAME=supportingdocuments-storage-2025
 ```
+
+**Note**: Client-side code uses `VITE_` prefixed variables to avoid conflicts with AWS predefined variables.
 
 ### AWS S3 Bucket Setup
 
