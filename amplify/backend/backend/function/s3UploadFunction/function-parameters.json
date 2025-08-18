@@ -1,0 +1,7 @@
+{
+  "lambdaLayers": [],
+  "environmentVariables": {
+    "AWS_S3_BUCKET_NAME": "supportingdocuments-storage-2025",
+    "AWS_REGION": "us-east-1"
+  }
+}

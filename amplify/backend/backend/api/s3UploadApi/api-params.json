@@ -1,0 +1,11 @@
+{
+  "paths": {
+    "/s3-upload": {
+      "name": "/s3-upload",
+      "lambdaFunction": "s3UploadFunction",
+      "permissions": {
+        "setting": "open"
+      }
+    }
+  }
+}
