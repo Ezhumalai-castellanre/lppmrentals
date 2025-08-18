@@ -360,8 +360,13 @@ const cleanObject = (obj: any) => {
 };
 
 export class WebhookService {
-  private static readonly FILE_WEBHOOK_URL = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
-  private static readonly FORM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
+  // Use CORS proxy in production, direct URL in development
+  private static readonly FILE_WEBHOOK_URL = import.meta.env.PROD 
+    ? '/.netlify/functions/cors-proxy?url=https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3'
+    : 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
+  private static readonly FORM_WEBHOOK_URL = import.meta.env.PROD
+    ? '/.netlify/functions/cors-proxy?url=https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk'
+    : 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
   
   // Track ongoing submissions to prevent duplicates
   private static ongoingSubmissions = new Set<string>();

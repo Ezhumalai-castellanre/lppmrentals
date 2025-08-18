@@ -201,8 +201,8 @@ function formatPhoneForPayload(phone: string) {
 
 export function ApplicationForm() {
   const { toast } = useToast();
-  const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   
 
 
@@ -6166,8 +6166,8 @@ export function ApplicationForm() {
             <Button
               onClick={() => {
                 setShowSuccessPopup(false);
-                // Reload the app
-                window.location.reload();
+                // Redirect to drafts page
+                setLocation('/drafts');
               }}
               className="w-full bg-green-600 hover:bg-green-700 text-white"
             >
