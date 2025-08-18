@@ -32,6 +32,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/webhook-proxy"
+  to = "/.netlify/functions/webhook-proxy"
+  status = 200
+
+[[redirects]]
+  from = "/api/s3-upload"
+  to = "/.netlify/functions/s3-upload"
+  status = 200
+
+[[redirects]]
   from = "/api/test-schema"
   to = "/.netlify/functions/test-schema"
   status = 200
@@ -67,4 +77,13 @@
   node_bundler = "esbuild"
   [functions."submit-application"]
     timeout = 30
+    max_request_body_size = "10mb"
+  [functions."upload-files"]
+    timeout = 60
+    max_request_body_size = "10mb"
+  [functions."webhook-proxy"]
+    timeout = 60
+    max_request_body_size = "10mb"
+  [functions."s3-upload"]
+    timeout = 60
     max_request_body_size = "10mb" 

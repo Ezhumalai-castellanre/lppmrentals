@@ -142,16 +142,16 @@ export function FileUpload({
           setUploadStatus(prev => ({ ...prev, [fileKey]: 'uploading' }));
           
           try {
-            const result = await WebhookService.sendFileToWebhook(file, referenceId, sectionName, documentName || 'Unknown Document', applicationId, zoneinfo);
+            const result = await WebhookService.uploadFileToS3AndSendToWebhook(file, referenceId, sectionName, documentName || 'Unknown Document', applicationId, zoneinfo);
             if (result.success) {
               setUploadStatus(prev => ({ ...prev, [fileKey]: 'success' }));
               console.log(`✅ Webhook upload successful for ${file.name}`);
               
-              // Store the S3 URL from the webhook response
-              if (result.body) {
-                setWebhookResponse(result.body);
-                onWebhookResponse?.(result.body);
-                console.log(`🔗 S3 URL stored: ${result.body}`);
+              // Store the S3 URL from the response
+              if (result.url) {
+                setWebhookResponse(result.url);
+                onWebhookResponse?.(result.url);
+                console.log(`🔗 S3 URL stored: ${result.url}`);
               }
             } else {
               setUploadStatus(prev => ({ ...prev, [fileKey]: 'error' }));

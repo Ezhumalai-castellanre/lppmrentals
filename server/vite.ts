@@ -5,6 +5,17 @@ import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
+import crypto from "crypto";
+
+// Polyfill crypto.getRandomValues for Node.js environment
+if (!global.crypto) {
+  global.crypto = crypto as any;
+}
+if (!global.crypto.getRandomValues) {
+  global.crypto.getRandomValues = function getRandomValues(array: any) {
+    return crypto.randomFillSync(array);
+  };
+}
 
 const viteLogger = createLogger();
 

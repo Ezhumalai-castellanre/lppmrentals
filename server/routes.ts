@@ -6,6 +6,9 @@ import { z } from "zod";
 import CryptoJS from "crypto-js";
 import fs from "fs";
 import path from "path";
+import fetch from "node-fetch";
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 
 
@@ -981,7 +984,238 @@ console.log("response", response);
     }
   });
 
+  // S3 upload endpoint
+  app.post("/api/s3-upload", async (req, res) => {
+    try {
+      console.log('=== S3 UPLOAD ENDPOINT CALLED ===');
+      
+      // Check request size
+      const bodySize = req.body ? JSON.stringify(req.body).length : 0;
+      const bodySizeMB = Math.round(bodySize / (1024 * 1024) * 100) / 100;
+      console.log(`📦 Request body size: ${bodySizeMB}MB`);
+      
+      if (bodySize > 10 * 1024 * 1024) { // 10MB limit
+        console.log('❌ Request too large');
+        return res.status(413).json({ 
+          error: 'Request too large', 
+          message: 'Request body exceeds 10MB limit' 
+        });
+      }
+      
+      // Extract required fields
+      const { 
+        fileData, 
+        fileName, 
+        fileType, 
+        referenceId, 
+        sectionName, 
+        documentName,
+        zoneinfo 
+      } = req.body;
 
+      if (!fileData || !fileName || !referenceId || !sectionName || !documentName || !zoneinfo) {
+        console.error('❌ Missing required fields');
+        return res.status(400).json({ 
+          error: 'Missing required fields',
+          message: 'fileData, fileName, referenceId, sectionName, documentName, and zoneinfo are required'
+        });
+      }
+
+      // Initialize S3 client
+      const s3Client = new S3Client({
+        region: process.env.AWS_REGION || 'us-east-1',
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        },
+      });
+
+      const bucketName = process.env.AWS_S3_BUCKET_NAME || 'supportingdocuments-storage-2025';
+
+      // Generate unique key for the file using zoneinfo as the main folder
+      const timestamp = Date.now();
+      const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const key = `documents/${zoneinfo}/${sectionName}/${timestamp}_${safeFileName}`;
+      
+      console.log(`🚀 Starting S3 upload: ${fileName} to ${key}`);
+      console.log(`📊 File size: ${(fileData.length / 1024 / 1024).toFixed(2)}MB`);
+      console.log(`📁 Using zoneinfo folder: ${zoneinfo}`);
+
+      // Convert base64 to buffer
+      const buffer = Buffer.from(fileData, 'base64');
+
+      // Upload to S3
+      const uploadCommand = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        Body: buffer,
+        ContentType: fileType || 'application/octet-stream',
+        Metadata: {
+          originalName: fileName,
+          referenceId: referenceId,
+          zoneinfo: zoneinfo,
+          sectionName: sectionName,
+          documentName: documentName,
+          uploadedAt: new Date().toISOString(),
+        },
+      });
+
+      await s3Client.send(uploadCommand);
+      
+      // Generate presigned URL for access
+      const getCommand = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+      });
+      
+      const presignedUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 3600 }); // 1 hour
+
+      console.log(`✅ S3 upload successful: ${fileName}`);
+      console.log(`🔗 S3 URL: ${presignedUrl}`);
+
+      res.status(200).json({
+        success: true,
+        url: presignedUrl,
+        key: key,
+        fileName: fileName,
+        fileSize: buffer.length,
+      });
+
+    } catch (error) {
+      console.error('❌ S3 upload error:', error instanceof Error ? error.message : 'Unknown error');
+      
+      res.status(500).json({
+        success: false,
+        error: 'S3 upload failed',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Webhook proxy endpoint
+  app.post("/api/webhook-proxy", async (req, res) => {
+    try {
+      console.log('=== WEBHOOK PROXY ENDPOINT CALLED ===');
+      
+      // Check request size
+      const bodySize = req.body ? JSON.stringify(req.body).length : 0;
+      const bodySizeMB = Math.round(bodySize / (1024 * 1024) * 100) / 100;
+      console.log(`📦 Request body size: ${bodySizeMB}MB`);
+      
+      if (bodySize > 10 * 1024 * 1024) { // 10MB limit
+        console.log('❌ Request too large');
+        return res.status(413).json({ 
+          error: 'Request too large', 
+          message: 'Request body exceeds 10MB limit' 
+        });
+      }
+      
+      // Extract webhook type and data
+      const { webhookType, webhookData } = req.body;
+
+      if (!webhookType || !webhookData) {
+        console.error('❌ Missing webhook type or data');
+        return res.status(400).json({ 
+          error: 'Missing webhook type or data'
+        });
+      }
+
+      // Determine webhook URL based on type
+      let webhookUrl;
+      switch (webhookType) {
+        case 'file_upload':
+          webhookUrl = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
+          break;
+        case 'form_data':
+          webhookUrl = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
+          break;
+        default:
+          console.error('❌ Invalid webhook type:', webhookType);
+          return res.status(400).json({ 
+            error: 'Invalid webhook type',
+            message: `Unknown webhook type: ${webhookType}`
+          });
+      }
+
+      console.log(`📤 Forwarding to webhook: ${webhookUrl}`);
+      console.log(`📋 Webhook type: ${webhookType}`);
+      console.log(`📊 Payload size: ${(JSON.stringify(webhookData).length / 1024).toFixed(2)}KB`);
+
+      // Forward request to Make.com webhook
+      const startTime = Date.now();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+      try {
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(webhookData),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        // Get response body
+        const responseBody = await response.text();
+        const responseTime = Date.now() - startTime;
+
+        console.log(`📥 Webhook response received:`, {
+          status: response.status,
+          statusText: response.statusText,
+          responseTime: `${responseTime}ms`,
+          bodySize: `${responseBody.length} bytes`
+        });
+
+        if (response.ok) {
+          console.log('✅ Webhook call successful');
+          res.status(200).json({
+            success: true,
+            status: response.status,
+            body: responseBody,
+            responseTime: responseTime
+          });
+        } else {
+          console.error('❌ Webhook call failed:', response.status, responseBody);
+          res.status(response.status).json({
+            success: false,
+            error: `Webhook failed: ${response.status}`,
+            message: responseBody,
+            status: response.status
+          });
+        }
+
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          console.error('❌ Webhook request timed out after 60 seconds');
+          res.status(408).json({
+            success: false,
+            error: 'Webhook request timed out'
+          });
+        } else {
+          console.error('❌ Error calling webhook:', fetchError);
+          res.status(500).json({
+            success: false,
+            error: 'Failed to call webhook',
+            message: fetchError instanceof Error ? fetchError.message : 'Unknown error'
+          });
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Webhook proxy error:', error instanceof Error ? error.message : 'Unknown error');
+      
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

@@ -175,8 +175,8 @@ app.post('/api/upload-files', async (req, res) => {
     serveStatic(app);
   }
 
-  // Serve the app on port 5001, or use a different port if 5001 is busy
-  const port = process.env.PORT ? parseInt(process.env.PORT) : 5001;
+  // Serve the app on port 5000, or use a different port if 5000 is busy
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
   server.listen({
     port,
     host: "localhost", // Use localhost for local development

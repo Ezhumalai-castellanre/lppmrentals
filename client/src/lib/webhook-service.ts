@@ -360,8 +360,8 @@ const cleanObject = (obj: any) => {
 };
 
 export class WebhookService {
-  private static readonly FILE_WEBHOOK_URL = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
-  private static readonly FORM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
+  private static readonly WEBHOOK_PROXY_URL = '/api/webhook-proxy';
+  private static readonly S3_UPLOAD_URL = '/api/s3-upload';
   
   // Track ongoing submissions to prevent duplicates
   private static ongoingSubmissions = new Set<string>();
@@ -371,6 +371,135 @@ export class WebhookService {
   
   // Track failed uploads to prevent retries
   private static failedUploads = new Set<string>();
+
+  /**
+   * Upload a file to S3 and send the URL to webhook
+   */
+  static async uploadFileToS3AndSendToWebhook(
+    file: File,
+    referenceId: string,
+    sectionName: string,
+    documentName: string,
+    applicationId?: string,
+    zoneinfo?: string,
+    commentId?: string
+  ): Promise<{ success: boolean; error?: string; url?: string; key?: string; webhookResponse?: string }> {
+    const submissionId = `${referenceId}-${sectionName}-${documentName}-${file.name}`;
+    
+    // Check if already submitting
+    if (this.ongoingSubmissions.has(submissionId)) {
+      console.log(`⏳ Already uploading ${file.name} for ${submissionId}`);
+      return {
+        success: false,
+        error: 'Upload already in progress for this file'
+      };
+    }
+
+    this.ongoingSubmissions.add(submissionId);
+
+    try {
+      console.log(`🚀 Starting S3 upload for ${file.name}`);
+      
+      // Convert file to base64
+      const base64Data = await this.fileToBase64(file);
+      
+      // Upload to S3
+      const s3Response = await fetch(this.S3_UPLOAD_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileData: base64Data,
+          fileName: file.name,
+          fileType: file.type,
+          referenceId: referenceId,
+          sectionName: sectionName,
+          documentName: documentName,
+          zoneinfo: zoneinfo, // Pass zoneinfo for folder organization
+        }),
+      });
+
+      if (!s3Response.ok) {
+        const errorText = await s3Response.text();
+        console.error('❌ S3 upload failed:', s3Response.status, errorText);
+        return {
+          success: false,
+          error: `S3 upload failed: ${s3Response.status} - ${errorText}`
+        };
+      }
+
+      const s3Result = await s3Response.json();
+      
+      if (!s3Result.success) {
+        console.error('❌ S3 upload failed:', s3Result.error);
+        return {
+          success: false,
+          error: `S3 upload failed: ${s3Result.error}`
+        };
+      }
+
+      console.log(`✅ S3 upload successful: ${s3Result.url}`);
+
+      // Send file URL to webhook instead of file data
+      const webhookData = {
+        reference_id: referenceId,
+        file_name: file.name,
+        section_name: sectionName,
+        document_name: documentName,
+        s3_url: s3Result.url,
+        s3_key: s3Result.key,
+        file_size: file.size,
+        file_type: file.type,
+        application_id: applicationId || '',
+        comment_id: commentId,
+        uploaded_at: new Date().toISOString(),
+      };
+
+      console.log(`📤 Sending file URL to webhook: ${file.name}`);
+      console.log(`🔗 S3 URL: ${s3Result.url}`);
+
+      const webhookResponse = await fetch(this.WEBHOOK_PROXY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          webhookType: 'file_upload',
+          webhookData: webhookData
+        }),
+      });
+
+      const responseBody = await webhookResponse.text();
+
+      if (webhookResponse.ok) {
+        console.log('✅ Webhook call successful');
+        return {
+          success: true,
+          url: s3Result.url,
+          key: s3Result.key,
+          webhookResponse: responseBody
+        };
+      } else {
+        console.error('❌ Webhook call failed:', webhookResponse.status, responseBody);
+        return {
+          success: false,
+          error: `Webhook failed: ${webhookResponse.status} - ${responseBody}`,
+          url: s3Result.url, // Still return S3 URL even if webhook fails
+          key: s3Result.key
+        };
+      }
+
+    } catch (error) {
+      console.error('❌ Error uploading file to S3:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown upload error'
+      };
+    } finally {
+      this.ongoingSubmissions.delete(submissionId);
+    }
+  }
 
   /**
    * Sends a file to the webhook immediately upon upload
@@ -444,12 +573,15 @@ export class WebhookService {
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
     try {
-      const response = await fetch(this.FILE_WEBHOOK_URL, {
+      const response = await fetch(this.WEBHOOK_PROXY_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(webhookData),
+        body: JSON.stringify({
+          webhookType: 'file_upload',
+          webhookData: webhookData
+        }),
         signal: controller.signal,
       });
 
@@ -468,7 +600,7 @@ export class WebhookService {
 
       // Parse response details
       const responseDetails = {
-        url: this.FILE_WEBHOOK_URL,
+        url: this.WEBHOOK_PROXY_URL,
         status: response.status,
         statusText: response.statusText,
         headers: Object.fromEntries(response.headers.entries()),
@@ -533,15 +665,14 @@ export class WebhookService {
           body: extractedUrl || responseBody 
         };
       } else {
-        const errorText = await response.text();
-        console.error('Webhook failed:', response.status, errorText);
+        console.error('Webhook failed:', response.status, responseBody);
         
         // Add to failed uploads to prevent retries
         this.failedUploads.add(fileUploadKey);
         
         return {
           success: false,
-          error: `Webhook failed: ${response.status} - ${errorText}`
+          error: `Webhook failed: ${response.status} - ${responseBody}`
         };
       }
 
@@ -673,12 +804,15 @@ export class WebhookService {
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
       try {
-        const response = await fetch(this.FORM_WEBHOOK_URL, {
+        const response = await fetch(this.WEBHOOK_PROXY_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(webhookData),
+          body: JSON.stringify({
+            webhookType: 'form_data',
+            webhookData: webhookData
+          }),
           signal: controller.signal,
         });
         
@@ -1050,12 +1184,15 @@ export class WebhookService {
       console.log(`Sending PDF to webhook: ${fileName}`);
       console.log(`PDF size: ${Math.round(pdfBase64.length / 1024)} KB`);
 
-      const response = await fetch(this.FILE_WEBHOOK_URL, {
+      const response = await fetch(this.WEBHOOK_PROXY_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(webhookData),
+        body: JSON.stringify({
+          webhookType: 'file_upload',
+          webhookData: webhookData
+        }),
       });
 
       if (!response.ok) {
@@ -1155,12 +1292,15 @@ export class WebhookService {
 
       console.log('🧪 Testing webhook connectivity...');
       
-      const response = await fetch(this.FILE_WEBHOOK_URL, {
+      const response = await fetch(this.WEBHOOK_PROXY_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(testData),
+        body: JSON.stringify({
+          webhookType: 'file_upload',
+          webhookData: testData
+        }),
       });
 
       if (response.ok) {
