@@ -19,11 +19,11 @@ export const handler = async (event, context) => {
     const bodySizeMB = Math.round(bodySize / (1024 * 1024) * 100) / 100;
     console.log(`📦 Request body size: ${bodySizeMB}MB`);
     
-    if (bodySize > 10 * 1024 * 1024) { // 10MB limit
+    if (bodySize > 50 * 1024 * 1024) { // 50MB limit
       console.log('❌ Request too large');
       return createCorsResponse(413, { 
         error: 'Request too large', 
-        message: 'Request body exceeds 10MB limit' 
+        message: 'Request body exceeds 50MB limit' 
       });
     }
 
@@ -101,24 +101,28 @@ export const handler = async (event, context) => {
 
     await s3Client.send(uploadCommand);
     
-    // Generate presigned URL for access
-    const getCommand = new GetObjectCommand({
-      Bucket: bucketName,
-      Key: key,
-    });
-    
-    const presignedUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 3600 }); // 1 hour
+          // Generate clean S3 URL and presigned URL
+      const cleanS3Url = `https://${bucketName}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
+      
+      const getCommand = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+      });
+      
+      const presignedUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 3600 }); // 1 hour
 
-    console.log(`✅ S3 upload successful: ${fileName}`);
-    console.log(`🔗 S3 URL: ${presignedUrl}`);
+      console.log(`✅ S3 upload successful: ${fileName}`);
+      console.log(`🔗 Clean S3 URL: ${cleanS3Url}`);
+      console.log(`🔗 Presigned URL: ${presignedUrl}`);
 
-    return createCorsResponse(200, {
-      success: true,
-      url: presignedUrl,
-      key: key,
-      fileName: fileName,
-      fileSize: buffer.length,
-    });
+      return createCorsResponse(200, {
+        success: true,
+        url: cleanS3Url, // Return clean URL by default
+        presignedUrl: presignedUrl, // Also provide presigned URL if needed
+        key: key,
+        fileName: fileName,
+        fileSize: buffer.length,
+      });
 
   } catch (error) {
     console.error('❌ S3 upload error:', error instanceof Error ? error.message : 'Unknown error');

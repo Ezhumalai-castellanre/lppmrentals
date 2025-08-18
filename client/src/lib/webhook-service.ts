@@ -448,7 +448,7 @@ export class WebhookService {
         file_name: file.name,
         section_name: sectionName,
         document_name: documentName,
-        s3_url: s3Result.url,
+        s3_url: s3Result.url, // This is now the clean URL
         s3_key: s3Result.key,
         file_size: file.size,
         file_type: file.type,

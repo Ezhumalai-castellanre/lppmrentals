@@ -77,13 +77,16 @@
   node_bundler = "esbuild"
   [functions."submit-application"]
     timeout = 30
-    max_request_body_size = "10mb"
-  [functions."upload-files"]
-    timeout = 60
-    max_request_body_size = "10mb"
-  [functions."webhook-proxy"]
-    timeout = 60
-    max_request_body_size = "10mb"
+    max_request_body_size = "50mb"
   [functions."s3-upload"]
     timeout = 60
-    max_request_body_size = "10mb" 
+    max_request_body_size = "50mb"
+  [functions."upload-files"]
+    timeout = 60
+    max_request_body_size = "50mb"
+  [functions."webhook-proxy"]
+    timeout = 60
+    max_request_body_size = "50mb"
+  [functions."s3-upload"]
+    timeout = 60
+    max_request_body_size = "50mb" 

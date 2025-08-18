@@ -98,6 +98,7 @@ documents/
 ### S3 Upload Endpoint
 - **URL**: `/api/s3-upload`
 - **Method**: POST
+- **Max File Size**: 50MB
 - **Body**:
 ```json
 {
@@ -115,12 +116,17 @@ documents/
 ```json
 {
   "success": true,
-  "url": "https://s3.amazonaws.com/...",
+  "url": "https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/documents/REF123/financial_documents/1234567890_document.pdf",
+  "presignedUrl": "https://s3.amazonaws.com/...?X-Amz-Algorithm=...",
   "key": "documents/REF123/financial_documents/1234567890_document.pdf",
   "fileName": "document.pdf",
   "fileSize": 1024000
 }
 ```
+
+**URL Options:**
+- **`url`**: Clean, permanent S3 URL (recommended for webhook data)
+- **`presignedUrl`**: Temporary authenticated URL that expires in 1 hour
 
 ## Webhook Data Format
 
@@ -177,7 +183,7 @@ The old `sendFileToWebhook` method is still available for backward compatibility
 
 1. **S3 Upload Fails**: Check AWS credentials and bucket permissions
 2. **Webhook Fails**: Verify Make.com webhook can handle S3 URL format
-3. **File Size Limits**: S3 upload function has 10MB limit (configurable)
+3. **File Size Limits**: S3 upload function has 50MB limit (configurable)
 
 ### Debugging
 

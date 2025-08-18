@@ -994,11 +994,11 @@ console.log("response", response);
       const bodySizeMB = Math.round(bodySize / (1024 * 1024) * 100) / 100;
       console.log(`📦 Request body size: ${bodySizeMB}MB`);
       
-      if (bodySize > 10 * 1024 * 1024) { // 10MB limit
+      if (bodySize > 50 * 1024 * 1024) { // 50MB limit
         console.log('❌ Request too large');
         return res.status(413).json({ 
           error: 'Request too large', 
-          message: 'Request body exceeds 10MB limit' 
+          message: 'Request body exceeds 50MB limit' 
         });
       }
       
@@ -1062,7 +1062,9 @@ console.log("response", response);
 
       await s3Client.send(uploadCommand);
       
-      // Generate presigned URL for access
+      // Generate clean S3 URL and presigned URL
+      const cleanS3Url = `https://${bucketName}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
+      
       const getCommand = new GetObjectCommand({
         Bucket: bucketName,
         Key: key,
@@ -1071,11 +1073,13 @@ console.log("response", response);
       const presignedUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 3600 }); // 1 hour
 
       console.log(`✅ S3 upload successful: ${fileName}`);
-      console.log(`🔗 S3 URL: ${presignedUrl}`);
+      console.log(`🔗 Clean S3 URL: ${cleanS3Url}`);
+      console.log(`🔗 Presigned URL: ${presignedUrl}`);
 
       res.status(200).json({
         success: true,
-        url: presignedUrl,
+        url: cleanS3Url, // Return clean URL by default
+        presignedUrl: presignedUrl, // Also provide presigned URL if needed
         key: key,
         fileName: fileName,
         fileSize: buffer.length,
@@ -1102,11 +1106,11 @@ console.log("response", response);
       const bodySizeMB = Math.round(bodySize / (1024 * 1024) * 100) / 100;
       console.log(`📦 Request body size: ${bodySizeMB}MB`);
       
-      if (bodySize > 10 * 1024 * 1024) { // 10MB limit
+      if (bodySize > 50 * 1024 * 1024) { // 50MB limit
         console.log('❌ Request too large');
         return res.status(413).json({ 
           error: 'Request too large', 
-          message: 'Request body exceeds 10MB limit' 
+          message: 'Request body exceeds 50MB limit' 
         });
       }
       
