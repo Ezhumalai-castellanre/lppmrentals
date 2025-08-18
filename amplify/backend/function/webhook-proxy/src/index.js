@@ -7,15 +7,18 @@ const FORM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl
 exports.handler = async (event, context) => {
   console.log('=== WEBHOOK PROXY LAMBDA FUNCTION CALLED ===');
   
+  // CORS headers for all responses
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  };
+  
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      },
+      headers: corsHeaders,
       body: ''
     };
   }
@@ -23,19 +26,17 @@ exports.handler = async (event, context) => {
   try {
     // Check if it's a POST request
     if (event.httpMethod !== 'POST') {
-      return {
-        statusCode: 405,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
-        },
-        body: JSON.stringify({
-          error: 'Method not allowed',
-          message: 'Only POST requests are supported'
-        })
-      };
+              return {
+          statusCode: 405,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          },
+          body: JSON.stringify({
+            error: 'Method not allowed',
+            message: 'Only POST requests are supported'
+          })
+        };
     }
 
     // Parse request body
@@ -44,19 +45,17 @@ exports.handler = async (event, context) => {
       body = JSON.parse(event.body);
     } catch (parseError) {
       console.error('❌ Failed to parse request body:', parseError);
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
-        },
-        body: JSON.stringify({
-          error: 'Invalid JSON',
-          message: 'Request body must be valid JSON'
-        })
-      };
+              return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          },
+          body: JSON.stringify({
+            error: 'Invalid JSON',
+            message: 'Request body must be valid JSON'
+          })
+        };
     }
 
     // Check request size
@@ -68,12 +67,7 @@ exports.handler = async (event, context) => {
       console.log('❌ Request too large');
       return {
         statusCode: 413,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
           error: 'Request too large',
           message: 'Request body exceeds 50MB limit'
@@ -88,9 +82,7 @@ exports.handler = async (event, context) => {
         statusCode: 400,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
+          ...corsHeaders
         },
         body: JSON.stringify({
           error: 'Missing required fields',
@@ -129,9 +121,7 @@ exports.handler = async (event, context) => {
         statusCode: 400,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
+          ...corsHeaders
         },
         body: JSON.stringify({
           error: 'Invalid webhook type',
@@ -160,9 +150,7 @@ exports.handler = async (event, context) => {
           statusCode: 200,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS'
+            ...corsHeaders
           },
           body: JSON.stringify({
             success: true,
@@ -177,9 +165,7 @@ exports.handler = async (event, context) => {
           statusCode: webhookResponse.status,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS'
+            ...corsHeaders
           },
           body: JSON.stringify({
             success: false,
@@ -196,9 +182,7 @@ exports.handler = async (event, context) => {
         statusCode: 500,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
+          ...corsHeaders
         },
         body: JSON.stringify({
           success: false,
@@ -214,9 +198,7 @@ exports.handler = async (event, context) => {
       statusCode: 500,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+        ...corsHeaders
       },
       body: JSON.stringify({
         error: 'Internal server error',

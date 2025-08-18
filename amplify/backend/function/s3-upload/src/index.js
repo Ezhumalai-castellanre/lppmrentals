@@ -15,15 +15,18 @@ const bucketName = process.env.S3_BUCKET_NAME || 'supportingdocuments-storage-20
 exports.handler = async (event, context) => {
   console.log('=== S3 UPLOAD LAMBDA FUNCTION CALLED ===');
   
+  // CORS headers for all responses
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  };
+  
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      },
+      headers: corsHeaders,
       body: ''
     };
   }
@@ -35,9 +38,7 @@ exports.handler = async (event, context) => {
         statusCode: 405,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
+          ...corsHeaders
         },
         body: JSON.stringify({
           error: 'Method not allowed',
@@ -56,9 +57,7 @@ exports.handler = async (event, context) => {
         statusCode: 400,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
+          ...corsHeaders
         },
         body: JSON.stringify({
           error: 'Invalid JSON',
@@ -78,9 +77,7 @@ exports.handler = async (event, context) => {
         statusCode: 413,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
+          ...corsHeaders
         },
         body: JSON.stringify({
           error: 'Request too large',
@@ -166,9 +163,7 @@ exports.handler = async (event, context) => {
         statusCode: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
+          ...corsHeaders
         },
         body: JSON.stringify({
           success: true,
@@ -188,9 +183,7 @@ exports.handler = async (event, context) => {
         statusCode: 500,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
+          ...corsHeaders
         },
         body: JSON.stringify({
           error: 'S3 upload failed',
@@ -205,9 +198,7 @@ exports.handler = async (event, context) => {
       statusCode: 500,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+        ...corsHeaders
       },
       body: JSON.stringify({
         error: 'Internal server error',
