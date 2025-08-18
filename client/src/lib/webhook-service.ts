@@ -361,8 +361,12 @@ const cleanObject = (obj: any) => {
 
 export class WebhookService {
   // Use our S3 upload system and webhook proxy
-  private static readonly WEBHOOK_PROXY_URL = '/api/webhook-proxy';
-  private static readonly S3_UPLOAD_URL = '/api/s3-upload';
+  private static readonly WEBHOOK_PROXY_URL = process.env.NODE_ENV === 'production' 
+    ? 'https://your-api-gateway-url.amazonaws.com/webhook-proxy'
+    : '/api/webhook-proxy';
+  private static readonly S3_UPLOAD_URL = process.env.NODE_ENV === 'production'
+    ? 'https://your-api-gateway-url.amazonaws.com/s3-upload'
+    : '/api/s3-upload';
   
   // Track ongoing submissions to prevent duplicates
   private static ongoingSubmissions = new Set<string>();

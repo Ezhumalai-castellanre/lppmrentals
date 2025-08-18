@@ -1,0 +1,18 @@
+{
+  "paths": {
+    "/s3-upload": {
+      "name": "/s3-upload",
+      "lambdaFunction": "s3Upload",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/webhook-proxy": {
+      "name": "/webhook-proxy",
+      "lambdaFunction": "webhookProxy",
+      "permissions": {
+        "setting": "open"
+      }
+    }
+  }
+}

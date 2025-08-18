@@ -9,15 +9,16 @@ export default defineConfig({
   define: {
     global: 'globalThis',
   },
-  plugins: [
-    react(),
-  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "client", "src"),
       "@shared": path.resolve(__dirname, "shared"),
+      crypto: 'crypto-browserify',
     },
   },
+  plugins: [
+    react(),
+  ],
   root: path.resolve(__dirname, "client"),
   build: {
     outDir: path.resolve(__dirname, "dist/public"),

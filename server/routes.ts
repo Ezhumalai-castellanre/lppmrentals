@@ -985,7 +985,8 @@ console.log("response", response);
   });
 
   // S3 upload endpoint
-  app.post("/api/s3-upload", async (req, res) => {
+  // S3 Upload endpoint (local development - will be replaced by Lambda in production)
+app.post("/api/s3-upload", async (req, res) => {
     try {
       console.log('=== S3 UPLOAD ENDPOINT CALLED ===');
       
@@ -1097,7 +1098,8 @@ console.log("response", response);
   });
 
   // Webhook proxy endpoint
-  app.post("/api/webhook-proxy", async (req, res) => {
+  // Webhook proxy endpoint (local development - will be replaced by Lambda in production)
+app.post("/api/webhook-proxy", async (req, res) => {
     try {
       console.log('=== WEBHOOK PROXY ENDPOINT CALLED ===');
       

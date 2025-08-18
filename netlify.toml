@@ -86,7 +86,4 @@
     max_request_body_size = "50mb"
   [functions."webhook-proxy"]
     timeout = 60
-    max_request_body_size = "50mb"
-  [functions."s3-upload"]
-    timeout = 60
     max_request_body_size = "50mb" 
