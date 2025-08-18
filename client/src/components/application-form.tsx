@@ -2688,12 +2688,17 @@ export function ApplicationForm() {
       ];
       let missingFields = [];
       for (const field of requiredFields) {
+        // Resolve value with fallbacks for nested application fields
+        let value = (data as any)[field];
+        if (field === 'monthlyRent') {
+          value = (data as any).monthlyRent ?? formData.application?.monthlyRent;
+        }
         if (
-          data[field] === undefined ||
-          data[field] === null ||
-          (typeof data[field] === 'string' && data[field].trim() === '') ||
-          (field === 'applicantDob' && !data[field]) ||
-          (field === 'moveInDate' && !data[field])
+          value === undefined ||
+          value === null ||
+          (typeof value === 'string' && value.trim() === '') ||
+          (field === 'applicantDob' && !value) ||
+          (field === 'moveInDate' && !value)
         ) {
           missingFields.push(field);
         }
