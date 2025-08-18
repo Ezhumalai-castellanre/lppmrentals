@@ -360,13 +360,9 @@ const cleanObject = (obj: any) => {
 };
 
 export class WebhookService {
-  // Use CORS proxy in production, direct URL in development
-  private static readonly FILE_WEBHOOK_URL = import.meta.env.PROD 
-    ? '/.netlify/functions/cors-proxy?url=https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3'
-    : 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
-  private static readonly FORM_WEBHOOK_URL = import.meta.env.PROD
-    ? '/.netlify/functions/cors-proxy?url=https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk'
-    : 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
+  // Use direct Make.com endpoints on Amplify; disable proxy in production by default
+  private static readonly FILE_WEBHOOK_URL = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
+  private static readonly FORM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
   
   // Track ongoing submissions to prevent duplicates
   private static ongoingSubmissions = new Set<string>();
@@ -446,7 +442,7 @@ export class WebhookService {
 
     // Set up timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout for large files
 
     try {
       const response = await fetch(this.FILE_WEBHOOK_URL, {
@@ -554,7 +550,7 @@ export class WebhookService {
       clearTimeout(timeoutId);
       
       if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        console.error('File webhook request timed out after 60 seconds');
+        console.error('File webhook request timed out after 120 seconds');
         this.failedUploads.add(fileUploadKey);
         this.ongoingFileUploads.delete(fileUploadKey);
         return {
@@ -675,7 +671,7 @@ export class WebhookService {
 
       const startTime = Date.now();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout for large JSON
       
       try {
         const response = await fetch(this.FORM_WEBHOOK_URL, {
@@ -711,14 +707,14 @@ export class WebhookService {
         clearTimeout(timeoutId);
         
         if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          console.error('Netlify function request timed out after 30 seconds');
+          console.error('Form webhook request timed out after 90 seconds');
           return {
             success: false,
-            error: 'Netlify function request timed out'
+            error: 'Form webhook request timed out'
           };
         }
         
-        console.error('Error sending form data to Netlify function:', fetchError);
+        console.error('Error sending form data to webhook:', fetchError);
         
         // Remove from ongoing submissions
         this.ongoingSubmissions.delete(submissionId);

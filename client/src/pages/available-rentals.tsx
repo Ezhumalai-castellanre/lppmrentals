@@ -165,7 +165,7 @@ function PropertyCard({ rental, onViewDetails, onApplyNow }: {
                   <p className="text-xs text-muted-foreground">Monthly Rent</p>
                   <p className="font-bold text-sm">
                     {rental.monthlyRent && rental.monthlyRent.trim() !== '' 
-                      ? `$${rental.monthlyRent}` 
+                      ? rental.monthlyRent 
                       : 'Contact for pricing'
                     }
                   </p>

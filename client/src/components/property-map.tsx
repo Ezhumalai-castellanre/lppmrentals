@@ -143,7 +143,7 @@ export function PropertyMap({ rentals, onViewDetails, onApplyNow }: PropertyMapP
                           <DollarSign className="w-3 h-3" />
                           <span>
                             {rental.monthlyRent && rental.monthlyRent.trim() !== '' 
-                              ? `$${rental.monthlyRent}` 
+                              ? rental.monthlyRent 
                               : 'Contact for pricing'
                             }
                           </span>
