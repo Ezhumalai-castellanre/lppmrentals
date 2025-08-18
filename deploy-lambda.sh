@@ -6,6 +6,7 @@ echo "🚀 Deploying Lambda functions to AWS..."
 # Set your AWS region and bucket name
 AWS_REGION="us-east-1"
 S3_BUCKET="supportingdocuments-storage-2025"
+AWS_ACCOUNT_ID="818263291471"
 
 # Create deployment packages
 echo "📦 Creating deployment packages..."
@@ -27,7 +28,7 @@ echo "📤 Deploying S3 Upload function..."
 aws lambda create-function \
   --function-name s3-upload \
   --runtime nodejs18.x \
-  --role arn:aws:iam::YOUR_ACCOUNT_ID:role/lambda-execution-role \
+  --role arn:aws:iam::${AWS_ACCOUNT_ID}:role/service-role/lambda-execution-role \
   --handler index.handler \
   --zip-file fileb://s3-upload.zip \
   --timeout 60 \
@@ -40,7 +41,7 @@ echo "📤 Deploying Webhook Proxy function..."
 aws lambda create-function \
   --function-name webhook-proxy \
   --runtime nodejs18.x \
-  --role arn:aws:iam::YOUR_ACCOUNT_ID:role/lambda-execution-role \
+  --role arn:aws:iam::${AWS_ACCOUNT_ID}:role/service-role/lambda-execution-role \
   --handler index.handler \
   --zip-file fileb://webhook-proxy.zip \
   --timeout 60 \

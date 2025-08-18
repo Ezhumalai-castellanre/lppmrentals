@@ -360,12 +360,9 @@ const cleanObject = (obj: any) => {
 };
 
 export class WebhookService {
-  // Use our S3 upload system and webhook proxy
-  // TODO: Update these URLs once Lambda functions are deployed to AWS
-  // Current: Using local/Express endpoints
-  // Future: Will use AWS API Gateway URLs
-  private static readonly WEBHOOK_PROXY_URL = '/api/webhook-proxy';
-  private static readonly S3_UPLOAD_URL = '/api/s3-upload';
+  // Use AWS API Gateway endpoints for production
+  private static readonly WEBHOOK_PROXY_URL = 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/webhook-proxy';
+  private static readonly S3_UPLOAD_URL = 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/s3-upload';
   
   // Track ongoing submissions to prevent duplicates
   private static ongoingSubmissions = new Set<string>();
