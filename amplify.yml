@@ -16,18 +16,6 @@ applications:
       cache:
         paths:
           - node_modules/**/*
-    backend:
-      phases:
-        build:
-          commands:
-            - amplify push --yes
-      artifacts:
-        baseDirectory: amplify
-        config:
-          - backend-config.json
-          - amplify-meta.json
-        files:
-          - '**/*'
     env:
       runtime-versions:
         nodejs: 20
