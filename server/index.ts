@@ -7,10 +7,10 @@ import crypto from "crypto";
 
 const app = express();
 
-// Increase payload limits for file uploads
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ extended: false, limit: '100mb' }));
-app.use(express.raw({ limit: '100mb' }));
+// Increase payload limits for file uploads (support 5-20MB files)
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ extended: false, limit: '200mb' }));
+app.use(express.raw({ limit: '200mb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -145,6 +145,30 @@ app.post('/api/upload-files', async (req, res) => {
   }
 });
 
+// Proxy to Make.com webhook to avoid browser CORS
+app.post('/api/proxy-webhook', async (req, res) => {
+  try {
+    const targetUrl = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
+    const response = await fetch(targetUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+    });
+    const text = await response.text();
+    res
+      .status(response.status)
+      .set('Access-Control-Allow-Origin', '*')
+      .set('Access-Control-Allow-Methods', 'POST, OPTIONS')
+      .set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+      .send(text);
+  } catch (e: any) {
+    res
+      .status(500)
+      .set('Access-Control-Allow-Origin', '*')
+      .json({ error: 'Proxy failed', details: e?.message || 'Unknown error' });
+  }
+});
+
 
 
 
@@ -175,8 +199,8 @@ app.post('/api/upload-files', async (req, res) => {
     serveStatic(app);
   }
 
-  // Serve the app on port 5001, or use a different port if 5001 is busy
-  const port = process.env.PORT ? parseInt(process.env.PORT) : 5001;
+  // Serve the app on port 5000 by default (aligns with local usage), or use PORT if provided
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
   server.listen({
     port,
     host: "localhost", // Use localhost for local development

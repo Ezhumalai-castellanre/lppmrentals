@@ -35,7 +35,7 @@ export const handler = async (event, context) => {
     const bodySizeMB = Math.round(bodySize / (1024 * 1024) * 100) / 100;
     console.log(`📦 Request body size: ${bodySizeMB}MB`);
     
-    if (bodySize > 10 * 1024 * 1024) { // 10MB limit
+    if (bodySize > 200 * 1024 * 1024) { // 200MB limit for 5-20MB files
       console.log('❌ Request too large');
       return {
         statusCode: 413,
@@ -46,7 +46,7 @@ export const handler = async (event, context) => {
         },
         body: JSON.stringify({ 
           error: 'Request too large', 
-          message: 'Request body exceeds 10MB limit' 
+          message: 'Request body exceeds 200MB limit' 
         })
       };
     }

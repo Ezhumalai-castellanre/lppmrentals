@@ -361,8 +361,9 @@ const cleanObject = (obj: any) => {
 
 export class WebhookService {
   // Use direct Make.com endpoints on Amplify; disable proxy in production by default
-  private static readonly FILE_WEBHOOK_URL = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
-  private static readonly FORM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
+  // Route through our server proxy to avoid browser CORS
+  private static readonly FILE_WEBHOOK_URL = '/api/proxy-webhook';
+  private static readonly FORM_WEBHOOK_URL = '/api/proxy-webhook';
   
   // Track ongoing submissions to prevent duplicates
   private static ongoingSubmissions = new Set<string>();
@@ -385,6 +386,17 @@ export class WebhookService {
     zoneinfo?: string,
     commentId?: string
   ): Promise<{ success: boolean; error?: string; body?: string }> {
+    // Allow larger files (5-20MB range) while keeping webhook payloads manageable
+    // Base64 adds ~33% overhead, so 5MB file -> ~6.7MB JSON field plus metadata
+    const MAX_WEBHOOK_FILE_MB = 5;
+    if (file.size > MAX_WEBHOOK_FILE_MB * 1024 * 1024) {
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      console.error(
+        `❌ File too large for webhook: ${file.name} (${fileSizeMB}MB). Max allowed is ${MAX_WEBHOOK_FILE_MB}MB to avoid exceeding webhook limits.`
+      );
+      return { success: false, error: `File too large (${fileSizeMB}MB). Max ${MAX_WEBHOOK_FILE_MB}MB.` };
+    }
+
     // Create a unique key for this file upload
     const fileUploadKey = `${referenceId}-${sectionName}-${file.name}-${file.size}`;
     
@@ -534,7 +546,7 @@ export class WebhookService {
           body: extractedUrl || responseBody 
         };
       } else {
-        const errorText = await response.text();
+        const errorText = responseBody;
         console.error('Webhook failed:', response.status, errorText);
         
         // Add to failed uploads to prevent retries

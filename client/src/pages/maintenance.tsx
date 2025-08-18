@@ -68,13 +68,20 @@ export default function MaintenancePage() {
   const [submitting, setSubmitting] = useState(false);
   
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string;
+    description: string;
+    category: string;
+    priority: 'low' | 'medium' | 'high' | 'emergency';
+    location: string;
+    images: File[];
+  }>({
     title: '',
     description: '',
     category: '',
-    priority: 'medium' as const,
+    priority: 'medium',
     location: '',
-    images: [] as File[]
+    images: []
   });
 
   if (!user) {
@@ -361,9 +368,9 @@ export default function MaintenancePage() {
                     accept=".jpg,.jpeg,.png"
                     multiple={false}
                     maxFiles={1}
-                    maxSize={5}
+                    maxSize={20}
                     label="Upload Photo"
-                    description="Upload a photo of the issue (max 5MB)"
+                    description="Upload a photo of the issue (max 20MB)"
                   />
                 </div>
 

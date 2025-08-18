@@ -37,7 +37,7 @@ export function FileUpload({
   accept = ".pdf,.jpg,.jpeg,.png",
   multiple = false,
   maxFiles = multiple ? 10 : 1,
-  maxSize = 10,
+  maxSize = 50,
   label,
   description,
   className,
