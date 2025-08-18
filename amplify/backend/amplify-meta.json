@@ -1,0 +1,37 @@
+{
+  "providers": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-lppmrentals-prod-123456-authRole",
+      "UnauthRoleName": "amplify-lppmrentals-prod-123456-unauthRole",
+      "StackName": "amplify-lppmrentals-prod-123456",
+      "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/amplify-lppmrentals-prod-123456/12345678-1234-1234-1234-123456789012"
+    }
+  },
+  "categories": {
+    "api": {
+      "s3UploadApi": {
+        "build": true,
+        "providerPlugin": "awscloudformation",
+        "service": "API Gateway",
+        "dependsOn": [
+          {
+            "category": "function",
+            "resourceName": "s3UploadFunction",
+            "attributes": [
+              "Name",
+              "Arn"
+            ]
+          }
+        ]
+      }
+    },
+    "function": {
+      "s3UploadFunction": {
+        "build": true,
+        "providerPlugin": "awscloudformation",
+        "service": "Lambda",
+        "dependsOn": []
+      }
+    }
+  }
+}
