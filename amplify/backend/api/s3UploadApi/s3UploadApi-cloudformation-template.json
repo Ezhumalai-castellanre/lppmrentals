@@ -1,0 +1,94 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "An auto-generated CloudFormation template for API Gateway",
+  "Parameters": {
+    "s3UploadFunctionName": {
+      "Type": "String",
+      "Default": "s3UploadFunction"
+    },
+    "s3UploadFunctionArn": {
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "ApiGatewayRestApi": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "Properties": {
+        "Name": "s3UploadApi",
+        "Description": "API Gateway for S3 upload functionality"
+      }
+    },
+    "ApiGatewayResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        },
+        "ParentId": {
+          "Fn::GetAtt": [
+            "ApiGatewayRestApi",
+            "RootResourceId"
+          ]
+        },
+        "PathPart": "s3-upload"
+      }
+    },
+    "ApiGatewayMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        },
+        "ResourceId": {
+          "Ref": "ApiGatewayResource"
+        },
+        "HttpMethod": "POST",
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "Type": "AWS_PROXY",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${s3UploadFunctionArn}/invocations"
+          }
+        }
+      }
+    },
+    "ApiGatewayDeployment": {
+      "Type": "AWS::ApiGateway::Deployment",
+      "DependsOn": [
+        "ApiGatewayMethod"
+      ],
+      "Properties": {
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        },
+        "StageName": "prod"
+      }
+    },
+    "LambdaPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "s3UploadFunctionArn"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Sub": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApi}/*/POST/s3-upload"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "ApiId": {
+      "Value": {
+        "Ref": "ApiGatewayRestApi"
+      }
+    },
+    "ApiUrl": {
+      "Value": {
+        "Fn::Sub": "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+      }
+    }
+  }
+}

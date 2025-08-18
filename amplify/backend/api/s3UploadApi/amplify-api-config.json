@@ -1,4 +1,6 @@
 {
+  "apiName": "s3UploadApi",
+  "service": "API Gateway",
   "paths": {
     "/s3-upload": {
       "name": "/s3-upload",
@@ -7,6 +9,5 @@
         "setting": "open"
       }
     }
-  },
-  "lambdaFunction": "s3UploadFunction"
+  }
 }

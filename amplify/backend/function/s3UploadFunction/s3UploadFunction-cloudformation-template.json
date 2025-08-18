@@ -1,0 +1,62 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Lambda Function resource stack",
+  "Parameters": {
+    "s3UploadFunctionName": {
+      "Type": "String",
+      "Default": "s3UploadFunction"
+    },
+    "s3UploadFunctionLambdaExecutionRole": {
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "LambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "s3UploadFunctionName"
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Ref": "s3UploadFunctionLambdaExecutionRole"
+        },
+        "Runtime": "nodejs18.x",
+        "Code": {
+          "ZipFile": "exports.handler = async (event) => { return { statusCode: 200, body: 'Hello from Lambda!' }; };"
+        },
+        "Environment": {
+          "Variables": {
+            "AWS_S3_BUCKET_NAME": "supportingdocuments-storage-2025",
+            "AWS_REGION": "us-east-1"
+          }
+        },
+        "Timeout": 60,
+        "MemorySize": 512
+      }
+    }
+  },
+  "Outputs": {
+    "Name": {
+      "Description": "Name of the Lambda function",
+      "Value": {
+        "Ref": "LambdaFunction"
+      }
+    },
+    "Arn": {
+      "Description": "ARN of the Lambda function",
+      "Value": {
+        "Fn::GetAtt": [
+          "LambdaFunction",
+          "Arn"
+        ]
+      }
+    },
+    "Region": {
+      "Description": "AWS Region",
+      "Value": {
+        "Ref": "AWS::Region"
+      }
+    }
+  }
+}

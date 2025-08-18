@@ -1,0 +1,11 @@
+{
+  "functionName": "s3UploadFunction",
+  "runtime": "nodejs18.x",
+  "handler": "index.handler",
+  "timeout": 60,
+  "memorySize": 512,
+  "environmentVariables": {
+    "AWS_S3_BUCKET_NAME": "supportingdocuments-storage-2025",
+    "AWS_REGION": "us-east-1"
+  }
+}

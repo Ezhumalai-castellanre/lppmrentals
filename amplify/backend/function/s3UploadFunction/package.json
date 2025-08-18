@@ -2,7 +2,7 @@
   "name": "s3-upload-function",
   "version": "1.0.0",
   "description": "Lambda function for S3 file uploads",
-  "main": "index.js",
+  "main": "src/index.js",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.864.0",
     "@aws-sdk/s3-request-presigner": "^3.864.0"
