@@ -6,12 +6,13 @@
     "framework": "react",
     "config": {
       "SourceDir": "client/src",
-      "DistributionDir": "client/dist",
+      "DistributionDir": "dist/public",
       "BuildCommand": "npm run build",
       "StartCommand": "npm run dev"
     }
   },
   "providers": [
     "awscloudformation"
-  ]
+  ],
+  "envName": "prod"
 }
