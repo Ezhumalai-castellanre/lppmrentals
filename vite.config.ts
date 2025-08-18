@@ -31,11 +31,11 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-        secure: false,
+            proxy: {
+          '/api': {
+            target: 'http://localhost:5001',
+            changeOrigin: true,
+            secure: false,
         configure: (proxy, options) => {
           proxy.on('error', (err, req, res) => {
             console.log('proxy error', err);

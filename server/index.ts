@@ -4,6 +4,10 @@ import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 import { insertRentalApplicationSchema } from "../shared/schema";
 import crypto from "crypto";
+import dotenv from "dotenv";
+
+// Load environment variables from .env file
+dotenv.config();
 
 const app = express();
 
@@ -226,8 +230,8 @@ app.post('/api/proxy-webhook', async (req, res) => {
     serveStatic(app);
   }
 
-  // Serve the app on port 5000 by default (aligns with local usage), or use PORT if provided
-  const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
+  // Serve the app on port 5001 by default (port 5000 is used by macOS Control Center), or use PORT if provided
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 5001;
   server.listen({
     port,
     host: "localhost", // Use localhost for local development

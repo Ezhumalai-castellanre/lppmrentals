@@ -1024,14 +1024,14 @@ app.post("/api/s3-upload", async (req, res) => {
 
       // Initialize S3 client
       const s3Client = new S3Client({
-        region: process.env.AWS_REGION || 'us-east-1',
-        credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        },
-      });
+  region: process.env.VITE_AWS_REGION || process.env.AWS_REGION || 'us-east-1',
+  credentials: {
+    accessKeyId: process.env.VITE_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.VITE_AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
 
-      const bucketName = process.env.AWS_S3_BUCKET_NAME || 'supportingdocuments-storage-2025';
+              const bucketName = process.env.VITE_AWS_S3_BUCKET_NAME || process.env.AWS_S3_BUCKET_NAME || 'supportingdocuments-storage-2025';
 
       // Generate unique key for the file using zoneinfo as the main folder
       const timestamp = Date.now();
