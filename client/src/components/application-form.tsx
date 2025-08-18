@@ -3423,14 +3423,14 @@ export function ApplicationForm() {
               description: "Your rental application has been submitted and sent to the webhook successfully.",
             });
             setShowSuccessPopup(true);
-            setSubmissionReferenceId(submissionResult.reference_id);
+            setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
           } else {
             toast({
               title: "Application Submitted",
               description: "Your rental application has been submitted, but webhook delivery failed.",
             });
             setShowSuccessPopup(true);
-            setSubmissionReferenceId(submissionResult.reference_id);
+            setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
           }
         } catch (webhookError) {
           console.error('Webhook error:', webhookError);
@@ -3439,7 +3439,7 @@ export function ApplicationForm() {
               description: "Your rental application has been submitted, but webhook delivery failed.",
           });
           setShowSuccessPopup(true);
-          setSubmissionReferenceId(submissionResult.reference_id);
+          setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
         }
 
         generatePDF();
