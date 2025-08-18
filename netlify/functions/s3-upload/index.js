@@ -3,10 +3,27 @@ const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'us-east-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
 });
 
-exports.handler = async (event) => {
-  console.log('=== S3 UPLOAD LAMBDA FUNCTION CALLED ===');
+exports.handler = async (event, context) => {
+  console.log('=== S3 UPLOAD NETLIFY FUNCTION CALLED ===');
+  
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      },
+      body: ''
+    };
+  }
   
   try {
     // Check if it's a POST request

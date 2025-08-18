@@ -10,7 +10,7 @@ const s3Client = new S3Client({
 });
 
 exports.handler = async (event, context) => {
-  console.log('=== S3 UPLOAD NETLIFY FUNCTION CALLED ===');
+  console.log('=== S3 UPLOAD AMPLIFY LAMBDA FUNCTION CALLED ===');
   
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {

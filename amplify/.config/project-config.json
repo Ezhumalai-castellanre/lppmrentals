@@ -1,0 +1,17 @@
+{
+  "projectName": "lppmrentals",
+  "version": "3.1",
+  "frontend": "javascript",
+  "javascript": {
+    "framework": "react",
+    "config": {
+      "SourceDir": "client/src",
+      "DistributionDir": "client/dist",
+      "BuildCommand": "npm run build",
+      "StartCommand": "npm run dev"
+    }
+  },
+  "providers": [
+    "awscloudformation"
+  ]
+}
