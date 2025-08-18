@@ -3067,6 +3067,8 @@ export function ApplicationForm() {
         const submissionController = new AbortController();
         const submissionTimeoutId = setTimeout(() => submissionController.abort(), 45000); // 45 second timeout
         
+        let serverSubmissionOk = false;
+        let submissionResult: any = null;
         const submissionResponse = await fetch(apiEndpoint + '/submit-application', {
           method: 'POST',
           headers: {
@@ -3088,18 +3090,22 @@ export function ApplicationForm() {
             throw new Error('Application data is too large. Please reduce file sizes and try again.');
           } else if (submissionResponse.status === 504) {
             throw new Error('Submission timed out. Please try again with smaller files or fewer files at once.');
+          } else if (submissionResponse.status === 404) {
+            console.warn('Server endpoint not found (404). Proceeding with direct webhook fallback.');
+            serverSubmissionOk = false;
           } else {
             throw new Error(`Submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
           }
+        } else {
+          submissionResult = await submissionResponse.json();
+          serverSubmissionOk = true;
+          console.log('✅ === SERVER SUBMISSION RESULT ===');
+          console.log('📤 Data sent to server:', JSON.stringify(requestBody, null, 2));
+          console.log('📥 Server response:', JSON.stringify(submissionResult, null, 2));
+          if (submissionResult?.application_id) console.log('🔗 Application ID:', submissionResult.application_id);
+          if (submissionResult?.reference_id) console.log('🔗 Reference ID:', submissionResult.reference_id);
+          console.log('=== END SERVER SUBMISSION ===');
         }
-
-        const submissionResult = await submissionResponse.json();
-        console.log('✅ === SERVER SUBMISSION RESULT ===');
-        console.log('📤 Data sent to server:', JSON.stringify(requestBody, null, 2));
-        console.log('📥 Server response:', JSON.stringify(submissionResult, null, 2));
-        console.log('🔗 Application ID:', submissionResult.application_id);
-        console.log('🔗 Reference ID:', submissionResult.reference_id);
-        console.log('=== END SERVER SUBMISSION ===');
 
         // Mark draft as submitted in DynamoDB
         if (user?.applicantId) {
@@ -3393,7 +3399,7 @@ export function ApplicationForm() {
           console.log('=== END WEBHOOK PAYLOAD DEBUG ===');
 
 
-          // Send the complete webhook data exactly as specified
+          // Send the complete webhook data exactly as specified (fallback if server failed or always after)
           console.log('🌐 === WEBHOOK SUBMISSION ===');
           console.log('📤 Webhook payload being sent:', JSON.stringify(webhookPayload, null, 2));
           console.log('🔗 Reference ID:', referenceId);

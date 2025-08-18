@@ -1,20 +1,35 @@
-import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import { Icon } from 'leaflet';
+import React, { useEffect, useRef, useState } from 'react';
 import { RentalItem } from '@/lib/monday-api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Home, MapPin, DollarSign, Eye, Send } from 'lucide-react';
-import 'leaflet/dist/leaflet.css';
 
-// Fix for default markers in react-leaflet
-delete (Icon.Default.prototype as any)._getIconUrl;
-Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+const GOOGLE_MAPS_JS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_JS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyA4xghdRPy2jN6K2oCw_BccNsXqrgPdL-E';
+const GOOGLE_PLACES_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY || GOOGLE_MAPS_JS_API_KEY;
+
+function loadGoogleMapsScript(apiKey: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window !== 'undefined' && (window as any).google && (window as any).google.maps) {
+      resolve();
+      return;
+    }
+    const existing = document.getElementById('google-maps-script');
+    if (existing) {
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', () => reject(new Error('Failed to load Google Maps script')));
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'google-maps-script';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Google Maps script'));
+    document.head.appendChild(script);
+  });
+}
 
 interface PropertyMapProps {
   rentals: RentalItem[];
@@ -61,12 +76,224 @@ const getPropertyCoordinates = (propertyName: string): [number, number] => {
 };
 
 export function PropertyMap({ rentals, onViewDetails, onApplyNow }: PropertyMapProps) {
-  const [mapKey, setMapKey] = useState(0);
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const [loadingMap, setLoadingMap] = useState(true);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+  const [showNearby, setShowNearby] = useState(false);
+  const nearbyMarkersRef = useRef<any[]>([]);
+  const geocodeCacheRef = useRef<Map<string, { lat: number; lng: number }>>(new Map());
+
+  async function geocodeRental(r: { propertyName: string; name?: string }): Promise<{ lat: number; lng: number } | null> {
+    try {
+      const key = `${r.propertyName}|${r.name || ''}`;
+      if (geocodeCacheRef.current.has(key)) {
+        return geocodeCacheRef.current.get(key)!;
+      }
+      // Prefer JS PlacesService
+      const google = (window as any).google;
+      if (google?.maps?.places) {
+        const query = r.name ? `${r.propertyName} ${String(r.name)}, New York, NY` : `${r.propertyName}, New York, NY`;
+        const coord = await new Promise<{ lat: number; lng: number } | null>((resolve) => {
+          const svc = new google.maps.places.PlacesService(document.createElement('div'));
+          svc.findPlaceFromQuery({ query, fields: ['geometry'] }, (results: any, status: any) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && results && results[0]?.geometry?.location) {
+              const loc = results[0].geometry.location;
+              resolve({ lat: loc.lat(), lng: loc.lng() });
+            } else {
+              resolve(null);
+            }
+          });
+        });
+        if (coord) {
+          geocodeCacheRef.current.set(key, coord);
+          return coord;
+        }
+      }
+      // Fallback REST v1
+      try {
+        const unitText = r.name ? String(r.name) : '';
+        const textQuery = unitText
+          ? `${r.propertyName} ${unitText}, New York, NY`
+          : `${r.propertyName}, New York, NY`;
+        const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+            'X-Goog-FieldMask': 'places.location',
+          },
+          body: JSON.stringify({ textQuery }),
+        });
+        const data = await resp.json();
+        const loc = data?.places?.[0]?.location;
+        if (loc?.latitude && loc?.longitude) {
+          const coord = { lat: loc.latitude, lng: loc.longitude };
+          geocodeCacheRef.current.set(key, coord);
+          return coord;
+        }
+      } catch {}
+    } catch (e) {
+      // ignore geocode failure; will fallback
+    }
+    return null;
+  }
 
   useEffect(() => {
-    // Force map re-render when rentals change
-    setMapKey(prev => prev + 1);
-  }, [rentals]);
+    let isMounted = true;
+    if (!rentals || rentals.length === 0) return;
+
+    (async () => {
+      await loadGoogleMapsScript(GOOGLE_MAPS_JS_API_KEY);
+      // Resolve real coordinates where possible
+      const coordsList: { rental: typeof rentals[number]; lat: number; lng: number }[] = [];
+      for (const r of rentals) {
+        const geo = await geocodeRental({ propertyName: r.propertyName, name: r.name });
+        if (geo) {
+          coordsList.push({ rental: r, lat: geo.lat, lng: geo.lng });
+        } else {
+          const [lat, lng] = getPropertyCoordinates(r.propertyName);
+          coordsList.push({ rental: r, lat, lng });
+        }
+      }
+      const centerLat = coordsList.reduce((sum, c) => sum + c.lat, 0) / coordsList.length;
+      const centerLng = coordsList.reduce((sum, c) => sum + c.lng, 0) / coordsList.length;
+      if (!isMounted || !mapRef.current) return;
+      const google = (window as any).google;
+      const map = new google.maps.Map(mapRef.current, {
+        center: { lat: centerLat, lng: centerLng },
+        zoom: 12,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+      });
+      mapInstanceRef.current = map;
+
+      // Clear old markers
+      markersRef.current.forEach(m => m.setMap(null));
+      markersRef.current = [];
+
+      // Add markers using resolved coords
+      coordsList.forEach(({ rental, lat, lng }) => {
+        const marker = new google.maps.Marker({
+          position: { lat, lng },
+          map,
+          title: rental.name,
+        });
+        const content = `
+            <div style="min-width: 240px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span style="color:#2563eb;display:flex;align-items:center;">🏠</span>
+                <h3 style="font-weight:600;font-size:13px;margin:0">${rental.name}</h3>
+              </div>
+              <div style="margin-bottom:8px;font-size:12px;color:#4b5563;">
+                <div style="display:flex;align-items:center;gap:4px;"><span>📍</span><span>${rental.propertyName}</span></div>
+                <div style="display:flex;align-items:center;gap:4px;">
+                  <span>💵</span>
+                  <span>${rental.monthlyRent && rental.monthlyRent.toString().trim() !== '' ? rental.monthlyRent : 'Contact for pricing'}</span>
+                </div>
+                <div>
+                  <span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#166534;font-size:11px;padding:2px 6px;border-radius:8px;">● Available Now</span>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button data-action="details" style="flex:1;border:1px solid #e5e7eb;border-radius:6px;padding:6px 8px;background:#fff;cursor:pointer;font-size:12px;">Details</button>
+                <button data-action="apply" style="flex:1;border:0;border-radius:6px;padding:6px 8px;background:#06b6d4;color:#fff;cursor:pointer;font-size:12px;">Apply</button>
+              </div>
+            </div>
+          `;
+        const info = new google.maps.InfoWindow({ content });
+        marker.addListener('click', () => info.open({ anchor: marker, map }));
+        // Delegate button clicks inside infowindow
+        google.maps.event.addListener(info, 'domready', () => {
+          const container = document.querySelector('.gm-style-iw')?.parentElement?.parentElement;
+          if (!container) return;
+          const detailsBtn = container.querySelector('button[data-action="details"]') as HTMLButtonElement | null;
+          const applyBtn = container.querySelector('button[data-action="apply"]') as HTMLButtonElement | null;
+          if (detailsBtn) detailsBtn.onclick = () => onViewDetails(rental);
+          if (applyBtn) applyBtn.onclick = () => onApplyNow(rental);
+        });
+        markersRef.current.push(marker);
+      });
+
+      setLoadingMap(false);
+    })().catch(() => setLoadingMap(false));
+
+    return () => { isMounted = false };
+  }, [rentals, onViewDetails, onApplyNow]);
+
+  const fetchNearbyRestaurants = async () => {
+    if (!mapInstanceRef.current) return;
+    setNearbyLoading(true);
+    // Clear existing nearby markers
+    nearbyMarkersRef.current.forEach(m => m.setMap(null));
+    nearbyMarkersRef.current = [];
+    try {
+      const center = mapInstanceRef.current.getCenter();
+      const lat = center.lat();
+      const lng = center.lng();
+      const body = {
+        includedTypes: ["restaurant"],
+        maxResultCount: 10,
+        locationRestriction: {
+          circle: {
+            center: { latitude: lat, longitude: lng },
+            radius: 500.0,
+          },
+        },
+      };
+      const resp = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'places.displayName,places.location',
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      const google = (window as any).google;
+      if (data?.places?.length) {
+        data.places.forEach((p: any) => {
+          const pos = p.location ? { lat: p.location.latitude, lng: p.location.longitude } : null;
+          if (!pos) return;
+          const m = new google.maps.Marker({
+            position: pos,
+            map: mapInstanceRef.current,
+            title: p.displayName?.text || 'Place',
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: '#ef4444',
+              fillOpacity: 0.9,
+              strokeColor: '#b91c1c',
+              strokeWeight: 1,
+              scale: 6,
+            },
+          });
+          const info = new google.maps.InfoWindow({ content: `<div style="font-size:12px;font-weight:600;">${p.displayName?.text || 'Place'}</div>` });
+          m.addListener('click', () => info.open({ anchor: m, map: mapInstanceRef.current }));
+          nearbyMarkersRef.current.push(m);
+        });
+      }
+    } catch (e) {
+      // Silent fail for now
+    } finally {
+      setNearbyLoading(false);
+    }
+  };
+
+  const toggleNearby = async () => {
+    const next = !showNearby;
+    setShowNearby(next);
+    if (next) {
+      await fetchNearbyRestaurants();
+    } else {
+      // Clear
+      nearbyMarkersRef.current.forEach(m => m.setMap(null));
+      nearbyMarkersRef.current = [];
+    }
+  };
 
   if (!rentals || rentals.length === 0) {
     return (
@@ -87,11 +314,6 @@ export function PropertyMap({ rentals, onViewDetails, onApplyNow }: PropertyMapP
     );
   }
 
-  // Calculate center point from all properties
-  const coordinates = rentals.map(rental => getPropertyCoordinates(rental.propertyName));
-  const centerLat = coordinates.reduce((sum, coord) => sum + coord[0], 0) / coordinates.length;
-  const centerLng = coordinates.reduce((sum, coord) => sum + coord[1], 0) / coordinates.length;
-
   return (
     <Card className="w-full">
               <CardHeader>
@@ -101,90 +323,19 @@ export function PropertyMap({ rentals, onViewDetails, onApplyNow }: PropertyMapP
           </CardTitle>
         </CardHeader>
       <CardContent>
-        <div className="map-container">
-          <MapContainer
-            key={mapKey}
-            center={[centerLat, centerLng]}
-            zoom={10}
-            style={{ height: '100%', width: '100%' }}
-          >
-            <TileLayer
-              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-              attribution='&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-            />
-            
-            {rentals.map((rental) => {
-              const coordinates = getPropertyCoordinates(rental.propertyName);
-              return (
-                <Marker
-                  key={rental.id}
-                  position={coordinates}
-                  icon={new Icon({
-                    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41],
-                    popupAnchor: [1, -34],
-                  })}
-                >
-                  <Popup>
-                    <div className="min-w-64">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Home className="w-4 h-4 text-blue-600" />
-                        <h3 className="font-semibold text-sm">{rental.name}</h3>
+        <div className="relative" style={{ height: 400, width: '100%' }}>
+          <div ref={mapRef} style={{ position: 'absolute', inset: 0 }} />
+          {loadingMap && (
+            <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm bg-white/60">
+              Loading map...
                       </div>
-                      
-                      <div className="space-y-1 mb-3">
-                        <div className="flex items-center gap-1 text-xs text-gray-600">
-                          <MapPin className="w-3 h-3" />
-                          <span>{rental.propertyName}</span>
-                        </div>
-                        
-                        <div className="flex items-center gap-1 text-xs text-gray-600">
-                          <DollarSign className="w-3 h-3" />
-                          <span>
-                            {rental.monthlyRent && rental.monthlyRent.trim() !== '' 
-                              ? rental.monthlyRent 
-                              : 'Contact for pricing'
-                            }
-                          </span>
-                        </div>
-                        
-                        <Badge 
-                          variant="secondary"
-                          className="text-xs bg-green-100 text-green-800"
-                        >
-                          <div className="w-1.5 h-1.5 rounded-full mr-1 bg-green-500"></div>
-                          Available Now
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onViewDetails(rental)}
-                          className="flex-1 text-xs"
-                        >
-                          <Eye className="w-3 h-3 mr-1" />
-                          Details
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => onApplyNow(rental)}
-                          className="flex-1 text-xs"
-                        >
-                          <Send className="w-3 h-3 mr-1" />
-                          Apply
+          )}
+          <div className="absolute top-3 right-3 flex gap-2">
+            <Button variant="outline" size="sm" onClick={toggleNearby}>
+              {showNearby ? 'Hide Nearby' : nearbyLoading ? 'Loading…' : 'Show Nearby Restaurants'}
                         </Button>
                       </div>
-                    </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
-          </MapContainer>
         </div>
-        
         <div className="mt-4 text-sm text-gray-600">
           <p className="flex items-center gap-2">
             <MapPin className="w-4 h-4" />
