@@ -148,24 +148,51 @@ app.post('/api/upload-files', async (req, res) => {
 // Proxy to Make.com webhook to avoid browser CORS
 app.post('/api/proxy-webhook', async (req, res) => {
   try {
+    console.log('🔧 Proxy webhook request received:', req.body);
     const targetUrl = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
+    console.log('🔧 Forwarding to:', targetUrl);
+    
+    const requestBody = JSON.stringify(req.body);
+    console.log('🔧 Request body length:', requestBody.length);
+    
     const response = await fetch(targetUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body),
+      headers: { 
+        'Content-Type': 'application/json',
+        'User-Agent': 'LPPM-Rentals-Proxy/1.0'
+      },
+      body: requestBody,
     });
+    
+    console.log('🔧 External webhook response status:', response.status);
+    console.log('🔧 External webhook response headers:', Object.fromEntries(response.headers.entries()));
+    
     const text = await response.text();
+    console.log('🔧 External webhook response body:', text);
+    
+    // Check if the webhook actually succeeded despite HTTP status
+    const actualStatus = response.headers.get('make-actual-status');
+    const finalStatus = actualStatus ? parseInt(actualStatus) : response.status;
+    
+    console.log('🔧 Using final status:', finalStatus, '(original:', response.status, ', actual:', actualStatus, ')');
+    
     res
-      .status(response.status)
+      .status(finalStatus)
       .set('Access-Control-Allow-Origin', '*')
       .set('Access-Control-Allow-Methods', 'POST, OPTIONS')
       .set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
       .send(text);
   } catch (e: any) {
+    console.error('❌ Proxy webhook error:', e);
+    console.error('❌ Error stack:', e.stack);
     res
       .status(500)
       .set('Access-Control-Allow-Origin', '*')
-      .json({ error: 'Proxy failed', details: e?.message || 'Unknown error' });
+      .json({ 
+        error: 'Proxy failed', 
+        details: e?.message || 'Unknown error',
+        stack: e?.stack
+      });
   }
 });
 
