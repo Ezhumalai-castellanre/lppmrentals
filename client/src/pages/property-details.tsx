@@ -484,7 +484,7 @@ export default function PropertyDetailsPage() {
               <CardContent className="p-6">
                 <div className="text-center mb-6">
                   <div className="text-3xl font-bold text-cyan-600 mb-1">
-                    {rental.monthlyRent ? `$${rental.monthlyRent}` : 'Contact'}
+                    {rental.monthlyRent || 'Contact'}
                   </div>
                   <div className="text-gray-500">per month</div>
                 </div>

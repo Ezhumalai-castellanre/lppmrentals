@@ -89,7 +89,7 @@ export function decryptFile(encryptedFile: EncryptedFile): Buffer {
 /**
  * Validates if a file can be encrypted (size and type checks)
  */
-export function validateFileForEncryption(file: File, maxSizeMB: number = 10): string | null {
+export function validateFileForEncryption(file: File, maxSizeMB: number = 50): string | null {
   if (file.size > maxSizeMB * 1024 * 1024) {
     return `File ${file.name} is too large. Maximum size is ${maxSizeMB}MB.`;
   }

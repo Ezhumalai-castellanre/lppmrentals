@@ -360,6 +360,7 @@ const cleanObject = (obj: any) => {
 };
 
 export class WebhookService {
+  // Use our S3 upload system and webhook proxy
   private static readonly WEBHOOK_PROXY_URL = '/api/webhook-proxy';
   private static readonly S3_UPLOAD_URL = '/api/s3-upload';
   
@@ -513,6 +514,17 @@ export class WebhookService {
     zoneinfo?: string,
     commentId?: string
   ): Promise<{ success: boolean; error?: string; body?: string }> {
+    // Allow larger files (5-20MB range) while keeping webhook payloads manageable
+    // Base64 adds ~33% overhead, so 5MB file -> ~6.7MB JSON field plus metadata
+    const MAX_WEBHOOK_FILE_MB = 5;
+    if (file.size > MAX_WEBHOOK_FILE_MB * 1024 * 1024) {
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      console.error(
+        `❌ File too large for webhook: ${file.name} (${fileSizeMB}MB). Max allowed is ${MAX_WEBHOOK_FILE_MB}MB to avoid exceeding webhook limits.`
+      );
+      return { success: false, error: `File too large (${fileSizeMB}MB). Max ${MAX_WEBHOOK_FILE_MB}MB.` };
+    }
+
     // Create a unique key for this file upload
     const fileUploadKey = `${referenceId}-${sectionName}-${file.name}-${file.size}`;
     
@@ -570,7 +582,7 @@ export class WebhookService {
 
     // Set up timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout for large files
 
     try {
       const response = await fetch(this.WEBHOOK_PROXY_URL, {
@@ -680,7 +692,7 @@ export class WebhookService {
       clearTimeout(timeoutId);
       
       if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        console.error('File webhook request timed out after 60 seconds');
+        console.error('File webhook request timed out after 120 seconds');
         this.failedUploads.add(fileUploadKey);
         this.ongoingFileUploads.delete(fileUploadKey);
         return {
@@ -801,7 +813,7 @@ export class WebhookService {
 
       const startTime = Date.now();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout for large JSON
       
       try {
         const response = await fetch(this.WEBHOOK_PROXY_URL, {
@@ -840,14 +852,14 @@ export class WebhookService {
         clearTimeout(timeoutId);
         
         if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          console.error('Netlify function request timed out after 30 seconds');
+          console.error('Form webhook request timed out after 90 seconds');
           return {
             success: false,
-            error: 'Netlify function request timed out'
+            error: 'Form webhook request timed out'
           };
         }
         
-        console.error('Error sending form data to Netlify function:', fetchError);
+        console.error('Error sending form data to webhook:', fetchError);
         
         // Remove from ongoing submissions
         this.ongoingSubmissions.delete(submissionId);

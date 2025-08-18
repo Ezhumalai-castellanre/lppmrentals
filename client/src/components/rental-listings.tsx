@@ -367,7 +367,7 @@ export function RentalListings() {
                     </h3>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-cyan-600">
-                        {rental.monthlyRent ? `$${rental.monthlyRent}` : 'Contact'}
+                        {rental.monthlyRent || 'Contact'}
                       </div>
                       <div className="text-sm text-gray-500">/month</div>
                     </div>

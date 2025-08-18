@@ -7,10 +7,10 @@ import crypto from "crypto";
 
 const app = express();
 
-// Increase payload limits for file uploads
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ extended: false, limit: '100mb' }));
-app.use(express.raw({ limit: '100mb' }));
+// Increase payload limits for file uploads (support 5-20MB files)
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ extended: false, limit: '200mb' }));
+app.use(express.raw({ limit: '200mb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -145,6 +145,57 @@ app.post('/api/upload-files', async (req, res) => {
   }
 });
 
+// Proxy to Make.com webhook to avoid browser CORS
+app.post('/api/proxy-webhook', async (req, res) => {
+  try {
+    console.log('🔧 Proxy webhook request received:', req.body);
+    const targetUrl = 'https://hook.us1.make.com/2vu8udpshhdhjkoks8gchub16wjp7cu3';
+    console.log('🔧 Forwarding to:', targetUrl);
+    
+    const requestBody = JSON.stringify(req.body);
+    console.log('🔧 Request body length:', requestBody.length);
+    
+    const response = await fetch(targetUrl, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'User-Agent': 'LPPM-Rentals-Proxy/1.0'
+      },
+      body: requestBody,
+    });
+    
+    console.log('🔧 External webhook response status:', response.status);
+    console.log('🔧 External webhook response headers:', Object.fromEntries(response.headers.entries()));
+    
+    const text = await response.text();
+    console.log('🔧 External webhook response body:', text);
+    
+    // Check if the webhook actually succeeded despite HTTP status
+    const actualStatus = response.headers.get('make-actual-status');
+    const finalStatus = actualStatus ? parseInt(actualStatus) : response.status;
+    
+    console.log('🔧 Using final status:', finalStatus, '(original:', response.status, ', actual:', actualStatus, ')');
+    
+    res
+      .status(finalStatus)
+      .set('Access-Control-Allow-Origin', '*')
+      .set('Access-Control-Allow-Methods', 'POST, OPTIONS')
+      .set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+      .send(text);
+  } catch (e: any) {
+    console.error('❌ Proxy webhook error:', e);
+    console.error('❌ Error stack:', e.stack);
+    res
+      .status(500)
+      .set('Access-Control-Allow-Origin', '*')
+      .json({ 
+        error: 'Proxy failed', 
+        details: e?.message || 'Unknown error',
+        stack: e?.stack
+      });
+  }
+});
+
 
 
 
@@ -175,7 +226,7 @@ app.post('/api/upload-files', async (req, res) => {
     serveStatic(app);
   }
 
-  // Serve the app on port 5000, or use a different port if 5000 is busy
+  // Serve the app on port 5000 by default (aligns with local usage), or use PORT if provided
   const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
   server.listen({
     port,

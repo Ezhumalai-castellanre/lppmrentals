@@ -664,9 +664,9 @@ export default function MissingDocumentsPage() {
                                   accept=".pdf,.jpg,.jpeg,.png"
                                   multiple={false}
                                   maxFiles={1}
-                                  maxSize={10}
+                                  maxSize={20}
                                   label={`Upload ${item.name}`}
-                                  description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
+                                  description="Max 20MB. Accepted: PDF, JPG, PNG - Encrypted"
                                   className="mb-3"
                                   enableEncryption={true}
                                   referenceId={applicantId}
@@ -709,9 +709,9 @@ export default function MissingDocumentsPage() {
                                   accept=".pdf,.jpg,.jpeg,.png"
                                   multiple={false}
                                   maxFiles={1}
-                                  maxSize={10}
+                                  maxSize={20}
                                   label={`Upload ${item.name}`}
-                                  description="Max 10MB. Accepted: PDF, JPG, PNG - Encrypted"
+                                  description="Max 20MB. Accepted: PDF, JPG, PNG - Encrypted"
                                   className="mb-3"
                                   enableEncryption={true}
                                   referenceId={applicantId}
@@ -872,9 +872,9 @@ export default function MissingDocumentsPage() {
                                   accept=".pdf,.jpg,.jpeg,.png"
                                   multiple={isMultipleFileDocument(item.name)}
                                   maxFiles={isMultipleFileDocument(item.name) ? 5 : 1}
-                                  maxSize={10}
+                                  maxSize={20}
                                   label={`Upload ${item.name}`}
-                                  description={`Max 10MB. Accepted: PDF, JPG, PNG - Encrypted${isMultipleFileDocument(item.name) ? ' - Multiple files allowed' : ''}`}
+                                  description={`Max 20MB. Accepted: PDF, JPG, PNG - Encrypted${isMultipleFileDocument(item.name) ? ' - Multiple files allowed' : ''}`}
                                   className="mb-3"
                                   enableEncryption={true}
                                   referenceId={applicantId}
@@ -917,9 +917,9 @@ export default function MissingDocumentsPage() {
                                   accept=".pdf,.jpg,.jpeg,.png"
                                   multiple={isMultipleFileDocument(item.name)}
                                   maxFiles={isMultipleFileDocument(item.name) ? 5 : 1}
-                                  maxSize={10}
+                                  maxSize={20}
                                   label={`Upload ${item.name}`}
-                                  description={`Max 10MB. Accepted: PDF, JPG, PNG - Encrypted${isMultipleFileDocument(item.name) ? ' - Multiple files allowed' : ''}`}
+                                  description={`Max 20MB. Accepted: PDF, JPG, PNG - Encrypted${isMultipleFileDocument(item.name) ? ' - Multiple files allowed' : ''}`}
                                   className="mb-3"
                                   enableEncryption={true}
                                   referenceId={applicantId}

@@ -201,8 +201,8 @@ function formatPhoneForPayload(phone: string) {
 
 export function ApplicationForm() {
   const { toast } = useToast();
-  const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   
 
 
@@ -1364,6 +1364,12 @@ export function ApplicationForm() {
       form.setValue('apartmentType', apartmentType);
       console.log('🏠 Restored apartmentType:', apartmentType);
     }
+    // If we successfully found the unit, restore monthlyRent as well
+    if (selectedUnit && typeof selectedUnit.monthlyRent !== 'undefined') {
+      form.setValue('monthlyRent', selectedUnit.monthlyRent as any);
+      updateFormData('application', 'monthlyRent', selectedUnit.monthlyRent as any);
+      console.log('🏠 Restored monthlyRent:', selectedUnit.monthlyRent);
+    }
     
     // Verify the form values were actually set
     setTimeout(() => {
@@ -1393,6 +1399,7 @@ export function ApplicationForm() {
     form.setValue('apartmentNumber', apartmentName);
     form.setValue('apartmentType', selectedApartment?.unitType || '');
     form.setValue('monthlyRent', selectedApartment?.monthlyRent || undefined);
+    updateFormData('application', 'monthlyRent', selectedApartment?.monthlyRent || undefined);
     
     // Verify the form values were actually set
     setTimeout(() => {
@@ -2293,6 +2300,7 @@ export function ApplicationForm() {
         };
 
         const draftData: DraftData = {
+          zoneinfo: user.applicantId,
           applicantId: user.applicantId,
           reference_id: referenceId,
           form_data: enhancedFormDataSnapshot,
@@ -2334,6 +2342,7 @@ export function ApplicationForm() {
         };
 
         const draftData: DraftData = {
+          zoneinfo: user.applicantId,
           applicantId: user.applicantId,
           reference_id: referenceId,
           form_data: enhancedFormDataSnapshot,
@@ -2377,6 +2386,7 @@ export function ApplicationForm() {
         };
 
         const draftData: DraftData = {
+          zoneinfo: user.applicantId,
           applicantId: user.applicantId,
           reference_id: referenceId,
           form_data: enhancedFormDataSnapshot,
@@ -2428,6 +2438,7 @@ export function ApplicationForm() {
         };
 
         const draftData: DraftData = {
+          zoneinfo: user.applicantId,
           applicantId: user.applicantId,
           reference_id: referenceId,
           form_data: enhancedFormDataSnapshot,
@@ -2688,12 +2699,17 @@ export function ApplicationForm() {
       ];
       let missingFields = [];
       for (const field of requiredFields) {
+        // Resolve value with fallbacks for nested application fields
+        let value = (data as any)[field];
+        if (field === 'monthlyRent') {
+          value = (data as any).monthlyRent ?? formData.application?.monthlyRent;
+        }
         if (
-          data[field] === undefined ||
-          data[field] === null ||
-          (typeof data[field] === 'string' && data[field].trim() === '') ||
-          (field === 'applicantDob' && !data[field]) ||
-          (field === 'moveInDate' && !data[field])
+          value === undefined ||
+          value === null ||
+          (typeof value === 'string' && value.trim() === '') ||
+          (field === 'applicantDob' && !value) ||
+          (field === 'moveInDate' && !value)
         ) {
           missingFields.push(field);
         }
@@ -3067,6 +3083,8 @@ export function ApplicationForm() {
         const submissionController = new AbortController();
         const submissionTimeoutId = setTimeout(() => submissionController.abort(), 45000); // 45 second timeout
         
+        let serverSubmissionOk = false;
+        let submissionResult: any = null;
         const submissionResponse = await fetch(apiEndpoint + '/submit-application', {
           method: 'POST',
           headers: {
@@ -3088,18 +3106,22 @@ export function ApplicationForm() {
             throw new Error('Application data is too large. Please reduce file sizes and try again.');
           } else if (submissionResponse.status === 504) {
             throw new Error('Submission timed out. Please try again with smaller files or fewer files at once.');
+          } else if (submissionResponse.status === 404) {
+            console.warn('Server endpoint not found (404). Proceeding with direct webhook fallback.');
+            serverSubmissionOk = false;
           } else {
             throw new Error(`Submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
           }
+        } else {
+          submissionResult = await submissionResponse.json();
+          serverSubmissionOk = true;
+          console.log('✅ === SERVER SUBMISSION RESULT ===');
+          console.log('📤 Data sent to server:', JSON.stringify(requestBody, null, 2));
+          console.log('📥 Server response:', JSON.stringify(submissionResult, null, 2));
+          if (submissionResult?.application_id) console.log('🔗 Application ID:', submissionResult.application_id);
+          if (submissionResult?.reference_id) console.log('🔗 Reference ID:', submissionResult.reference_id);
+          console.log('=== END SERVER SUBMISSION ===');
         }
-
-        const submissionResult = await submissionResponse.json();
-        console.log('✅ === SERVER SUBMISSION RESULT ===');
-        console.log('📤 Data sent to server:', JSON.stringify(requestBody, null, 2));
-        console.log('📥 Server response:', JSON.stringify(submissionResult, null, 2));
-        console.log('🔗 Application ID:', submissionResult.application_id);
-        console.log('🔗 Reference ID:', submissionResult.reference_id);
-        console.log('=== END SERVER SUBMISSION ===');
 
         // Mark draft as submitted in DynamoDB
         if (user?.applicantId) {
@@ -3393,7 +3415,7 @@ export function ApplicationForm() {
           console.log('=== END WEBHOOK PAYLOAD DEBUG ===');
 
 
-          // Send the complete webhook data exactly as specified
+          // Send the complete webhook data exactly as specified (fallback if server failed or always after)
           console.log('🌐 === WEBHOOK SUBMISSION ===');
           console.log('📤 Webhook payload being sent:', JSON.stringify(webhookPayload, null, 2));
           console.log('🔗 Reference ID:', referenceId);
@@ -3417,14 +3439,14 @@ export function ApplicationForm() {
               description: "Your rental application has been submitted and sent to the webhook successfully.",
             });
             setShowSuccessPopup(true);
-            setSubmissionReferenceId(submissionResult.reference_id);
+            setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
           } else {
             toast({
               title: "Application Submitted",
               description: "Your rental application has been submitted, but webhook delivery failed.",
             });
             setShowSuccessPopup(true);
-            setSubmissionReferenceId(submissionResult.reference_id);
+            setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
           }
         } catch (webhookError) {
           console.error('Webhook error:', webhookError);
@@ -3433,7 +3455,7 @@ export function ApplicationForm() {
               description: "Your rental application has been submitted, but webhook delivery failed.",
           });
           setShowSuccessPopup(true);
-          setSubmissionReferenceId(submissionResult.reference_id);
+          setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
         }
 
         generatePDF();
@@ -3743,6 +3765,7 @@ export function ApplicationForm() {
   useEffect(() => {
     const apartmentNumberValue = form.watch('apartmentNumber');
     const apartmentTypeValue = form.watch('apartmentType');
+    const monthlyRentValue = form.watch('monthlyRent');
     const buildingAddressValue = form.watch('buildingAddress');
     const cityValue = form.watch('applicantCity');
     const stateValue = form.watch('applicantState');
@@ -3773,6 +3796,9 @@ export function ApplicationForm() {
     if (buildingAddressValue !== formData.application?.buildingAddress) {
       updateFormData('application', 'buildingAddress', buildingAddressValue);
     }
+    if (monthlyRentValue !== formData.application?.monthlyRent) {
+      updateFormData('application', 'monthlyRent', monthlyRentValue);
+    }
     
     console.log('🔍 Apartment, address, and landlord field values in formData:', {
       apartmentNumber: formData.application?.apartmentNumber,
@@ -3785,7 +3811,7 @@ export function ApplicationForm() {
       landlordState: formData.applicant?.landlordState,
       landlordZipCode: formData.applicant?.landlordZipCode
     });
-  }, [form.watch('apartmentNumber'), form.watch('apartmentType'), form.watch('buildingAddress'), form.watch('applicantCity'), form.watch('applicantState'), form.watch('applicantZip'), form.watch('applicantLandlordCity'), form.watch('applicantLandlordState'), form.watch('applicantLandlordZipCode'), formData.application?.apartmentNumber, formData.application?.apartmentType, formData.application?.buildingAddress, formData.applicant?.city, formData.applicant?.state, formData.applicant?.zip, formData.applicant?.landlordCity, formData.applicant?.landlordState, formData.applicant?.landlordZipCode]);
+  }, [form.watch('apartmentNumber'), form.watch('apartmentType'), form.watch('buildingAddress'), form.watch('monthlyRent'), form.watch('applicantCity'), form.watch('applicantState'), form.watch('applicantZip'), form.watch('applicantLandlordCity'), form.watch('applicantLandlordState'), form.watch('applicantLandlordZipCode'), formData.application?.apartmentNumber, formData.application?.apartmentType, formData.application?.buildingAddress, formData.application?.monthlyRent, formData.applicant?.city, formData.applicant?.state, formData.applicant?.zip, formData.applicant?.landlordCity, formData.applicant?.landlordState, formData.applicant?.landlordZipCode]);
 
   // Refactor renderStep to accept a stepIdx argument
   const renderStep = (stepIdx = currentStep) => {
@@ -5275,7 +5301,7 @@ export function ApplicationForm() {
                       accept=".pdf,.jpg,.jpeg,.png"
                       multiple={false}
                       maxFiles={1}
-                      maxSize={10}
+                      maxSize={3}
                       enableEncryption={true}
                       onFileChange={files => {
                         console.log('🚀 OCCUPANT SSN DOCUMENT UPLOAD:', {
@@ -6166,8 +6192,8 @@ export function ApplicationForm() {
             <Button
               onClick={() => {
                 setShowSuccessPopup(false);
-                // Reload the app
-                window.location.reload();
+                // Redirect to drafts page
+                setLocation('/drafts');
               }}
               className="w-full bg-green-600 hover:bg-green-700 text-white"
             >

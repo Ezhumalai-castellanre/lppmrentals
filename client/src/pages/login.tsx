@@ -403,6 +403,7 @@ const LoginPage: React.FC = () => {
                     placeholder="Enter your email"
                     className="pl-11 h-12 text-base"
                     style={{ textAlign: 'left', paddingLeft: '42px' }}
+                    autoComplete="username email"
                     required
                   />
                 </div>
@@ -420,6 +421,7 @@ const LoginPage: React.FC = () => {
                     placeholder="Enter your password"
                     className="pl-11 pr-12 h-12 text-base"
                     style={{ textAlign: 'left', paddingLeft: '45px' }}
+                    autoComplete="current-password"
                     required
                   />
                   <Button

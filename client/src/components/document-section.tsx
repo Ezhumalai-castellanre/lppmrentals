@@ -66,7 +66,7 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
           </p>
           <div className="text-xs text-blue-700 mt-1 space-y-1">
             <p>• <strong>All documents:</strong> Single file upload only</p>
-            <p>• <strong>File size limit:</strong> 10MB per file</p>
+            <p>• <strong>File size limit:</strong> 50MB per file</p>
             <p>• <strong>Accepted formats:</strong> JPG, PNG, PDF</p>
           </div>
         </div>
@@ -80,7 +80,7 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
                 accept={docType.accept}
                 multiple={false}
                 maxFiles={1}
-                maxSize={10}
+                maxSize={20}
                 onFileChange={(files) => onDocumentChange(person, docType.key, files)}
                 onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(person, docType.key, encryptedFiles)}
                 enableEncryption={true}

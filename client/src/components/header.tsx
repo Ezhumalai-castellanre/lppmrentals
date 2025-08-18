@@ -17,7 +17,12 @@ export function Header() {
 
           {/* Contact Info & CTA */}
           <div className="hidden lg:flex items-center space-x-4">
-            <Button className="bg-cyan-600 hover:bg-cyan-700">Apply Now</Button>
+            <Button
+              className="bg-cyan-600 hover:bg-cyan-700"
+              onClick={() => window.open('https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1&color_mktgkr4e=East+30th+Street&short_text800omovg=6B', '_blank')}
+            >
+              Apply Now
+            </Button>
           </div>
 
           {/* Mobile Menu Button */}

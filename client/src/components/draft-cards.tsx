@@ -32,9 +32,16 @@ interface DraftCardProps {
 const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateInput: string | Date) => {
     try {
-      return format(new Date(dateString), 'MMM dd, yyyy');
+      const date = new Date(dateInput);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      // Normalize to UTC date (midday) to avoid timezone shifting the displayed day
+      const utcYear = date.getUTCFullYear();
+      const utcMonth = date.getUTCMonth();
+      const utcDay = date.getUTCDate();
+      const stableUtcMidday = new Date(Date.UTC(utcYear, utcMonth, utcDay, 12));
+      return format(stableUtcMidday, 'MMM dd, yyyy');
     } catch {
       return 'Invalid date';
     }
@@ -227,6 +234,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
       apartmentType: formData.apartmentType ?? formData.application?.apartmentType ?? 'Not specified',
       monthlyRent: formData.monthlyRent ?? formData.application?.monthlyRent ?? 'Not specified',
       moveInDate: formData.moveInDate ?? formData.application?.moveInDate ?? 'Not specified',
+      howDidYouHear: formData.howDidYouHear ?? formData.application?.howDidYouHear ?? 'Not specified',
       applicantName,
       applicantEmail,
       

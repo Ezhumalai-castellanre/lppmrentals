@@ -314,9 +314,9 @@ export default function MaintenanceRequestPage() {
                   accept=".jpg,.jpeg,.png,.gif"
                   multiple={true}
                   maxFiles={5}
-                  maxSize={10}
+                  maxSize={20}
                   label="Upload Pictures"
-                  description="Max 10MB each. Accepted: JPG, PNG, GIF - Up to 5 files"
+                  description="Max 20MB each. Accepted: JPG, PNG, GIF - Up to 5 files"
                   className="mb-3"
                   enableEncryption={true}
                   referenceId={user.zoneinfo || user.email}

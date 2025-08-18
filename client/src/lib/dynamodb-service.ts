@@ -52,8 +52,13 @@ export class DynamoDBService {
     try {
       const session = await fetchAuthSession();
       
-      if (!session.tokens?.accessToken || !import.meta.env.VITE_AWS_IDENTITY_POOL_ID) {
-        console.warn('⚠️ No valid authentication session or Identity Pool ID, DynamoDB operations will fail');
+      // Require ID token (used for Cognito Identity Pool logins mapping)
+      if (!session.tokens?.idToken) {
+        console.warn('⚠️ No ID token available yet. User may not be signed in. Skipping DynamoDB client initialization for now.');
+        return;
+      }
+      if (!import.meta.env.VITE_AWS_IDENTITY_POOL_ID) {
+        console.error('❌ Missing VITE_AWS_IDENTITY_POOL_ID environment variable. Configure a valid Cognito Identity Pool ID.');
         return;
       }
 
@@ -97,11 +102,19 @@ export class DynamoDBService {
     if (!this.client) {
       await this.initializeClient();
     }
-    
+
+    // Brief retries in case tokens are not yet available immediately after sign-in
+    let attempts = 0;
+    while (!this.client && attempts < 2) {
+      attempts += 1;
+      await new Promise(resolve => setTimeout(resolve, 400));
+      await this.initializeClient();
+    }
+
     if (!this.client) {
       throw new Error('Failed to initialize DynamoDB client - no valid authentication');
     }
-    
+
     return this.client;
   }
 

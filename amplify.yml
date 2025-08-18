@@ -1,0 +1,35 @@
+version: 1
+applications:
+  - appRoot: .
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: dist/public
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+    env:
+      runtime-versions:
+        nodejs: 20
+    customHeaders:
+      - pattern: '**/*'
+        headers:
+          - key: Cache-Control
+            value: public, max-age=31536000, immutable
+      - pattern: '/index.html'
+        headers:
+          - key: Cache-Control
+            value: no-store
+    redirects:
+      - source: </^[^.]+$|.(?!(css|gif|ico|jpg|jpeg|js|map|png|svg|txt|woff|woff2)$)([^.]+$)/>
+        target: /index.html
+        status: 200
+
