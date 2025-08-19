@@ -173,7 +173,18 @@ import "./lib/aws-config";
   // Block all fetch requests to extension URLs
   const originalFetch = window.fetch;
   window.fetch = function(url: RequestInfo | URL, options?: RequestInit) {
-    const urlStr = String(url || '');
+    const urlStr = typeof url === 'string'
+      ? url
+      : (url instanceof URL ? url.toString() : (url as any)?.url || String(url || ''));
+
+    // Whitelist production/network endpoints so they're never blocked
+    if (
+      urlStr.includes('amazonaws.com') || // S3, API Gateway, AppSync
+      urlStr.includes('amplifyapp.com')   // Amplify hosting
+    ) {
+      return originalFetch.call(this, url, options);
+    }
+
     if (shouldBlock(urlStr)) {
       // Return a rejected promise that won't trigger errors
       return Promise.reject(new Error('Blocked by ultra-aggressive suppression'));
