@@ -414,7 +414,6 @@ export class WebhookService {
     
     // Check if already submitting
     if (this.ongoingSubmissions.has(submissionId)) {
-      console.log(`⏳ Already uploading ${file.name} for ${submissionId}`);
       return {
         success: false,
         error: 'Upload already in progress for this file'

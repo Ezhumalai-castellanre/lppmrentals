@@ -354,7 +354,7 @@ export function ApplicationForm() {
     const fetchUnits = async () => {
       setIsLoadingUnits(true);
       try {
-        console.log('Fetching from NYC listings API...');
+        // Fetching from NYC listings API...
         const nycResponse = await fetch('https://5sdpaqwf0f.execute-api.us-east-1.amazonaws.com/dev/getnyclisting', {
           method: 'PUT',
           headers: {
@@ -367,7 +367,7 @@ export function ApplicationForm() {
 
         if (nycResponse.ok) {
           const nycResult = await nycResponse.json();
-          console.log('NYC listings API response:', nycResult);
+          // NYC listings API response received
           
           // Handle the new API response structure
           let fetchedUnits: UnitItem[] = [];
@@ -381,7 +381,7 @@ export function ApplicationForm() {
               if (bodyData.items && Array.isArray(bodyData.items)) {
                 fetchedUnits = bodyData.items.map((item: any) => {
                   const monthlyRent = item.price ? Number(item.price) : 0;
-                  console.log(`🏠 Mapping item ${item.name}: price=${item.price}, monthlyRent=${monthlyRent}`);
+                  // Mapping item: price=${item.price}, monthlyRent=${monthlyRent}
                   
                   return {
                     id: item.id || String(Math.random()),
@@ -401,7 +401,7 @@ export function ApplicationForm() {
                 });
               }
             } catch (parseError) {
-              console.error('Error parsing API response body:', parseError);
+              // Error parsing API response body
             }
           }
           
@@ -409,7 +409,7 @@ export function ApplicationForm() {
           if (fetchedUnits.length === 0 && nycResult.items && Array.isArray(nycResult.items)) {
             fetchedUnits = nycResult.items.map((item: any) => {
               const monthlyRent = item.price ? Number(item.price) : 0;
-              console.log(`🏠 Fallback mapping item ${item.name}: price=${item.price}, monthlyRent=${monthlyRent}`);
+              // Fallback mapping item: price=${item.price}, monthlyRent=${monthlyRent}
               
               return {
                 id: item.id || String(Math.random()),
@@ -429,22 +429,22 @@ export function ApplicationForm() {
             });
           }
           
-          console.log('Processed units from NYC listings API:', fetchedUnits);
+          // Processed units from NYC listings API
           setUnits(fetchedUnits);
         } else {
           // Fallback to Monday.com API if NYC API fails
-          console.log('NYC API failed, falling back to Monday.com API...');
+          // NYC API failed, falling back to Monday.com API...
           const fetchedUnits = await MondayApiService.fetchVacantUnits();
           setUnits(fetchedUnits);
         }
       } catch (error) {
-        console.error('Failed to fetch units:', error);
+        // Failed to fetch units
         // Final fallback to Monday.com API
         try {
           const fetchedUnits = await MondayApiService.fetchVacantUnits();
           setUnits(fetchedUnits);
         } catch (fallbackError) {
-          console.error('Fallback to Monday.com API also failed:', fallbackError);
+          // Fallback to Monday.com API also failed
         }
       } finally {
         setIsLoadingUnits(false);
@@ -457,7 +457,7 @@ export function ApplicationForm() {
   // Restore building selection once units are loaded
   useEffect(() => {
     if (units.length > 0 && formData.application?.buildingAddress) {
-      console.log('🏠 Units loaded, restoring building selection for:', formData.application.buildingAddress);
+              // Units loaded, restoring building selection
       // Use restoreBuildingSelection to preserve original apartment selection
       restoreBuildingSelection(
         formData.application.buildingAddress,
@@ -551,13 +551,13 @@ export function ApplicationForm() {
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'hasCoApplicant') {
-        console.log('👀 Form field hasCoApplicant changed:', value.hasCoApplicant);
+        // Form field hasCoApplicant changed
         setHasCoApplicant(value.hasCoApplicant || false);
       }
-      if (name === 'hasGuarantor') {
-        console.log('👀 Form field hasGuarantor changed:', value.hasGuarantor);
-        setHasGuarantor(value.hasGuarantor || false);
-      }
+              if (name === 'hasGuarantor') {
+          // Form field hasGuarantor changed
+          setHasGuarantor(value.hasGuarantor || false);
+        }
     });
     return () => subscription.unsubscribe();
   }, [form]);
@@ -603,7 +603,7 @@ export function ApplicationForm() {
       setFormData((prevData: any) => {
         // Only update if the values are different
         if (prevData.application_id !== currentUserZoneinfo || prevData.applicantId !== currentUserZoneinfo) {
-          console.log(`🔄 useEffect: Forcing form data update to use current user zoneinfo '${currentUserZoneinfo}'`);
+          // useEffect: Forcing form data update to use current user zoneinfo
           return {
             ...prevData,
             application_id: currentUserZoneinfo,
@@ -618,13 +618,13 @@ export function ApplicationForm() {
   // Load draft data from DynamoDB
   const loadDraftData = useCallback(async (applicationId: string) => {
     try {
-      console.log('📥 Loading draft data from DynamoDB for application ID:', applicationId);
+      // Loading draft data from DynamoDB for application ID
       
       // Try to load the most recent draft for this application
       const draftData = await dynamoDBService.getDraft(applicationId, referenceId);
       
       if (draftData && draftData.status === 'draft') {
-        console.log('✅ Draft data loaded from DynamoDB:', draftData);
+        // Draft data loaded from DynamoDB
         
         // Restore form data
         if (draftData.form_data) {
@@ -633,36 +633,30 @@ export function ApplicationForm() {
           if (typeof draftData.form_data === 'string') {
             try {
               parsedFormData = JSON.parse(draftData.form_data);
-              console.log('✅ Parsed form data from JSON string:', parsedFormData);
+              // Parsed form data from JSON string
               
               // Clean up the parsed data to ensure consistency
               // Always use the current user's zoneinfo/applicantId, not the stored draft data
               const currentUserZoneinfo = getCurrentUserZoneinfo();
               
-              console.log('🔍 Form data cleaning - Current user zoneinfo:', currentUserZoneinfo);
-              console.log('🔍 Form data before cleaning:', {
-                application_id: parsedFormData.application_id,
-                applicantId: parsedFormData.applicantId
-              });
+              // Form data cleaning - Current user zoneinfo
+              // Form data before cleaning
               
               // ALWAYS update application_id to current user's zoneinfo (overwrite any draft data)
               if (currentUserZoneinfo) {
                 const oldApplicationId = parsedFormData.application_id;
                 parsedFormData.application_id = currentUserZoneinfo;
-                console.log(`🔄 FORCED UPDATE: application_id changed from '${oldApplicationId}' to '${currentUserZoneinfo}'`);
+                // FORCED UPDATE: application_id changed
               }
               
               // ALWAYS update applicantId to current user's zoneinfo (overwrite any draft data)
               if (currentUserZoneinfo) {
                 const oldApplicantId = parsedFormData.applicantId;
                 parsedFormData.applicantId = currentUserZoneinfo;
-                console.log(`🔄 FORCED UPDATE: applicantId changed from '${oldApplicantId}' to '${currentUserZoneinfo}'`);
+                // FORCED UPDATE: applicantId changed
               }
               
-              console.log('🔍 Form data after cleaning:', {
-                application_id: parsedFormData.application_id,
-                applicantId: parsedFormData.applicantId
-              });
+              // Form data after cleaning
               
               // Ensure all required sections exist
               parsedFormData.application = parsedFormData.application || {};
@@ -671,9 +665,9 @@ export function ApplicationForm() {
               parsedFormData.guarantor = parsedFormData.guarantor || {};
               parsedFormData.occupants = parsedFormData.occupants || [];
               
-              console.log('🧹 Cleaned and normalized form data:', parsedFormData);
+              // Cleaned and normalized form data
             } catch (parseError) {
-              console.error('❌ Error parsing form data JSON:', parseError);
+              // Error parsing form data JSON
               parsedFormData = {
                 application: {},
                 applicant: {},
@@ -700,7 +694,7 @@ export function ApplicationForm() {
               try {
                 parsedSignatures = JSON.parse(draftData.signatures);
               } catch (parseError) {
-                console.error('❌ Error parsing signatures JSON:', parseError);
+                // Error parsing signatures JSON
                 parsedSignatures = {};
               }
             }
@@ -714,7 +708,7 @@ export function ApplicationForm() {
               try {
                 parsedWebhookResponses = JSON.parse(draftData.webhook_responses);
               } catch (parseError) {
-                console.error('❌ Error parsing webhook responses JSON:', parseError);
+                // Error parsing webhook responses JSON
                 parsedWebhookResponses = {};
               }
             }
@@ -728,7 +722,7 @@ export function ApplicationForm() {
               try {
                 parsedUploadedFiles = JSON.parse(draftData.uploaded_files_metadata);
               } catch (parseError) {
-                console.error('❌ Error parsing uploaded files JSON:', parseError);
+                // Error parsing uploaded files JSON
                 parsedUploadedFiles = {};
               }
             }
@@ -742,7 +736,7 @@ export function ApplicationForm() {
               try {
                 parsedEncryptedDocuments = JSON.parse(draftData.encrypted_documents);
               } catch (parseError) {
-                console.error('❌ Error parsing encrypted documents JSON:', parseError);
+                // Error parsing encrypted documents JSON
                 parsedEncryptedDocuments = {};
               }
             }
@@ -757,64 +751,44 @@ export function ApplicationForm() {
             // Restore all application fields
             if (app.buildingAddress !== undefined) {
               form.setValue('buildingAddress', app.buildingAddress || '');
-              console.log('🏢 Set buildingAddress:', app.buildingAddress || '');
+              // Set buildingAddress
             }
             if (app.apartmentNumber !== undefined) {
               form.setValue('apartmentNumber', app.apartmentNumber || '');
-              console.log('🏠 Set apartmentNumber:', app.apartmentNumber || '');
+              // Set apartmentNumber
             }
             if (app.apartmentType !== undefined) {
               form.setValue('apartmentType', app.apartmentType || '');
-              console.log('🏘️ Set apartmentType:', app.apartmentType || '');
+              // Set apartmentType
             }
             
-            // Log the apartment fields that were restored
-            console.log('🏠 Apartment fields restored from draft:', {
-              apartmentNumber: app.apartmentNumber,
-              apartmentType: app.apartmentType,
-              buildingAddress: app.buildingAddress
-            });
+            // Apartment fields restored from draft
             if (app.monthlyRent) {
               form.setValue('monthlyRent', app.monthlyRent);
-              console.log('💰 Set monthlyRent:', app.monthlyRent);
+              // Set monthlyRent
             }
             if (app.howDidYouHear) {
               form.setValue('howDidYouHear', app.howDidYouHear);
-              console.log('📢 Set howDidYouHear:', app.howDidYouHear);
+              // Set howDidYouHear
             }
             if (app.howDidYouHearOther) {
               form.setValue('howDidYouHearOther', app.howDidYouHearOther);
-              console.log('📝 Set howDidYouHearOther:', app.howDidYouHearOther);
+              // Set howDidYouHearOther
             }
             if (app.moveInDate) {
               const moveInDate = new Date(app.moveInDate);
               if (!isNaN(moveInDate.getTime())) {
                 form.setValue('moveInDate', moveInDate);
-                console.log('📅 Set moveInDate:', moveInDate);
+                // Set moveInDate
               }
             }
             
-            console.log('✅ Application form values restored:', {
-              buildingAddress: app.buildingAddress,
-              apartmentNumber: app.apartmentNumber,
-              apartmentType: app.apartmentType,
-              monthlyRent: app.monthlyRent,
-              howDidYouHear: app.howDidYouHear,
-              howDidYouHearOther: app.howDidYouHearOther,
-              moveInDate: app.moveInDate
-            });
+            // Application form values restored
             
             // Verify the form values were actually set
+            // Verify the form values were actually set
             setTimeout(() => {
-              console.log('🔍 Verifying form values after restoration:', {
-                buildingAddress: form.getValues('buildingAddress'),
-                apartmentNumber: form.getValues('apartmentNumber'),
-                apartmentType: form.getValues('apartmentType'),
-                monthlyRent: form.getValues('monthlyRent'),
-                howDidYouHear: form.getValues('howDidYouHear'),
-                howDidYouHearOther: form.getValues('howDidYouHearOther'),
-                moveInDate: form.getValues('moveInDate')
-              });
+              // Verifying form values after restoration
             }, 200);
           }
           
@@ -826,17 +800,15 @@ export function ApplicationForm() {
             if (applicant.address !== undefined) form.setValue('applicantAddress', applicant.address || '');
             if (applicant.city !== undefined) {
               form.setValue('applicantCity', applicant.city || '');
-              console.log('🏙️ Set applicantCity:', applicant.city || '');
-              console.log('🏙️ applicant.city value:', applicant.city);
-              console.log('🏙️ applicant.city type:', typeof applicant.city);
+              // Set applicantCity
             }
             if (applicant.state !== undefined) {
               form.setValue('applicantState', applicant.state || '');
-              console.log('🏛️ Set applicantState:', applicant.state || '');
+              // Set applicantState
             }
             if (applicant.zip !== undefined) {
               form.setValue('applicantZip', applicant.zip || '');
-              console.log('📮 Set applicantZip:', applicant.zip || '');
+              // Set applicantZip
             }
             if (applicant.dob) {
               const dob = new Date(applicant.dob);
@@ -848,11 +820,11 @@ export function ApplicationForm() {
             // Restore length of stay fields
             if (applicant.lengthAtAddressYears !== undefined) {
               form.setValue('applicantLengthAtAddressYears', applicant.lengthAtAddressYears);
-              console.log('⏰ Set applicantLengthAtAddressYears:', applicant.lengthAtAddressYears);
+              // Set applicantLengthAtAddressYears
             }
             if (applicant.lengthAtAddressMonths !== undefined) {
               form.setValue('applicantLengthAtAddressMonths', applicant.lengthAtAddressMonths);
-              console.log('⏰ Set applicantLengthAtAddressMonths:', applicant.lengthAtAddressMonths);
+              // Set applicantLengthAtAddressMonths
             }
             
             // Restore landlord information
@@ -878,25 +850,25 @@ export function ApplicationForm() {
             }
             if (applicant.landlordZipCode !== undefined) {
               form.setValue('applicantLandlordZipCode', applicant.landlordZipCode || '');
-              console.log('🏠 Set applicantLandlordZipCode:', applicant.landlordZipCode || '');
+              // Set applicantLandlordZipCode
             }
             if (applicant.landlordPhone !== undefined) {
               form.setValue('applicantLandlordPhone', applicant.landlordPhone || '');
-              console.log('🏠 Set applicantLandlordPhone:', applicant.landlordPhone || '');
+              // Set applicantLandlordPhone
             }
             if (applicant.landlordEmail !== undefined) {
               form.setValue('applicantLandlordEmail', applicant.landlordEmail || '');
-              console.log('🏠 Set applicantLandlordEmail:', applicant.landlordEmail || '');
+              // Set applicantLandlordEmail
             }
             
             // Restore current rent and reason for moving
             if (applicant.currentRent !== undefined) {
               form.setValue('applicantCurrentRent', applicant.currentRent);
-              console.log('💰 Set applicantCurrentRent:', applicant.currentRent);
+              // Set applicantCurrentRent
             }
             if (applicant.reasonForMoving !== undefined) {
               form.setValue('applicantReasonForMoving', applicant.reasonForMoving || '');
-              console.log('🏠 Set applicantReasonForMoving:', applicant.reasonForMoving || '');
+              // Set applicantReasonForMoving
             }
           }
           
@@ -910,20 +882,20 @@ export function ApplicationForm() {
             // Restore co-applicant landlord information (only fields that exist in schema)
             if (coApplicant.landlordZipCode !== undefined) {
               form.setValue('coApplicantLandlordZipCode', coApplicant.landlordZipCode || '');
-              console.log('🏠 Set coApplicantLandlordZipCode:', coApplicant.landlordZipCode || '');
+              // Set coApplicantLandlordZipCode
             }
             if (coApplicant.landlordPhone !== undefined) {
               form.setValue('coApplicantLandlordPhone', coApplicant.landlordPhone || '');
-              console.log('🏠 Set coApplicantLandlordPhone:', coApplicant.landlordPhone || '');
+              // Set coApplicantLandlordPhone
             }
             if (coApplicant.landlordEmail !== undefined) {
               form.setValue('coApplicantLandlordEmail', coApplicant.landlordEmail || '');
-              console.log('🏠 Set coApplicantLandlordEmail:', coApplicant.landlordEmail || '');
+              // Set coApplicantLandlordEmail
             }
             
             // Auto-check co-applicant checkbox if there's co-applicant data but no explicit flag
             if (parsedFormData.hasCoApplicant === undefined && hasCoApplicantData(coApplicant)) {
-              console.log('🔍 Auto-detected co-applicant data, checking checkbox');
+              // Auto-detected co-applicant data, checking checkbox
               setHasCoApplicant(true);
               form.setValue('hasCoApplicant', true);
               // Also update formData state
@@ -944,20 +916,20 @@ export function ApplicationForm() {
             // Restore guarantor landlord information (only fields that exist in schema)
             if (guarantor.landlordZipCode !== undefined) {
               form.setValue('guarantorLandlordZipCode', guarantor.landlordZipCode || '');
-              console.log('🏠 Set guarantorLandlordZipCode:', guarantor.landlordZipCode || '');
+              // Set guarantorLandlordZipCode
             }
             if (guarantor.landlordPhone !== undefined) {
               form.setValue('guarantorLandlordPhone', guarantor.landlordPhone || '');
-              console.log('🏠 Set guarantorLandlordPhone:', guarantor.landlordPhone || '');
+              // Set guarantorLandlordPhone
             }
             if (guarantor.landlordEmail !== undefined) {
               form.setValue('guarantorLandlordEmail', guarantor.landlordEmail || '');
-              console.log('🏠 Set guarantorLandlordEmail:', guarantor.landlordEmail || '');
+              // Set guarantorLandlordEmail
             }
             
             // Auto-check guarantor checkbox if there's guarantor data but no explicit flag
             if (parsedFormData.hasGuarantor === undefined && hasGuarantorData(guarantor)) {
-              console.log('🔍 Auto-detected guarantor data, checking checkbox');
+              // Auto-detected guarantor data, checking checkbox
               setHasGuarantor(true);
               form.setValue('hasGuarantor', true);
               // Also update formData state
@@ -970,13 +942,13 @@ export function ApplicationForm() {
           
           // Restore co-applicant and guarantor flags
           if (parsedFormData.hasCoApplicant !== undefined) {
-            console.log('🔄 Restoring hasCoApplicant:', parsedFormData.hasCoApplicant);
+            // Restoring hasCoApplicant
             setHasCoApplicant(parsedFormData.hasCoApplicant);
             // Also set the form field value to keep them in sync
             form.setValue('hasCoApplicant', parsedFormData.hasCoApplicant);
           }
           if (parsedFormData.hasGuarantor !== undefined) {
-            console.log('🔄 Restoring hasGuarantor:', parsedFormData.hasGuarantor);
+            // Restoring hasGuarantor
             setHasGuarantor(parsedFormData.hasGuarantor);
             // Also set the form field value to keep them in sync
             form.setValue('hasGuarantor', parsedFormData.hasGuarantor);
@@ -985,18 +957,18 @@ export function ApplicationForm() {
               // Force form to re-render with the restored values
     setTimeout(() => {
       form.reset(form.getValues());
-      console.log('🔄 Form reset completed with values:', form.getValues());
+      // Form reset completed with values
       
       // Re-sync checkbox values after form reset to ensure they're properly maintained
       if (parsedFormData.hasCoApplicant !== undefined) {
         form.setValue('hasCoApplicant', parsedFormData.hasCoApplicant);
-        console.log('✅ Re-syncing hasCoApplicant after form reset:', parsedFormData.hasCoApplicant);
+        // Re-syncing hasCoApplicant after form reset
         // Also ensure the state is in sync
         setHasCoApplicant(parsedFormData.hasCoApplicant);
       }
       if (parsedFormData.hasGuarantor !== undefined) {
         form.setValue('hasGuarantor', parsedFormData.hasGuarantor);
-        console.log('✅ Re-syncing hasGuarantor after form reset:', parsedFormData.hasGuarantor);
+        // Re-syncing hasGuarantor after form reset
         // Also ensure the state is in sync
         setHasGuarantor(parsedFormData.hasGuarantor);
       }
@@ -1004,41 +976,39 @@ export function ApplicationForm() {
       // Ensure apartment fields are properly synchronized after form reset
       if (parsedFormData.application?.buildingAddress) {
         form.setValue('buildingAddress', parsedFormData.application.buildingAddress);
-        console.log('🏢 Re-syncing buildingAddress after form reset:', parsedFormData.application.buildingAddress);
+        // Re-syncing buildingAddress after form reset
       }
       if (parsedFormData.application?.apartmentNumber) {
         form.setValue('apartmentNumber', parsedFormData.application.apartmentNumber);
-        console.log('🏠 Re-syncing apartmentNumber after form reset:', parsedFormData.application.apartmentNumber);
+        // Re-syncing apartmentNumber after form reset
       }
       if (parsedFormData.application?.apartmentType) {
         form.setValue('apartmentType', parsedFormData.application.apartmentType);
-        console.log('🏘️ Re-syncing apartmentType after form reset:', parsedFormData.application.apartmentType);
+        // Re-syncing apartmentType after form reset
       }
     
     // Ensure city, state, and zip fields are properly synchronized after form reset
     if (parsedFormData.applicant?.city !== undefined) {
       form.setValue('applicantCity', parsedFormData.applicant.city || '');
-      console.log('🏙️ Re-syncing applicantCity after form reset:', parsedFormData.applicant.city || '');
-      console.log('🏙️ parsedFormData.applicant.city value:', parsedFormData.applicant.city);
-      console.log('🏙️ parsedFormData.applicant.city type:', typeof parsedFormData.applicant.city);
+      // Re-syncing applicantCity after form reset
     }
     if (parsedFormData.applicant?.state !== undefined) {
       form.setValue('applicantState', parsedFormData.applicant.state || '');
-      console.log('🏛️ Re-syncing applicantState after form reset:', parsedFormData.applicant.state || '');
+              // Re-syncing applicantState after form reset
     }
     if (parsedFormData.applicant?.zip !== undefined) {
       form.setValue('applicantZip', parsedFormData.applicant.zip || '');
-      console.log('📮 Re-syncing applicantZip after form reset:', parsedFormData.applicant.zip || '');
+              // Re-syncing applicantZip after form reset
     }
     
     // Ensure landlord fields are properly synchronized after form reset
     if (parsedFormData.applicant?.landlordName !== undefined) {
       form.setValue('applicantLandlordName', parsedFormData.applicant.landlordName || '');
-      console.log('🏠 Re-syncing applicantLandlordName after form reset:', parsedFormData.applicant.landlordName || '');
+              // Re-syncing applicantLandlordName after form reset
     }
     if (parsedFormData.applicant?.landlordAddressLine1 !== undefined) {
       form.setValue('applicantLandlordAddressLine1', parsedFormData.applicant.landlordAddressLine1 || '');
-      console.log('🏠 Re-syncing applicantLandlordAddressLine1 after form reset:', parsedFormData.applicant.landlordAddressLine1 || '');
+              // Re-syncing applicantLandlordAddressLine1 after form reset
     }
     if (parsedFormData.applicant?.landlordAddressLine2 !== undefined) {
       form.setValue('applicantLandlordAddressLine2', parsedFormData.applicant.landlordAddressLine2 || '');

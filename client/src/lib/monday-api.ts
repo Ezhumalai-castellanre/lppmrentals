@@ -57,14 +57,14 @@ export class MondayApiService {
     if (isDev) {
       return `/api/monday/${path}`;
     } else {
-      // Map local endpoints to Netlify functions
+      // Map local endpoints to AWS Lambda functions via API Gateway
       const endpointMap: Record<string, string> = {
         'units': 'monday-units',
         'vacant-units': 'monday-vacant-units', 
         'available-rentals': 'monday-available-rentals'
       };
-      const netlifyFunction = endpointMap[path] || path;
-      return `/.netlify/functions/${netlifyFunction}`;
+      const functionName = endpointMap[path] || path;
+      return `https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/api/${functionName}`;
     }
   }
 

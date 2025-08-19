@@ -25,11 +25,11 @@ interface Item {
 const MONDAY_QUERY = `query {\n  boards(ids: ${BOARD_ID}, state: all) {\n    items_page(limit: 100) {\n      items {\n        id\n        name\n        subitems {\n          id\n          name\n          column_values {\n            id\n            value\n            text\n          }\n        }\n      }\n    }\n  }\n}`;
 
 async function fetchMondayData() {
-  // Use local API endpoint in development, Netlify function in production
+  // Use local API endpoint in development, AWS Lambda function in production
   const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const endpoint = isDevelopment 
     ? "/api/monday/vacant-units" 
-    : "/.netlify/functions/monday-vacant-apartments";
+    : "https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/api/monday-units";
   
   const res = await fetch(endpoint, {
     method: isDevelopment ? "GET" : "POST"
