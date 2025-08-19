@@ -5,11 +5,20 @@ import { storage } from "./storage";
 import { insertRentalApplicationSchema } from "../shared/schema";
 import crypto from "crypto";
 import dotenv from "dotenv";
+import cors from "cors";
 
 // Load environment variables from .env file
 dotenv.config();
 
 const app = express();
+
+// Enable CORS for all routes
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 
 // Increase payload limits for file uploads (support 5-20MB files)
 app.use(express.json({ limit: '200mb' }));
@@ -81,13 +90,17 @@ app.post('/api/submit-application', async (req, res) => {
     log('Received uploadedFilesMetadata:', JSON.stringify(uploadedFilesMetadata, null, 2));
 
     // Validate application data
-    log('About to validate applicationData.applicantDob:', applicationData.applicantDob ? applicationData.applicantDob.toString() : 'null');
-    log('About to validate applicationData.moveInDate:', applicationData.moveInDate ? applicationData.moveInDate.toString() : 'null');
+    const applicationDataObj = typeof applicationData === 'string' ? JSON.parse(applicationData) : applicationData;
+    const applicantData = applicationDataObj?.applicant || {};
+    const applicationDataNested = applicationDataObj?.application || {};
+    
+    log('About to validate applicationData.applicant.dob:', applicantData.dob ? applicantData.dob.toString() : 'null');
+    log('About to validate applicationData.application.moveInDate:', applicationDataNested.moveInDate ? applicationDataNested.moveInDate.toString() : 'null');
     
     const validatedData = insertRentalApplicationSchema.parse(applicationData);
     
-    log('Validation passed. validatedData.applicantDob:', validatedData.applicantDob ? validatedData.applicantDob.toString() : 'null');
-    log('Validation passed. validatedData.moveInDate:', validatedData.moveInDate ? validatedData.moveInDate.toString() : 'null');
+    log('Validation passed. validatedData.applicant.dob:', applicantData.dob ? applicantData.dob.toString() : 'null');
+    log('Validation passed. validatedData.application.moveInDate:', applicationDataNested.moveInDate ? applicationDataNested.moveInDate.toString() : 'null');
 
     // Create application in database
     const result = await storage.createApplication({

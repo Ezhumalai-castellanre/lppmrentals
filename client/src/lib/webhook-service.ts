@@ -366,8 +366,18 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 
 export class WebhookService {
   // Use AWS API Gateway endpoints for production
-  private static readonly WEBHOOK_PROXY_URL = 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/webhook-proxy';
+  private static readonly WEBHOOK_PROXY_URL = this.getWebhookProxyUrl();
   private static readonly S3_PRESIGN_URL = this.getS3PresignUrl();
+  
+  private static getWebhookProxyUrl(): string {
+    // Check if we're in production (AWS Amplify)
+    if (window.location.hostname.includes('amplifyapp.com') || 
+        window.location.hostname.includes('your-prod-domain.com')) {
+      return 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/webhook-proxy';
+    }
+    // Local development
+    return 'http://localhost:5000/api/webhook-proxy';
+  }
   
   private static getS3PresignUrl(): string {
     // Check if we're in production (AWS Amplify)
@@ -376,7 +386,7 @@ export class WebhookService {
       return 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/s3-presign';
     }
     // Local development
-    return '/api/s3-presign';
+    return 'http://localhost:5000/api/s3-presign';
   }
   
   // Track ongoing submissions to prevent duplicates

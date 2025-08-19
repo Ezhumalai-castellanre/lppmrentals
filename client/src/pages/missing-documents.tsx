@@ -134,7 +134,7 @@ export default function MissingDocumentsPage() {
       // Determine if we're in development or production
       const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const endpoint = isDevelopment 
-        ? `/api/monday/missing-subitems/${apiId}`
+        ? `http://localhost:5000/api/monday/missing-subitems/${apiId}`
         : `/.netlify/functions/monday-missing-subitems`;
       
       console.log(`🔍 Final API endpoint: "${endpoint}"`);
