@@ -28,8 +28,5 @@ applications:
         headers:
           - key: Cache-Control
             value: no-store
-    redirects:
-      - source: </^[^.]+$|.(?!(css|gif|ico|jpg|jpeg|js|map|png|svg|txt|woff|woff2)$)([^.]+$)/>
-        target: /index.html
-        status: 200
+    # Note: Client-side routing is handled by the _redirects file in the build output
 
