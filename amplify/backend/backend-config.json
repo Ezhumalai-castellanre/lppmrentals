@@ -22,6 +22,10 @@
         {
           "category": "function",
           "resourceName": "s3-presign"
+        },
+        {
+          "category": "function",
+          "resourceName": "monday-missing-subitems"
         }
       ]
     }
@@ -40,6 +44,12 @@
       "dependsOn": []
     },
     "s3-presign": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "dependsOn": []
+    },
+    "monday-missing-subitems": {
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda",

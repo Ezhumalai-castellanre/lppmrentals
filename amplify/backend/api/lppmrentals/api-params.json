@@ -38,6 +38,19 @@
         "allowHeaders": ["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key", "X-Amz-Security-Token"],
         "allowMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
       }
+    },
+    "/monday-missing-subitems": {
+      "name": "/monday-missing-subitems",
+      "lambdaFunction": "monday-missing-subitems",
+      "permissions": {
+        "setting": "open"
+      },
+      "maxPayloadSize": "50MB",
+      "cors": {
+        "allowOrigin": "*",
+        "allowHeaders": ["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key", "X-Amz-Security-Token"],
+        "allowMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+      }
     }
   }
 }

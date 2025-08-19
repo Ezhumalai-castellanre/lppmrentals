@@ -1,0 +1,18 @@
+{
+  "name": "monday-missing-subitems",
+  "version": "1.0.0",
+  "description": "Lambda function for Monday.com missing subitems",
+  "main": "handler.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["aws", "lambda", "monday", "api"],
+  "author": "",
+  "license": "ISC"
+}
