@@ -118,9 +118,9 @@ The rental application form sends the following document-related data to the web
 ## 🔐 Document Processing
 
 ### File Upload Limits
-- **Single File Documents**: 1 file, 10MB max
+- **Single File Documents**: 1 file, 50MB max
   - Driver's License, Social Security Card, W9 Form, Employment Letter
-- **Multiple File Documents**: 5 files max, 10MB each
+- **Multiple File Documents**: 5 files max, 50MB each
   - Pay Stubs, Tax Returns, Bank Statements
 
 ### Accepted File Types
@@ -191,7 +191,7 @@ console.log('  - Uploaded Files Metadata Keys:', Object.keys(uploadedFilesMetada
 
 ### Payload Size Monitoring
 - Monitors payload size before sending
-- Warns if payload exceeds 10MB
+- Warns if payload exceeds 50MB
 - Provides size information in MB
 
 ### Success/Failure Handling

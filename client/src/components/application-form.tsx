@@ -3380,7 +3380,7 @@ export function ApplicationForm() {
           console.log('📊 Form data guarantor income frequency:', formData.guarantor?.incomeFrequency);
           console.log('=== END INCOME FREQUENCY DEBUG ===');
           
-          if (payloadSize > 10 * 1024 * 1024) { // 10MB limit
+          if (payloadSize > 50 * 1024 * 1024) { // 50MB limit
             console.warn('⚠️ Raw webhook payload is very large:', payloadSizeMB, 'MB');
             console.warn('⚠️ Large data will be cleaned by webhook service');
           }
@@ -5297,11 +5297,11 @@ export function ApplicationForm() {
                   <div className="mb-2">
                     <FileUpload
                       label={`Occupant ${idx + 1} - Social Security Card (Required)`}
-                      description="Upload SSN card (.pdf, .jpg, .jpeg, .png, max 10MB)"
+                      description="Upload SSN card (.pdf, .jpg, .jpeg, .png, max 50MB)"
                       accept=".pdf,.jpg,.jpeg,.png"
                       multiple={false}
                       maxFiles={1}
-                      maxSize={3}
+                      maxSize={50}
                       enableEncryption={true}
                       onFileChange={files => {
                         console.log('🚀 OCCUPANT SSN DOCUMENT UPLOAD:', {

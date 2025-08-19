@@ -12,43 +12,43 @@ This document outlines all required and optional documents for each role in the 
 1. **Government-Issued Photo ID**
    - Driver's license, state ID, or passport
    - Must be current and valid
-   - Format: PDF, JPG, PNG (up to 10MB)
+   - Format: PDF, JPG, PNG (up to 50MB)
 
 2. **Social Security Card**
    - Original or certified copy
    - Must show full SSN clearly
-   - Format: PDF, JPG, PNG (up to 10MB)
+   - Format: PDF, JPG, PNG (up to 50MB)
 
 ### 💰 **Financial Documents** (Required)
 3. **Bank Statements**
    - Most recent 2-3 months
    - Checking and savings accounts
    - Must show account holder name and balance
-   - Format: PDF (up to 10MB each, multiple files allowed)
+   - Format: PDF (up to 50MB each, multiple files allowed)
 
 4. **Tax Returns**
    - Previous year's tax returns
    - First page showing income summary
    - Must be complete and legible
-   - Format: PDF (up to 10MB)
+   - Format: PDF (up to 50MB)
 
 ### 💼 **Employment Documents** (Required)
 5. **Employment Letter**
    - On company letterhead
    - Must include: salary, position, employment length
    - Signed by supervisor or HR
-   - Format: PDF (up to 10MB)
+   - Format: PDF (up to 50MB)
 
 6. **Pay Stubs**
    - Last 2-4 pay stubs (depending on pay frequency)
    - Must show gross income and deductions
-   - Format: PDF (up to 10MB each, multiple files allowed)
+   - Format: PDF (up to 50MB each, multiple files allowed)
 
 ### 📊 **Additional Financial** (Optional but Recommended)
 7. **Credit Report**
    - Recent credit report (within 30 days)
    - Shows credit score and history
-   - Format: PDF (up to 10MB)
+   - Format: PDF (up to 50MB)
 
 ---
 
@@ -81,49 +81,49 @@ This document outlines all required and optional documents for each role in the 
 1. **Government-Issued Photo ID**
    - Driver's license, state ID, or passport
    - Must be current and valid
-   - Format: PDF, JPG, PNG (up to 10MB)
+   - Format: PDF, JPG, PNG (up to 50MB)
 
 2. **Social Security Card**
    - Original or certified copy
    - Must show full SSN clearly
-   - Format: PDF, JPG, PNG (up to 10MB)
+   - Format: PDF, JPG, PNG (up to 50MB)
 
 ### 💰 **Financial Documents** (Required)
 3. **Bank Statements**
    - Most recent 3-6 months
    - All accounts (checking, savings, investment)
    - Must show substantial assets
-   - Format: PDF (up to 10MB each, multiple files allowed)
+   - Format: PDF (up to 50MB each, multiple files allowed)
 
 4. **Tax Returns**
    - Previous 2 years' tax returns
    - Must show high income (80x monthly rent)
    - Complete returns with all schedules
-   - Format: PDF (up to 10MB each)
+   - Format: PDF (up to 50MB each)
 
 ### 💼 **Employment Documents** (Required)
 5. **Employment Letter**
    - On company letterhead
    - Must include: salary, position, employment length
    - Signed by supervisor or HR
-   - Format: PDF (up to 10MB)
+   - Format: PDF (up to 50MB)
 
 6. **Pay Stubs**
    - Last 6-8 pay stubs
    - Must show consistent high income
-   - Format: PDF (up to 10MB each, multiple files allowed)
+   - Format: PDF (up to 50MB each, multiple files allowed)
 
 ### 📊 **Additional Financial** (Required for Guarantors)
 7. **Credit Report**
    - Recent credit report (within 30 days)
    - Must show excellent credit score (700+)
-   - Format: PDF (up to 10MB)
+   - Format: PDF (up to 50MB)
 
 8. **Asset Documentation**
    - Investment account statements
    - Property ownership documents
    - Business ownership documents
-   - Format: PDF (up to 10MB each, multiple files allowed)
+   - Format: PDF (up to 50MB each, multiple files allowed)
 
 ---
 
@@ -133,23 +133,23 @@ This document outlines all required and optional documents for each role in the 
 1. **1099 Forms**
    - Previous year's 1099 forms
    - All income sources
-   - Format: PDF (up to 10MB each, multiple files allowed)
+   - Format: PDF (up to 50MB each, multiple files allowed)
 
 2. **Accountant Letter**
    - Notarized letter from CPA
    - On accountant's letterhead
    - Verifying income and business status
-   - Format: PDF (up to 10MB)
+   - Format: PDF (up to 50MB)
 
 3. **Business Bank Statements**
    - Last 6 months business account statements
    - Shows business income and expenses
-   - Format: PDF (up to 10MB each, multiple files allowed)
+   - Format: PDF (up to 50MB each, multiple files allowed)
 
 4. **Business License/Registration**
    - Current business license
    - Articles of incorporation (if applicable)
-   - Format: PDF (up to 10MB)
+   - Format: PDF (up to 50MB)
 
 ---
 
@@ -159,27 +159,27 @@ This document outlines all required and optional documents for each role in the 
 1. **Articles of Incorporation**
    - Current and valid
    - Shows business structure
-   - Format: PDF (up to 10MB)
+   - Format: PDF (up to 50MB)
 
 2. **Business License**
    - Current business license
    - Valid in jurisdiction
-   - Format: PDF (up to 10MB)
+   - Format: PDF (up to 50MB)
 
 3. **Corporate Bank Statements**
    - Last 6 months business account statements
    - Shows sufficient funds for rent
-   - Format: PDF (up to 10MB each, multiple files allowed)
+   - Format: PDF (up to 50MB each, multiple files allowed)
 
 4. **Corporate Tax Returns**
    - Previous year's corporate tax returns
    - Shows business income and stability
-   - Format: PDF (up to 10MB)
+   - Format: PDF (up to 50MB)
 
 5. **Corporate Resolution**
    - Board resolution authorizing lease
    - Signed by authorized officers
-   - Format: PDF (up to 10MB)
+   - Format: PDF (up to 50MB)
 
 ---
 
@@ -187,7 +187,7 @@ This document outlines all required and optional documents for each role in the 
 
 ### **File Format Requirements**
 - **Accepted Formats**: PDF, JPG, JPEG, PNG
-- **Maximum File Size**: 10MB per file
+- **Maximum File Size**: 50MB per file
 - **Multiple Files**: Allowed for pay stubs, bank statements
 - **Encryption**: All documents encrypted before transmission
 

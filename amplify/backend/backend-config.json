@@ -3,28 +3,43 @@
     "lppmrentals": {
       "service": "API Gateway",
       "providerPlugin": "awscloudformation",
+      "maxPayloadSize": "50MB",
+      "cors": {
+        "allowHeaders": ["Content-Type", "Authorization", "X-Amz-Date", "X-Api-Key", "X-Amz-Security-Token"],
+        "allowMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allowOrigins": ["*"],
+        "maxAge": "86400"
+      },
       "dependsOn": [
         {
           "category": "function",
-          "resourceName": "s3Upload",
-          "attributes": ["Name", "Arn"]
+          "resourceName": "s3-upload"
         },
         {
           "category": "function",
-          "resourceName": "webhookProxy",
-          "attributes": ["Name", "Arn"]
+          "resourceName": "webhook-proxy"
+        },
+        {
+          "category": "function",
+          "resourceName": "s3-presign"
         }
       ]
     }
   },
   "function": {
-    "s3Upload": {
+    "s3-upload": {
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda",
       "dependsOn": []
     },
-    "webhookProxy": {
+    "webhook-proxy": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "dependsOn": []
+    },
+    "s3-presign": {
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda",

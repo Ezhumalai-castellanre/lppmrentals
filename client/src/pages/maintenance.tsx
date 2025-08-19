@@ -368,9 +368,9 @@ export default function MaintenancePage() {
                     accept=".jpg,.jpeg,.png"
                     multiple={false}
                     maxFiles={1}
-                    maxSize={20}
+                    maxSize={50}
                     label="Upload Photo"
-                    description="Upload a photo of the issue (max 20MB)"
+                                          description="Upload a photo of the issue (max 50MB)"
                   />
                 </div>
 

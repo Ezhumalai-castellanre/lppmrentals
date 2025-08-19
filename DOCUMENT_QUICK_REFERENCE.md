@@ -41,7 +41,7 @@
 | Requirement | Specification |
 |-------------|---------------|
 | **Accepted Formats** | PDF, JPG, JPEG, PNG |
-| **Maximum File Size** | 10MB per file |
+| **Maximum File Size** | 50MB per file |
 | **Multiple Files** | Allowed for pay stubs, bank statements |
 | **Encryption** | AES-256 encryption applied |
 | **Processing Time** | 3-5 business days |

@@ -80,7 +80,7 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
                 accept={docType.accept}
                 multiple={false}
                 maxFiles={1}
-                maxSize={20}
+                maxSize={50}
                 onFileChange={(files) => onDocumentChange(person, docType.key, files)}
                 onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(person, docType.key, encryptedFiles)}
                 enableEncryption={true}

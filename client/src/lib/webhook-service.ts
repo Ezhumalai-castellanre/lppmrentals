@@ -362,7 +362,17 @@ const cleanObject = (obj: any) => {
 export class WebhookService {
   // Use AWS API Gateway endpoints for production
   private static readonly WEBHOOK_PROXY_URL = 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/webhook-proxy';
-  private static readonly S3_UPLOAD_URL = 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/s3-upload';
+  private static readonly S3_PRESIGN_URL = this.getS3PresignUrl();
+  
+  private static getS3PresignUrl(): string {
+    // Check if we're in production (AWS Amplify)
+    if (window.location.hostname.includes('amplifyapp.com') || 
+        window.location.hostname.includes('your-prod-domain.com')) {
+      return 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/s3-presign';
+    }
+    // Local development
+    return '/api/s3-presign';
+  }
   
   // Track ongoing submissions to prevent duplicates
   private static ongoingSubmissions = new Set<string>();
@@ -399,48 +409,45 @@ export class WebhookService {
     this.ongoingSubmissions.add(submissionId);
 
     try {
-      console.log(`🚀 Starting S3 upload for ${file.name}`);
-      
-      // Convert file to base64
-      const base64Data = await this.fileToBase64(file);
-      
-      // Upload to S3
-      const s3Response = await fetch(this.S3_UPLOAD_URL, {
+      console.log(`🚀 Requesting S3 presigned URL for ${file.name}`);
+
+      // 1) Request a presigned URL
+      const presignRes = await fetch(this.S3_PRESIGN_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fileData: base64Data,
           fileName: file.name,
           fileType: file.type,
-          referenceId: referenceId,
-          sectionName: sectionName,
-          documentName: documentName,
-          zoneinfo: zoneinfo, // Pass zoneinfo for folder organization
+          referenceId,
+          sectionName,
+          documentName,
+          zoneinfo,
         }),
       });
 
-      if (!s3Response.ok) {
-        const errorText = await s3Response.text();
-        console.error('❌ S3 upload failed:', s3Response.status, errorText);
-        return {
-          success: false,
-          error: `S3 upload failed: ${s3Response.status} - ${errorText}`
-        };
+      if (!presignRes.ok) {
+        const errorText = await presignRes.text();
+        console.error('❌ S3 presign failed:', presignRes.status, errorText);
+        return { success: false, error: `S3 presign failed: ${presignRes.status} - ${errorText}` };
       }
 
-      const s3Result = await s3Response.json();
-      
-      if (!s3Result.success) {
-        console.error('❌ S3 upload failed:', s3Result.error);
-        return {
-          success: false,
-          error: `S3 upload failed: ${s3Result.error}`
-        };
+      const { url: putUrl, key, cleanUrl } = await presignRes.json();
+
+      // 2) Upload directly to S3 with PUT
+      console.log('📤 Uploading file via PUT to S3');
+      const putRes = await fetch(putUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      });
+
+      if (!putRes.ok) {
+        const text = await putRes.text();
+        console.error('❌ S3 PUT failed:', putRes.status, text);
+        return { success: false, error: `S3 PUT failed: ${putRes.status}` };
       }
 
-      console.log(`✅ S3 upload successful: ${s3Result.url}`);
+      console.log(`✅ S3 upload successful: ${cleanUrl}`);
 
       // Send file URL to webhook instead of file data
       const webhookData = {
@@ -448,8 +455,8 @@ export class WebhookService {
         file_name: file.name,
         section_name: sectionName,
         document_name: documentName,
-        s3_url: s3Result.url, // This is now the clean URL
-        s3_key: s3Result.key,
+        s3_url: cleanUrl,
+        s3_key: key,
         file_size: file.size,
         file_type: file.type,
         application_id: applicationId || '',
@@ -458,7 +465,7 @@ export class WebhookService {
       };
 
       console.log(`📤 Sending file URL to webhook: ${file.name}`);
-      console.log(`🔗 S3 URL: ${s3Result.url}`);
+      console.log(`🔗 S3 URL: ${cleanUrl}`);
 
       const webhookResponse = await fetch(this.WEBHOOK_PROXY_URL, {
         method: 'POST',
@@ -477,8 +484,8 @@ export class WebhookService {
         console.log('✅ Webhook call successful');
         return {
           success: true,
-          url: s3Result.url,
-          key: s3Result.key,
+          url: cleanUrl,
+          key: key,
           webhookResponse: responseBody
         };
       } else {
@@ -486,8 +493,8 @@ export class WebhookService {
         return {
           success: false,
           error: `Webhook failed: ${webhookResponse.status} - ${responseBody}`,
-          url: s3Result.url, // Still return S3 URL even if webhook fails
-          key: s3Result.key
+          url: cleanUrl, // Still return S3 URL even if webhook fails
+          key: key
         };
       }
 
@@ -514,13 +521,13 @@ export class WebhookService {
     zoneinfo?: string,
     commentId?: string
   ): Promise<{ success: boolean; error?: string; body?: string }> {
-    // Allow larger files (5-20MB range) while keeping webhook payloads manageable
-    // Base64 adds ~33% overhead, so 5MB file -> ~6.7MB JSON field plus metadata
-    const MAX_WEBHOOK_FILE_MB = 5;
+    // Allow larger files (up to 50MB) since Make.com webhook has no payload limits
+    // Base64 adds ~33% overhead, so 50MB file -> ~67MB JSON field plus metadata
+    const MAX_WEBHOOK_FILE_MB = 50;
     if (file.size > MAX_WEBHOOK_FILE_MB * 1024 * 1024) {
       const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
       console.error(
-        `❌ File too large for webhook: ${file.name} (${fileSizeMB}MB). Max allowed is ${MAX_WEBHOOK_FILE_MB}MB to avoid exceeding webhook limits.`
+        `❌ File too large for webhook: ${file.name} (${fileSizeMB}MB). Max allowed is ${MAX_WEBHOOK_FILE_MB}MB.`
       );
       return { success: false, error: `File too large (${fileSizeMB}MB). Max ${MAX_WEBHOOK_FILE_MB}MB.` };
     }

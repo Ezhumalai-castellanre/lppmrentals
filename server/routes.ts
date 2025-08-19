@@ -916,6 +916,73 @@ console.log("response", response);
     }
   });
 
+  // Presign S3 PUT URL (direct browser upload)
+  app.post("/api/s3-presign", async (req, res) => {
+    try {
+      const {
+        fileName,
+        fileType,
+        referenceId,
+        sectionName,
+        documentName,
+        zoneinfo,
+      } = req.body || {};
+
+      if (!fileName || !fileType || !referenceId || !sectionName || !documentName || !zoneinfo) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing required fields",
+          message:
+            "fileName, fileType, referenceId, sectionName, documentName, and zoneinfo are required",
+        });
+      }
+
+      const s3Client = new S3Client({
+        region: process.env.VITE_AWS_REGION || process.env.AWS_REGION || "us-east-1",
+        credentials: {
+          accessKeyId:
+            process.env.VITE_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID || "",
+          secretAccessKey:
+            process.env.VITE_AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY || "",
+        },
+      });
+
+      const bucketName =
+        process.env.VITE_AWS_S3_BUCKET_NAME || process.env.AWS_S3_BUCKET_NAME || "supportingdocuments-storage-2025";
+
+      const timestamp = Date.now();
+      const safeFileName = String(fileName).replace(/[^a-zA-Z0-9.-]/g, "_");
+      const key = `documents/${zoneinfo}/${sectionName}/${timestamp}_${safeFileName}`;
+
+      const putCommand = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        ContentType: fileType,
+        ACL: "private",
+        ServerSideEncryption: "AES256",
+        Metadata: {
+          originalName: fileName,
+          referenceId,
+          zoneinfo,
+          sectionName,
+          documentName,
+          uploadedAt: new Date().toISOString(),
+        },
+      });
+
+      const url = await getSignedUrl(s3Client, putCommand, { expiresIn: 60 });
+
+      const cleanUrl = `https://${bucketName}.s3.${
+        process.env.VITE_AWS_REGION || process.env.AWS_REGION || "us-east-1"
+      }.amazonaws.com/${key}`;
+
+      res.json({ success: true, url, key, cleanUrl });
+    } catch (error) {
+      console.error("❌ S3 presign error:", error);
+      res.status(500).json({ success: false, error: "Failed to presign S3 URL" });
+    }
+  });
+
   // Upload encrypted files
   app.post("/api/upload-files", async (req, res) => {
     try {

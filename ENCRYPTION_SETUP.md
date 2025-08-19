@@ -178,7 +178,7 @@ DEBUG=true
 - Server decrypts files before saving
 - Original filenames are preserved in metadata
 - File size increases by ~33% due to Base64 encoding
-- Maximum file size: 10MB per file
+- Maximum file size: 50MB per file
 - Supported formats: JPG, JPEG, PNG, PDF
 - Encrypted data is validated before submission
 - Complete audit trail maintained in database 

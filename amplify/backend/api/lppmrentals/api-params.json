@@ -2,16 +2,41 @@
   "paths": {
     "/s3-upload": {
       "name": "/s3-upload",
-      "lambdaFunction": "s3Upload",
+      "lambdaFunction": "s3-upload",
       "permissions": {
         "setting": "open"
+      },
+      "maxPayloadSize": "50MB",
+      "cors": {
+        "allowOrigin": "*",
+        "allowHeaders": ["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key", "X-Amz-Security-Token"],
+        "allowMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
       }
     },
     "/webhook-proxy": {
       "name": "/webhook-proxy",
-      "lambdaFunction": "webhookProxy",
+      "lambdaFunction": "webhook-proxy",
       "permissions": {
         "setting": "open"
+      },
+      "maxPayloadSize": "50MB",
+      "cors": {
+        "allowOrigin": "*",
+        "allowHeaders": ["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key", "X-Amz-Security-Token"],
+        "allowMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+      }
+    },
+    "/s3-presign": {
+      "name": "/s3-presign",
+      "lambdaFunction": "s3-presign",
+      "permissions": {
+        "setting": "open"
+      },
+      "maxPayloadSize": "50MB",
+      "cors": {
+        "allowOrigin": "*",
+        "allowHeaders": ["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key", "X-Amz-Security-Token"],
+        "allowMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
       }
     }
   }

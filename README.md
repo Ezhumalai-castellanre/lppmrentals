@@ -108,7 +108,7 @@ The missing documents page now includes a secure upload feature:
 
 - **Secure Upload**: Each missing document has its own upload section
 - **File Encryption**: All uploaded files are encrypted before transmission
-- **Supported Formats**: PDF, JPG, JPEG, PNG files up to 10MB
+- **Supported Formats**: PDF, JPG, JPEG, PNG files up to 50MB
 - **Real-time Status**: Upload progress and success indicators
 - **Webhook Integration**: Files are automatically sent to the backend via webhook
 - **Status Tracking**: Uploaded documents are marked with a green "Uploaded" badge

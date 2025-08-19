@@ -472,7 +472,7 @@ If CORS errors occur, the system will return:
 ```
 
 ### Payload Size Errors
-If payload is too large (>10MB), the system will:
+If payload is too large (>50MB), the system will:
 1. Try to send form data without PDF
 2. Send PDF separately if form data succeeds
 3. Return error if both fail
