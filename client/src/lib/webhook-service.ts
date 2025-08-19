@@ -359,6 +359,11 @@ const cleanObject = (obj: any) => {
   return cleaned;
 };
 
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
+import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
+import { fetchAuthSession } from 'aws-amplify/auth';
+
 export class WebhookService {
   // Use AWS API Gateway endpoints for production
   private static readonly WEBHOOK_PROXY_URL = 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/webhook-proxy';
@@ -409,6 +414,94 @@ export class WebhookService {
     this.ongoingSubmissions.add(submissionId);
 
     try {
+      // Attempt direct S3 upload using Cognito Identity Pool credentials first
+      try {
+        const forcePresign = String(import.meta.env.VITE_FORCE_PRESIGN || '').trim() === '1';
+        if (forcePresign) {
+          console.log('⏭️ Skipping Cognito direct S3 upload (VITE_FORCE_PRESIGN=1). Using presigned URL.');
+          throw new Error('Force presign enabled');
+        }
+        const region = (import.meta.env.VITE_AWS_REGION || 'us-east-1').trim();
+        const bucketName = (import.meta.env.VITE_AWS_S3_BUCKET_NAME || 'supportingdocuments-storage-2025').trim();
+        const identityPoolId = (import.meta.env.VITE_AWS_IDENTITY_POOL_ID || '').trim();
+        const userPoolId = (import.meta.env.VITE_AWS_USER_POOL_ID || '').trim();
+
+        const canUseCognito = !!identityPoolId && !!userPoolId;
+
+        if (canUseCognito) {
+          console.log('🔐 Trying direct S3 upload with Cognito credentials');
+          const session = await fetchAuthSession();
+          const idToken = session?.tokens?.idToken?.toString() || '';
+
+          const credentialsProvider = fromCognitoIdentityPool({
+            client: new CognitoIdentityClient({ region }),
+            identityPoolId,
+            logins: {
+              [`cognito-idp.${region}.amazonaws.com/${userPoolId}`]: idToken,
+            },
+          });
+
+          const s3Client = new S3Client({ region, credentials: credentialsProvider });
+
+          const timestamp = Date.now();
+          const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+          const key = `documents/${zoneinfo}/${sectionName}/${timestamp}_${safeFileName}`;
+
+          const putCommand = new PutObjectCommand({
+            Bucket: bucketName,
+            Key: key,
+            Body: file,
+            ContentType: file.type,
+            ACL: 'private',
+            ServerSideEncryption: 'AES256',
+            Metadata: {
+              referenceId,
+              sectionName,
+              documentName,
+              uploadedAt: new Date().toISOString(),
+            },
+          });
+
+          await s3Client.send(putCommand);
+
+          const cleanUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
+          console.log(`✅ Direct S3 upload successful: ${cleanUrl}`);
+
+          // Send file URL to webhook instead of file data
+          const webhookData = {
+            reference_id: referenceId,
+            file_name: file.name,
+            section_name: sectionName,
+            document_name: documentName,
+            s3_url: cleanUrl,
+            s3_key: key,
+            file_size: file.size,
+            file_type: file.type,
+            application_id: applicationId || '',
+            comment_id: commentId,
+            uploaded_at: new Date().toISOString(),
+          };
+
+          const webhookResponse = await fetch(this.WEBHOOK_PROXY_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ webhookType: 'file_upload', webhookData }),
+          });
+
+          const responseBody = await webhookResponse.text();
+
+          if (webhookResponse.ok) {
+            console.log('✅ Webhook call successful (after direct S3 upload)');
+            return { success: true, url: cleanUrl, key, webhookResponse: responseBody };
+          } else {
+            console.warn('⚠️ Webhook call failed, but direct S3 upload was successful:', webhookResponse.status, responseBody);
+            return { success: true, url: cleanUrl, key, webhookResponse: `Webhook failed: ${webhookResponse.status} - ${responseBody}` };
+          }
+        }
+      } catch (cognitoError) {
+        console.warn('⚠️ Direct S3 upload with Cognito failed, falling back to presigned URL:', cognitoError);
+      }
+
       console.log(`🚀 Requesting S3 presigned URL for ${file.name}`);
 
       // 1) Request a presigned URL
@@ -439,8 +532,7 @@ export class WebhookService {
         method: 'PUT',
         headers: {
           'Content-Type': file.type,
-          // These must match the signed parameters used when generating the presigned URL
-          'x-amz-acl': 'private',
+          // Send only headers that are part of the presign signature
           'x-amz-server-side-encryption': 'AES256',
         },
         body: file,
