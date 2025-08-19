@@ -1524,14 +1524,25 @@ export function ApplicationForm() {
     
     if (!currentUserZoneinfo) {
       console.log('⚠️ No zoneinfo/applicantId available, skipping draft save');
+      toast({
+        title: 'Cannot Save Draft',
+        description: 'No applicant ID available. Please ensure you are properly authenticated.',
+        variant: 'destructive',
+      });
       return;
     }
 
     if (!currentUserZoneinfo.trim()) {
       console.log('⚠️ Empty zoneinfo/applicantId, skipping draft save');
+      toast({
+        title: 'Cannot Save Draft',
+        description: 'Invalid applicant ID. Please ensure you are properly authenticated.',
+        variant: 'destructive',
+      });
       return;
     }
 
+    setIsSavingDraft(true);
     try {
       // Get the latest form data from state
       const currentFormData = formData;
@@ -1571,11 +1582,28 @@ export function ApplicationForm() {
       const saveResult = await dynamoDBService.saveDraft(draftData);
       if (saveResult) {
         console.log('💾 Draft saved to DynamoDB successfully');
+        toast({
+          title: 'Draft Saved Successfully',
+          description: 'Your application draft has been saved. You can continue working on it later.',
+          variant: 'default',
+        });
       } else {
         console.warn('⚠️ Failed to save draft to DynamoDB');
+        toast({
+          title: 'Failed to Save Draft',
+          description: 'There was an error saving your draft. Please try again.',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
       console.error('❌ Error saving draft to DynamoDB:', error);
+      toast({
+        title: 'Error Saving Draft',
+        description: 'An unexpected error occurred while saving your draft. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingDraft(false);
     }
   }, [getCurrentUserZoneinfo, formData, referenceId, currentStep, uploadedFilesMetadata, webhookResponses, signatures, encryptedDocuments, getWebhookSummary]);
 
@@ -1837,40 +1865,8 @@ export function ApplicationForm() {
       return newMetadata;
     });
 
-    // Save draft to DynamoDB after file upload
-    if (user?.applicantId) {
-      try {
-        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
-        const enhancedFormDataSnapshot = {
-          ...formDataSnapshot,
-          applicantId: user.applicantId,
-          webhookSummary: getWebhookSummary()
-        };
-
-        const draftData: DraftData = {
-          zoneinfo: user.applicantId,
-          applicantId: user.applicantId,
-          reference_id: referenceId,
-          form_data: enhancedFormDataSnapshot,
-          current_step: currentStep,
-          last_updated: new Date().toISOString(),
-          status: 'draft',
-          uploaded_files_metadata: { ...uploadedFilesMetadata, [sectionKey]: filesMetadata },
-          webhook_responses: webhookResponses,
-          signatures: signatures,
-          encrypted_documents: { ...encryptedDocuments, [person]: { ...encryptedDocuments[person], [documentType]: encryptedFiles } },
-        };
-
-        const saveResult = await dynamoDBService.saveDraft(draftData);
-        if (saveResult) {
-          console.log('💾 Draft saved to DynamoDB after file upload for:', person, documentType);
-        } else {
-          console.warn('⚠️ Failed to save draft to DynamoDB after file upload');
-        }
-      } catch (error) {
-        console.error('❌ Error saving draft after file upload:', error);
-      }
-    }
+    // Note: Draft saving is now manual - only when Save Draft button is clicked
+    console.log('📁 File uploaded successfully for:', person, documentType, '- Draft will be saved when Save Draft button is clicked');
   };
 
   const handleSignatureChange = async (person: string, signature: string) => {
@@ -1883,40 +1879,8 @@ export function ApplicationForm() {
       [person]: new Date().toISOString(),
     }));
 
-    // Save draft to DynamoDB after signature change
-    if (user?.applicantId) {
-      try {
-        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
-        const enhancedFormDataSnapshot = {
-          ...formDataSnapshot,
-          applicantId: user.applicantId,
-          webhookSummary: getWebhookSummary()
-        };
-
-        const draftData: DraftData = {
-          zoneinfo: user.applicantId,
-          applicantId: user.applicantId,
-          reference_id: referenceId,
-          form_data: enhancedFormDataSnapshot,
-          current_step: currentStep,
-          last_updated: new Date().toISOString(),
-          status: 'draft',
-          uploaded_files_metadata: uploadedFilesMetadata,
-          webhook_responses: webhookResponses,
-          signatures: { ...signatures, [person]: signature },
-          encrypted_documents: encryptedDocuments,
-        };
-
-        const saveResult = await dynamoDBService.saveDraft(draftData);
-        if (saveResult) {
-          console.log('💾 Draft saved to DynamoDB after signature change for:', person);
-        } else {
-          console.warn('⚠️ Failed to save draft to DynamoDB after signature change');
-        }
-      } catch (error) {
-        console.error('❌ Error saving draft after signature change:', error);
-      }
-    }
+    // Note: Draft saving is now manual - only when Save Draft button is clicked
+    console.log('✍️ Signature updated for:', person, '- Draft will be saved when Save Draft button is clicked');
   };
 
   // Enhanced document change handlers for each person type
@@ -2116,29 +2080,8 @@ export function ApplicationForm() {
       console.log('➡️ Moving to step:', nextPlannedStep);
       console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
 
-      // Save draft to DynamoDB before advancing to next step
-      if (user?.applicantId) {
-        const draftData: DraftData = {
-          zoneinfo: user.applicantId,
-          applicantId: user.applicantId,
-          reference_id: referenceId,
-          form_data: enhancedFormDataSnapshot,
-          current_step: currentStep,
-          last_updated: new Date().toISOString(),
-          status: 'draft',
-          uploaded_files_metadata: uploadedFilesMetadata,
-          webhook_responses: webhookResponses,
-          signatures: signatures,
-          encrypted_documents: encryptedDocuments,
-        };
-
-        const saveResult = await dynamoDBService.saveDraft(draftData);
-        if (saveResult) {
-          console.log('💾 Draft saved to DynamoDB before advancing to step:', nextPlannedStep);
-        } else {
-          console.warn('⚠️ Failed to save draft to DynamoDB');
-        }
-      }
+      // Note: Draft saving is now manual - only when Save Draft button is clicked
+      console.log('➡️ Moving to step:', nextPlannedStep, '- Draft will be saved when Save Draft button is clicked');
 
     } catch (err) {
       console.warn('FormData logging failed:', err);
@@ -2173,29 +2116,8 @@ export function ApplicationForm() {
       console.log('⬅️ Going back to step:', getNextAllowedStep(currentStep, -1));
       console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
 
-      // Save draft to DynamoDB before going back
-      if (user?.applicantId) {
-        const draftData: DraftData = {
-          zoneinfo: user.applicantId,
-          applicantId: user.applicantId,
-          reference_id: referenceId,
-          form_data: enhancedFormDataSnapshot,
-          current_step: currentStep,
-          last_updated: new Date().toISOString(),
-          status: 'draft',
-          uploaded_files_metadata: uploadedFilesMetadata,
-          webhook_responses: webhookResponses,
-          signatures: signatures,
-          encrypted_documents: encryptedDocuments,
-        };
-
-        const saveResult = await dynamoDBService.saveDraft(draftData);
-        if (saveResult) {
-          console.log('💾 Draft saved to DynamoDB before going back to step:', getNextAllowedStep(currentStep, -1));
-        } else {
-          console.warn('⚠️ Failed to save draft to DynamoDB');
-        }
-      }
+      // Note: Draft saving is now manual - only when Save Draft button is clicked
+      console.log('⬅️ Going back to step:', getNextAllowedStep(currentStep, -1), '- Draft will be saved when Save Draft button is clicked');
 
     } catch (err) {
       console.warn('FormData logging failed:', err);
@@ -2268,6 +2190,7 @@ export function ApplicationForm() {
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [submissionReferenceId, setSubmissionReferenceId] = useState<string | null>(null);
 
@@ -2289,40 +2212,8 @@ export function ApplicationForm() {
       occupants: [...(prev.occupants || []), newOccupant]
     }));
 
-    // Save draft to DynamoDB after adding occupant
-    if (user?.applicantId) {
-      try {
-        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
-        const enhancedFormDataSnapshot = {
-          ...formDataSnapshot,
-          applicantId: user.applicantId,
-          webhookSummary: getWebhookSummary()
-        };
-
-        const draftData: DraftData = {
-          zoneinfo: user.applicantId,
-          applicantId: user.applicantId,
-          reference_id: referenceId,
-          form_data: enhancedFormDataSnapshot,
-          current_step: currentStep,
-          last_updated: new Date().toISOString(),
-          status: 'draft',
-          uploaded_files_metadata: uploadedFilesMetadata,
-          webhook_responses: webhookResponses,
-          signatures: signatures,
-          encrypted_documents: encryptedDocuments,
-        };
-
-        const saveResult = await dynamoDBService.saveDraft(draftData);
-        if (saveResult) {
-          console.log('💾 Draft saved to DynamoDB after adding occupant');
-        } else {
-          console.warn('⚠️ Failed to save draft to DynamoDB after adding occupant');
-        }
-      } catch (error) {
-        console.error('❌ Error saving draft after adding occupant:', error);
-      }
-    }
+    // Note: Draft saving is now manual - only when Save Draft button is clicked
+    console.log('👤 Occupant added - Draft will be saved when Save Draft button is clicked');
   };
 
   const removeOccupant = async (index: number) => {
@@ -2331,40 +2222,8 @@ export function ApplicationForm() {
       occupants: prev.occupants.filter((_: any, i: number) => i !== index)
     }));
 
-    // Save draft to DynamoDB after removing occupant
-    if (user?.applicantId) {
-      try {
-        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
-        const enhancedFormDataSnapshot = {
-          ...formDataSnapshot,
-          applicantId: user.applicantId,
-          webhookSummary: getWebhookSummary()
-        };
-
-        const draftData: DraftData = {
-          zoneinfo: user.applicantId,
-          applicantId: user.applicantId,
-          reference_id: referenceId,
-          form_data: enhancedFormDataSnapshot,
-          current_step: currentStep,
-          last_updated: new Date().toISOString(),
-          status: 'draft',
-          uploaded_files_metadata: uploadedFilesMetadata,
-          webhook_responses: webhookResponses,
-          signatures: signatures,
-          encrypted_documents: encryptedDocuments,
-        };
-
-        const saveResult = await dynamoDBService.saveDraft(draftData);
-        if (saveResult) {
-          console.log('💾 Draft saved to DynamoDB after removing occupant');
-        } else {
-          console.warn('⚠️ Failed to save draft to DynamoDB after removing occupant');
-        }
-      } catch (error) {
-        console.error('❌ Error saving draft after removing occupant:', error);
-      }
-    }
+    // Note: Draft saving is now manual - only when Save Draft button is clicked
+    console.log('👤 Occupant removed - Draft will be saved when Save Draft button is clicked');
   };
 
   const updateOccupant = async (index: number, field: string, value: any) => {
@@ -2375,40 +2234,8 @@ export function ApplicationForm() {
       )
     }));
 
-    // Save draft to DynamoDB after occupant update
-    if (user?.applicantId) {
-      try {
-        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
-        const enhancedFormDataSnapshot = {
-          ...formDataSnapshot,
-          applicantId: user.applicantId,
-          webhookSummary: getWebhookSummary()
-        };
-
-        const draftData: DraftData = {
-          zoneinfo: user.applicantId,
-          applicantId: user.applicantId,
-          reference_id: referenceId,
-          form_data: enhancedFormDataSnapshot,
-          current_step: currentStep,
-          last_updated: new Date().toISOString(),
-          status: 'draft',
-          uploaded_files_metadata: uploadedFilesMetadata,
-          webhook_responses: webhookResponses,
-          signatures: signatures,
-          encrypted_documents: encryptedDocuments,
-        };
-
-        const saveResult = await dynamoDBService.saveDraft(draftData);
-        if (saveResult) {
-          console.log('💾 Draft saved to DynamoDB after occupant update for:', index, field);
-        } else {
-          console.warn('⚠️ Failed to save draft to DynamoDB after occupant update');
-        }
-      } catch (error) {
-        console.error('❌ Error saving draft after occupant update:', error);
-      }
-    }
+    // Note: Draft saving is now manual - only when Save Draft button is clicked
+    console.log('👤 Occupant updated:', index, field, '- Draft will be saved when Save Draft button is clicked');
   };
 
   const handleOccupantDocumentChange = async (index: number, documentType: string, files: File[]) => {
@@ -2427,40 +2254,8 @@ export function ApplicationForm() {
       )
     }));
 
-    // Save draft to DynamoDB after occupant document change
-    if (user?.applicantId) {
-      try {
-        const formDataSnapshot = JSON.parse(JSON.stringify(formData));
-        const enhancedFormDataSnapshot = {
-          ...formDataSnapshot,
-          applicantId: user.applicantId,
-          webhookSummary: getWebhookSummary()
-        };
-
-        const draftData: DraftData = {
-          zoneinfo: user.applicantId,
-          applicantId: user.applicantId,
-          reference_id: referenceId,
-          form_data: enhancedFormDataSnapshot,
-          current_step: currentStep,
-          last_updated: new Date().toISOString(),
-          status: 'draft',
-          uploaded_files_metadata: uploadedFilesMetadata,
-          webhook_responses: webhookResponses,
-          signatures: signatures,
-          encrypted_documents: encryptedDocuments,
-        };
-
-        const saveResult = await dynamoDBService.saveDraft(draftData);
-        if (saveResult) {
-          console.log('💾 Draft saved to DynamoDB after occupant document change for:', index, documentType);
-        } else {
-          console.warn('⚠️ Failed to save draft to DynamoDB after occupant document change');
-        }
-      } catch (error) {
-        console.error('❌ Error saving draft after occupant document change:', error);
-      }
-    }
+    // Note: Draft saving is now manual - only when Save Draft button is clicked
+    console.log('📁 Occupant document updated:', index, documentType, '- Draft will be saved when Save Draft button is clicked');
   };
 
   // Removed handleOccupantEncryptedDocumentChange - no longer needed
@@ -6141,6 +5936,27 @@ export function ApplicationForm() {
               </div>
               
               <div className="flex items-center space-x-4">
+                {/* Save Draft Button - Only saves when clicked */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={saveDraftToDynamoDB}
+                  disabled={isSavingDraft}
+                  className="flex items-center space-x-2 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700"
+                >
+                  {isSavingDraft ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Save Draft</span>
+                    </>
+                  )}
+                </Button>
+                
                 {currentStep < STEPS.length - 1 ? (
                   <Button
                     type="button"
