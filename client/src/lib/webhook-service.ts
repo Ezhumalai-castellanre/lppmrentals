@@ -495,11 +495,14 @@ export class WebhookService {
         };
       } else {
         console.error('❌ Webhook call failed:', webhookResponse.status, responseBody);
+        // Consider the operation successful if S3 upload succeeded.
+        // Surface webhook error for logging/telemetry without blocking user.
         return {
-          success: false,
+          success: true,
           error: `Webhook failed: ${webhookResponse.status} - ${responseBody}`,
-          url: cleanUrl, // Still return S3 URL even if webhook fails
-          key: key
+          url: cleanUrl,
+          key: key,
+          webhookResponse: responseBody
         };
       }
 
