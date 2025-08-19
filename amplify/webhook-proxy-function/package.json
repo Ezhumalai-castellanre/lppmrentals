@@ -1,0 +1,16 @@
+{
+  "name": "webhook-proxy-function",
+  "version": "1.0.0",
+  "description": "Lambda function for webhook proxy",
+  "main": "handler.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["aws", "lambda", "webhook", "proxy"],
+  "author": "",
+  "license": "ISC"
+}
