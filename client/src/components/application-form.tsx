@@ -438,7 +438,7 @@ export function ApplicationForm() {
           setUnits(fetchedUnits);
         }
       } catch (error) {
-        // Failed to fetch units
+        // Failed to fetch unitsa
         // Final fallback to Monday.com API
         try {
           const fetchedUnits = await MondayApiService.fetchVacantUnits();
