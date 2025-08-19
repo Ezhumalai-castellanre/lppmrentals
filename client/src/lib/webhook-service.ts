@@ -437,7 +437,12 @@ export class WebhookService {
       console.log('📤 Uploading file via PUT to S3');
       const putRes = await fetch(putUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': file.type },
+        headers: {
+          'Content-Type': file.type,
+          // These must match the signed parameters used when generating the presigned URL
+          'x-amz-acl': 'private',
+          'x-amz-server-side-encryption': 'AES256',
+        },
         body: file,
       });
 
