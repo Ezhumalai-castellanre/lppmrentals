@@ -371,6 +371,7 @@ export default function MaintenancePage() {
                     maxSize={50}
                     label="Upload Photo"
                                           description="Upload a photo of the issue (max 50MB)"
+                    zoneinfo={user?.zoneinfo}
                   />
                 </div>
 

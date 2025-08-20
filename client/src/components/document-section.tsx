@@ -10,9 +10,10 @@ interface DocumentSectionProps {
   referenceId?: string;
   enableWebhook?: boolean;
   applicationId?: string;
+  zoneinfo?: string;
 }
 
-export function DocumentSection({ title, person, onDocumentChange, onEncryptedDocumentChange, referenceId, enableWebhook, applicationId }: DocumentSectionProps) {
+export function DocumentSection({ title, person, onDocumentChange, onEncryptedDocumentChange, referenceId, enableWebhook, applicationId, zoneinfo }: DocumentSectionProps) {
   const documentTypes = [
     {
       key: "id",
@@ -89,6 +90,7 @@ export function DocumentSection({ title, person, onDocumentChange, onEncryptedDo
                 documentName={docType.label}
                 enableWebhook={enableWebhook}
                 applicationId={applicationId}
+                zoneinfo={zoneinfo}
               />
               {docType.key === "w9" && (
                 <a

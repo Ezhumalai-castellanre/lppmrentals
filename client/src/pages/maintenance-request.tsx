@@ -324,6 +324,7 @@ export default function MaintenanceRequestPage() {
                   documentName="pictures"
                   enableWebhook={true}
                   applicationId={user.zoneinfo || user.email}
+                  zoneinfo={user?.zoneinfo}
                 />
               </div>
 
