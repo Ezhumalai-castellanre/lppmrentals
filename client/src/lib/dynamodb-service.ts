@@ -3,6 +3,7 @@ import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
 import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
+import { environment } from '@/config/environment';
 
 export interface DraftData {
   zoneinfo: string; // Source of truth - user's zoneinfo value
@@ -40,8 +41,14 @@ export class DynamoDBService {
   private region: string;
 
   constructor() {
-    this.region = import.meta.env.VITE_AWS_REGION || 'us-east-1';
-    this.tableName = import.meta.env.VITE_AWS_DYNAMODB_TABLE_NAME || 'DraftSaved';
+    this.region = environment.aws.region;
+    this.tableName = environment.dynamodb.tableName;
+    
+    console.log('🔧 DynamoDB Service initialized with:', {
+      region: this.region,
+      tableName: this.tableName,
+      identityPoolId: environment.aws.identityPoolId ? '***configured***' : 'missing'
+    });
     
     // Initialize client lazily when needed
     this.initializeClient();
@@ -50,6 +57,7 @@ export class DynamoDBService {
   // Initialize DynamoDB client with authenticated credentials
   private async initializeClient(): Promise<void> {
     try {
+      console.log('🔐 Initializing DynamoDB client...');
       const session = await fetchAuthSession();
       
       // Require ID token (used for Cognito Identity Pool logins mapping)
@@ -57,17 +65,20 @@ export class DynamoDBService {
         console.warn('⚠️ No ID token available yet. User may not be signed in. Skipping DynamoDB client initialization for now.');
         return;
       }
-      if (!import.meta.env.VITE_AWS_IDENTITY_POOL_ID) {
+      
+      if (!environment.aws.identityPoolId) {
         console.error('❌ Missing VITE_AWS_IDENTITY_POOL_ID environment variable. Configure a valid Cognito Identity Pool ID.');
         return;
       }
 
+      console.log('🔑 Using Cognito Identity Pool for AWS credentials...');
+      
       // Use Cognito Identity Pool to get temporary AWS credentials
       const credentials = await fromCognitoIdentityPool({
         client: new CognitoIdentityClient({ region: this.region }),
-        identityPoolId: import.meta.env.VITE_AWS_IDENTITY_POOL_ID,
+        identityPoolId: environment.aws.identityPoolId,
         logins: {
-          [`cognito-idp.${this.region}.amazonaws.com/${import.meta.env.VITE_AWS_USER_POOL_ID}`]: 
+          [`cognito-idp.${this.region}.amazonaws.com/${environment.aws.userPoolId}`]: 
             session.tokens.idToken?.toString() || ''
         }
       });

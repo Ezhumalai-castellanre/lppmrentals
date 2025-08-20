@@ -2,7 +2,6 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   console.log('=== MONDAY MISSING SUBITEMS FUNCTION CALLED ===');
-  console.log('Event:', JSON.stringify(event, null, 2));
   
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -10,7 +9,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       statusCode: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+        'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
       },
       body: ''
@@ -18,58 +17,42 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   }
 
   try {
-    // Extract applicant ID from path parameters, query parameters, or request body
-    let applicantId = event.pathParameters?.applicantId;
+    // Extract applicant ID from either query parameters (GET) or body (POST)
+    let applicantId: string;
     
-    // If pathParameters is not available, try to extract from the path
-    if (!applicantId) {
-      const pathMatch = event.path?.match(/\/monday-missing-subitems\/(.+)/);
-      if (pathMatch) {
-        applicantId = pathMatch[1];
-      }
-    }
-    
-    // For POST requests, also check the request body
-    if (!applicantId && event.httpMethod === 'POST' && event.body) {
-      try {
-        const body = JSON.parse(event.body);
-        applicantId = body.applicantId;
-        console.log('Extracted applicantId from POST body:', applicantId);
-      } catch (parseError) {
-        console.error('Failed to parse POST body:', parseError);
-      }
-    }
-    
-    // Also check query parameters as fallback
-    if (!applicantId) {
+    if (event.httpMethod === 'GET') {
       applicantId = event.queryStringParameters?.applicantId;
+    } else if (event.httpMethod === 'POST') {
+      const body = JSON.parse(event.body || '{}');
+      applicantId = body.applicantId;
+    } else {
+      return {
+        statusCode: 405,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+        },
+        body: JSON.stringify({
+          error: 'Method not allowed',
+          message: 'Only GET and POST methods are supported'
+        })
+      };
     }
     
     if (!applicantId) {
-      console.error('No applicant ID found in path, body, or query parameters:', {
-        path: event.path,
-        pathParameters: event.pathParameters,
-        queryStringParameters: event.queryStringParameters,
-        httpMethod: event.httpMethod,
-        hasBody: !!event.body
-      });
       return {
         statusCode: 400,
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+          'Access-Control-Allow-Headers': 'Content-Type',
           'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
         },
-        body: JSON.stringify({ 
-          error: 'Applicant ID is required',
-          debug: {
-            path: event.path,
-            pathParameters: event.pathParameters,
-            queryStringParameters: event.queryStringParameters,
-            httpMethod: event.httpMethod,
-            hasBody: !!event.body
-          }
+        body: JSON.stringify({
+          error: 'Missing applicantId parameter',
+          message: 'applicantId is required'
         })
       };
     }
@@ -236,107 +219,73 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       guarantorName: string | null;
     }
 
-    const results: MissingSubitem[] = [];
-
-    for (const item of matchingItems) {
-      console.log(`👤 Processing matching parent item: ${item.name} (ID: ${item.id})`);
-      
-      const parentItemId = item.id;
-      const parentItemName = item.name;
-      
-      // Extract Co-Applicant and Guarantor names
-      const coApplicantName = item.column_values.find(cv => cv.id === "text_mksxn3da")?.text || null;
-      const guarantorName = item.column_values.find(cv => cv.id === "text_mksxdc76")?.text || null;
-      
-      console.log(`👥 Applicant: ${parentItemName}, Co-Applicant: ${coApplicantName}, Guarantor: ${guarantorName}`);
-      
+    // Process matching items to extract missing subitems
+    const missingSubitems: MissingSubitem[] = [];
+    
+    matchingItems.forEach(item => {
       const subitems = item.subitems || [];
-      console.log(`📄 Found ${subitems.length} subitems for this parent`);
-
-      for (const sub of subitems) {
-        const statusValue = sub.column_values.find(cv => cv.id === "status");
-        const status = statusValue?.label || statusValue?.text || "Unknown";
-        const applicantType = sub.column_values.find(cv => cv.id === "color_mksyqx5h")?.text || "Unknown";
-        const subitemApplicantId = sub.column_values.find(cv => cv.id === "text_mkt9gepz")?.text;
+      
+      subitems.forEach(subitem => {
+        const subitemApplicantId = subitem.column_values.find(cv => cv.id === "text_mkt9gepz")?.text;
         
-        console.log(`🔍 Processing subitem: ${sub.name} - Applicant ID: "${subitemApplicantId}", Status: "${status}", Type: "${applicantType}"`);
-        
-        // Only include subitems that match the requested applicant ID
-        if (searchApplicantIds.includes(subitemApplicantId) && ["Missing", "Received", "Rejected"].includes(status)) {
-          console.log(`✅ Adding subitem to results: ${sub.name} (${status}) for applicant ${subitemApplicantId}`);
+        // Only include subitems that match the applicant ID
+        if (searchApplicantIds.includes(subitemApplicantId)) {
+          const statusColumn = subitem.column_values.find(cv => cv.id === "status");
+          const status = statusColumn?.label || statusColumn?.text || 'Missing';
           
-          // Extract additional useful information from subitem column values
-          const documentType = sub.column_values.find(cv => cv.id === "text_mkt9x4qd")?.text || null;
-          const applicantId = subitemApplicantId;
-          const documentKey = sub.column_values.find(cv => cv.id === "text_mkt9x4qd")?.text || null;
-          const fileLink = sub.column_values.find(cv => cv.id === "link_mktsj2d")?.text || null;
+          const applicantType = item.name; // The parent item name represents the applicant type
+          const documentType = subitem.name;
           
-          results.push({
-            id: sub.id,
-            name: sub.name,
-            status,
-            applicantType,
-            documentType,
-            applicantId,
-            documentKey,
-            fileLink,
-            parentItemId,
-            parentItemName,
-            coApplicantName,
-            guarantorName
+          // Extract additional information from column values
+          const coApplicantName = subitem.column_values.find(cv => cv.id === "text_mkt9x4qd")?.text || null;
+          const guarantorName = subitem.column_values.find(cv => cv.id === "text_mktanfxj")?.text || null;
+          const documentKey = subitem.column_values.find(cv => cv.id === "color_mksyqx5h")?.text || null;
+          const fileLink = subitem.column_values.find(cv => cv.id === "link_mktsj2d")?.text || null;
+          
+          missingSubitems.push({
+            id: subitem.id,
+            name: subitem.name,
+            status: status,
+            applicantType: applicantType,
+            documentType: documentType,
+            applicantId: subitemApplicantId,
+            documentKey: documentKey,
+            fileLink: fileLink,
+            parentItemId: item.id,
+            parentItemName: item.name,
+            coApplicantName: coApplicantName,
+            guarantorName: guarantorName
           });
-        } else {
-          if (!searchApplicantIds.includes(subitemApplicantId)) {
-            console.log(`❌ Skipping subitem: ${sub.name} - Applicant ID "${subitemApplicantId}" doesn't match search criteria`);
-          } else if (!["Missing", "Received", "Rejected"].includes(status)) {
-            console.log(`❌ Skipping subitem: ${sub.name} - Status "${status}" not in allowed list`);
-          }
         }
-      }
-    }
-
-    console.log('✅ Final Results:', results.length, 'missing subitems found');
-    
-    // Log summary of what was found
-    if (results.length > 0) {
-      console.log('📋 Summary of found subitems:');
-      results.forEach((result, index) => {
-        console.log(`  ${index + 1}. ${result.name} (${result.status}) - ${result.applicantType} - ${result.documentType}`);
       });
-    } else {
-      console.log('⚠️  No results found. This could mean:');
-      console.log('   - No subitems match the applicant ID');
-      console.log('   - All matching subitems have status other than Missing/Received/Rejected');
-      console.log('   - There\'s an issue with the column mapping');
-    }
-    
-    console.log('📤 Sending response:', JSON.stringify(results, null, 2));
+    });
+
+    console.log('📄 Processed missing subitems:', missingSubitems);
 
     return {
       statusCode: 200,
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+        'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
       },
-      body: JSON.stringify(results)
+      body: JSON.stringify(missingSubitems)
     };
 
   } catch (error) {
-    console.error('Monday API proxy error:', error);
-    
+    console.error('❌ Error in monday-missing-subitems function:', error);
     return {
       statusCode: 500,
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+        'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
       },
-      body: JSON.stringify({ 
-        error: "Failed to fetch missing subitems from Monday.com",
-        details: error instanceof Error ? error.message : 'Unknown error occurred'
+      body: JSON.stringify({
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error occurred'
       })
     };
   }

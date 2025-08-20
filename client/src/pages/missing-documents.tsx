@@ -13,6 +13,7 @@ import { encryptFiles, validateFileForEncryption, type EncryptedFile } from '@/l
 import { WebhookService } from '@/lib/webhook-service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { getAllApplicantIdFormats, isValidLppmNumber } from '@/lib/utils';
+import { environment } from '@/config/environment';
 
 // Helper function to determine if a document type supports multiple files
 const isMultipleFileDocument = (documentName: string): boolean => {
@@ -41,6 +42,38 @@ interface MissingSubitem {
   publicUrl?: string;
   previewText?: string;
   action?: string;
+}
+
+// Add interfaces for Monday.com API response
+interface MondayColumnValue {
+  id: string;
+  text: string;
+  label?: string;
+}
+
+interface MondaySubitem {
+  id: string;
+  name: string;
+  column_values: MondayColumnValue[];
+}
+
+interface MondayItem {
+  id: string;
+  name: string;
+  column_values: MondayColumnValue[];
+  subitems: MondaySubitem[];
+}
+
+interface MondayBoard {
+  items_page: {
+    items: MondayItem[];
+  };
+}
+
+interface MondayResponse {
+  data: {
+    boards: MondayBoard[];
+  };
 }
 
 export default function MissingDocumentsPage() {
@@ -115,42 +148,206 @@ export default function MissingDocumentsPage() {
       }
       
       const apiId = user.zoneinfo;
-      // Determine if we're in development or production
-      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const endpoint = isDevelopment 
-        ? `http://localhost:5000/api/monday/missing-subitems/${apiId}`
-        : `https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/monday-missing-subitems`;
-      
-      // Get all possible formats for the applicant ID
-      const searchFormats = getAllApplicantIdFormats(apiId);
-      
-      const response = await fetch(endpoint, {
-        method: isDevelopment ? 'GET' : 'POST',
+      console.log('Searching for applicant ID:', apiId);
+
+      const MONDAY_API_TOKEN = environment.monday.apiToken;
+      const BOARD_ID = environment.monday.documentsBoardId;
+
+      console.log('Fetching from Monday.com with token:', MONDAY_API_TOKEN ? 'Present' : 'Missing');
+      console.log('Board ID:', BOARD_ID);
+
+      const query = `
+        query {
+          boards(ids: [${BOARD_ID}]) {
+            items_page {
+              items {
+                id
+                name
+                column_values(ids: ["text_mksxyax3", "text_mksxn3da", "text_mksxdc76"]) {
+                  id
+                  text
+                }
+                subitems {
+                  id
+                  name
+                  column_values(ids: ["status", "color_mksyqx5h", "text_mkt9gepz", "text_mkt9x4qd", "text_mktanfxj", "link_mktsj2d"]) {
+                    id
+                    text
+                    ... on StatusValue {
+                      label
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      const response = await fetch('https://api.monday.com/v2', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': MONDAY_API_TOKEN,
         },
-        body: isDevelopment ? undefined : JSON.stringify({ applicantId: apiId })
+        body: JSON.stringify({ query }),
       });
-      
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        console.error('Monday API error:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Monday API error response:', errorText);
+        throw new Error(`Monday API error: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('Monday.com API Response Status:', response.status);
+      console.log('Monday.com API Response Headers:', Object.fromEntries(response.headers.entries()));
+      console.log('Monday.com API Response:', JSON.stringify(result, null, 2));
+      
+      const items = result?.data?.boards?.[0]?.items_page?.items ?? [];
+      
+      console.log('📊 Found', items.length, 'total items in the board');
+      
+      // Log available applicant IDs for debugging
+      console.log('🔍 Available Applicant IDs in the board:');
+      items.forEach((item: MondayItem, index: number) => {
+        const applicantIdValue = item.column_values.find(cv => cv.id === "text_mksxyax3")?.text;
+        console.log(`  ${index + 1}. Item: ${item.name} - Applicant ID: "${applicantIdValue}"`);
+        
+        // Log subitems and their column values for debugging
+        if (item.subitems && item.subitems.length > 0) {
+          console.log(`    📄 Subitems for ${item.name}:`);
+          item.subitems.forEach((subitem: MondaySubitem, subIndex: number) => {
+            console.log(`      ${subIndex + 1}. ${subitem.name}:`);
+            subitem.column_values.forEach((cv: MondayColumnValue) => {
+              console.log(`        - Column ${cv.id}: ${cv.text} (label: ${cv.label || 'N/A'})`);
+            });
+          });
+        }
+      });
+
+      // Find items matching the applicant ID (check both new Lppm format and old formats)
+      const searchApplicantIds = [apiId];
+      
+      // If the requested ID is in new Lppm format, also search for old format equivalents
+      if (apiId.startsWith('Lppm-')) {
+        // Extract date and number from Lppm format
+        const match = apiId.match(/^Lppm-(\d{8})-(\d{5})$/);
+        if (match) {
+          const [, dateStr, numberStr] = match;
+          const timestamp = new Date(
+            parseInt(dateStr.substring(0, 4)),
+            parseInt(dateStr.substring(4, 6)) - 1,
+            parseInt(dateStr.substring(6, 8))
+          ).getTime();
+          
+          // Create old format equivalents
+          const oldZoneFormat = `zone_${timestamp}_${numberStr}`;
+          const oldTempFormat = `temp_${timestamp}_${numberStr}`;
+          
+          searchApplicantIds.push(oldZoneFormat, oldTempFormat);
+          console.log(`🔍 Also searching for old format equivalents: ${oldZoneFormat}, ${oldTempFormat}`);
+        }
       }
       
-      const data = await response.json();
+      // If the requested ID is in old format, also search for new Lppm format
+      if (apiId.startsWith('zone_') || apiId.startsWith('temp_')) {
+        // Extract timestamp and number from old format
+        const match = apiId.match(/^(zone_|temp_)(\d+)_(.+)$/);
+        if (match) {
+          const [, prefix, timestamp, numberStr] = match;
+          const date = new Date(parseInt(timestamp));
+          const dateStr = date.getFullYear().toString() + 
+                         String(date.getMonth() + 1).padStart(2, '0') + 
+                         String(date.getDate()).padStart(2, '0');
+          
+          const newLppmFormat = `Lppm-${dateStr}-${numberStr.padStart(5, '0')}`;
+          searchApplicantIds.push(newLppmFormat);
+          console.log(`🔍 Also searching for new Lppm format: ${newLppmFormat}`);
+        }
+      }
       
-      setMissingItems(data);
+      console.log(`🔍 Searching for applicant IDs: ${searchApplicantIds.join(', ')}`);
+      
+      // Find items that have subitems matching any of the possible applicant IDs
+      const matchingItems = items.filter((item: MondayItem) => {
+        const subitems = item.subitems || [];
+        
+        // Check if any subitem has the matching applicant ID
+        const hasMatchingSubitem = subitems.some((sub: MondaySubitem) => {
+          const subitemApplicantId = sub.column_values.find((cv: MondayColumnValue) => cv.id === "text_mkt9gepz")?.text;
+          const matches = subitemApplicantId && searchApplicantIds.includes(subitemApplicantId);
+          
+          if (matches) {
+            console.log(`🔍 Found matching subitem in ${item.name}: ${sub.name} with applicant ID: "${subitemApplicantId}"`);
+          }
+          
+          return matches;
+        });
+        
+        if (hasMatchingSubitem) {
+          console.log(`✅ Found matching item: ${item.name} with matching subitems`);
+        }
+        
+        return hasMatchingSubitem;
+      });
+
+      console.log('📊 Found', matchingItems.length, 'items matching applicant ID', `"${apiId}"`);
+
+      // Process the matching items to extract missing subitems
+      const missingSubitems: MissingSubitem[] = [];
+      
+      matchingItems.forEach((item: MondayItem) => {
+        const subitems = item.subitems || [];
+        
+        subitems.forEach((subitem: MondaySubitem) => {
+          const subitemApplicantId = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mkt9gepz")?.text;
+          
+          // Only include subitems that match the applicant ID
+          if (subitemApplicantId && searchApplicantIds.includes(subitemApplicantId)) {
+            const status = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "status")?.label || "Missing";
+            const applicantType = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mkt9x4qd")?.text || "Applicant";
+            const coApplicantName = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mktanfxj")?.text || undefined;
+            const guarantorName = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "color_mksyqx5h")?.text || undefined;
+            const documentKey = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "link_mktsj2d")?.text || undefined;
+            
+            // Only include items that are missing or rejected
+            if (status === "Missing" || status === "Rejected" || status === "Received") {
+              missingSubitems.push({
+                id: subitem.id,
+                name: subitem.name,
+                status: status,
+                parentItemId: item.id,
+                parentItemName: item.name,
+                applicantType: applicantType,
+                coApplicantName: coApplicantName,
+                guarantorName: guarantorName,
+                publicUrl: documentKey,
+                previewText: documentKey,
+                action: status === "Missing" ? "Upload Required" : "Upload Replacement"
+              });
+            }
+          }
+        });
+      });
+
+      console.log('📄 Processed missing subitems:', missingSubitems);
+      
+      setMissingItems(missingSubitems);
       setSearched(true);
       
       // Save applicant ID to localStorage for future use
       localStorage.setItem('lastApplicantId', id);
       
       // Provide feedback about the search
-      if (data.length === 0) {
-        setSuccessMessage(`No missing documents found for applicant ID: ${apiId}. The system searched for multiple formats including: ${searchFormats.join(', ')}`);
+      if (missingSubitems.length === 0) {
+        setSuccessMessage(`No missing documents found for applicant ID: ${apiId}. The system searched for multiple formats including: ${searchApplicantIds.join(', ')}`);
       } else {
-        setSuccessMessage(`Found ${data.length} document(s) for applicant ID: ${apiId}`);
+        setSuccessMessage(`Found ${missingSubitems.length} document(s) for applicant ID: ${apiId}`);
       }
     } catch (err) {
+      console.error('Error fetching missing subitems:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch missing documents');
       setMissingItems([]);
     } finally {
