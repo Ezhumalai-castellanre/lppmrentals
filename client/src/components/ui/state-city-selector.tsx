@@ -45,7 +45,7 @@ export const StateCitySelector: React.FC<StateCitySelectorProps> = ({
       setAvailableCities([]);
       onCityChange('');
     }
-  }, [selectedState, selectedCity, onCityChange]);
+  }, [selectedState, selectedCity]);
 
   const handleStateChange = (stateCode: string) => {
     onStateChange(stateCode);
@@ -200,7 +200,7 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
       setAvailableCities([]);
       onCityChange('');
     }
-  }, [selectedState, selectedCity, onCityChange]);
+  }, [selectedState, selectedCity]);
 
   return (
     <div className={`space-y-2 ${className}`}>

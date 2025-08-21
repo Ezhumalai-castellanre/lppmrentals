@@ -10,13 +10,23 @@ import { useEffect } from "react";
 
 interface FinancialSectionProps {
   title: string;
-  person: "applicant" | "coApplicant" | "guarantor";
+  person: "applicant" | "coApplicant" | "guarantor" | string; // Allow string for guarantors_0, guarantors_1, etc.
   formData: any;
-  updateFormData: (person: string, field: string, value: any) => void;
+  updateFormData: (section: string, indexOrField: string, fieldOrValue: any, value?: any) => void;
 }
 
 export function FinancialSection({ title, person, formData, updateFormData }: FinancialSectionProps) {
-  const personData = formData[person] || {};
+  // Handle guarantors_0, guarantors_1, etc. format
+  let personData: any = {};
+  
+  if (person.startsWith('guarantors_')) {
+    // Extract guarantor index and get data from guarantors array
+    const guarantorIndex = parseInt(person.replace('guarantors_', ''), 10);
+    personData = formData.guarantors?.[guarantorIndex] || {};
+  } else {
+    // Handle applicant, coApplicant, guarantor (legacy format)
+    personData = formData[person] || {};
+  }
   
   // Debug logging for current person data
   console.log(`💰 Financial Section - ${person} current data:`, {
@@ -43,11 +53,26 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
 
   const handleChange = (field: string, value: string) => {
     console.log(`💰 Financial Section - ${person} ${field}:`, value);
-    updateFormData(person, field, value);
+    
+    if (person.startsWith('guarantors_')) {
+      // Handle guarantors array format
+      const guarantorIndex = parseInt(person.replace('guarantors_', ''), 10);
+      updateFormData('guarantors', guarantorIndex.toString(), field, value);
+    } else {
+      // Handle legacy format
+      updateFormData(person, field, value);
+    }
   };
 
   const handleDateChange = (field: string, date: Date | undefined) => {
-    updateFormData(person, field, date?.toISOString());
+    if (person.startsWith('guarantors_')) {
+      // Handle guarantors array format
+      const guarantorIndex = parseInt(person.replace('guarantors_', ''), 10);
+      updateFormData('guarantors', guarantorIndex.toString(), field, date?.toISOString());
+    } else {
+      // Handle legacy format
+      updateFormData(person, field, date?.toISOString());
+    }
   };
 
   return (

@@ -19,7 +19,7 @@ import { SupportingDocuments } from "./supporting-documents";
 import { PDFGenerator } from "@/lib/pdf-generator";
 import { EnhancedPDFGenerator } from "@/lib/pdf-generator-enhanced";
 import { ResetPDFGenerator } from "@/lib/pdf-generator-reset";
-import { Download, FileText, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search, Save } from "lucide-react";
+import { Download, FileText, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -109,7 +109,147 @@ const applicationSchema = z.object({
   ]).or(z.undefined()),
   applicantReasonForMoving: z.string().optional(),
 
-  // Co-Applicant
+  // Co-Applicants (Array of up to 4)
+  coApplicants: z.array(z.object({
+    name: z.string().min(1, "Full name is required"),
+    relationship: z.string().optional(),
+    dob: z.date({
+      required_error: "Date of birth is required",
+      invalid_type_error: "Please select a valid date of birth",
+    }),
+    ssn: z.string().optional().refine((val) => !val || validateSSN(val), {
+      message: "Please enter a valid 9-digit Social Security Number"
+    }),
+    phone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+      message: "Please enter a valid US phone number"
+    }),
+    email: z.string().optional().refine((val) => !val || validateEmail(val), {
+      message: "Please enter a valid email address"
+    }),
+    license: z.string().optional().refine((val) => !val || validateDriverLicense(val), {
+      message: "Please enter a valid driver's license number"
+    }),
+    licenseState: z.string().optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zip: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+      message: "Please enter a valid ZIP code"
+    }),
+    lengthAtAddressYears: z.union([
+      z.number().optional(),
+      z.string().optional().transform((val) => val ? Number(val) : undefined)
+    ]).or(z.undefined()),
+    lengthAtAddressMonths: z.union([
+      z.number().optional(),
+      z.string().optional().transform((val) => val ? Number(val) : undefined)
+    ]).or(z.undefined()),
+    landlordName: z.string().optional(),
+    landlordAddressLine1: z.string().optional(),
+    landlordAddressLine2: z.string().optional(),
+    landlordCity: z.string().optional(),
+    landlordState: z.string().optional(),
+    landlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+      message: "Please enter a valid ZIP code"
+    }),
+    landlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+      message: "Please enter a valid US phone number"
+    }),
+    landlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+      message: "Please enter a valid email address"
+    }),
+    currentRent: z.union([
+      z.number().optional(),
+      z.string().optional().transform((val) => val ? Number(val) : undefined)
+    ]).or(z.undefined()),
+    reasonForMoving: z.string().optional(),
+    // Employment & Financial Information
+    employmentType: z.string().optional(),
+    employer: z.string().optional(),
+    position: z.string().optional(),
+    employmentStart: z.date().optional(),
+    income: z.string().optional(),
+    incomeFrequency: z.string().optional(),
+    businessName: z.string().optional(),
+    businessType: z.string().optional(),
+    yearsInBusiness: z.string().optional(),
+    otherIncome: z.string().optional(),
+    otherIncomeFrequency: z.string().optional(),
+    otherIncomeSource: z.string().optional(),
+    bankRecords: z.array(z.any()).optional(),
+  })).max(4, "Maximum 4 co-applicants allowed"),
+
+  // Guarantors (Array of up to 4)
+  guarantors: z.array(z.object({
+    name: z.string().min(1, "Full name is required"),
+    relationship: z.string().optional(),
+    dob: z.date({
+      required_error: "Date of birth is required",
+      invalid_type_error: "Please select a valid date of birth",
+    }),
+    ssn: z.string().optional().refine((val) => !val || validateSSN(val), {
+      message: "Please enter a valid 9-digit Social Security Number"
+    }),
+    phone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+      message: "Please enter a valid US phone number"
+    }),
+    email: z.string().optional().refine((val) => !val || validateEmail(val), {
+      message: "Please enter a valid email address"
+    }),
+    license: z.string().optional().refine((val) => !val || validateDriverLicense(val), {
+      message: "Please enter a valid driver's license number"
+    }),
+    licenseState: z.string().optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zip: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+      message: "Please enter a valid ZIP code"
+    }),
+    lengthAtAddressYears: z.union([
+      z.number().optional(),
+      z.string().optional().transform((val) => val ? Number(val) : undefined)
+    ]).or(z.undefined()),
+    lengthAtAddressMonths: z.union([
+      z.number().optional(),
+      z.string().optional().transform((val) => val ? Number(val) : undefined)
+    ]).or(z.undefined()),
+    landlordName: z.string().optional(),
+    landlordAddressLine1: z.string().optional(),
+    landlordAddressLine2: z.string().optional(),
+    landlordCity: z.string().optional(),
+    landlordState: z.string().optional(),
+    landlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+      message: "Please enter a valid ZIP code"
+    }),
+    landlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+      message: "Please enter a valid US phone number"
+    }),
+    landlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+      message: "Please enter a valid email address"
+    }),
+    currentRent: z.union([
+      z.number().optional(),
+      z.string().optional().transform((val) => val ? Number(val) : undefined)
+    ]).or(z.undefined()),
+    reasonForMoving: z.string().optional(),
+    // Employment & Financial Information
+    employmentType: z.string().optional(),
+    employer: z.string().optional(),
+    position: z.string().optional(),
+    employmentStart: z.date().optional(),
+    income: z.string().optional(),
+    incomeFrequency: z.string().optional(),
+    businessName: z.string().optional(),
+    businessType: z.string().optional(),
+    yearsInBusiness: z.string().optional(),
+    otherIncome: z.string().optional(),
+    otherIncomeFrequency: z.string().optional(),
+    otherIncomeSource: z.string().optional(),
+    bankRecords: z.array(z.any()).optional(),
+  })).max(4, "Maximum 4 guarantors allowed"),
+
+  // Legacy fields for backward compatibility
   coApplicantSsn: z.string().optional().refine((val) => !val || validateSSN(val), {
     message: "Please enter a valid 9-digit Social Security Number"
   }),
@@ -135,7 +275,7 @@ const applicationSchema = z.object({
     message: "Please enter a valid email address"
   }),
 
-  // Guarantor
+  // Legacy guarantor fields for backward compatibility
   guarantorSsn: z.string().optional().refine((val) => !val || validateSSN(val), {
     message: "Please enter a valid 9-digit Social Security Number"
   }),
@@ -164,6 +304,8 @@ const applicationSchema = z.object({
   // Conditional fields
   hasCoApplicant: z.boolean().default(false),
   hasGuarantor: z.boolean().default(false),
+  coApplicantCount: z.number().min(0).max(4).default(0),
+  guarantorCount: z.number().min(0).max(4).default(0),
 
   // Legal Questions
   landlordTenantLegalAction: z.string().optional(),
@@ -516,7 +658,93 @@ export function ApplicationForm() {
       
 
 
-      // Co-Applicant
+      // Co-Applicants (Array of up to 4)
+      coApplicants: [
+        {
+          name: '',
+          relationship: '',
+          dob: undefined as any,
+          ssn: '',
+          phone: '',
+          email: '',
+          license: '',
+          licenseState: '',
+          address: '',
+          city: '',
+          state: '',
+          zip: '',
+          lengthAtAddressYears: undefined,
+          lengthAtAddressMonths: undefined,
+          landlordName: '',
+          landlordAddressLine1: '',
+          landlordAddressLine2: '',
+          landlordCity: '',
+          landlordState: '',
+          landlordZipCode: '',
+          landlordPhone: '',
+          landlordEmail: '',
+          currentRent: undefined,
+          reasonForMoving: '',
+          employmentType: '',
+          employer: '',
+          position: '',
+          employmentStart: undefined,
+          income: '',
+          incomeFrequency: 'yearly',
+          businessName: '',
+          businessType: '',
+          yearsInBusiness: '',
+          otherIncome: '',
+          otherIncomeFrequency: 'monthly',
+          otherIncomeSource: '',
+          bankRecords: []
+        }
+      ],
+
+      // Guarantors (Array of up to 4)
+      guarantors: [
+        {
+          name: '',
+          relationship: '',
+          dob: undefined as any,
+          ssn: '',
+          phone: '',
+          email: '',
+          license: '',
+          licenseState: '',
+          address: '',
+          city: '',
+          state: '',
+          zip: '',
+          lengthAtAddressYears: undefined,
+          lengthAtAddressMonths: undefined,
+          landlordName: '',
+          landlordAddressLine1: '',
+          landlordAddressLine2: '',
+          landlordCity: '',
+          landlordState: '',
+          landlordZipCode: '',
+          landlordPhone: '',
+          landlordEmail: '',
+          currentRent: undefined,
+          reasonForMoving: '',
+          employmentType: '',
+          employer: '',
+          position: '',
+          employmentStart: undefined,
+          income: '',
+          incomeFrequency: 'yearly',
+          businessName: '',
+          businessType: '',
+          yearsInBusiness: '',
+          otherIncome: '',
+          otherIncomeFrequency: 'monthly',
+          otherIncomeSource: '',
+          bankRecords: []
+        }
+      ],
+
+      // Legacy fields for backward compatibility
       coApplicantSsn: "",
       coApplicantPhone: "",
       coApplicantEmail: "",
@@ -526,7 +754,7 @@ export function ApplicationForm() {
       coApplicantLandlordPhone: "",
       coApplicantLandlordEmail: "",
 
-      // Guarantor
+      // Legacy guarantor fields for backward compatibility
       guarantorSsn: "",
       guarantorPhone: "",
       guarantorEmail: "",
@@ -539,6 +767,8 @@ export function ApplicationForm() {
       // Conditional fields
       hasCoApplicant: false,
       hasGuarantor: false,
+      coApplicantCount: 0,
+      guarantorCount: 1,
 
       // Legal Questions
       landlordTenantLegalAction: "",
@@ -614,6 +844,61 @@ export function ApplicationForm() {
       });
     }
   }, [getCurrentUserZoneinfo]);
+
+  // Ensure guarantors array is always properly initialized
+  useEffect(() => {
+    setFormData((prevData: any) => {
+      // Ensure guarantors array exists and has at least one item
+      if (!prevData.guarantors || !Array.isArray(prevData.guarantors) || prevData.guarantors.length === 0) {
+        return {
+          ...prevData,
+          guarantors: [
+            {
+              name: '',
+              relationship: '',
+              dob: undefined,
+              ssn: '',
+              phone: '',
+              email: '',
+              license: '',
+              licenseState: '',
+              address: '',
+              city: '',
+              state: '',
+              zip: '',
+              lengthAtAddressYears: undefined,
+              lengthAtAddressMonths: undefined,
+              landlordName: '',
+              landlordAddressLine1: '',
+              landlordAddressLine2: '',
+              landlordCity: '',
+              landlordState: '',
+              landlordZipCode: '',
+              landlordPhone: '',
+              landlordEmail: '',
+              currentRent: undefined,
+              reasonForMoving: '',
+              employmentType: '',
+              employer: '',
+              position: '',
+              employmentStart: undefined,
+              income: '',
+              incomeFrequency: 'yearly',
+              businessName: '',
+              businessType: '',
+              yearsInBusiness: '',
+              otherIncome: '',
+              otherIncomeFrequency: 'monthly',
+              otherIncomeSource: '',
+              bankRecords: []
+            }
+          ],
+          guarantorCount: Math.max(1, prevData.guarantorCount || 1)
+        };
+      }
+      return prevData;
+    });
+  }, []);
 
   // Load draft data from DynamoDB
   const loadDraftData = useCallback(async (applicationId: string) => {
@@ -1152,56 +1437,137 @@ export function ApplicationForm() {
         console.log('🆕 No continue parameter, starting fresh...');
         // Clear any existing draft data and start fresh
         setFormData({
-          application: {
-            buildingAddress: '',
-            apartmentNumber: '',
-            apartmentType: '',
-            monthlyRent: undefined,
-            moveInDate: undefined,
-            howDidYouHear: '',
-            howDidYouHearOther: ''
-          },
-          applicant: {
-            name: '',
-            email: '',
-            phone: '',
-            address: '',
-            city: '',
-            state: '',
-            zip: '',
-            dob: undefined,
-            ssn: '',
-            license: '',
-            licenseState: '',
-            lengthAtAddressYears: undefined,
-            lengthAtAddressMonths: undefined,
-            landlordName: '',
-            landlordAddressLine1: '',
-            landlordAddressLine2: '',
-            landlordCity: '',
-            landlordState: '',
-            landlordZipCode: '',
-            landlordPhone: '',
-            landlordEmail: '',
-            currentRent: undefined,
-            reasonForMoving: ''
-          },
-          coApplicant: {
-            email: '',
-            phone: '',
-            zip: '',
-            landlordZipCode: '',
-            landlordPhone: '',
-            landlordEmail: ''
-          },
-          guarantor: {
-            email: '',
-            phone: '',
-            zip: '',
-            landlordZipCode: '',
-            landlordPhone: '',
-            landlordEmail: ''
-          },
+          // Application Info
+          buildingAddress: '',
+          apartmentNumber: '',
+          apartmentType: '',
+          monthlyRent: undefined,
+          moveInDate: undefined,
+          howDidYouHear: '',
+          howDidYouHearOther: '',
+
+          // Primary Applicant
+          applicantName: '',
+          applicantDob: undefined,
+          applicantSsn: '',
+          applicantPhone: '',
+          applicantEmail: '',
+          applicantLicense: '',
+          applicantLicenseState: '',
+          applicantAddress: '',
+          applicantCity: '',
+          applicantState: '',
+          applicantZip: '',
+          applicantLengthAtAddressYears: undefined,
+          applicantLengthAtAddressMonths: undefined,
+          applicantLandlordName: '',
+          applicantLandlordAddressLine1: '',
+          applicantLandlordAddressLine2: '',
+          applicantLandlordCity: '',
+          applicantLandlordState: '',
+          applicantLandlordZipCode: '',
+          applicantLandlordPhone: '',
+          applicantLandlordEmail: '',
+          applicantCurrentRent: undefined,
+          applicantReasonForMoving: '',
+
+          // Co-Applicants (Array of up to 4)
+          coApplicants: [
+            {
+              name: '',
+              relationship: '',
+              dob: undefined,
+              ssn: '',
+              phone: '',
+              email: '',
+              license: '',
+              licenseState: '',
+              address: '',
+              city: '',
+              state: '',
+              zip: '',
+              lengthAtAddressYears: undefined,
+              lengthAtAddressMonths: undefined,
+              landlordName: '',
+              landlordAddressLine1: '',
+              landlordAddressLine2: '',
+              landlordCity: '',
+              landlordState: '',
+              landlordZipCode: '',
+              landlordPhone: '',
+              landlordEmail: '',
+              currentRent: undefined,
+              reasonForMoving: '',
+              employmentType: '',
+              employer: '',
+              position: '',
+              employmentStart: undefined,
+              income: '',
+              incomeFrequency: 'yearly',
+              businessName: '',
+              businessType: '',
+              yearsInBusiness: '',
+              otherIncome: '',
+              otherIncomeFrequency: 'monthly',
+              otherIncomeSource: '',
+              bankRecords: []
+            }
+          ],
+
+          // Guarantors (Array of up to 4)
+          guarantors: [
+            {
+              name: '',
+              relationship: '',
+              dob: undefined,
+              ssn: '',
+              phone: '',
+              email: '',
+              license: '',
+              licenseState: '',
+              address: '',
+              city: '',
+              state: '',
+              zip: '',
+              lengthAtAddressYears: undefined,
+              lengthAtAddressMonths: undefined,
+              landlordName: '',
+              landlordAddressLine1: '',
+              landlordAddressLine2: '',
+              landlordCity: '',
+              landlordState: '',
+              landlordZipCode: '',
+              landlordPhone: '',
+              landlordEmail: '',
+              currentRent: undefined,
+              reasonForMoving: '',
+              employmentType: '',
+              employer: '',
+              position: '',
+              employmentStart: undefined,
+              income: '',
+              incomeFrequency: 'yearly',
+              businessName: '',
+              businessType: '',
+              yearsInBusiness: '',
+              otherIncome: '',
+              otherIncomeFrequency: 'monthly',
+              otherIncomeSource: '',
+              bankRecords: []
+            }
+          ],
+
+          // Conditional fields
+          hasCoApplicant: false,
+          hasGuarantor: false,
+          coApplicantCount: 1,
+          guarantorCount: 1,
+
+          // Legal Questions
+          landlordTenantLegalAction: '',
+          brokenLease: '',
+
+          // Occupants
           occupants: []
         });
         setCurrentStep(0);
@@ -1243,9 +1609,9 @@ export function ApplicationForm() {
 
 
 
-  const updateFormData = async (section: string, field: string, value: any) => {
-    console.log(`🔄 updateFormData called: section=${section}, field=${field}, value=`, value);
-    console.log(`🔄 Current formData before update:`, formData);
+  const updateFormData = async (section: string, indexOrField: string, fieldOrValue: any, value?: any) => {
+    // Reduced logging to prevent spam
+    // console.log(`🔄 updateFormData: ${section}.${indexOrField} = ${fieldOrValue || value}`);
     
     setFormData((prev: any) => {
       let newFormData;
@@ -1254,28 +1620,55 @@ export function ApplicationForm() {
         // Handle top-level fields
         newFormData = {
           ...prev,
-          [field]: value,
+          [indexOrField]: fieldOrValue,
         };
-        console.log(`🔄 Updated top-level formData.${field}:`, value);
+      } else if (section === 'guarantors' || section === 'coApplicants') {
+        // Handle array sections (guarantors, coApplicants)
+        // Call format: updateFormData('guarantors', '0', 'city', 'New York')
+        const arrayIndex = parseInt(indexOrField, 10);
+        const subField = fieldOrValue;
+        const actualValue = value;
+        
+        if (!prev[section] || !Array.isArray(prev[section])) {
+          console.warn(`🚨 ${section} is not an array, initializing as empty array`);
+          newFormData = {
+            ...prev,
+            [section]: []
+          };
+        } else {
+          newFormData = {
+            ...prev,
+            [section]: prev[section].map((item: any, i: number) => 
+              i === arrayIndex ? { ...item, [subField]: actualValue } : item
+            )
+          };
+        }
       } else {
-        // Handle nested section fields
+        // Handle other nested section fields (objects)
         newFormData = {
           ...prev,
           [section]: {
             ...(prev[section] || {}), // Initialize section if it doesn't exist
-            [field]: value,
+            [indexOrField]: fieldOrValue,
           },
         };
-        console.log(`🔄 Updated formData.${section}.${field}:`, value);
-        console.log(`🔄 New formData.${section}:`, newFormData[section]);
       }
       
-      console.log(`🔄 Complete new formData:`, newFormData);
       return newFormData;
     });
 
     // Remove automatic draft saving - only save when Next button is clicked
     // This prevents unnecessary saves on every field change
+  };
+
+  // Helper function to update array items (coApplicants, guarantors)
+  const updateArrayItem = (arrayName: string, index: number, field: string, value: any) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      [arrayName]: prev[arrayName]?.map((item: any, i: number) => 
+        i === index ? { ...item, [field]: value } : item
+      ) || []
+    }));
   };
 
   // Handle building selection
@@ -2568,114 +2961,110 @@ export function ApplicationForm() {
             })),
           },
           
-          // Co-Applicant (nested object) - if exists
-          ...(hasCoApplicant && formData.coApplicant ? {
-            coApplicant: {
-              email: formData.coApplicant?.email || data.coApplicantEmail,
-              phone: formatPhoneForPayload(formData.coApplicant?.phone || data.coApplicantPhone),
-              zip: formData.coApplicant?.zip || data.coApplicantZip,
-              landlordZipCode: formData.coApplicant?.landlordZipCode || data.coApplicantLandlordZipCode,
-              landlordPhone: formData.coApplicant?.landlordPhone || data.coApplicantLandlordPhone,
-              landlordEmail: formData.coApplicant?.landlordEmail || data.coApplicantLandlordEmail,
-              city: formData.coApplicant?.city,
-              landlordCity: formData.coApplicant?.landlordCity,
-              name: formData.coApplicant?.name,
-              licenseState: formData.coApplicant?.licenseState,
-              state: formData.coApplicant?.state,
-              relationship: formData.coApplicant?.relationship,
-              dob: safeDateToISO(formData.coApplicant?.dob),
-              age: formData.coApplicant?.age || 0,
-              ssn: formData.coApplicant?.ssn || data.coApplicantSsn,
-              license: formData.coApplicant?.license || data.coApplicantLicense,
-              lengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears,
-              lengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths,
-              landlordName: formData.coApplicant?.landlordName,
-              landlordAddressLine1: formData.coApplicant?.landlordAddressLine1,
-              landlordAddressLine2: formData.coApplicant?.landlordAddressLine2,
-              landlordState: formData.coApplicant?.landlordState,
-              currentRent: formData.coApplicant?.currentRent,
-              reasonForMoving: formData.coApplicant?.reasonForMoving,
-              employmentType: formData.coApplicant?.employmentType,
-              employer: formData.coApplicant?.employer,
-              position: formData.coApplicant?.position,
-              employmentStart: safeDateToISO(formData.coApplicant?.employmentStart),
-              income: formData.coApplicant?.income,
-              incomeFrequency: formData.coApplicant?.incomeFrequency,
-              otherIncome: formData.coApplicant?.otherIncome,
-              otherIncomeSource: formData.coApplicant?.otherIncomeSource,
-              bankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
+          // Co-Applicants (nested objects)
+          coApplicants: formData.coApplicants.map((coApplicant: any) => ({
+            email: coApplicant.email || formData.coApplicantEmail,
+            phone: formatPhoneForPayload(coApplicant.phone || formData.coApplicantPhone),
+            zip: coApplicant.zip || formData.coApplicantZip,
+            landlordZipCode: coApplicant.landlordZipCode || formData.coApplicantLandlordZipCode,
+            landlordPhone: coApplicant.landlordPhone || formData.coApplicantLandlordPhone,
+            landlordEmail: coApplicant.landlordEmail || formData.coApplicantLandlordEmail,
+            city: coApplicant.city,
+            landlordCity: coApplicant.landlordCity,
+            name: coApplicant.name,
+            licenseState: coApplicant.licenseState,
+            state: coApplicant.state,
+            relationship: coApplicant.relationship,
+            dob: safeDateToISO(coApplicant.dob),
+            age: coApplicant.age || 0,
+            ssn: coApplicant.ssn || formData.coApplicantSsn,
+            license: coApplicant.license || formData.coApplicantLicense,
+            lengthAtAddressYears: coApplicant.lengthAtAddressYears,
+            lengthAtAddressMonths: coApplicant.lengthAtAddressMonths,
+            landlordName: coApplicant.landlordName,
+            landlordAddressLine1: coApplicant.landlordAddressLine1,
+            landlordAddressLine2: coApplicant.landlordAddressLine2,
+            landlordState: coApplicant.landlordState,
+            currentRent: coApplicant.currentRent,
+            reasonForMoving: coApplicant.reasonForMoving,
+            employmentType: coApplicant.employmentType,
+            employer: coApplicant.employer,
+            position: coApplicant.position,
+            employmentStart: safeDateToISO(coApplicant.employmentStart),
+            income: coApplicant.income,
+            incomeFrequency: coApplicant.incomeFrequency,
+            otherIncome: coApplicant.otherIncome,
+            otherIncomeSource: coApplicant.otherIncomeSource,
+            bankRecords: coApplicant.bankRecords.map((record: any) => ({
                 bankName: record.bankName,
                 accountType: record.accountType,
                 accountNumber: record.accountNumber || ""
               })),
-              coApplicantPosition: formData.coApplicant?.position,
-              coApplicantStartDate: safeDateToISO(formData.coApplicant?.startDate),
-              coApplicantSalary: formData.coApplicant?.salary,
+            coApplicantPosition: coApplicant.position,
+            coApplicantStartDate: safeDateToISO(coApplicant.employmentStart),
+            coApplicantSalary: coApplicant.income,
               // Add missing income frequency and other income fields for co-applicant
-              coApplicantIncomeFrequency: formData.coApplicant?.incomeFrequency,
-              coApplicantOtherIncome: formData.coApplicant?.otherIncome,
-              coApplicantOtherIncomeSource: formData.coApplicant?.otherIncomeSource,
-              coApplicantBankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
+            coApplicantIncomeFrequency: coApplicant.incomeFrequency,
+            coApplicantOtherIncome: coApplicant.otherIncome,
+            coApplicantOtherIncomeSource: coApplicant.otherIncomeSource,
+            coApplicantBankRecords: coApplicant.bankRecords.map((record: any) => ({
                 bankName: record.bankName,
                 accountType: record.accountType
               })),
-            }
-          } : {}),
+          })),
           
-          // Guarantor (nested object) - if exists
-          ...(hasGuarantor && formData.guarantor ? {
-            guarantor: {
-              email: formData.guarantor?.email || data.guarantorEmail,
-              phone: formatPhoneForPayload(formData.guarantor?.phone || data.guarantorPhone),
-              zip: formData.guarantor?.zip || data.guarantorZip,
-              landlordZipCode: formData.guarantor?.landlordZipCode || data.guarantorLandlordZipCode,
-              landlordPhone: formData.guarantor?.landlordPhone || data.guarantorLandlordPhone,
-              landlordEmail: formData.guarantor?.landlordEmail || data.guarantorLandlordEmail,
-              city: formData.guarantor?.city,
-              landlordCity: formData.guarantor?.landlordCity,
-              name: formData.guarantor?.name,
-              licenseState: formData.guarantor?.licenseState,
-              address: formData.guarantor?.address,
-              state: formData.guarantor?.state,
-              relationship: formData.guarantor?.relationship,
-              dob: safeDateToISO(formData.guarantor?.dob),
-              age: formData.guarantor?.age || 0,
-              ssn: formData.guarantor?.ssn || data.guarantorSsn,
-              license: formData.guarantor?.license || data.guarantorLicense,
-              lengthAtAddressYears: formData.guarantor?.lengthAtAddressYears,
-              lengthAtAddressMonths: formData.guarantor?.lengthAtAddressMonths,
-              landlordName: formData.guarantor?.landlordName,
-              landlordAddressLine1: formData.guarantor?.landlordAddressLine1,
-              landlordState: formData.guarantor?.landlordState,
-              landlordAddressLine2: formData.guarantor?.landlordAddressLine2,
-              currentRent: formData.guarantor?.currentRent,
-              reasonForMoving: formData.guarantor?.reasonForMoving,
-              employmentType: formData.guarantor?.employmentType,
-              businessName: formData.guarantor?.businessName,
-              businessType: formData.guarantor?.businessType,
-              yearsInBusiness: formData.guarantor?.yearsInBusiness,
-              income: formData.guarantor?.income,
-              incomeFrequency: formData.guarantor?.incomeFrequency,
-              otherIncome: formData.guarantor?.otherIncome,
-              otherIncomeSource: formData.guarantor?.otherIncomeSource,
-              bankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
+          // Guarantors (nested objects)
+          guarantors: formData.guarantors.map((guarantor: any) => ({
+            email: guarantor.email || formData.guarantorEmail,
+            phone: formatPhoneForPayload(guarantor.phone || formData.guarantorPhone),
+            zip: guarantor.zip || formData.guarantorZip,
+            landlordZipCode: guarantor.landlordZipCode || formData.guarantorLandlordZipCode,
+            landlordPhone: guarantor.landlordPhone || formData.guarantorLandlordPhone,
+            landlordEmail: guarantor.landlordEmail || formData.guarantorLandlordEmail,
+            city: guarantor.city,
+            landlordCity: guarantor.landlordCity,
+            name: guarantor.name,
+            licenseState: guarantor.licenseState,
+            address: guarantor.address,
+            state: guarantor.state,
+            relationship: guarantor.relationship,
+            dob: safeDateToISO(guarantor.dob),
+            age: guarantor.age || 0,
+            ssn: guarantor.ssn || formData.guarantorSsn,
+            license: guarantor.license || formData.guarantorLicense,
+            lengthAtAddressYears: guarantor.lengthAtAddressYears,
+            lengthAtAddressMonths: guarantor.lengthAtAddressMonths,
+            landlordName: guarantor.landlordName,
+            landlordAddressLine1: guarantor.landlordAddressLine1,
+            landlordState: guarantor.landlordState,
+            landlordAddressLine2: guarantor.landlordAddressLine2,
+            currentRent: guarantor.currentRent,
+            reasonForMoving: guarantor.reasonForMoving,
+            employmentType: guarantor.employmentType,
+            businessName: guarantor.businessName,
+            businessType: guarantor.businessType,
+            yearsInBusiness: guarantor.yearsInBusiness,
+            income: guarantor.income,
+            incomeFrequency: guarantor.incomeFrequency,
+            otherIncome: guarantor.otherIncome,
+            otherIncomeSource: guarantor.otherIncomeSource,
+            bankRecords: guarantor.bankRecords.map((record: any) => ({
                 bankName: record.bankName,
                 accountType: record.accountType,
                 accountNumber: record.accountNumber || ""
               })),
-              guarantorPosition: formData.guarantor?.position,
-              guarantorStartDate: safeDateToISO(formData.guarantor?.startDate),
-              guarantorSalary: formData.guarantor?.salary,
+            guarantorPosition: guarantor.position,
+            guarantorStartDate: safeDateToISO(guarantor.employmentStart),
+            guarantorSalary: guarantor.salary,
               // Add missing income frequency and other income fields for guarantor
-              guarantorIncomeFrequency: formData.guarantor?.incomeFrequency,
-              guarantorOtherIncome: formData.guarantor?.otherIncome,
-              guarantorOtherIncomeSource: formData.guarantor?.otherIncomeSource,
-              guarantorBankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
+            guarantorIncomeFrequency: guarantor.incomeFrequency,
+            guarantorOtherIncome: guarantor.otherIncome,
+            guarantorOtherIncomeSource: guarantor.otherIncomeSource,
+            guarantorBankRecords: guarantor.bankRecords.map((record: any) => ({
                 bankName: record.bankName,
                 accountType: record.accountType
               })),
-            }
-          } : {}),
+          })),
           
           // Occupants (array)
           occupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any) => ({
@@ -2965,88 +3354,111 @@ export function ApplicationForm() {
             hasCoApplicant: hasCoApplicant,
             hasGuarantor: hasGuarantor,
             
-            // Co-Applicant - Complete data (if exists)
-            ...(hasCoApplicant && formData.coApplicant ? {
-              coApplicantName: formData.coApplicant?.name,
-              coApplicantRelationship: formData.coApplicant?.relationship,
-              coApplicantDob: safeDateToISO(formData.coApplicant?.dob),
-              coApplicantSsn: formData.coApplicant?.ssn || data.coApplicantSsn,
-              coApplicantPhone: formatPhoneForPayload(formData.coApplicant?.phone || data.coApplicantPhone),
-              coApplicantEmail: formData.coApplicant?.email || data.coApplicantEmail,
-              coApplicantLicense: formData.coApplicant?.license || data.coApplicantLicense,
-              coApplicantLicenseState: formData.coApplicant?.licenseState,
-              coApplicantAddress: formData.coApplicant?.address,
-              coApplicantCity: formData.coApplicant?.city,
-              coApplicantState: formData.coApplicant?.state,
-              coApplicantZip: formData.coApplicant?.zip || data.coApplicantZip,
-              coApplicantLengthAtAddressYears: formData.coApplicant?.lengthAtAddressYears,
-              coApplicantLengthAtAddressMonths: formData.coApplicant?.lengthAtAddressMonths,
-              coApplicantLandlordName: formData.coApplicant?.landlordName,
-              coApplicantLandlordAddressLine1: formData.coApplicant?.landlordAddressLine1,
-              coApplicantLandlordAddressLine2: formData.coApplicant?.landlordAddressLine2,
-              coApplicantLandlordCity: formData.coApplicant?.landlordCity,
-              coApplicantLandlordState: formData.coApplicant?.landlordState,
-              coApplicantLandlordZipCode: formData.coApplicant?.landlordZipCode || data.coApplicantLandlordZipCode,
-              coApplicantLandlordPhone: formData.coApplicant?.landlordPhone || data.coApplicantLandlordPhone,
-              coApplicantLandlordEmail: formData.coApplicant?.landlordEmail || data.coApplicantLandlordEmail,
-              coApplicantCurrentRent: formData.coApplicant?.currentRent,
-              coApplicantReasonForMoving: formData.coApplicant?.reasonForMoving,
-              coApplicantEmploymentType: formData.coApplicant?.employmentType,
-              coApplicantEmployerName: formData.coApplicant?.employerName,
-              coApplicantEmployerAddress: formData.coApplicant?.employerAddress,
-              coApplicantEmployerCity: formData.coApplicant?.employerCity,
-              coApplicantEmployerState: formData.coApplicant?.employerState,
-              coApplicantEmployerZip: formData.coApplicant?.employerZip,
-              coApplicantEmployerPhone: formData.coApplicant?.employerPhone,
-              coApplicantPosition: formData.coApplicant?.position,
-              coApplicantStartDate: safeDateToISO(formData.coApplicant?.startDate),
-              coApplicantSalary: formData.coApplicant?.income,
-              coApplicantBankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
+            // Co-Applicants - Complete data (if exists)
+            ...(hasCoApplicant && formData.coApplicants.length > 0 ? {
+              coApplicants: formData.coApplicants.map((coApplicant: any) => ({
+                name: coApplicant.name,
+                relationship: coApplicant.relationship,
+                dob: coApplicant.dob,
+                ssn: coApplicant.ssn,
+                phone: coApplicant.phone,
+                email: coApplicant.email,
+                license: coApplicant.license,
+                licenseState: coApplicant.licenseState,
+                address: coApplicant.address,
+                city: coApplicant.city,
+                state: coApplicant.state,
+                zip: coApplicant.zip,
+                lengthAtAddressYears: coApplicant.lengthAtAddressYears,
+                lengthAtAddressMonths: coApplicant.lengthAtAddressMonths,
+                landlordName: coApplicant.landlordName,
+                landlordAddressLine1: coApplicant.landlordAddressLine1,
+                landlordAddressLine2: coApplicant.landlordAddressLine2,
+                landlordCity: coApplicant.landlordCity,
+                landlordState: coApplicant.landlordState,
+                landlordZipCode: coApplicant.landlordZipCode,
+                landlordPhone: coApplicant.landlordPhone,
+                landlordEmail: coApplicant.landlordEmail,
+                currentRent: coApplicant.currentRent,
+                reasonForMoving: coApplicant.reasonForMoving,
+                employmentType: coApplicant.employmentType,
+                employer: coApplicant.employer,
+                position: coApplicant.position,
+                employmentStart: safeDateToISO(coApplicant.employmentStart),
+                income: coApplicant.income,
+                incomeFrequency: coApplicant.incomeFrequency,
+                otherIncome: coApplicant.otherIncome,
+                otherIncomeSource: coApplicant.otherIncomeSource,
+                bankRecords: coApplicant.bankRecords.map((record: any) => ({
                 bankName: record.bankName,
                 accountType: record.accountType
               })),
+                coApplicantPosition: coApplicant.position,
+                coApplicantStartDate: safeDateToISO(coApplicant.employmentStart),
+                coApplicantSalary: coApplicant.income,
+                // Add missing income frequency and other income fields for co-applicant
+                coApplicantIncomeFrequency: coApplicant.incomeFrequency,
+                coApplicantOtherIncome: coApplicant.otherIncome,
+                coApplicantOtherIncomeSource: coApplicant.otherIncomeSource,
+                coApplicantBankRecords: coApplicant.bankRecords.map((record: any) => ({
+                  bankName: record.bankName,
+                  accountType: record.accountType
+                }))
+              }))
             } : {}),
             
-            // Guarantor - Complete data (if exists)
-            ...(hasGuarantor && formData.guarantor ? {
-              guarantorName: formData.guarantor?.name,
-              guarantorRelationship: formData.guarantor?.relationship,
-              guarantorDob: safeDateToISO(formData.guarantor?.dob),
-              guarantorSsn: formData.guarantor?.ssn || data.guarantorSsn,
-              guarantorPhone: formatPhoneForPayload(formData.guarantor?.phone || data.guarantorPhone),
-              guarantorEmail: formData.guarantor?.email || data.guarantorEmail,
-              guarantorLicense: formData.guarantor?.license || data.guarantorLicense,
-              guarantorLicenseState: formData.guarantor?.licenseState,
-              guarantorAddress: formData.guarantor?.address,
-              guarantorCity: formData.guarantor?.city,
-              guarantorState: formData.guarantor?.state,
-              guarantorZip: formData.guarantor?.zip || data.guarantorZip,
-              guarantorLengthAtAddressYears: formData.guarantor?.lengthAtAddressYears,
-              guarantorLengthAtAddressMonths: formData.guarantor?.lengthAtAddressMonths,
-              guarantorLandlordName: formData.guarantor?.landlordName,
-              guarantorLandlordAddressLine1: formData.guarantor?.landlordAddressLine1,
-              guarantorLandlordAddressLine2: formData.guarantor?.landlordAddressLine2,
-              guarantorLandlordCity: formData.guarantor?.landlordCity,
-              guarantorLandlordState: formData.guarantor?.landlordState,
-              guarantorLandlordZipCode: formData.guarantor?.landlordZipCode || data.guarantorLandlordZipCode,
-              guarantorLandlordPhone: formData.guarantor?.landlordPhone || data.guarantorLandlordPhone,
-              guarantorLandlordEmail: formData.guarantor?.landlordEmail || data.guarantorLandlordEmail,
-              guarantorCurrentRent: formData.guarantor?.currentRent,
-              guarantorReasonForMoving: formData.guarantor?.reasonForMoving,
-              guarantorEmploymentType: formData.guarantor?.employmentType,
-              guarantorEmployerName: formData.guarantor?.employerName,
-              guarantorEmployerAddress: formData.guarantor?.employerAddress,
-              guarantorEmployerCity: formData.guarantor?.employerCity,
-              guarantorEmployerState: formData.guarantor?.employerState,
-              guarantorEmployerZip: formData.guarantor?.employerZip,
-              guarantorEmployerPhone: formData.guarantor?.employerPhone,
-              guarantorPosition: formData.guarantor?.position,
-              guarantorStartDate: safeDateToISO(formData.guarantor?.startDate),
-              guarantorSalary: formData.guarantor?.income,
-              guarantorBankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
+            // Guarantors - Complete data (if exists)
+            ...(hasGuarantor && formData.guarantors.length > 0 ? {
+              guarantors: formData.guarantors.map((guarantor: any) => ({
+                name: guarantor.name,
+                relationship: guarantor.relationship,
+                dob: guarantor.dob,
+                ssn: guarantor.ssn,
+                phone: guarantor.phone,
+                email: guarantor.email,
+                license: guarantor.license,
+                licenseState: guarantor.licenseState,
+                address: guarantor.address,
+                city: guarantor.city,
+                state: guarantor.state,
+                zip: guarantor.zip,
+                lengthAtAddressYears: guarantor.lengthAtAddressYears,
+                lengthAtAddressMonths: guarantor.lengthAtAddressMonths,
+                landlordName: guarantor.landlordName,
+                landlordAddressLine1: guarantor.landlordAddressLine1,
+                landlordAddressLine2: guarantor.landlordAddressLine2,
+                landlordCity: guarantor.landlordCity,
+                landlordState: guarantor.landlordState,
+                landlordZipCode: guarantor.landlordZipCode,
+                landlordPhone: guarantor.landlordPhone,
+                landlordEmail: guarantor.landlordEmail,
+                currentRent: guarantor.currentRent,
+                reasonForMoving: guarantor.reasonForMoving,
+                employmentType: guarantor.employmentType,
+                businessName: guarantor.businessName,
+                businessType: guarantor.businessType,
+                yearsInBusiness: guarantor.yearsInBusiness,
+                income: guarantor.income,
+                incomeFrequency: guarantor.incomeFrequency,
+                otherIncome: guarantor.otherIncome,
+                otherIncomeSource: guarantor.otherIncomeSource,
+                bankRecords: guarantor.bankRecords.map((record: any) => ({
                 bankName: record.bankName,
-                accountType: record.accountType
-              })),
+                  accountType: record.accountType,
+                  accountNumber: record.accountNumber || ""
+                })),
+                guarantorPosition: guarantor.position,
+                guarantorStartDate: safeDateToISO(guarantor.employmentStart),
+                guarantorSalary: guarantor.salary,
+                // Add missing income frequency and other income fields for guarantor
+                guarantorIncomeFrequency: guarantor.incomeFrequency,
+                guarantorOtherIncome: guarantor.otherIncome,
+                guarantorOtherIncomeSource: guarantor.otherIncomeSource,
+                guarantorBankRecords: guarantor.bankRecords.map((record: any) => ({
+                  bankName: record.bankName,
+                  accountType: record.accountType
+                }))
+              }))
             } : {}),
             
             // Other Occupants - Complete data (optimized to exclude large document data)
@@ -3070,8 +3482,8 @@ export function ApplicationForm() {
             // Signatures (optimized to avoid large base64 data)
             signatures: {
               applicant: signatures.applicant ? "SIGNED" : null,
-              coApplicant: signatures.coApplicant ? "SIGNED" : null,
-              guarantor: signatures.guarantor ? "SIGNED" : null,
+              coApplicants: formData.coApplicants.length > 0 ? formData.coApplicants.map((coApplicant: any) => coApplicant.name).join(', ') : null,
+              guarantors: formData.guarantors.length > 0 ? formData.guarantors.map((guarantor: any) => guarantor.name).join(', ') : null,
             },
             signatureTimestamps: signatureTimestamps,
             
@@ -3087,31 +3499,35 @@ export function ApplicationForm() {
                 totalBankRecords: formData.applicant?.bankRecords?.length || 0,
                 hasBankRecords: !!(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0)
               },
-              coApplicant: hasCoApplicant ? {
-                bankRecords: (formData.coApplicant?.bankRecords || []).map((record: any) => ({
-                  bankName: record.bankName,
-                  accountType: record.accountType
+              coApplicants: hasCoApplicant ? {
+                bankRecords: formData.coApplicants.map((coApplicant: any) => ({
+                  bankName: coApplicant.bankRecords[0].bankName,
+                  accountType: coApplicant.bankRecords[0].accountType,
+                  totalBankRecords: coApplicant.bankRecords.length,
+                  hasBankRecords: !!(coApplicant.bankRecords && coApplicant.bankRecords.length > 0)
                 })),
-                totalBankRecords: formData.coApplicant?.bankRecords?.length || 0,
-                hasBankRecords: !!(formData.coApplicant?.bankRecords && formData.coApplicant.bankRecords.length > 0)
+                totalBankRecords: formData.coApplicants.reduce((total: number, coApplicant: any) => total + coApplicant.bankRecords.length, 0),
+                hasBankRecords: !!(formData.coApplicants?.[0]?.bankRecords?.length)
               } : null,
-              guarantor: hasGuarantor ? {
-                bankRecords: (formData.guarantor?.bankRecords || []).map((record: any) => ({
-                  bankName: record.bankName,
-                  accountType: record.accountType
+              guarantors: hasGuarantor ? {
+                bankRecords: formData.guarantors.map((guarantor: any) => ({
+                  bankName: guarantor.bankRecords[0].bankName,
+                  accountType: guarantor.bankRecords[0].accountType,
+                  totalBankRecords: guarantor.bankRecords.length,
+                  hasBankRecords: !!(guarantor.bankRecords && guarantor.bankRecords.length > 0)
                 })),
-                totalBankRecords: formData.guarantor?.bankRecords?.length || 0,
-                hasBankRecords: !!(formData.guarantor?.bankRecords && formData.guarantor.bankRecords.length > 0)
+                totalBankRecords: formData.guarantors.reduce((total: number, guarantor: any) => total + guarantor.bankRecords.length, 0),
+                hasBankRecords: !!(formData.guarantors?.[0]?.bankRecords?.length)
               } : null,
               summary: {
-                totalPeople: 1 + (hasCoApplicant ? 1 : 0) + (hasGuarantor ? 1 : 0),
+                totalPeople: 1 + (hasCoApplicant ? formData.coApplicants.length : 0) + (hasGuarantor ? formData.guarantors.length : 0),
                 totalBankRecords: (formData.applicant?.bankRecords?.length || 0) + 
-                                 (hasCoApplicant ? (formData.coApplicant?.bankRecords?.length || 0) : 0) + 
-                                 (hasGuarantor ? (formData.guarantor?.bankRecords?.length || 0) : 0),
+                                 (hasCoApplicant ? formData.coApplicants.reduce((total: number, coApplicant: any) => total + coApplicant.bankRecords.length, 0) : 0) + 
+                                 (hasGuarantor ? formData.guarantors.reduce((total: number, guarantor: any) => total + guarantor.bankRecords.length, 0) : 0),
                 peopleWithBankRecords: [
                   ...(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0 ? ['applicant'] : []),
-                  ...(hasCoApplicant && formData.coApplicant?.bankRecords && formData.coApplicant.bankRecords.length > 0 ? ['coApplicant'] : []),
-                  ...(hasGuarantor && formData.guarantor?.bankRecords && formData.guarantor.bankRecords.length > 0 ? ['guarantor'] : [])
+                  ...(hasCoApplicant ? formData.coApplicants.map((coApplicant: any) => `coApplicant_${coApplicant.name}`) : []),
+                  ...(hasGuarantor ? formData.guarantors.map((guarantor: any) => `guarantor_${guarantor.name}`) : [])
                 ]
               }
             },
@@ -3138,11 +3554,11 @@ export function ApplicationForm() {
           // Debug income frequency values
           console.log('🔍 === INCOME FREQUENCY DEBUG IN APPLICATION FORM ===');
           console.log('📊 Applicant income frequency:', (webhookPayload as any).applicantIncomeFrequency);
-          console.log('📊 Co-Applicant income frequency:', (webhookPayload as any).coApplicantIncomeFrequency);
-          console.log('📊 Guarantor income frequency:', (webhookPayload as any).guarantorIncomeFrequency);
+          console.log('📊 Co-Applicant income frequency:', (webhookPayload as any).coApplicantsIncomeFrequency);
+          console.log('📊 Guarantor income frequency:', (webhookPayload as any).guarantorsIncomeFrequency);
           console.log('📊 Form data applicant income frequency:', formData.applicant?.incomeFrequency);
-          console.log('📊 Form data co-applicant income frequency:', formData.coApplicant?.incomeFrequency);
-          console.log('📊 Form data guarantor income frequency:', formData.guarantor?.incomeFrequency);
+          console.log('📊 Form data co-applicants income frequency:', formData.coApplicants.map((coApplicant: any) => coApplicant.incomeFrequency).join(', '));
+          console.log('📊 Form data guarantors income frequency:', formData.guarantors.map((guarantor: any) => guarantor.incomeFrequency).join(', '));
           console.log('=== END INCOME FREQUENCY DEBUG ===');
           
           if (payloadSize > 50 * 1024 * 1024) { // 50MB limit
@@ -3163,8 +3579,8 @@ export function ApplicationForm() {
           console.log('  - Applicant SSN:', webhookPayload.applicantSsn);
           console.log('  - Other Occupants Count:', webhookPayload.otherOccupants?.length || 0);
           console.log('  - Bank Records - Applicant:', webhookPayload.applicantBankRecords?.length || 0);
-          console.log('  - Bank Records - Co-Applicant:', webhookPayload.coApplicantBankRecords?.length || 0);
-          console.log('  - Bank Records - Guarantor:', webhookPayload.guarantorBankRecords?.length || 0);
+          console.log('  - Bank Records - Co-Applicants:', webhookPayload.coApplicantsBankRecords?.length || 0);
+          console.log('  - Bank Records - Guarantors:', webhookPayload.guarantorsBankRecords?.length || 0);
           console.log('  - Legal Questions:', {
             landlordTenantLegalAction: webhookPayload.landlordTenantLegalAction,
             brokenLease: webhookPayload.brokenLease
@@ -3172,8 +3588,8 @@ export function ApplicationForm() {
           console.log('  - Signatures:', Object.keys(webhookPayload.signatures || {}));
           console.log('  - Bank Information:', {
             applicantBankRecords: webhookPayload.bankInformation?.applicant?.totalBankRecords || 0,
-            coApplicantBankRecords: webhookPayload.bankInformation?.coApplicant?.totalBankRecords || 0,
-            guarantorBankRecords: webhookPayload.bankInformation?.guarantor?.totalBankRecords || 0,
+            coApplicantsBankRecords: webhookPayload.bankInformation?.coApplicants?.totalBankRecords || 0,
+            guarantorsBankRecords: webhookPayload.bankInformation?.guarantors?.totalBankRecords || 0,
             totalBankRecords: webhookPayload.bankInformation?.summary?.totalBankRecords || 0
           });
           console.log('  - Uploaded Documents Count:', (uploadedDocuments || []).length);
@@ -4463,162 +4879,254 @@ export function ApplicationForm() {
                     Add Co-Applicant
                   </Label>
                 </div>
+
+                {hasCoApplicant && (
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-4">
+                      <Label className="text-sm font-medium">How many Co-Applicants?</Label>
+                      <Select
+                        value={formData.coApplicantCount?.toString() || '1'}
+                        onValueChange={(value) => {
+                          const count = parseInt(value);
+                          setFormData((prev: any) => ({
+                            ...prev,
+                            coApplicantCount: count
+                          }));
+                          form.setValue('coApplicantCount', count);
+                          
+                          // Ensure coApplicants array has the right number of items
+                          setFormData((prev: any) => {
+                            const currentCoApplicants = prev.coApplicants || [];
+                            if (count > currentCoApplicants.length) {
+                              // Add new co-applicants
+                              const newCoApplicants = [...currentCoApplicants];
+                              for (let i = currentCoApplicants.length; i < count; i++) {
+                                newCoApplicants.push({
+                                  name: '',
+                                  relationship: '',
+                                  dob: undefined,
+                                  ssn: '',
+                                  phone: '',
+                                  email: '',
+                                  license: '',
+                                  licenseState: '',
+                                  address: '',
+                                  city: '',
+                                  state: '',
+                                  zip: '',
+                                  lengthAtAddressYears: undefined,
+                                  lengthAtAddressMonths: undefined,
+                                  landlordName: '',
+                                  landlordAddressLine1: '',
+                                  landlordAddressLine2: '',
+                                  landlordCity: '',
+                                  landlordState: '',
+                                  landlordZipCode: '',
+                                  landlordPhone: '',
+                                  landlordEmail: '',
+                                  currentRent: undefined,
+                                  reasonForMoving: '',
+                                  employmentType: '',
+                                  employer: '',
+                                  position: '',
+                                  employmentStart: undefined,
+                                  income: '',
+                                  incomeFrequency: 'yearly',
+                                  businessName: '',
+                                  businessType: '',
+                                  yearsInBusiness: '',
+                                  otherIncome: '',
+                                  otherIncomeFrequency: 'monthly',
+                                  otherIncomeSource: '',
+                                  bankRecords: []
+                                });
+                              }
+                              return {
+                                ...prev,
+                                coApplicants: newCoApplicants
+                              };
+                            } else if (count < currentCoApplicants.length) {
+                              // Remove excess co-applicants
+                              return {
+                                ...prev,
+                                coApplicants: currentCoApplicants.slice(0, count)
+                              };
+                            }
+                            return prev;
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="w-64">
+                          <SelectValue placeholder="Select number" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 Co-Applicant</SelectItem>
+                          <SelectItem value="2">2 Co-Applicants</SelectItem>
+                          <SelectItem value="3">3 Co-Applicants</SelectItem>
+                          <SelectItem value="4">4 Co-Applicants</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {hasCoApplicant && (
-              <Card className="form-section border-l-4 border-l-green-500">
+              <>
+                {Array.from({ length: formData.coApplicantCount || 1 }, (_, index) => (
+                  <Card key={`co-applicant-${index}`} className="form-section border-l-4 border-l-green-500">
                 <CardHeader>
                   <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                     <UserCheck className="w-5 h-5 mr-2" />
-                    Co-Applicant Information
+                        Co-Applicant Information {index + 1}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                <div className="col-span-1 md:col-span-2">
-                  <FormItem>
-                    <FormLabel className="mb-0.5">Full Name</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter full name" 
-                        value={formData.coApplicant?.name || ''}
-                        className="input-field w-full mt-1"
-                        onChange={(e) => {
-                          updateFormData('coApplicant', 'name', e.target.value);
-                        }}
-                      />
-                    </FormControl>
-                  </FormItem>
-                </div>
-                <div className="col-span-1 md:col-span-2">
-                  <Label className="mb-0.5">Relationship</Label>
-                  <Select
-                    value={formData.coApplicant?.relationship || ''}
-                    onValueChange={(value) => updateFormData('coApplicant', 'relationship', value)}
-                  >
-                    <SelectTrigger className="w-full mt-1">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="spouse">Spouse</SelectItem>
-                      <SelectItem value="partner">Partner</SelectItem>
-                      <SelectItem value="parent">Parent</SelectItem>
-                      <SelectItem value="child">Child</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <FormItem>
-                  <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
-                  <FormControl>
-                    <DatePicker
-                      value={toValidDate(formData.coApplicant?.dob)}
-                      onChange={(date) => {
-                        updateFormData('coApplicant', 'dob', date);
-                        // Auto-calculate age
-                        if (date) {
-                          const today = new Date();
-                          const birthDate = new Date(date);
-                          let age = today.getFullYear() - birthDate.getFullYear();
-                          const monthDiff = today.getMonth() - birthDate.getMonth();
-                          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                            age--;
-                          }
-                          updateFormData('coApplicant', 'age', age);
-                        } else {
-                          updateFormData('coApplicant', 'age', '');
-                        }
-                      }}
-                      placeholder="Select date of birth"
-                      disabled={(date) => date > new Date()}
-                      className="w-full mt-1"
-                    />
-                  </FormControl>
-                </FormItem>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <div className="col-span-1 md:col-span-2">
+                          <FormItem>
+                            <FormLabel className="mb-0.5">Full Name</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter full name" 
+                                value={formData.coApplicants?.[index]?.name || ''}
+                                className="input-field w-full mt-1"
+                                onChange={(e) => {
+                          updateArrayItem('coApplicants', index, 'name', e.target.value);
+                                }}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        </div>
+                        <div className="col-span-1 md:col-span-2">
+                          <Label className="mb-0.5">Relationship</Label>
+                          <Select
+                            value={formData.coApplicants?.[index]?.relationship || ''}
+                    onValueChange={(value) => updateArrayItem('coApplicants', index, 'relationship', value)}
+                          >
+                            <SelectTrigger className="w-full mt-1">
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="spouse">Spouse</SelectItem>
+                              <SelectItem value="partner">Partner</SelectItem>
+                              <SelectItem value="parent">Parent</SelectItem>
+                              <SelectItem value="child">Child</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
+                          <FormControl>
+                            <DatePicker
+                              value={toValidDate(formData.coApplicants?.[index]?.dob)}
+                              onChange={(date) => {
+                        updateArrayItem('coApplicants', index, 'dob', date);
+                                // Auto-calculate age
+                                if (date) {
+                                  const today = new Date();
+                                  const birthDate = new Date(date);
+                                  let age = today.getFullYear() - birthDate.getFullYear();
+                                  const monthDiff = today.getMonth() - birthDate.getMonth();
+                                  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                                    age--;
+                                  }
+                          updateArrayItem('coApplicants', index, 'age', age);
+                                } else {
+                          updateArrayItem('coApplicants', index, 'age', '');
+                                }
+                              }}
+                              placeholder="Select date of birth"
+                              disabled={(date) => date > new Date()}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                        </FormItem>
 
-                <FormItem>
-                  <FormControl>
-                    <SSNInput
-                      name="coApplicantSsn"
-                      label="Social Security Number"
-                      placeholder="XXX-XX-XXXX"
-                      value={formData.coApplicant?.ssn || ''}
-                      onChange={(value) => {
-                        updateFormData('coApplicant', 'ssn', value);
-                        form.setValue('coApplicantSsn', value);
-                      }}
-                      className="w-full mt-1"
-                    />
-                  </FormControl>
-                  {form.formState.errors.coApplicantSsn?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.coApplicantSsn.message}</span>
+                        <FormItem>
+                          <FormControl>
+                            <SSNInput
+                      name={`coApplicants.${index}.ssn`}
+                              label="Social Security Number"
+                              placeholder="XXX-XX-XXXX"
+                              value={formData.coApplicants?.[index]?.ssn || ''}
+                              onChange={(value) => {
+                        updateArrayItem('coApplicants', index, 'ssn', value);
+                        form.setValue(`coApplicants.${index}.ssn`, value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                  {form.formState.errors[`coApplicants.${index}.ssn`]?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors[`coApplicants.${index}.ssn`].message}</span>
                   )}
-                </FormItem>
-                <FormItem>
-                  <FormControl>
-                    <PhoneInput
-                      name="coApplicantPhone"
-                      label="Phone Number"
-                      placeholder="(555) 555-5555"
-                      value={formData.coApplicant?.phone || ''}
-                      onChange={(value) => {
-                        updateFormData('coApplicant', 'phone', value);
-                        form.setValue('coApplicantPhone', value);
-                      }}
-                      className="w-full mt-1"
-                    />
-                  </FormControl>
-                  {form.formState.errors.coApplicantPhone?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.coApplicantPhone.message}</span>
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <PhoneInput
+                      name={`coApplicants.${index}.phone`}
+                              label="Phone Number"
+                              placeholder="(555) 555-5555"
+                              value={formData.coApplicants?.[index]?.phone || ''}
+                              onChange={(value) => {
+                        updateArrayItem('coApplicants', index, 'phone', value);
+                        form.setValue(`coApplicants.${index}.phone`, value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                  {form.formState.errors[`coApplicants.${index}.phone`]?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors[`coApplicants.${index}.phone`].message}</span>
                   )}
-                </FormItem>
-                <FormItem>
-                  <FormControl>
-                    <EmailInput
-                      name="coApplicantEmail"
-                      label="Email Address"
-                      placeholder="you@email.com"
-                      value={formData.coApplicant?.email || ''}
-                      onChange={(value) => {
-                        updateFormData('coApplicant', 'email', value);
-                        form.setValue('coApplicantEmail', value);
-                      }}
-                      required={true}
-                      className="w-full mt-1"
-                    />
-                  </FormControl>
-                  {form.formState.errors.coApplicantEmail?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.coApplicantEmail.message}</span>
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <EmailInput
+                      name={`coApplicants.${index}.email`}
+                              label="Email Address"
+                              placeholder="you@email.com"
+                              value={formData.coApplicants?.[index]?.email || ''}
+                              onChange={(value) => {
+                        updateArrayItem('coApplicants', index, 'email', value);
+                        form.setValue(`coApplicants.${index}.email`, value);
+                              }}
+                              required={true}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                  {form.formState.errors[`coApplicants.${index}.email`]?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors[`coApplicants.${index}.email`].message}</span>
                   )}
-                </FormItem>
-                <FormItem>
-                  <FormControl>
-                    <LicenseInput
-                      name="coApplicantLicense"
-                      label="Driver's License Number"
-                      placeholder="Enter license number"
-                      value={formData.coApplicant?.license || ''}
-                      onChange={(value) => {
-                        updateFormData('coApplicant', 'license', value);
-                        form.setValue('coApplicantLicense', value);
-                      }}
-                      className="w-full mt-1"
-                    />
-                  </FormControl>
-                  {form.formState.errors.coApplicantLicense?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.coApplicantLicense.message}</span>
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <LicenseInput
+                      name={`coApplicants.${index}.license`}
+                              label="Driver's License Number"
+                              placeholder="Enter license number"
+                              value={formData.coApplicants?.[index]?.license || ''}
+                              onChange={(value) => {
+                        updateArrayItem('coApplicants', index, 'license', value);
+                        form.setValue(`coApplicants.${index}.license`, value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                  {form.formState.errors[`coApplicants.${index}.license`]?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors[`coApplicants.${index}.license`].message}</span>
                   )}
-                </FormItem>
+                        </FormItem>
                 <div className="space-y-2">
-                  
-                  <StateSelector
-                    selectedState={formData.coApplicant?.licenseState || ''}
-                    onStateChange={(state) => updateFormData('coApplicant', 'licenseState', state)}
+                        
+                            <StateSelector
+                    selectedState={formData.coApplicants?.[index]?.licenseState || ''}
+                    onStateChange={(state) => updateArrayItem('coApplicants', index, 'licenseState', state)}
                     label="License State"
                     required={false}
-                    className="w-full mt-1"
-                  />
+                              className="w-full mt-1"
+                            />
                 </div>
                 <h5>Current Address</h5>
                 <div className="space-y-2"></div>
@@ -4626,86 +5134,86 @@ export function ApplicationForm() {
                 <div className="space-y-2">
                 <FormField
                     control={form.control}
-                    name="applicantAddress"
+                    name="coApplicants.0.address"
                     render={({ field }) => (
-                      <FormItem>
+                        <FormItem>
                         <FormLabel className="mb-0.5">Street Address</FormLabel>
-                        <FormControl>
-                          <Input 
+                          <FormControl>
+                            <Input 
                             placeholder="Enter street address" 
                             {...field}
-                            className="input-field w-full mt-1"
-                            onChange={(e) => {
+                              className="input-field w-full mt-1"
+                              onChange={(e) => {
                               field.onChange(e);
-                              updateFormData('coApplicant', 'address', e.target.value);
-                            }}
-                          />
-                        </FormControl>
+                              updateArrayItem('coApplicants', index, 'address', e.target.value);
+                              }}
+                            />
+                          </FormControl>
                         <FormMessage />
-                      </FormItem>
+                        </FormItem>
                     )}
                   />
-                      <FormItem>
-                        <FormControl>
-                          <ZIPInput
-                            name="coApplicantZip"
+                        <FormItem>
+                          <FormControl>
+                            <ZIPInput
+                            name={`coApplicants.${index}.zip`}
                             label="ZIP Code*"
                             placeholder="ZIP code"
-                            value={formData.coApplicant?.zip || ''}
-                            onChange={(value) => {
-                              updateFormData('coApplicant', 'zip', value);
-                              form.setValue('coApplicantZip', value);
+                              value={formData.coApplicants?.[index]?.zip || ''}
+                              onChange={(value) => {
+                              updateArrayItem('coApplicants', index, 'zip', value);
+                              form.setValue(`coApplicants.${index}.zip`, value);
                             }}
                             required={true}
-                            className="w-full mt-1"
-                          />
-                        </FormControl>
-                        {form.formState.errors.coApplicantZip?.message && (
-                          <span className="text-red-500 text-xs">{form.formState.errors.coApplicantZip.message}</span>
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                        {form.formState.errors['coApplicants.0.zip']?.message && (
+                          <span className="text-red-500 text-xs">{form.formState.errors['coApplicants.0.zip'].message}</span>
                         )}
-                      </FormItem>
+                        </FormItem>
                 </div>
                 
                 <div className="space-y-2">
                   {/* Replace State* and City* text inputs with StateCitySelector */}
                   <StateCitySelector
-                    selectedState={formData.coApplicant?.state || ''}
-                    selectedCity={formData.coApplicant?.city || ''}
+                    selectedState={formData.coApplicants?.[0]?.state || ''}
+                    selectedCity={formData.coApplicants?.[0]?.city || ''}
                     onStateChange={(state) => {
-                      updateFormData('coApplicant', 'state', state);
+                      updateFormData('coApplicants', '0', 'state', state);
                       // Clear city if state changes
-                      updateFormData('coApplicant', 'city', '');
+                      updateFormData('coApplicants', '0', 'city', '');
                     }}
                     onCityChange={(city) => {
-                      updateFormData('coApplicant', 'city', city);
+                      updateFormData('coApplicants', '0', 'city', city);
                     }}
                     stateLabel="State*"
                     cityLabel="City*"
                     required={true}
                     className="mb-4"
                   />
-                </div>
-            
+                        </div>
+                        
               </div>
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                     <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
                       <FormLabel className="mb-0.5 col-span-2">Length of Stay at Current Address</FormLabel>
-                      <Input
+                            <Input 
                         type="number"
                         min={0}
-                        value={formData.coApplicant?.lengthAtAddressYears ?? ''}
-                        onChange={e => updateFormData('coApplicant', 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
+                        value={formData.coApplicants?.[0]?.lengthAtAddressYears ?? ''}
+                        onChange={e => updateFormData('coApplicants', '0', 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
                         placeholder="e.g. 2 years"
-                        className="w-full mt-1"
-                      />
-                      <Input
-                        type="number"
+                              className="w-full mt-1"
+                            />
+                            <Input 
+                              type="number"
                         min={0}
                         max={11}
-                        value={formData.coApplicant?.lengthAtAddressMonths ?? ''}
-                        onChange={e => updateFormData('coApplicant', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
+                        value={formData.coApplicants?.[0]?.lengthAtAddressMonths ?? ''}
+                        onChange={e => updateFormData('coApplicants', '0', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
                         placeholder="e.g. 4 months"
-                        className="w-full mt-1"
+                          className="w-full mt-1"
                       />
                     </div>
                     <FormItem>
@@ -4713,10 +5221,10 @@ export function ApplicationForm() {
                       <FormControl>
                         <Input 
                           placeholder="Enter landlord's name" 
-                          value={formData.coApplicant?.landlordName || ''}
+                          value={formData.coApplicants?.[0]?.landlordName || ''}
                           className="input-field w-full mt-1 border-gray-300 bg-white"
                           onChange={(e) => {
-                            updateFormData('coApplicant', 'landlordName', e.target.value);
+                            updateFormData('coApplicants', '0', 'landlordName', e.target.value);
                           }}
                         />
                       </FormControl>
@@ -4726,10 +5234,10 @@ export function ApplicationForm() {
                       <FormControl>
                         <Input 
                           placeholder="Enter landlord's street address" 
-                          value={formData.coApplicant?.landlordAddressLine1 || ''}
+                          value={formData.coApplicants?.[0]?.landlordAddressLine1 || ''}
                           className="input-field w-full mt-1 border-gray-300 bg-white"
                           onChange={(e) => {
-                            updateFormData('coApplicant', 'landlordAddressLine1', e.target.value);
+                            updateFormData('coApplicants', '0', 'landlordAddressLine1', e.target.value);
                           }}
                         />
                       </FormControl>
@@ -4739,10 +5247,10 @@ export function ApplicationForm() {
                       <FormControl>
                         <Input 
                           placeholder="Apartment, suite, etc." 
-                          value={formData.coApplicant?.landlordAddressLine2 || ''}
+                          value={formData.coApplicants?.[0]?.landlordAddressLine2 || ''}
                           className="input-field w-full mt-1 border-gray-300 bg-white"
                           onChange={(e) => {
-                            updateFormData('coApplicant', 'landlordAddressLine2', e.target.value);
+                            updateFormData('coApplicants', '0', 'landlordAddressLine2', e.target.value);
                           }}
                         />
                       </FormControl>
@@ -4750,9 +5258,9 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <StateSelector
-                          selectedState={formData.coApplicant?.landlordState || ''}
+                          selectedState={formData.coApplicants?.[0]?.landlordState || ''}
                           onStateChange={(value) => {
-                            updateFormData('coApplicant', 'landlordState', value);
+                            updateFormData('coApplicants', '0', 'landlordState', value);
                           }}
                           label="Landlord State"
                           className="w-full mt-1"
@@ -4762,10 +5270,10 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <CitySelector
-                          selectedState={formData.coApplicant?.landlordState || ''}
-                          selectedCity={formData.coApplicant?.landlordCity || ''}
+                          selectedState={formData.coApplicants?.[0]?.landlordState || ''}
+                          selectedCity={formData.coApplicants?.[0]?.landlordCity || ''}
                           onCityChange={(value) => {
-                            updateFormData('coApplicant', 'landlordCity', value);
+                            updateFormData('coApplicants', '0', 'landlordCity', value);
                           }}
                           label="Landlord City"
                           className="w-full mt-1"
@@ -4775,12 +5283,12 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <ZIPInput
-                          name="coApplicantLandlordZipCode"
+                          name="coApplicants.0.landlordZipCode"
                           label="Landlord ZIP Code"
                           placeholder="Enter landlord's ZIP code"
-                          value={formData.coApplicant?.landlordZipCode || ''}
+                          value={formData.coApplicants?.[0]?.landlordZipCode || ''}
                           onChange={(value) => {
-                            updateFormData('coApplicant', 'landlordZipCode', value);
+                            updateFormData('coApplicants', '0', 'landlordZipCode', value);
                           }}
                           className="w-full mt-1"
                         />
@@ -4789,12 +5297,12 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <PhoneInput
-                          name="coApplicantLandlordPhone"
+                          name="coApplicants.0.landlordPhone"
                           label="Landlord Phone Number"
                           placeholder="Enter landlord's phone number"
-                          value={formData.coApplicant?.landlordPhone || ''}
+                          value={formData.coApplicants?.[0]?.landlordPhone || ''}
                           onChange={(value) => {
-                            updateFormData('coApplicant', 'landlordPhone', value);
+                            updateFormData('coApplicants', '0', 'landlordPhone', value);
                           }}
                           className="w-full mt-1"
                         />
@@ -4803,27 +5311,27 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <EmailInput
-                          name="coApplicantLandlordEmail"
+                          name="coApplicants.0.landlordEmail"
                           label="Landlord Email Address (Optional)"
                           placeholder="Enter landlord's email address"
-                          value={formData.coApplicant?.landlordEmail || ''}
+                          value={formData.coApplicants?.[0]?.landlordEmail || ''}
                           onChange={(value) => {
-                            updateFormData('coApplicant', 'landlordEmail', value);
+                            updateFormData('coApplicants', '0', 'landlordEmail', value);
                           }}
                           className="w-full mt-1"
                         />
                       </FormControl>
                     </FormItem>
                     <div>
-                      <Label htmlFor="coApplicantCurrentRent" className="mb-0.5">Monthly Rent</Label>
+                      <Label htmlFor="coApplicants.0.currentRent" className="mb-0.5">Monthly Rent</Label>
                       <Input
-                        id="coApplicantCurrentRent"
+                        id="coApplicants.0.currentRent"
                         type="number"
                         placeholder="0.00"
-                        value={formData.coApplicant?.currentRent?.toString() || ''}
+                        value={formData.coApplicants?.[0]?.currentRent?.toString() || ''}
                         onChange={e => {
                           const numValue = parseFloat(e.target.value) || 0;
-                          updateFormData('coApplicant', 'currentRent', numValue);
+                          updateFormData('coApplicants', '0', 'currentRent', numValue);
                         }}
                         className="input-field w-full mt-1"
                       />
@@ -4833,10 +5341,10 @@ export function ApplicationForm() {
                       <FormControl>
                         <Textarea 
                           placeholder="Please explain your reason for moving" 
-                          value={formData.coApplicant?.reasonForMoving || ''}
+                          value={formData.coApplicants?.[0]?.reasonForMoving || ''}
                           className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
                           onChange={(e) => {
-                            updateFormData('coApplicant', 'reasonForMoving', e.target.value);
+                            updateFormData('coApplicants', '0', 'reasonForMoving', e.target.value);
                           }}
                         />
                       </FormControl>
@@ -4844,6 +5352,8 @@ export function ApplicationForm() {
                   </div>
                 </CardContent>
               </Card>
+                ))}
+              </>
             )}
           </div>
         );
@@ -4865,16 +5375,33 @@ export function ApplicationForm() {
           );
         }
         return (
+          <>
+            {Array.from({ length: formData.coApplicantCount || 1 }, (_, index) => (
+              <Card key={`co-applicant-financial-${index}`} className="form-section border-l-4 border-l-green-500 mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                    <CalendarDays className="w-5 h-5 mr-2" />
+                    Co-Applicant Financial Information {index + 1}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
           <FinancialSection 
-            title="Co-Applicant Financial Information"
+                    title={`Co-Applicant ${index + 1} Financial Information`}
             person="coApplicant"
             formData={formData}
             updateFormData={updateFormData}
+                    coApplicantIndex={index}
           />
+                </CardContent>
+              </Card>
+            ))}
+          </>
         );
 
       case 7:
-        if (hasCoApplicant && !formData.coApplicant?.employmentType) {
+        
+        // Only show the fallback message if there are no co-applicants at all
+        if (!hasCoApplicant) {
           return (
             <Card className="form-section border-l-4 border-l-green-500">
               <CardHeader>
@@ -4884,7 +5411,7 @@ export function ApplicationForm() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-gray-500 text-sm mb-4">Please select Employment Type in the Financial Information section to upload supporting documents.</div>
+                <div className="text-gray-500 text-sm mb-4">No co-applicants added. Please add co-applicants in the previous step to access document uploads.</div>
                 {/* Info blocks: Security Notice and Important Notes */}
                 <div className="flex flex-col space-y-1.5 p-6">
                   <div className="tracking-tight text-lg font-medium">Supporting Documents</div>
@@ -4909,18 +5436,20 @@ export function ApplicationForm() {
           );
         }
         // Wrapper functions for SupportingDocuments to match expected signature
-        const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicant', documentType, files);
-        const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicant', documentType, encryptedFiles);
+        const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicants', '0', documentType, files);
+        const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicants', '0', documentType, encryptedFiles);
         const coApplicantWebhookResponse = (documentType: string, response: any) => {
-          handleWebhookResponse('coApplicant', documentType, response);
+          handleWebhookResponse('coApplicants', '0', documentType, response);
         };
         return (
           hasCoApplicant ? (
-            <Card className="form-section border-l-4 border-l-green-500">
+            <>
+              {Array.from({ length: formData.coApplicantCount || 1 }, (_, index) => (
+                <Card key={`co-applicant-documents-${index}`} className="form-section border-l-4 border-l-green-500 mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                   <FolderOpen className="w-5 h-5 mr-2" />
-                  Co-Applicant Documents
+                      Co-Applicant Documents {index + 1}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -4929,16 +5458,19 @@ export function ApplicationForm() {
                     ...formData,
                     webhookResponses: Object.fromEntries(
                       Object.entries(webhookResponses)
-                        .filter(([key]) => key.startsWith('coApplicant_'))
-                        .map(([key, value]) => [key.replace('coApplicant_', ''), value])
-                    )
-                  }}
-                  // Debug: Filter webhook responses for coApplicant only
-                  // Original: {applicant_employment_letter: "...", coApplicant_photo_id: "...", guarantor_social_security: "..."}
-                  // Filtered: {photo_id: "..."}
-                  onDocumentChange={coApplicantDocumentChange}
-                  onEncryptedDocumentChange={coApplicantEncryptedDocumentChange}
-                  onWebhookResponse={coApplicantWebhookResponse}
+                            .filter(([key]) => key.startsWith(`coApplicants_${index}_`))
+                            .map(([key, value]) => [key.replace(`coApplicants_${index}_`, ''), value])
+                        )
+                      }}
+                      onDocumentChange={(documentType: string, files: File[]) => 
+                        handleDocumentChange('coApplicants', index.toString(), documentType, files)
+                      }
+                      onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => 
+                        handleEncryptedDocumentChange('coApplicants', index.toString(), documentType, encryptedFiles)
+                      }
+                      onWebhookResponse={(documentType: string, response: any) => {
+                        handleWebhookResponse('coApplicants', index.toString(), documentType, response);
+                      }}
                   referenceId={referenceId}
                   enableWebhook={true}
                   applicationId={user?.applicantId || 'unknown'}
@@ -4948,6 +5480,8 @@ export function ApplicationForm() {
                 />
               </CardContent>
             </Card>
+              ))}
+            </>
           ) : null
         );
 
@@ -5250,20 +5784,112 @@ export function ApplicationForm() {
                     Add Guarantor
                   </Label>
                 </div>
+
                 {hasGuarantor && (
-                  <>
-                    {/* Guarantor Information Section - aligned like Primary/Co-Applicant */}
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-4">
+                      <Label className="text-sm font-medium">How many Guarantors?</Label>
+                      <Select
+                        value={formData.guarantorCount?.toString() || '1'}
+                        onValueChange={(value) => {
+                          const count = parseInt(value);
+                          setFormData((prev: any) => {
+                            const currentGuarantors = prev.guarantors || [];
+                            if (count > currentGuarantors.length) {
+                              // Add new guarantors
+                              const newGuarantors = [...currentGuarantors];
+                              for (let i = currentGuarantors.length; i < count; i++) {
+                                newGuarantors.push({
+                                  name: '',
+                                  relationship: '',
+                                  dob: undefined,
+                                  ssn: '',
+                                  phone: '',
+                                  email: '',
+                                  license: '',
+                                  licenseState: '',
+                                  address: '',
+                                  city: '',
+                                  state: '',
+                                  zip: '',
+                                  lengthAtAddressYears: undefined,
+                                  lengthAtAddressMonths: undefined,
+                                  landlordName: '',
+                                  landlordAddressLine1: '',
+                                  landlordAddressLine2: '',
+                                  landlordCity: '',
+                                  landlordState: '',
+                                  landlordZipCode: '',
+                                  landlordPhone: '',
+                                  landlordEmail: '',
+                                  currentRent: undefined,
+                                  reasonForMoving: '',
+                                  employmentType: '',
+                                  employer: '',
+                                  position: '',
+                                  employmentStart: undefined,
+                                  income: '',
+                                  incomeFrequency: 'yearly',
+                                  businessName: '',
+                                  businessType: '',
+                                  yearsInBusiness: '',
+                                  otherIncome: '',
+                                  otherIncomeFrequency: 'monthly',
+                                  otherIncomeSource: '',
+                                  bankRecords: []
+                                });
+                              }
+                              return {
+                                ...prev,
+                                guarantors: newGuarantors,
+                                guarantorCount: count
+                              };
+                            } else if (count < currentGuarantors.length) {
+                              // Remove excess guarantors
+                              return {
+                                ...prev,
+                                guarantors: currentGuarantors.slice(0, count),
+                                guarantorCount: count
+                              };
+                            }
+                            return prev;
+                          });
+                          form.setValue('guarantorCount', count);
+                        }}
+                      >
+                        <SelectTrigger className="w-64">
+                          <SelectValue placeholder="Select number" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 Guarantor</SelectItem>
+                          <SelectItem value="2">2 Guarantors</SelectItem>
+                          <SelectItem value="3">3 Guarantors</SelectItem>
+                          <SelectItem value="4">4 Guarantors</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Render guarantor forms based on count */}
+                    {Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
+                      <Card key={index} className="form-section border-l-4 border-l-orange-500">
+                        <CardHeader>
+                          <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
+                            <Shield className="w-5 h-5 mr-2" />
+                            Guarantor {index + 1}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 sm:p-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                       <div className="col-span-1 md:col-span-2">
                         <FormItem>
-                          <FormLabel className="mb-0.5">Full Name</FormLabel>
+                                <FormLabel className="mb-0.5">Full Name *</FormLabel>
                           <FormControl>
                             <Input 
                               placeholder="Enter full name" 
-                              value={formData.guarantor?.name || ''}
+                                    value={formData.guarantors?.[index]?.name || ''}
                               className="input-field w-full mt-1"
                               onChange={(e) => {
-                                updateFormData('guarantor', 'name', e.target.value);
+                                      updateFormData('guarantors', index.toString(), 'name', e.target.value);
                               }}
                             />
                           </FormControl>
@@ -5272,8 +5898,8 @@ export function ApplicationForm() {
                       <div className="col-span-1 md:col-span-2">
                         <Label className="mb-0.5">Relationship</Label>
                         <Select
-                          value={formData.guarantor?.relationship || ''}
-                          onValueChange={(value) => updateFormData('guarantor', 'relationship', value)}
+                                value={formData.guarantors?.[index]?.relationship || ''}
+                                onValueChange={(value) => updateFormData('guarantors', index.toString(), 'relationship', value)}
                         >
                           <SelectTrigger className="w-full mt-1">
                             <SelectValue placeholder="Select" />
@@ -5291,9 +5917,9 @@ export function ApplicationForm() {
                         <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
                         <FormControl>
                           <DatePicker
-                            value={toValidDate(formData.guarantor?.dob)}
+                                  value={toValidDate(formData.guarantors?.[index]?.dob)}
                             onChange={(date) => {
-                              updateFormData('guarantor', 'dob', date);
+                                    updateFormData('guarantors', index.toString(), 'dob', date);
                               // Auto-calculate age
                               if (date) {
                                 const today = new Date();
@@ -5303,9 +5929,9 @@ export function ApplicationForm() {
                                 if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
                                   age--;
                                 }
-                                updateFormData('guarantor', 'age', age);
+                                      updateFormData('guarantors', index.toString(), 'age', age);
                               } else {
-                                updateFormData('guarantor', 'age', '');
+                                      updateFormData('guarantors', index.toString(), 'age', '');
                               }
                             }}
                             placeholder="Select date of birth"
@@ -5318,132 +5944,113 @@ export function ApplicationForm() {
                       <FormItem>
                         <FormControl>
                           <SSNInput
-                            name="guarantorSsn"
+                                  name={`guarantors.${index}.ssn`}
                             label="Social Security Number"
                             placeholder="XXX-XX-XXXX"
-                            value={formData.guarantor?.ssn || ''}
+                                  value={formData.guarantors?.[index]?.ssn || ''}
                             onChange={(value) => {
-                              updateFormData('guarantor', 'ssn', value);
-                              form.setValue('guarantorSsn', value);
+                                    updateFormData('guarantors', index.toString(), 'ssn', value);
                             }}
                             className="w-full mt-1"
                           />
                         </FormControl>
-                        {form.formState.errors.guarantorSsn?.message && (
-                          <span className="text-red-500 text-xs">{form.formState.errors.guarantorSsn.message}</span>
-                        )}
                       </FormItem>
                       <FormItem>
                         <FormControl>
                           <PhoneInput
-                            name="guarantorPhone"
+                                  name={`guarantors.${index}.phone`}
                             label="Phone Number"
                             placeholder="(555) 555-5555"
-                            value={formData.guarantor?.phone || ''}
+                                  value={formData.guarantors?.[index]?.phone || ''}
                             onChange={(value) => {
-                              updateFormData('guarantor', 'phone', value);
-                              form.setValue('guarantorPhone', value);
+                                    updateFormData('guarantors', index.toString(), 'phone', value);
                             }}
                             className="w-full mt-1"
                           />
                         </FormControl>
-                        {form.formState.errors.guarantorPhone?.message && (
-                          <span className="text-red-500 text-xs">{form.formState.errors.guarantorPhone.message}</span>
-                        )}
                       </FormItem>
                       <FormItem>
                         <FormControl>
                           <EmailInput
-                            name="guarantorEmail"
+                                  name={`guarantors.${index}.email`}
                             label="Email Address"
                             placeholder="you@email.com"
-                            value={formData.guarantor?.email || ''}
+                                  value={formData.guarantors?.[index]?.email || ''}
                             onChange={(value) => {
-                              updateFormData('guarantor', 'email', value);
-                              form.setValue('guarantorEmail', value);
+                                    updateFormData('guarantors', index.toString(), 'email', value);
                             }}
                             required={true}
                             className="w-full mt-1"
                           />
                         </FormControl>
-                        {form.formState.errors.guarantorEmail?.message && (
-                          <span className="text-red-500 text-xs">{form.formState.errors.guarantorEmail.message}</span>
-                        )}
                       </FormItem>
                       <FormItem>
                         <FormControl>
                           <LicenseInput
-                            name="guarantorLicense"
+                                  name={`guarantors.${index}.license`}
                             label="Driver's License Number"
                             placeholder="Enter license number"
-                            value={formData.guarantor?.license || ''}
+                                  value={formData.guarantors[index]?.license || ''}
                             onChange={(value) => {
-                              updateFormData('guarantor', 'license', value);
-                              form.setValue('guarantorLicense', value);
+                                    updateFormData('guarantors', index.toString(), 'license', value);
                             }}
                             className="w-full mt-1"
                           />
                         </FormControl>
-                        {form.formState.errors.guarantorLicense?.message && (
-                          <span className="text-red-500 text-xs">{form.formState.errors.guarantorLicense.message}</span>
-                        )}
                       </FormItem>
                       <div className="space-y-2">
-                        
                         <StateSelector
-                          selectedState={formData.guarantor?.licenseState || ''}
-                          onStateChange={(state) => updateFormData('guarantor', 'licenseState', state)}
+                                selectedState={formData.guarantors[index]?.licenseState || ''}
+                                onStateChange={(state) => updateFormData('guarantors', index.toString(), 'licenseState', state)}
                           label="License State"
                           required={false}
                           className="w-full mt-1"
                         />
                       </div>
-                      <h5>Current Address</h5>
-                      <div className="space-y-2"></div>
-                      <div className="space-y-2">
+                            
+                            <h5 className="col-span-2">Current Address</h5>
+                            <div className="col-span-2">
                         <FormItem>
                           <FormLabel className="mb-0.5">Street Address</FormLabel>
                           <FormControl>
                             <Input 
                               placeholder="Enter street address" 
-                              value={formData.guarantor?.address || ''}
+                                    value={formData.guarantors[index]?.address || ''}
                               className="input-field w-full mt-1"
                               onChange={(e) => {
-                                updateFormData('guarantor', 'address', e.target.value);
+                                      updateFormData('guarantors', index.toString(), 'address', e.target.value);
                               }}
                             />
                           </FormControl>
                         </FormItem>
+                            </div>
                         <FormItem>
                           <FormControl>
                             <ZIPInput
-                              name="guarantorZip"
+                                  name={`guarantors.${index}.zip`}
                               label="ZIP Code*"
                               placeholder="ZIP code"
-                              value={formData.guarantor?.zip || ''}
+                                  value={formData.guarantors[index]?.zip || ''}
                               onChange={(value) => {
-                                updateFormData('guarantor', 'zip', value);
-                                form.setValue('guarantorZip', value);
+                                    updateFormData('guarantors', index.toString(), 'zip', value);
                               }}
                               required={true}
                               className="w-full mt-1"
                             />
                           </FormControl>
-                          {form.formState.errors.guarantorZip?.message && (
-                            <span className="text-red-500 text-xs">{form.formState.errors.guarantorZip.message}</span>
-                          )}
                         </FormItem>
-                      </div>
-                      <div className="space-y-2">
+                            
+                            <div className="col-span-2">
                         <StateCitySelector
-                          selectedState={formData.guarantor?.state || ''}
-                          selectedCity={formData.guarantor?.city || ''}
+                                selectedState={formData.guarantors[index]?.state || ''}
+                                selectedCity={formData.guarantors[index]?.city || ''}
                           onStateChange={(state) => {
-                            updateFormData('guarantor', 'state', state);
-                            updateFormData('guarantor', 'city', '');
+                                  updateFormData('guarantors', index.toString(), 'state', state);
+                                  // Clear city if state changes
+                                  updateFormData('guarantors', index.toString(), 'city', '');
                           }}
                           onCityChange={(city) => {
-                            updateFormData('guarantor', 'city', city);
+                                  updateFormData('guarantors', index.toString(), 'city', city);
                           }}
                           stateLabel="State*"
                           cityLabel="City*"
@@ -5452,268 +6059,109 @@ export function ApplicationForm() {
                         />
                       </div>
                   
-                      
-                    </div>
-                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                      <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
+                            <div className="col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
                         <FormLabel className="mb-0.5 col-span-2">Length of Stay at Current Address</FormLabel>
                         <Input
                           type="number"
                           min={0}
-                          value={formData.guarantor?.lengthAtAddressYears ?? ''}
-                          onChange={e => updateFormData('guarantor', 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
-                          placeholder="e.g. 2 years"
+                                placeholder="Years"
+                                value={formData.guarantors[index]?.lengthAtAddressYears || ''}
+                                onChange={e => updateFormData('guarantors', index.toString(), 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
                           className="w-full mt-1"
                         />
                         <Input
                           type="number"
                           min={0}
                           max={11}
-                          value={formData.guarantor?.lengthAtAddressMonths ?? ''}
-                          onChange={e => updateFormData('guarantor', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
-                          placeholder="e.g. 4 months"
+                                placeholder="Months"
+                                value={formData.guarantors[index]?.lengthAtAddressMonths || ''}
+                                onChange={e => updateFormData('guarantors', index.toString(), 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
                           className="w-full mt-1"
                         />
                       </div>
-                      <FormItem>
-                        <FormLabel className="mb-0.5">Landlord Name</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Enter landlord's name" 
-                            value={formData.guarantor?.landlordName || ''}
-                            className="input-field w-full mt-1 border-gray-300 bg-white"
-                            onChange={(e) => {
-                              updateFormData('guarantor', 'landlordName', e.target.value);
-                            }}
-                          />
-                        </FormControl>
-                      </FormItem>
-                      <FormItem>
-                        <FormLabel className="mb-0.5">Landlord Street Address</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Enter landlord's street address" 
-                            value={formData.guarantor?.landlordAddressLine1 || ''}
-                            className="input-field w-full mt-1 border-gray-300 bg-white"
-                            onChange={(e) => {
-                              updateFormData('guarantor', 'landlordAddressLine1', e.target.value);
-                            }}
-                          />
-                        </FormControl>
-                      </FormItem>
-                      <FormItem>
-                        <FormLabel className="mb-0.5">Landlord Address Line 2 (Optional)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Apartment, suite, etc." 
-                            value={formData.guarantor?.landlordAddressLine2 || ''}
-                            className="input-field w-full mt-1 border-gray-300 bg-white"
-                            onChange={(e) => {
-                              updateFormData('guarantor', 'landlordAddressLine2', e.target.value);
-                            }}
-                          />
-                        </FormControl>
-                      </FormItem>
-                      <FormItem>
-                        <FormControl>
-                          <StateSelector
-                            selectedState={formData.guarantor?.landlordState || ''}
-                            onStateChange={(value) => {
-                              updateFormData('guarantor', 'landlordState', value);
-                            }}
-                            label="Landlord State"
-                            className="w-full mt-1"
-                          />
-                        </FormControl>
-                      </FormItem>
-                      <FormItem>
-                        <FormControl>
-                          <CitySelector
-                            selectedState={formData.guarantor?.landlordState || ''}
-                            selectedCity={formData.guarantor?.landlordCity || ''}
-                            onCityChange={(value) => {
-                              updateFormData('guarantor', 'landlordCity', value);
-                            }}
-                            label="Landlord City"
-                            className="w-full mt-1"
-                          />
-                        </FormControl>
-                      </FormItem>
-                      <FormItem>
-                        <FormControl>
-                          <ZIPInput
-                            name="guarantorLandlordZipCode"
-                            label="Landlord ZIP Code"
-                            placeholder="Enter landlord's ZIP code"
-                            value={formData.guarantor?.landlordZipCode || ''}
-                            onChange={(value) => {
-                              updateFormData('guarantor', 'landlordZipCode', value);
-                            }}
-                            className="w-full mt-1"
-                          />
-                        </FormControl>
-                      </FormItem>
-                      <FormItem>
-                        <FormControl>
-                          <PhoneInput
-                            name="guarantorLandlordPhone"
-                            label="Landlord Phone Number"
-                            placeholder="Enter landlord's phone number"
-                            value={formData.guarantor?.landlordPhone || ''}
-                            onChange={(value) => {
-                              updateFormData('guarantor', 'landlordPhone', value);
-                            }}
-                            className="w-full mt-1"
-                          />
-                        </FormControl>
-                      </FormItem>
-                      <FormItem>
-                        <FormControl>
-                          <EmailInput
-                            name="guarantorLandlordEmail"
-                            label="Landlord Email Address (Optional)"
-                            placeholder="Enter landlord's email address"
-                            value={formData.guarantor?.landlordEmail || ''}
-                            onChange={(value) => {
-                              updateFormData('guarantor', 'landlordEmail', value);
-                            }}
-                            className="w-full mt-1"
-                          />
-                        </FormControl>
-                      </FormItem>
-                      <div>
-                        <Label htmlFor="guarantorCurrentRent" className="mb-0.5">Monthly Rent</Label>
-                        <Input
-                          id="guarantorCurrentRent"
-                          type="number"
-                          placeholder="0.00"
-                          value={formData.guarantor?.currentRent?.toString() || ''}
-                          onChange={e => {
-                            const numValue = parseFloat(e.target.value) || 0;
-                            updateFormData('guarantor', 'currentRent', numValue);
-                          }}
-                          className="input-field w-full mt-1"
-                        />
                       </div>
-                      <FormItem>
-                        <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Please explain your reason for moving" 
-                            value={formData.guarantor?.reasonForMoving || ''}
-                            className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
-                            onChange={(e) => {
-                              updateFormData('guarantor', 'reasonForMoving', e.target.value);
-                            }}
-                          />
-                        </FormControl>
-                      </FormItem>
+                        </CardContent>
+                      </Card>
+                                         ))}
                     </div>
-                  </>
                 )}
+                      
+                      
+
                 </CardContent>
               </Card>
                   </div>
         );
 
       case 10:
-        if (!hasGuarantor) {
-          return (
-            <Card className="form-section">
+        return (
+          <div className="space-y-6">
+            <Card className="form-section border-l-4 border-l-orange-500">
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
                   <CalendarDays className="w-5 h-5 mr-2" />
                   Guarantor Financial Information
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-gray-500 text-sm mb-4">Please add a Guarantor in the previous step to access financial information.</div>
+                {Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
+                  <div key={index} className="mb-8 last:mb-0">
+                    <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
+                      Guarantor {index + 1} Financial Information
+                    </h3>
+                    <FinancialSection 
+                      title={`Guarantor ${index + 1} Financial Information`}
+                      person={`guarantors_${index}`}
+                      formData={formData}
+                      updateFormData={updateFormData}
+                      form={form}
+                    />
+                  </div>
+                ))}
               </CardContent>
             </Card>
-          );
-        }
-        return (
-          <FinancialSection 
-            title="Guarantor Financial Information"
-            person="guarantor"
-            formData={formData}
-            updateFormData={updateFormData}
-          />
+          </div>
         );
 
       case 11:
-        if (!formData.guarantor?.employmentType) {
-          return (
-            <Card className="form-section border-l-4 border-l-green-500">
+        return (
+          <div className="space-y-6">
+            <Card className="form-section border-l-4 border-l-orange-500">
               <CardHeader>
-                <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
                   <FolderOpen className="w-5 h-5 mr-2" />
                   Guarantor Documents
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-gray-500 text-sm mb-4">Please select Employment Type in the Guarantor Financial Information section to upload supporting documents.</div>
-                {/* Info blocks: Security Notice and Important Notes */}
-                <div className="flex flex-col space-y-1.5 p-6">
-                  <div className="tracking-tight text-lg font-medium">Supporting Documents</div>
-                  <div className="bg-green-50 p-3 rounded-lg">
-                    <p className="text-sm text-green-800">
-                      <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
-                    </p>
+                {Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
+                  <div key={index} className="mb-8 last:mb-0">
+                    <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
+                      Guarantor {index + 1} Documents
+                    </h3>
+                    <SupportingDocuments
+                      formData={{
+                        ...Object.fromEntries(
+                          Object.entries(formData)
+                            .filter(([key]) => key.startsWith(`guarantors_${index}_`))
+                            .map(([key, value]) => [key.replace(`guarantors_${index}_`, ''), value])
+                        )
+                      }}
+                      onDocumentChange={guarantorDocumentChange}
+                      onEncryptedDocumentChange={guarantorEncryptedDocumentChange}
+                      onWebhookResponse={guarantorWebhookResponse}
+                      referenceId={referenceId}
+                      enableWebhook={true}
+                      applicationId={user?.applicantId || 'unknown'}
+                      applicantId={user?.id}
+                      zoneinfo={user?.zoneinfo}
+                      showOnlyGuarantor={true}
+                    />
                   </div>
-                </div>
-                <div className="bg-yellow-50 p-4 rounded-lg mb-6">
-                  <h4 className="font-medium text-yellow-900 mb-2">Important Notes:</h4>
-                  <ul className="text-sm text-yellow-800 space-y-1">
-                    <li>• Documents must be current and legible</li>
-                    <li>• Corporate applicants require additional documentation</li>
-                    <li>• Self-employed applicants need accountant verification</li>
-                    <li>• Incomplete applications will delay processing</li>
-                  </ul>
-                </div>
+                ))}
               </CardContent>
             </Card>
-          );
-        }
-        // Wrapper functions for SupportingDocuments to match expected signature
-        const guarantorDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('guarantor', documentType, files);
-        const guarantorEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('guarantor', documentType, encryptedFiles);
-        const guarantorWebhookResponse = (documentType: string, response: any) => {
-          handleWebhookResponse('guarantor', documentType, response);
-        };
-        return (
-          <Card className="form-section border-l-4 border-l-green-500">
-            <CardHeader>
-              <CardTitle className="flex items-center text-green-700 dark:text-green-400">
-                <FolderOpen className="w-5 h-5 mr-2" />
-                Guarantor Documents
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <SupportingDocuments
-                  formData={{
-                    ...formData,
-                    webhookResponses: Object.fromEntries(
-                      Object.entries(webhookResponses)
-                        .filter(([key]) => key.startsWith('guarantor_'))
-                        .map(([key, value]) => [key.replace('guarantor_', ''), value])
-                    )
-                  }}
-                  // Debug: Filter webhook responses for guarantor only
-                  // Original: {applicant_employment_letter: "...", coApplicant_photo_id: "...", guarantor_social_security: "..."}
-                  // Filtered: {social_security: "..."}
-                  onDocumentChange={guarantorDocumentChange}
-                  onEncryptedDocumentChange={guarantorEncryptedDocumentChange}
-                  onWebhookResponse={guarantorWebhookResponse}
-                  referenceId={referenceId}
-                  enableWebhook={true}
-                  applicationId={user?.applicantId || 'unknown'}
-                  applicantId={user?.id}
-                  zoneinfo={user?.zoneinfo}
-                  showOnlyGuarantor={true}
-                />
-            </CardContent>
-          </Card>
+          </div>
         );
 
       case 12:
@@ -5742,7 +6190,7 @@ export function ApplicationForm() {
                   <div>
                     <Label className="text-base font-medium">Co-Applicant Signature *</Label>
                     <SignaturePad 
-                      onSignatureChange={(signature) => handleSignatureChange('coApplicant', signature)}
+                      onSignatureChange={(signature) => handleSignatureChange('coApplicants', '0', signature)}
                       className="mt-2"
                     />
                   </div>
@@ -5752,7 +6200,7 @@ export function ApplicationForm() {
                   <div>
                     <Label className="text-base font-medium">Guarantor Signature *</Label>
                     <SignaturePad 
-                      onSignatureChange={(signature) => handleSignatureChange('guarantor', signature)}
+                      onSignatureChange={(signature) => handleSignatureChange('guarantors', '0', signature)}
                       className="mt-2"
                     />
                   </div>
@@ -5794,6 +6242,15 @@ export function ApplicationForm() {
     return undefined;
   };
 
+  // Step navigation handlers
+  const handlePrevious = () => {
+    setCurrentStep((prev: number) => Math.max(prev - 1, 0));
+  };
+
+  const handleNext = () => {
+    setCurrentStep((prev: number) => Math.min(prev + 1, STEPS.length - 1));
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Welcome Message */}
@@ -5807,187 +6264,130 @@ export function ApplicationForm() {
                 </span>
               </div>
               <div>
-                <p className="text-blue-900 font-medium">{welcomeMessage}</p>
-                <p className="text-blue-700 text-sm">Ready to continue your application</p>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Welcome back, {user.name || user.given_name || 'User'}!
+                </h2>
+                <p className="text-sm text-gray-600">Continue with your rental application</p>
               </div>
             </div>
-            <button
+            <Button 
+              variant="ghost" 
+              size="sm"
               onClick={() => setShowWelcomeMessage(false)}
-              className="text-blue-400 hover:text-blue-600 transition-colors"
+              className="text-gray-400 hover:text-gray-600"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+              <X className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       )}
 
-      {/* Header with Navigation */}
-      <div className="w-full max-w-4xl mx-auto px-3 py-4 sm:px-4 sm:py-8">
-        <div className="mb-4 sm:mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-                Rental Application
-              </h1>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* Progress Bar */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep]?.title}
+              </h2>
+              <span className="text-sm text-gray-500">
+                {Math.round(((currentStep + 1) / STEPS.length) * 100)}% Complete
+              </span>
             </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-in-out"
+                style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
+              ></div>
           </div>
           
-          {/* Progress Steps */}
-          <div className="flex items-center justify-between mb-2 sm:mb-4 overflow-x-auto">
+            {/* Step Navigation */}
+            <div className="flex flex-wrap gap-2 mt-4">
             {STEPS.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = currentStep === step.id;
-              const isCompleted = currentStep > step.id;
-
               return (
                 <div key={step.id} className="flex items-center">
                   <button
                     type="button"
-                    onClick={(e) => goToStep(step.id, e)}
-                    className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-colors flex-shrink-0 ${
-                      isActive
-                        ? 'bg-blue-600 border-blue-600 text-white'
-                        : isCompleted
-                        ? 'bg-green-600 border-green-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-500'
-                    }`}
-                  >
-                    {isCompleted ? (
-                      <Check className="w-4 h-4 sm:w-5 sm:h-5" />
-                    ) : (
-                      step.icon ? React.createElement(step.icon, { className: "w-4 h-4 sm:w-5 sm:h-5" }) : step.title[0]
-                    )}
+                      onClick={() => setCurrentStep(index)}
+                      className={`flex items-center px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                        index === currentStep
+                          ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
+                          : index < currentStep
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}
+                    >
+                      {step.icon && <step.icon className="w-3 h-3 mr-1" />}
+                      {step.title}
                   </button>
                   {index < STEPS.length - 1 && (
-                    <div className={`flex-1 h-1 mx-1 sm:mx-2 ${isCompleted ? 'bg-green-600' : 'bg-gray-300'}`} />
+                      <ChevronRight className="w-3 h-3 text-gray-400 mx-1" />
                   )}
                 </div>
               );
             })}
           </div>
-
-
         </div>
 
-        <Form {...form}>
-          <form 
-            onSubmit={form.handleSubmit(onSubmit)} 
-            className="space-y-4 sm:space-y-8"
-            onKeyDown={(e) => {
-              // Prevent form submission on Enter key unless it's the submit button
-              if (e.key === 'Enter' && e.target !== e.currentTarget.querySelector('button[type="submit"]')) {
-                e.preventDefault();
-              }
-            }}
-          >
-            {/* Current Step Content */}
-            <div className="form-container">
+          {/* Form Content */}
               {renderStep()}
-            </div>
-
-
 
             {/* Navigation Buttons */}
-            <div className="flex items-center justify-between pt-6 border-t border-gray-200">
-              <div className="flex items-center space-x-4">
-                {currentStep > 0 && (
+          <div className="flex justify-between pt-6">
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={prevStep}
-                    className="flex items-center space-x-2"
+              onClick={handlePrevious}
+              disabled={currentStep === 0}
+              className="flex items-center"
                   >
-                    <ChevronLeft className="w-4 h-4" />
-                    <span>Previous</span>
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Previous
                   </Button>
-                )}
-              </div>
               
-              <div className="flex items-center space-x-4">
-                {/* Save Draft Button - Only saves when clicked */}
+            <div className="flex space-x-3">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={saveDraftToDynamoDB}
                   disabled={isSavingDraft}
-                  className="flex items-center space-x-2 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700"
+                className="flex items-center"
                 >
                   {isSavingDraft ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                      <span>Saving...</span>
-                    </>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
                   ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      <span>Save Draft</span>
-                    </>
+                  <Save className="w-4 h-4 mr-2" />
                   )}
+                Save Draft
                 </Button>
                 
-                {currentStep < STEPS.length - 1 ? (
-                  <Button
-                    type="button"
-                    onClick={nextStep}
-                    className="flex items-center space-x-2"
-                  >
-                    <span>Next</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                ) : (
+              {currentStep === STEPS.length - 1 ? (
                   <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex items-center space-x-2"
+                  className="flex items-center"
                   >
                     {isSubmitting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Submitting...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4" />
-                        <span>Submit Application</span>
-                      </>
-                    )}
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  Submit Application
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={handleNext}
+                  className="flex items-center"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-2" />
                   </Button>
                 )}
               </div>
             </div>
           </form>
         </Form>
-      </div>
-
-      {/* Success Popup */}
-      {showSuccessPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center shadow-xl">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="w-8 h-8 text-green-600" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Application Submitted Successfully!
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Your rental application has been submitted and is now being processed. 
-              Reference ID: <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{submissionReferenceId}</span>
-            </p>
-            <Button
-              onClick={() => {
-                setShowSuccessPopup(false);
-                // Redirect to drafts page
-                setLocation('/drafts');
-              }}
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
-            >
-              OK
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
-} // end ApplicationForm
+}
