@@ -4785,12 +4785,24 @@ export function ApplicationForm() {
 
       case 3:
         return (
-          <FinancialSection 
-            title="Primary Applicant Financial Information"
-            person="applicant"
-            formData={formData}
-            updateFormData={updateFormData}
-          />
+          <div className="space-y-6">
+            <Card className="form-section border-l-4 border-l-blue-500">
+              <CardHeader>
+                <CardTitle className="flex items-center text-blue-700 dark:text-blue-400">
+                  <CalendarDays className="w-5 h-5 mr-2" />
+                  Financial Information 1 - Primary Applicant
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FinancialSection 
+                  title="Primary Applicant Financial Information"
+                  person="applicant"
+                  formData={formData}
+                  updateFormData={updateFormData}
+                />
+              </CardContent>
+            </Card>
+          </div>
         );
 
       case 4:
@@ -5418,17 +5430,17 @@ export function ApplicationForm() {
                 <CardHeader>
                   <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                     <CalendarDays className="w-5 h-5 mr-2" />
-                    Co-Applicant Financial Information {index + 1}
+                    Financial Information {index + 2} - Co-Applicant {index + 1}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-          <FinancialSection 
+                  <FinancialSection 
                     title={`Co-Applicant ${index + 1} Financial Information`}
-            person="coApplicant"
-            formData={formData}
-            updateFormData={updateFormData}
+                    person={`coApplicants_${index}`}
+                    formData={formData}
+                    updateFormData={updateFormData}
                     coApplicantIndex={index}
-          />
+                  />
                 </CardContent>
               </Card>
             ))}
@@ -6144,7 +6156,7 @@ export function ApplicationForm() {
                 {Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
                   <div key={index} className="mb-8 last:mb-0">
                     <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
-                      Guarantor {index + 1} Financial Information
+                      Financial Information {3 + index} - Guarantor {index + 1}
                     </h3>
                     <FinancialSection 
                       title={`Guarantor ${index + 1} Financial Information`}
