@@ -40,13 +40,18 @@ interface SupportingDocumentsProps {
       applicant?: Record<string, any[]>;
       guarantor?: Record<string, any[]>;
       coApplicant?: Record<string, any[]>;
+      otherOccupants?: Record<string, any[]>;
     };
     applicant?: { employmentType?: string; incomeFrequency?: string };
     coApplicant?: { employmentType?: string; incomeFrequency?: string };
+    coApplicants?: Array<{ employmentType?: string; incomeFrequency?: string }>;
     guarantor?: { employmentType?: string; incomeFrequency?: string };
+    guarantors?: Array<{ employmentType?: string; incomeFrequency?: string }>;
     otherOccupants?: any[];
     uploadedFilesMetadata?: Record<string, any[]>;
   };
+  // Add access to original webhook responses for proper document mapping
+  originalWebhookResponses?: Record<string, any>;
   onDocumentChange: (documentType: string, files: File[]) => void;
   onEncryptedDocumentChange?: (documentType: string, encryptedFiles: EncryptedFile[]) => void;
   onWebhookResponse?: (documentType: string, response: any) => void;
@@ -82,6 +87,46 @@ export const SupportingDocuments = ({
     showOnlyApplicant,
     referenceId,
     applicationId
+  });
+
+  // Helper function to get person type from document ID
+  const getPersonType = (documentId: string): 'applicant' | 'coApplicant' | 'guarantor' | 'otherOccupants' => {
+    if (documentId.startsWith('applicant_')) return 'applicant';
+    if (documentId.startsWith('coApplicant_')) return 'coApplicant';
+    if (documentId.startsWith('guarantor_')) return 'guarantor';
+    if (documentId.startsWith('occupants_')) return 'otherOccupants';
+    return 'applicant'; // default fallback
+  };
+
+  // Helper function to get person type and index from document ID
+  const getPersonTypeAndIndex = (documentId: string): { personType: string; index?: number } => {
+    if (documentId.startsWith('applicant_')) return { personType: 'applicant' };
+    if (documentId.startsWith('coApplicant_')) {
+      const match = documentId.match(/^coApplicant_(\d+)_/);
+      return { personType: 'coApplicant', index: match ? parseInt(match[1]) : undefined };
+    }
+    if (documentId.startsWith('guarantor_')) {
+      const match = documentId.match(/^guarantor_(\d+)_/);
+      return { personType: 'guarantor', index: match ? parseInt(match[1]) : undefined };
+    }
+    if (documentId.startsWith('occupants_')) return { personType: 'otherOccupants' };
+    return { personType: 'applicant' };
+  };
+
+  // Debug formData structure
+  console.log(`🏗️ SupportingDocuments formData structure:`, {
+    hasApplicant: !!formData?.applicant,
+    hasCoApplicant: !!formData?.coApplicant,
+    hasCoApplicants: !!formData?.coApplicants,
+    coApplicantsLength: formData?.coApplicants?.length,
+    hasGuarantor: !!formData?.guarantor,
+    hasGuarantors: !!formData?.guarantors,
+    guarantorsLength: formData?.guarantors?.length,
+    applicantEmploymentType: formData?.applicant?.employmentType,
+    coApplicantEmploymentType: formData?.coApplicant?.employmentType,
+    firstCoApplicantEmploymentType: formData?.coApplicants?.[0]?.employmentType,
+    guarantorEmploymentType: formData?.guarantor?.employmentType,
+    firstGuarantorEmploymentType: formData?.guarantors?.[0]?.employmentType
   });
   const [previewModal, setPreviewModal] = useState<{
     isOpen: boolean;
@@ -222,6 +267,13 @@ export const SupportingDocuments = ({
   ];
 
   const getDocumentStatus = (documentId: string): DocumentStatus => {
+    // Debug logging to help troubleshoot
+    console.log(`🔍 getDocumentStatus called for documentId: ${documentId}`, {
+      webhookResponses: formData.webhookResponses,
+      originalWebhookResponses: (formData as any).originalWebhookResponses,
+      currentContext: getCurrentContext()
+    });
+    
     // Special handling for Pay Stubs sections
     if (documentId.startsWith('pay_stubs_')) {
       // Check if this specific Pay Stubs section has been uploaded
@@ -244,9 +296,263 @@ export const SupportingDocuments = ({
         }
       }
       
-      // Check for documents with person prefix
-      const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_', 'occupants_'];
+      // Check for documents with person prefix (including indexed versions)
+      const personPrefixes = ['applicant_', 'coApplicants_', 'guarantors_', 'occupants_'];
       for (const prefix of personPrefixes) {
+        // Handle both old format (coApplicant_) and new format (coApplicants_1_, coApplicants_2_, etc.)
+        if (prefix === 'coApplicants_') {
+          // Check for coApplicants_1_, coApplicants_2_, etc.
+          for (let i = 1; i <= 4; i++) {
+            const indexedPrefix = `coApplicants_${i}_`;
+            const prefixedDocumentId = indexedPrefix + documentId;
+            const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+            if (prefixedWebhookResponse) {
+              let fileUrl = '';
+              if (typeof prefixedWebhookResponse === 'string') {
+                fileUrl = prefixedWebhookResponse;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+                fileUrl = prefixedWebhookResponse.body;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+                fileUrl = prefixedWebhookResponse.url;
+              }
+              
+              if (fileUrl && fileUrl.trim()) {
+                return {
+                  status: "uploaded",
+                  count: 1
+                };
+              }
+            }
+          }
+        } else if (prefix === 'guarantors_') {
+          // Check for guarantors_1_, guarantors_2_, etc.
+          for (let i = 1; i <= 4; i++) {
+            const indexedPrefix = `guarantors_${i}_`;
+            const prefixedDocumentId = indexedPrefix + documentId;
+            const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+            if (prefixedWebhookResponse) {
+              let fileUrl = '';
+              if (typeof prefixedWebhookResponse === 'string') {
+                fileUrl = prefixedWebhookResponse;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+                fileUrl = prefixedWebhookResponse.body;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+                fileUrl = prefixedWebhookResponse.url;
+              }
+              
+              if (fileUrl && fileUrl.trim()) {
+                return {
+                  status: "uploaded",
+                  count: 1
+                };
+              }
+            }
+          }
+        } else {
+          // Handle applicant_ and occupants_ normally
+          const prefixedDocumentId = prefix + documentId;
+          const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+          if (prefixedWebhookResponse) {
+            let fileUrl = '';
+            if (typeof prefixedWebhookResponse === 'string') {
+              fileUrl = prefixedWebhookResponse;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+              fileUrl = prefixedWebhookResponse.body;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+              fileUrl = prefixedWebhookResponse.url;
+            }
+            
+            if (fileUrl && fileUrl.trim()) {
+              return {
+                status: "uploaded",
+                count: 1
+              };
+            }
+          }
+        }
+      }
+      
+      return {
+        status: "pending",
+        count: 0
+      };
+    }
+    
+    // First check webhookResponses for direct S3 URLs (this handles transformed keys from filtered webhookResponses)
+    const webhookResponse = formData.webhookResponses?.[documentId];
+    if (webhookResponse) {
+      let fileUrl = '';
+      if (typeof webhookResponse === 'string') {
+        fileUrl = webhookResponse;
+      } else if (webhookResponse && webhookResponse.body) {
+        fileUrl = webhookResponse.body;
+      } else if (webhookResponse && webhookResponse.url) {
+        fileUrl = webhookResponse.url;
+      }
+      
+      if (fileUrl && fileUrl.trim()) {
+        return {
+          status: "uploaded",
+          count: 1
+        };
+      }
+    }
+    
+    // Check original webhook responses if available (for proper document mapping)
+    // This is crucial for co-applicant documents where the prefix might be filtered out
+    if ((formData as any).originalWebhookResponses) {
+      const originalWebhookResponses = (formData as any).originalWebhookResponses;
+      
+      // Check for the document ID directly in original webhook responses
+      if (originalWebhookResponses[documentId]) {
+        let fileUrl = '';
+        const response = originalWebhookResponses[documentId];
+        if (typeof response === 'string') {
+          fileUrl = response;
+        } else if (response && response.body) {
+          fileUrl = response.body;
+        } else if (response && response.url) {
+          fileUrl = response.url;
+        }
+        
+        if (fileUrl && fileUrl.trim()) {
+          return {
+            status: "uploaded",
+            count: 1
+          };
+        }
+      }
+      
+      // Check for documents with person prefix in original webhook responses
+      const personPrefixes = ['applicant_', 'coApplicant_', 'coApplicants_', 'guarantor_', 'guarantors_', 'occupants_'];
+      for (const prefix of personPrefixes) {
+        if (prefix === 'coApplicants_') {
+          // Check for coApplicants_1_, coApplicants_2_, etc.
+          for (let i = 1; i <= 4; i++) {
+            const indexedPrefix = `coApplicants_${i}_`;
+            const prefixedDocumentId = indexedPrefix + documentId;
+            const prefixedWebhookResponse = originalWebhookResponses[prefixedDocumentId];
+            if (prefixedWebhookResponse) {
+              let fileUrl = '';
+              if (typeof prefixedWebhookResponse === 'string') {
+                fileUrl = prefixedWebhookResponse;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+                fileUrl = prefixedWebhookResponse.body;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+                fileUrl = prefixedWebhookResponse.url;
+              }
+              
+              if (fileUrl && fileUrl.trim()) {
+                return {
+                  status: "uploaded",
+                  count: 1
+                };
+              }
+            }
+          }
+        } else if (prefix === 'guarantors_') {
+          // Check for guarantors_1_, guarantors_2_, etc.
+          for (let i = 1; i <= 4; i++) {
+            const indexedPrefix = `guarantors_${i}_`;
+            const prefixedDocumentId = indexedPrefix + documentId;
+            const prefixedWebhookResponse = originalWebhookResponses[prefixedDocumentId];
+            if (prefixedWebhookResponse) {
+              let fileUrl = '';
+              if (typeof prefixedWebhookResponse === 'string') {
+                fileUrl = prefixedWebhookResponse;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+                fileUrl = prefixedWebhookResponse.body;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+                fileUrl = prefixedWebhookResponse.url;
+              }
+              
+              if (fileUrl && fileUrl.trim()) {
+                return {
+                  status: "uploaded",
+                  count: 1
+                };
+              }
+            }
+          }
+        } else {
+          // Handle applicant_, coApplicant_, and occupants_ normally
+          const prefixedDocumentId = prefix + documentId;
+          const prefixedWebhookResponse = originalWebhookResponses[prefixedDocumentId];
+          if (prefixedWebhookResponse) {
+            let fileUrl = '';
+            if (typeof prefixedWebhookResponse === 'string') {
+              fileUrl = prefixedWebhookResponse;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+              fileUrl = prefixedWebhookResponse.body;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+              fileUrl = prefixedWebhookResponse.url;
+            }
+            
+            if (fileUrl && fileUrl.trim()) {
+              return {
+                status: "uploaded",
+                count: 1
+              };
+            }
+          }
+        }
+      }
+    }
+    
+    // Check for documents with person prefix in webhookResponses (including indexed versions)
+    const personPrefixes = ['applicant_', 'coApplicant_', 'coApplicants_', 'guarantor_', 'guarantors_', 'occupants_'];
+    for (const prefix of personPrefixes) {
+      // Handle both old format (coApplicant_) and new format (coApplicant_1_, coApplicant_2_, etc.)
+      if (prefix === 'coApplicant_') {
+        // Check for coApplicant_1_, coApplicant_2_, etc.
+        for (let i = 1; i <= 4; i++) {
+          const indexedPrefix = `coApplicant_${i}_`;
+          const prefixedDocumentId = indexedPrefix + documentId;
+          const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+          if (prefixedWebhookResponse) {
+            let fileUrl = '';
+            if (typeof prefixedWebhookResponse === 'string') {
+              fileUrl = prefixedWebhookResponse;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+              fileUrl = prefixedWebhookResponse.body;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+              fileUrl = prefixedWebhookResponse.url;
+            }
+            
+            if (fileUrl && fileUrl.trim()) {
+              return {
+                status: "uploaded",
+                count: 1
+              };
+            }
+          }
+        }
+      } else if (prefix === 'guarantor_') {
+        // Check for guarantor_1_, guarantor_2_, etc.
+        for (let i = 1; i <= 4; i++) {
+          const indexedPrefix = `guarantor_${i}_`;
+          const prefixedDocumentId = indexedPrefix + documentId;
+          const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+          if (prefixedWebhookResponse) {
+            let fileUrl = '';
+            if (typeof prefixedWebhookResponse === 'string') {
+              fileUrl = prefixedWebhookResponse;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+              fileUrl = prefixedWebhookResponse.body;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+              fileUrl = prefixedWebhookResponse.url;
+            }
+            
+            if (fileUrl && fileUrl.trim()) {
+              return {
+                status: "uploaded",
+                count: 1
+              };
+            }
+          }
+        }
+      } else {
+        // Handle applicant_ and occupants_ normally
         const prefixedDocumentId = prefix + documentId;
         const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
         if (prefixedWebhookResponse) {
@@ -265,55 +571,6 @@ export const SupportingDocuments = ({
               count: 1
             };
           }
-        }
-      }
-      
-      return {
-        status: "pending",
-        count: 0
-      };
-    }
-    
-    // First check webhookResponses for direct S3 URLs
-    const webhookResponse = formData.webhookResponses?.[documentId];
-    if (webhookResponse) {
-      let fileUrl = '';
-      if (typeof webhookResponse === 'string') {
-        fileUrl = webhookResponse;
-      } else if (webhookResponse && webhookResponse.body) {
-        fileUrl = webhookResponse.body;
-      } else if (webhookResponse && webhookResponse.url) {
-        fileUrl = webhookResponse.url;
-      }
-      
-      if (fileUrl && fileUrl.trim()) {
-      return {
-        status: "uploaded",
-          count: 1
-        };
-      }
-    }
-    
-    // Check for documents with person prefix in webhookResponses
-    const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_', 'occupants_'];
-    for (const prefix of personPrefixes) {
-      const prefixedDocumentId = prefix + documentId;
-      const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
-      if (prefixedWebhookResponse) {
-        let fileUrl = '';
-        if (typeof prefixedWebhookResponse === 'string') {
-          fileUrl = prefixedWebhookResponse;
-        } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
-          fileUrl = prefixedWebhookResponse.body;
-        } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
-          fileUrl = prefixedWebhookResponse.url;
-        }
-        
-        if (fileUrl && fileUrl.trim()) {
-          return {
-            status: "uploaded",
-            count: 1
-          };
         }
       }
     }
@@ -346,17 +603,66 @@ export const SupportingDocuments = ({
     // Check encryptedDocuments
     const encryptedDocuments = formData.encryptedDocuments;
     if (encryptedDocuments) {
-      for (const person of personPrefixes) {
-        const cleanPerson = person.replace('_', '');
-        const personDocs = encryptedDocuments[cleanPerson as keyof typeof encryptedDocuments];
-        if (personDocs && personDocs[documentId]) {
-          const files = personDocs[documentId];
-          if (Array.isArray(files) && files.length > 0) {
-            return {
-              status: "uploaded",
-              count: files.length
-            };
+      // Check for documents with person prefix in encryptedDocuments (including indexed versions)
+      for (const prefix of personPrefixes) {
+        if (prefix === 'coApplicant_') {
+          // Check for coApplicant_1_, coApplicant_2_, etc. in encryptedDocuments
+          for (let i = 1; i <= 4; i++) {
+            const indexedPrefix = `coApplicant_${i}_`;
+            const cleanPerson = 'coApplicant' as keyof typeof encryptedDocuments;
+            const personDocs = encryptedDocuments[cleanPerson];
+            if (personDocs && personDocs[documentId]) {
+              const files = personDocs[documentId];
+              if (Array.isArray(files) && files.length > 0) {
+                return {
+                  status: "uploaded",
+                  count: files.length
+                };
+              }
+            }
           }
+        } else if (prefix === 'guarantor_') {
+          // Check for guarantor_1_, guarantor_2_, etc. in encryptedDocuments
+          for (let i = 1; i <= 4; i++) {
+            const indexedPrefix = `guarantor_${i}_`;
+            const cleanPerson = 'guarantor' as keyof typeof encryptedDocuments;
+            const personDocs = encryptedDocuments[cleanPerson];
+            if (personDocs && personDocs[documentId]) {
+              const files = personDocs[documentId];
+              if (Array.isArray(files) && files.length > 0) {
+                return {
+                  status: "uploaded",
+                  count: files.length
+                };
+              }
+            }
+          }
+        } else {
+          // Handle applicant_ and occupants_ normally
+          const cleanPerson = prefix.replace('_', '') as keyof typeof encryptedDocuments;
+          const personDocs = encryptedDocuments[cleanPerson];
+          if (personDocs && personDocs[documentId]) {
+            const files = personDocs[documentId];
+            if (Array.isArray(files) && files.length > 0) {
+              return {
+                status: "uploaded",
+                count: files.length
+              };
+            }
+          }
+        }
+      }
+      
+      // Also check for the specific document ID directly
+      const personType = getPersonType(documentId);
+      const personDocs = encryptedDocuments[personType as keyof typeof encryptedDocuments];
+      if (personDocs && personDocs[documentId]) {
+        const files = personDocs[documentId];
+        if (Array.isArray(files) && files.length > 0) {
+          return {
+            status: "uploaded",
+            count: files.length
+          };
         }
       }
     }
@@ -435,34 +741,89 @@ export const SupportingDocuments = ({
         }
       }
       
-      // Check for documents with person prefix
-      const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_', 'occupants_'];
+      // Check for documents with person prefix (including indexed versions)
+      const personPrefixes = ['applicant_', 'coApplicants_', 'guarantors_', 'occupants_'];
       for (const prefix of personPrefixes) {
         // Only process documents for the current context
         if (currentContext === 'applicant' && prefix !== 'applicant_') continue;
-        if (currentContext === 'coApplicant' && prefix !== 'coApplicant_') continue;
-        if (currentContext === 'guarantor' && prefix !== 'guarantor_') continue;
+        if (currentContext === 'coApplicant' && prefix !== 'coApplicants_') continue;
+        if (currentContext === 'guarantor' && prefix !== 'guarantors_') continue;
         if (currentContext === 'occupants' && prefix !== 'occupants_') continue;
         
-        const prefixedDocumentId = prefix + documentId;
-        const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
-        if (prefixedWebhookResponse) {
-          let fileUrl = '';
-          if (typeof prefixedWebhookResponse === 'string') {
-            fileUrl = prefixedWebhookResponse;
-          } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
-            fileUrl = prefixedWebhookResponse.body;
-          } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
-            fileUrl = prefixedWebhookResponse.url;
+        if (prefix === 'coApplicants_') {
+          // Check for coApplicants_1_, coApplicants_2_, etc.
+          for (let i = 1; i <= 4; i++) {
+            const indexedPrefix = `coApplicants_${i}_`;
+            const prefixedDocumentId = indexedPrefix + documentId;
+            const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+            if (prefixedWebhookResponse) {
+              let fileUrl = '';
+              if (typeof prefixedWebhookResponse === 'string') {
+                fileUrl = prefixedWebhookResponse;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+                fileUrl = prefixedWebhookResponse.body;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+                fileUrl = prefixedWebhookResponse.url;
+              }
+              
+              if (fileUrl && fileUrl.trim()) {
+                const filename = `${prefixedDocumentId}_document`;
+                console.log(`📁 Adding Pay Stubs document with indexed filename: ${filename} for ${prefixedDocumentId}`);
+                uploadedDocs.push({
+                  filename: filename,
+                  webhookbodyUrl: fileUrl
+                });
+              }
+            }
           }
-          
-          if (fileUrl && fileUrl.trim()) {
-            const filename = `${prefixedDocumentId}_document`;
-            console.log(`📁 Adding Pay Stubs document with prefixed filename: ${filename} for ${prefixedDocumentId}`);
-            uploadedDocs.push({
-              filename: filename,
-              webhookbodyUrl: fileUrl
-            });
+        } else if (prefix === 'guarantors_') {
+          // Check for guarantors_1_, guarantors_2_, etc.
+          for (let i = 1; i <= 4; i++) {
+            const indexedPrefix = `guarantors_${i}_`;
+            const prefixedDocumentId = indexedPrefix + documentId;
+            const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+            if (prefixedWebhookResponse) {
+              let fileUrl = '';
+              if (typeof prefixedWebhookResponse === 'string') {
+                fileUrl = prefixedWebhookResponse;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+                fileUrl = prefixedWebhookResponse.body;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+                fileUrl = prefixedWebhookResponse.url;
+              }
+              
+              if (fileUrl && fileUrl.trim()) {
+                const filename = `${prefixedDocumentId}_document`;
+                console.log(`📁 Adding Pay Stubs document with indexed filename: ${filename} for ${prefixedDocumentId}`);
+                uploadedDocs.push({
+                  filename: filename,
+                  webhookbodyUrl: fileUrl
+                });
+              }
+            }
+          }
+        } else {
+          // Handle applicant_ and occupants_ normally
+          const prefixedDocumentId = prefix + documentId;
+          const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+          if (prefixedWebhookResponse) {
+            let fileUrl = '';
+            if (typeof prefixedWebhookResponse === 'string') {
+              fileUrl = prefixedWebhookResponse;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+              fileUrl = prefixedWebhookResponse.body;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+              fileUrl = prefixedWebhookResponse.url;
+            }
+            
+            if (fileUrl && fileUrl.trim()) {
+              const filename = `${prefixedDocumentId}_document`;
+              console.log(`📁 Adding Pay Stubs document with prefixed filename: ${filename} for ${prefixedDocumentId}`);
+              uploadedDocs.push({
+                filename: filename,
+                webhookbodyUrl: fileUrl
+              });
+            }
           }
         }
       }
@@ -493,33 +854,224 @@ export const SupportingDocuments = ({
       }
     }
     
-    // Check for documents with person prefix in webhookResponses (this handles the case where webhookResponses contain all person types)
-    const personPrefixes = ['applicant_', 'coApplicant_', 'guarantor_', 'occupants_'];
-    for (const prefix of personPrefixes) {
-      // Only process documents for the current context
-      if (currentContext === 'applicant' && prefix !== 'applicant_') continue;
-      if (currentContext === 'coApplicant' && prefix !== 'coApplicant_') continue;
-      if (currentContext === 'guarantor' && prefix !== 'guarantor_') continue;
-      if (currentContext === 'occupants' && prefix !== 'occupants_') continue;
+    // Check original webhook responses if available (for proper document mapping)
+    // This is crucial for co-applicant documents where the prefix might be filtered out
+    if ((formData as any).originalWebhookResponses) {
+      const originalWebhookResponses = (formData as any).originalWebhookResponses;
       
-      const prefixedDocumentId = prefix + documentId;
-      const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
-      if (prefixedWebhookResponse) {
+      // Check for the document ID directly in original webhook responses
+      if (originalWebhookResponses[documentId]) {
         let fileUrl = '';
-        if (typeof prefixedWebhookResponse === 'string') {
-          fileUrl = prefixedWebhookResponse;
-        } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
-          fileUrl = prefixedWebhookResponse.body;
-        } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
-          fileUrl = prefixedWebhookResponse.url;
+        const response = originalWebhookResponses[documentId];
+        if (typeof response === 'string') {
+          fileUrl = response;
+        } else if (response && response.body) {
+          fileUrl = response.body;
+        } else if (response && response.url) {
+          fileUrl = response.url;
         }
         
         if (fileUrl && fileUrl.trim()) {
-          const filename = `${prefixedDocumentId}_document`;
-          console.log(`📁 Adding document with prefixed filename: ${filename} for ${prefixedDocumentId}`);
+          // Create filename with person type prefix based on current context
+          const filename = `${currentContext}_${documentId}_document`;
+          console.log(`📁 Adding document with original webhook response: ${filename}`);
           uploadedDocs.push({
             filename: filename,
             webhookbodyUrl: fileUrl
+          });
+        }
+      }
+      
+      // Check for documents with person prefix in original webhook responses
+      const personPrefixes = ['applicant_', 'coApplicant_', 'coApplicants_', 'guarantor_', 'guarantors_', 'occupants_'];
+      for (const prefix of personPrefixes) {
+        // Only process documents for the current context
+        if (currentContext === 'applicant' && prefix !== 'applicant_') continue;
+        if (currentContext === 'coApplicant' && prefix !== 'coApplicants_') continue;
+        if (currentContext === 'guarantor' && prefix !== 'guarantors_') continue;
+        if (currentContext === 'occupants' && prefix !== 'occupants_') continue;
+        
+        if (prefix === 'coApplicants_') {
+          // Check for coApplicants_1_, coApplicants_2_, etc.
+          for (let i = 1; i <= 4; i++) {
+            const indexedPrefix = `coApplicants_${i}_`;
+            const prefixedDocumentId = indexedPrefix + documentId;
+            const prefixedWebhookResponse = originalWebhookResponses[prefixedDocumentId];
+            if (prefixedWebhookResponse) {
+              let fileUrl = '';
+              if (typeof prefixedWebhookResponse === 'string') {
+                fileUrl = prefixedWebhookResponse;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+                fileUrl = prefixedWebhookResponse.body;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+                fileUrl = prefixedWebhookResponse.url;
+              }
+              
+              if (fileUrl && fileUrl.trim()) {
+                const filename = `${prefixedDocumentId}_document`;
+                console.log(`📁 Adding document with indexed filename: ${filename} for ${prefixedDocumentId}`);
+                uploadedDocs.push({
+                  filename: filename,
+                  webhookbodyUrl: fileUrl
+                });
+              }
+            }
+          }
+        } else if (prefix === 'guarantors_') {
+          // Check for guarantors_1_, guarantors_2_, etc.
+          for (let i = 1; i <= 4; i++) {
+            const indexedPrefix = `guarantors_${i}_`;
+            const prefixedDocumentId = indexedPrefix + documentId;
+            const prefixedWebhookResponse = originalWebhookResponses[prefixedDocumentId];
+            if (prefixedWebhookResponse) {
+              let fileUrl = '';
+              if (typeof prefixedWebhookResponse === 'string') {
+                fileUrl = prefixedWebhookResponse;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+                fileUrl = prefixedWebhookResponse.body;
+              } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+                fileUrl = prefixedWebhookResponse.url;
+              }
+              
+              if (fileUrl && fileUrl.trim()) {
+                const filename = `${prefixedDocumentId}_document`;
+                console.log(`📁 Adding document with indexed filename: ${filename} for ${prefixedDocumentId}`);
+                uploadedDocs.push({
+                  filename: filename,
+                  webhookbodyUrl: fileUrl
+                });
+              }
+            }
+          }
+        } else {
+          // Handle applicant_, coApplicant_, and occupants_ normally
+          const prefixedDocumentId = prefix + documentId;
+          const prefixedWebhookResponse = originalWebhookResponses[prefixedDocumentId];
+          if (prefixedWebhookResponse) {
+            let fileUrl = '';
+            if (typeof prefixedWebhookResponse === 'string') {
+              fileUrl = prefixedWebhookResponse;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+              fileUrl = prefixedWebhookResponse.body;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+              fileUrl = prefixedWebhookResponse.url;
+            }
+            
+            if (fileUrl && fileUrl.trim()) {
+              const filename = `${prefixedDocumentId}_document`;
+              console.log(`📁 Adding document with prefixed filename: ${filename} for ${prefixedDocumentId}`);
+              uploadedDocs.push({
+                filename: filename,
+                webhookbodyUrl: fileUrl
+              });
+            }
+          }
+        }
+      }
+    }
+    
+    // Check for documents with person prefix in webhookResponses (this handles the case where webhookResponses contain all person types)
+    const personPrefixes = ['applicant_', 'coApplicants_', 'guarantors_', 'occupants_'];
+    for (const prefix of personPrefixes) {
+      // Only process documents for the current context
+      if (currentContext === 'applicant' && prefix !== 'applicant_') continue;
+      if (currentContext === 'coApplicant' && prefix !== 'coApplicants_') continue;
+      if (currentContext === 'guarantor' && prefix !== 'guarantors_') continue;
+      if (currentContext === 'occupants' && prefix !== 'occupants_') continue;
+      
+      if (prefix === 'coApplicants_') {
+        // Check for coApplicants_1_, coApplicants_2_, etc.
+        for (let i = 1; i <= 4; i++) {
+          const indexedPrefix = `coApplicants_${i}_`;
+          const prefixedDocumentId = indexedPrefix + documentId;
+          const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+          if (prefixedWebhookResponse) {
+            let fileUrl = '';
+            if (typeof prefixedWebhookResponse === 'string') {
+              fileUrl = prefixedWebhookResponse;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+              fileUrl = prefixedWebhookResponse.body;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+              fileUrl = prefixedWebhookResponse.url;
+            }
+            
+            if (fileUrl && fileUrl.trim()) {
+              const filename = `${prefixedDocumentId}_document`;
+              console.log(`📁 Adding document with indexed filename: ${filename} for ${prefixedDocumentId}`);
+              uploadedDocs.push({
+                filename: filename,
+                webhookbodyUrl: fileUrl
+              });
+            }
+          }
+        }
+      } else if (prefix === 'guarantors_') {
+        // Check for guarantors_1_, guarantors_2_, etc.
+        for (let i = 1; i <= 4; i++) {
+          const indexedPrefix = `guarantors_${i}_`;
+          const prefixedDocumentId = indexedPrefix + documentId;
+          const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+          if (prefixedWebhookResponse) {
+            let fileUrl = '';
+            if (typeof prefixedWebhookResponse === 'string') {
+              fileUrl = prefixedWebhookResponse;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+              fileUrl = prefixedWebhookResponse.body;
+            } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+              fileUrl = prefixedWebhookResponse.url;
+            }
+            
+            if (fileUrl && fileUrl.trim()) {
+              const filename = `${prefixedDocumentId}_document`;
+              console.log(`📁 Adding document with indexed filename: ${filename} for ${prefixedDocumentId}`);
+              uploadedDocs.push({
+                filename: filename,
+                webhookbodyUrl: fileUrl
+              });
+            }
+          }
+        }
+      } else {
+        // Handle applicant_ and occupants_ normally
+        const prefixedDocumentId = prefix + documentId;
+        const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
+        if (prefixedWebhookResponse) {
+          let fileUrl = '';
+          if (typeof prefixedWebhookResponse === 'string') {
+            fileUrl = prefixedWebhookResponse;
+          } else if (prefixedWebhookResponse && prefixedWebhookResponse.body) {
+            fileUrl = prefixedWebhookResponse.body;
+          } else if (prefixedWebhookResponse && prefixedWebhookResponse.url) {
+            fileUrl = prefixedWebhookResponse.url;
+          }
+          
+          if (fileUrl && fileUrl.trim()) {
+            const filename = `${prefixedDocumentId}_document`;
+            console.log(`📁 Adding document with prefixed filename: ${filename} for ${prefixedDocumentId}`);
+            uploadedDocs.push({
+              filename: filename,
+              webhookbodyUrl: fileUrl
+            });
+          }
+        }
+      }
+    }
+    
+    // Check encryptedDocuments for uploaded files
+    const encryptedDocuments = formData.encryptedDocuments;
+    if (encryptedDocuments && uploadedDocs.length === 0) {
+      const personType = getPersonType(documentId);
+      const personDocs = encryptedDocuments[personType as keyof typeof encryptedDocuments];
+      if (personDocs && personDocs[documentId]) {
+        const files = personDocs[documentId];
+        if (Array.isArray(files) && files.length > 0) {
+          console.log(`📁 Adding encrypted documents: ${files.length} files for ${documentId}`);
+          // For encrypted documents, we don't have webhook URLs, so we'll create placeholder entries
+          files.forEach((file, index) => {
+            uploadedDocs.push({
+              filename: file.filename || `${personType}_${documentId}_${index}`,
+              webhookbodyUrl: file.fileUrl || '' // Use fileUrl if available, otherwise empty
+            });
           });
         }
       }
@@ -740,10 +1292,10 @@ export const SupportingDocuments = ({
     // Check document IDs to determine context
     const documentIds = requiredDocuments.flatMap(cat => cat.documents.map(doc => doc.id));
     
-    // Look for person-specific document IDs
-    if (documentIds.some(id => id.startsWith('coApplicant_'))) {
+    // Look for person-specific document IDs (including indexed versions)
+    if (documentIds.some(id => id.startsWith('coApplicants_') || id.startsWith('coApplicants_1_') || id.startsWith('coApplicants_2_') || id.startsWith('coApplicants_3_') || id.startsWith('coApplicants_4_'))) {
       return 'coApplicant';
-    } else if (documentIds.some(id => id.startsWith('guarantor_'))) {
+    } else if (documentIds.some(id => id.startsWith('guarantors_') || id.startsWith('guarantors_1_') || id.startsWith('guarantors_2_') || id.startsWith('guarantors_3_') || id.startsWith('guarantors_4_'))) {
       return 'guarantor';
     } else if (documentIds.some(id => id.startsWith('occupants_'))) {
       return 'occupants';
@@ -772,11 +1324,11 @@ export const SupportingDocuments = ({
   const getDocumentContext = (documentId: string): string => {
     console.log(`🔍 Analyzing document ID for context: ${documentId}`);
     
-    // Check if the document ID contains person-specific information
-    if (documentId.includes('coApplicant') || documentId.includes('co-applicant')) {
+    // Check if the document ID contains person-specific information (including indexed versions)
+    if (documentId.includes('coApplicants') || documentId.includes('co-applicant') || documentId.match(/coApplicants_\d+/)) {
       console.log(`🔍 Document ${documentId} identified as coApplicant`);
       return 'coApplicant';
-    } else if (documentId.includes('guarantor')) {
+    } else if (documentId.includes('guarantors') || documentId.match(/guarantors_\d+/)) {
       console.log(`🔍 Document ${documentId} identified as guarantor`);
       return 'guarantor';
     } else if (documentId.includes('occupants') || documentId.includes('occupant')) {
@@ -841,8 +1393,26 @@ export const SupportingDocuments = ({
 
   // Determine employment type for applicant, co-applicant, and guarantor
   const applicantEmploymentType = formData?.applicant?.employmentType;
-  const coApplicantEmploymentType = formData?.coApplicant?.employmentType;
-  const guarantorEmploymentType = formData?.guarantor?.employmentType;
+  
+  // Handle new co-applicant array structure
+  let coApplicantEmploymentType: string | undefined;
+  if (showOnlyCoApplicant && formData?.coApplicants && Array.isArray(formData.coApplicants)) {
+    // Get the first co-applicant's employment type when showing only co-applicant
+    coApplicantEmploymentType = formData.coApplicants[0]?.employmentType;
+  } else {
+    // Fallback to legacy structure
+    coApplicantEmploymentType = formData?.coApplicant?.employmentType;
+  }
+  
+  // Handle new guarantor array structure
+  let guarantorEmploymentType: string | undefined;
+  if (showOnlyGuarantor && formData?.guarantors && Array.isArray(formData.guarantors)) {
+    // Get the first guarantor's employment type when showing only guarantor
+    guarantorEmploymentType = formData.guarantors[0]?.employmentType;
+  } else {
+    // Fallback to legacy structure
+    guarantorEmploymentType = formData?.guarantor?.employmentType;
+  }
 
   // Helper to filter documents based on employment type
   function filterDocumentsByEmploymentType(documents: CategoryInfo[], employmentType: string | undefined) {
@@ -904,7 +1474,7 @@ export const SupportingDocuments = ({
   const filteredDocuments = filterDocumentsByEmploymentType(requiredDocuments, relevantEmploymentType);
 
   // Process Pay Stubs sections based on frequency
-  const processedDocuments = filteredDocuments.map(category => {
+  const processedDocuments = (filteredDocuments || []).map(category => {
     if (category.category === 'Employment Documents') {
       return {
         ...category,
@@ -922,8 +1492,8 @@ export const SupportingDocuments = ({
 
   // Add Other Occupant Documents category if there are other occupants
   const otherOccupants = Array.isArray(formData?.otherOccupants) ? formData.otherOccupants : [];
-  let filteredDocumentsWithOccupants = [...processedDocuments];
-  if (otherOccupants.length > 0) {
+  let filteredDocumentsWithOccupants = [...(processedDocuments || [])];
+  if (otherOccupants && otherOccupants.length > 0) {
     filteredDocumentsWithOccupants.push({
       category: 'Other Occupant Documents',
       icon: <User className="h-4 w-4" />,
@@ -940,7 +1510,7 @@ export const SupportingDocuments = ({
 
   return (
     <div className="space-y-6">
-      {filteredDocumentsWithOccupants.map((category) => (
+      {(filteredDocumentsWithOccupants || []).map((category) => (
         <div key={category.category} className="space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b">
             {category.icon}
@@ -978,7 +1548,7 @@ export const SupportingDocuments = ({
 
           
           <div className="grid grid-cols-1 gap-4">
-            {category.documents.map((document) => {
+            {(category.documents || []).map((document) => {
               const docStatus = getDocumentStatus(document.id);
               return (
                 <div key={document.id} className="border rounded-lg p-4 space-y-3">
@@ -1013,50 +1583,9 @@ export const SupportingDocuments = ({
                     </div>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 flex-shrink-0">
                       {docStatus.status === "uploaded" ? (
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                          <div className="flex items-center gap-1 text-green-600">
-                            <CheckCircle className="h-4 w-4 flex-shrink-0" />
-                            <span className="text-xs font-medium">Uploaded ({docStatus.count} file{docStatus.count > 1 ? 's' : ''})</span>
-                          </div>
-                          {/* Preview and Re-upload buttons for uploaded documents */}
-                          {(() => {
-                            const uploadedDocs = getUploadedDocuments(document.id);
-                            if (uploadedDocs.length > 0 && uploadedDocs[0]?.webhookbodyUrl) {
-                              return (
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handlePreviewDocument(
-                                      uploadedDocs[0].filename, 
-                                      uploadedDocs[0].webhookbodyUrl, 
-                                      document.name
-                                    )}
-                                    className="h-6 px-2 text-xs border-green-200 text-green-700 hover:bg-green-50 flex-shrink-0"
-                                  >
-                                    <Eye className="h-3 w-3 mr-1" />
-                                    Preview
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      // Set re-upload state to show upload option
-                                      setReuploadRequested(prev => ({
-                                        ...prev,
-                                        [document.id]: true
-                                      }));
-                                    }}
-                                    className="h-6 px-2 text-xs border-orange-200 text-orange-700 hover:bg-orange-50 flex-shrink-0"
-                                  >
-                                    <Upload className="h-3 w-3 mr-1" />
-                                    Re-upload
-                                  </Button>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
+                        <div className="flex items-center gap-1 text-green-600">
+                          <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                          <span className="text-xs font-medium">Uploaded ({docStatus.count} file{docStatus.count > 1 ? 's' : ''})</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 text-orange-600">
@@ -1069,57 +1598,130 @@ export const SupportingDocuments = ({
                   
 
                   <div>
-                    {/* Only show FileUpload when re-upload is requested or no webhook response exists */}
-                    {(!formData.webhookResponses?.[document.id] || reuploadRequested[document.id]) && (
-                      <>
-                        <FileUpload
-                          onFileChange={(files) => onDocumentChange(document.id, files)}
-                          onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
-                          onWebhookResponse={(response) => {
-                            // Clear re-upload state when file is uploaded
-                            setReuploadRequested(prev => ({
-                              ...prev,
-                              [document.id]: false
-                            }));
-                            onWebhookResponse?.(document.id, response);
-                          }}
-                          initialWebhookResponse={formData.webhookResponses?.[document.id]}
-                          accept={document.acceptedTypes}
-                          multiple={false}
-                          maxFiles={1}
-                          maxSize={50}
-                          label={`Upload ${document.name}`}
-                          className="mt-2"
-                          enableEncryption={true}
-                          referenceId={referenceId}
-                          sectionName={document.id}
-                          documentName={document.name}
-                          enableWebhook={enableWebhook}
-                          applicationId={applicationId}
-                          zoneinfo={zoneinfo}
-                          commentId={document.id}
-                        />
-                        {/* Show cancel button when re-upload is requested */}
-                        {reuploadRequested[document.id] && (
-                          <div className="mt-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
+                    {/* Check if document is uploaded (either via webhook or encrypted documents) */}
+                    {(() => {
+                      // Use the same logic as getDocumentStatus to determine if document is uploaded
+                      const docStatus = getDocumentStatus(document.id);
+                      const isUploaded = docStatus.status === "uploaded";
+                      
+                      if (isUploaded && !reuploadRequested[document.id]) {
+                        // Show preview and re-upload option when document is uploaded
+                        const uploadedDocs = getUploadedDocuments(document.id);
+                        const hasWebhookUrl = uploadedDocs.length > 0 && uploadedDocs[0]?.webhookbodyUrl;
+                        
+                        return (
+                          <div className="mt-2 p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                                  <span className="text-sm font-medium text-green-800">
+                                    Document uploaded successfully
+                                  </span>
+                                </div>
+                                
+                                {/* File information */}
+                                {hasWebhookUrl && (
+                                  <div className="flex items-center gap-2 p-2 bg-white rounded border border-green-100">
+                                    <FileText className="h-4 w-4 text-green-600" />
+                                    <span className="text-sm text-green-700 font-medium">
+                                      {uploadedDocs[0].filename}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Action buttons */}
+                              <div className="flex flex-col gap-2 flex-shrink-0">
+                                {hasWebhookUrl && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handlePreviewDocument(
+                                      uploadedDocs[0].filename, 
+                                      uploadedDocs[0].webhookbodyUrl, 
+                                      document.name
+                                    )}
+                                    className="h-8 px-3 text-xs border-green-200 text-green-700 hover:bg-green-50"
+                                  >
+                                    <Eye className="h-3 w-3 mr-1" />
+                                    Preview
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setReuploadRequested(prev => ({
+                                      ...prev,
+                                      [document.id]: true
+                                    }));
+                                  }}
+                                  className="h-8 px-3 text-xs border-orange-200 text-orange-700 hover:bg-orange-50"
+                                >
+                                  <Upload className="h-3 w-3 mr-1" />
+                                  Re-upload
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      } else if (!isUploaded || reuploadRequested[document.id]) {
+                        // Show FileUpload when re-upload is requested or document is not uploaded
+                        return (
+                          <>
+                            <FileUpload
+                              onFileChange={(files) => onDocumentChange(document.id, files)}
+                              onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
+                              onWebhookResponse={(response) => {
+                                // Clear re-upload state when file is uploaded
                                 setReuploadRequested(prev => ({
                                   ...prev,
                                   [document.id]: false
                                 }));
+                                onWebhookResponse?.(document.id, response);
                               }}
-                              className="h-6 px-2 text-xs border-gray-200 text-gray-700 hover:bg-gray-50 flex-shrink-0"
-                            >
-                              <X className="h-3 w-3 mr-1" />
-                              Cancel Re-upload
-                            </Button>
-                          </div>
-                        )}
-                      </>
-                    )}
+                              initialWebhookResponse={formData.webhookResponses?.[document.id]}
+                              accept={document.acceptedTypes}
+                              multiple={false}
+                              maxFiles={1}
+                              maxSize={50}
+                              label={`Upload ${document.name}`}
+                              className="mt-2"
+                              enableEncryption={true}
+                              referenceId={referenceId}
+                              sectionName={document.id}
+                              documentName={document.name}
+                              enableWebhook={enableWebhook}
+                              applicationId={applicationId}
+                              zoneinfo={zoneinfo}
+                              commentId={document.id}
+                            />
+                            {/* Show cancel button when re-upload is requested */}
+                            {reuploadRequested[document.id] && (
+                              <div className="mt-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setReuploadRequested(prev => ({
+                                      ...prev,
+                                      [document.id]: false
+                                    }));
+                                  }}
+                                  className="h-6 px-2 text-xs border-gray-200 text-gray-700 hover:bg-gray-50 flex-shrink-0"
+                                >
+                                  <X className="h-3 w-3 mr-1" />
+                                  Cancel Re-upload
+                                </Button>
+                              </div>
+                            )}
+                          </>
+                        );
+                      }
+                      
+                      return null;
+                    })()}
                     {/* Hidden input field for webhook response data */}
                     {formData.webhookResponses?.[document.id] && (
                       <input 

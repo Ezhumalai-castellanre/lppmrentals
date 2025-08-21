@@ -39,7 +39,9 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
     otherIncome: personData.otherIncome,
     otherIncomeFrequency: personData.otherIncomeFrequency,
     otherIncomeSource: personData.otherIncomeSource,
-    employmentType: personData.employmentType
+    employmentType: personData.employmentType,
+    bankRecords: personData.bankRecords,
+    bankRecordsLength: personData.bankRecords?.length
   });
 
   // Auto-set default frequency values when component mounts or employment type changes
@@ -126,7 +128,23 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
         </div>
 
                  {/* Dynamic Fields Based on Employment Type */}
-         {personData.employmentType === 'salaried' && (
+        {/* Debug: Show current employment type and available fields */}
+        <div className="text-xs text-gray-500 mb-2">
+          Debug: Current employment type: "{personData.employmentType}" (Type: {typeof personData.employmentType})
+          <br />
+          Available fields: {Object.keys(personData).join(', ')}
+        </div>
+        
+        {/* Debug: Show conditional rendering status */}
+        <div className="text-xs text-gray-500 mb-2">
+          Salaried condition: {personData.employmentType === 'salaried' ? 'TRUE' : 'FALSE'}
+          <br />
+          Student condition: {personData.employmentType === 'student' ? 'TRUE' : 'FALSE'}
+          <br />
+          Self-employed condition: {personData.employmentType === 'self-employed' ? 'TRUE' : 'FALSE'}
+        </div>
+        
+        {(personData.employmentType === 'salaried' || personData.employmentType?.trim() === 'salaried') && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="form-field">
               <Label htmlFor={`${person}-employer`}>Employer Name *</Label>
@@ -170,7 +188,7 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
             </div>
           </div>
         )}
-        {personData.employmentType === 'student' && (
+        {(personData.employmentType === 'student' || personData.employmentType?.trim() === 'student') && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="form-field">
               <Label htmlFor={`${person}-schoolName`}>School/University Name *</Label>
@@ -215,7 +233,7 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
           </div>
         )}
 
-        {personData.employmentType === 'self-employed' && (
+                 {(personData.employmentType === 'self-employed' || personData.employmentType?.trim() === 'self-employed') && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="form-field">
               <Label htmlFor={`${person}-businessName`}>Business Name *</Label>
@@ -304,7 +322,15 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                   onClick={() => {
                     console.log(`Initializing bank records for ${person}`);
                     const initialRecord = { bankName: '', accountType: '', accountNumber: '' };
-                    updateFormData(person, 'bankRecords', [initialRecord]);
+                    if (person.startsWith('coApplicants_')) {
+                      const coApplicantIndex = parseInt(person.replace('coApplicants_', ''), 10);
+                      updateFormData('coApplicants', coApplicantIndex.toString(), 'bankRecords', [initialRecord]);
+                    } else if (person.startsWith('guarantors_')) {
+                      const guarantorIndex = parseInt(person.replace('guarantors_', ''), 10);
+                      updateFormData('guarantors', guarantorIndex.toString(), 'bankRecords', [initialRecord]);
+                    } else {
+                      updateFormData(person, 'bankRecords', [initialRecord]);
+                    }
                   }}
                 >
                   Add First Bank Account
@@ -326,7 +352,15 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                      updatedRecords,
                      newLength: updatedRecords.length
                    });
-                   updateFormData(person, 'bankRecords', updatedRecords);
+                   if (person.startsWith('coApplicants_')) {
+                    const coApplicantIndex = parseInt(person.replace('coApplicants_', ''), 10);
+                    updateFormData('coApplicants', coApplicantIndex.toString(), 'bankRecords', updatedRecords);
+                  } else if (person.startsWith('guarantors_')) {
+                    const guarantorIndex = parseInt(person.replace('guarantors_', ''), 10);
+                    updateFormData('guarantors', guarantorIndex.toString(), 'bankRecords', updatedRecords);
+                  } else {
+                    updateFormData(person, 'bankRecords', updatedRecords);
+                  }
               }}
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -355,7 +389,15 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                         updatedRecords: updated,
                         newLength: updated.length
                       });
-                      updateFormData(person, 'bankRecords', updated);
+                      if (person.startsWith('coApplicants_')) {
+                        const coApplicantIndex = parseInt(person.replace('coApplicants_', ''), 10);
+                        updateFormData('coApplicants', coApplicantIndex.toString(), 'bankRecords', updated);
+                      } else if (person.startsWith('guarantors_')) {
+                        const guarantorIndex = parseInt(person.replace('guarantors_', ''), 10);
+                        updateFormData('guarantors', guarantorIndex.toString(), 'bankRecords', updated);
+                      } else {
+                        updateFormData(person, 'bankRecords', updated);
+                      }
                     }}
                   >
                     <Trash2 className="w-4 h-4" />
@@ -377,7 +419,15 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                         newValue: e.target.value,
                         updatedRecord: bankRecords[index]
                       });
-                      updateFormData(person, 'bankRecords', bankRecords);
+                      if (person.startsWith('coApplicants_')) {
+                        const coApplicantIndex = parseInt(person.replace('coApplicants_', ''), 10);
+                        updateFormData('coApplicants', coApplicantIndex.toString(), 'bankRecords', bankRecords);
+                      } else if (person.startsWith('guarantors_')) {
+                        const guarantorIndex = parseInt(person.replace('guarantors_', ''), 10);
+                        updateFormData('guarantors', guarantorIndex.toString(), 'bankRecords', bankRecords);
+                      } else {
+                        updateFormData(person, 'bankRecords', bankRecords);
+                      }
                     }}
                   />
                 </div>
@@ -392,7 +442,15 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
                         newValue: value,
                         updatedRecord: bankRecords[index]
                       });
-                      updateFormData(person, 'bankRecords', bankRecords);
+                      if (person.startsWith('coApplicants_')) {
+                        const coApplicantIndex = parseInt(person.replace('coApplicants_', ''), 10);
+                        updateFormData('coApplicants', coApplicantIndex.toString(), 'bankRecords', bankRecords);
+                      } else if (person.startsWith('guarantors_')) {
+                        const guarantorIndex = parseInt(person.replace('guarantors_', ''), 10);
+                        updateFormData('guarantors', guarantorIndex.toString(), 'bankRecords', bankRecords);
+                      } else {
+                        updateFormData(person, 'bankRecords', bankRecords);
+                      }
                     }}
                   >
                     <SelectTrigger className="input-field">

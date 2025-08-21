@@ -129,8 +129,19 @@ export function FileUpload({
         const encryptedFilesArray = await encryptFiles(validFiles);
 
         const updatedEncryptedFiles = multiple 
-          ? [...encryptedFiles, ...encryptedFilesArray]
+          ? [...(encryptedFiles || []), ...encryptedFilesArray]
           : encryptedFilesArray;
+        
+        // Safety check: ensure updatedEncryptedFiles is always an array
+        if (!Array.isArray(updatedEncryptedFiles)) {
+          console.error('❌ FileUpload: updatedEncryptedFiles is not an array:', {
+            updatedEncryptedFiles,
+            type: typeof updatedEncryptedFiles,
+            encryptedFiles,
+            encryptedFilesArray
+          });
+          return;
+        }
         
         setEncryptedFiles(updatedEncryptedFiles);
         onEncryptedFilesChange(updatedEncryptedFiles);
@@ -182,7 +193,7 @@ export function FileUpload({
     
     // Also remove from encrypted files if encryption is enabled
     if (enableEncryption && onEncryptedFilesChange) {
-      const updatedEncryptedFiles = encryptedFiles.filter((_, i) => i !== index);
+      const updatedEncryptedFiles = (encryptedFiles || []).filter((_, i) => i !== index);
       setEncryptedFiles(updatedEncryptedFiles);
       onEncryptedFilesChange(updatedEncryptedFiles);
     }

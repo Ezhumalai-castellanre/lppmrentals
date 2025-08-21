@@ -1247,61 +1247,69 @@ export function ApplicationForm() {
             form.setValue('hasGuarantor', parsedFormData.hasGuarantor);
           }
           
-              // Force form to re-render with the restored values
-    setTimeout(() => {
-      form.reset(form.getValues());
-      // Form reset completed with values
-      
-      // Re-sync checkbox values after form reset to ensure they're properly maintained
-      if (parsedFormData.hasCoApplicant !== undefined) {
-        form.setValue('hasCoApplicant', parsedFormData.hasCoApplicant);
-        // Re-syncing hasCoApplicant after form reset
-        // Also ensure the state is in sync
-        setHasCoApplicant(parsedFormData.hasCoApplicant);
-      }
-      if (parsedFormData.hasGuarantor !== undefined) {
-        form.setValue('hasGuarantor', parsedFormData.hasGuarantor);
-        // Re-syncing hasGuarantor after form reset
-        // Also ensure the state is in sync
-        setHasGuarantor(parsedFormData.hasGuarantor);
-      }
-      
-      // Ensure apartment fields are properly synchronized after form reset
-      if (parsedFormData.application?.buildingAddress) {
-        form.setValue('buildingAddress', parsedFormData.application.buildingAddress);
-        // Re-syncing buildingAddress after form reset
-      }
-      if (parsedFormData.application?.apartmentNumber) {
-        form.setValue('apartmentNumber', parsedFormData.application.apartmentNumber);
-        // Re-syncing apartmentNumber after form reset
-      }
-      if (parsedFormData.application?.apartmentType) {
-        form.setValue('apartmentType', parsedFormData.application.apartmentType);
-        // Re-syncing apartmentType after form reset
-      }
-    
-    // Ensure city, state, and zip fields are properly synchronized after form reset
-    if (parsedFormData.applicant?.city !== undefined) {
-      form.setValue('applicantCity', parsedFormData.applicant.city || '');
-      // Re-syncing applicantCity after form reset
-    }
-    if (parsedFormData.applicant?.state !== undefined) {
-      form.setValue('applicantState', parsedFormData.applicant.state || '');
+          // Force form to re-render with the restored values
+          setTimeout(() => {
+            form.reset(form.getValues());
+            // Form reset completed with values
+            
+            // Re-sync checkbox values after form reset to ensure they're properly maintained
+            if (parsedFormData.hasCoApplicant !== undefined) {
+              form.setValue('hasCoApplicant', parsedFormData.hasCoApplicant);
+              // Re-syncing hasCoApplicant after form reset
+              // Also ensure the state is in sync
+              setHasCoApplicant(parsedFormData.hasCoApplicant);
+            }
+            if (parsedFormData.hasGuarantor !== undefined) {
+              form.setValue('hasGuarantor', parsedFormData.hasGuarantor);
+              // Re-syncing hasGuarantor after form reset
+              // Also ensure the state is in sync
+              setHasGuarantor(parsedFormData.hasGuarantor);
+            }
+            
+            // Ensure apartment fields are properly synchronized after form reset
+            if (parsedFormData.application?.buildingAddress) {
+              form.setValue('buildingAddress', parsedFormData.application.buildingAddress);
+              // Re-syncing buildingAddress after form reset
+            }
+            if (parsedFormData.application?.apartmentNumber) {
+              form.setValue('apartmentNumber', parsedFormData.application.apartmentNumber);
+              // Re-syncing apartmentNumber after form reset
+            }
+            if (parsedFormData.application?.apartmentType) {
+              form.setValue('apartmentType', parsedFormData.application.apartmentType);
+              // Re-syncing apartmentType after form reset
+            }
+          
+            // Ensure city, state, and zip fields are properly synchronized after form reset
+            if (parsedFormData.applicant?.city !== undefined) {
+              form.setValue('applicantCity', parsedFormData.applicant.city || '');
+              // Re-syncing applicantCity after form reset
+            }
+            if (parsedFormData.applicant?.state !== undefined) {
+              form.setValue('applicantState', parsedFormData.applicant.state || '');
               // Re-syncing applicantState after form reset
-    }
-    if (parsedFormData.applicant?.zip !== undefined) {
-      form.setValue('applicantZip', parsedFormData.applicant.zip || '');
+            }
+            if (parsedFormData.applicant?.zip !== undefined) {
+              form.setValue('applicantZip', parsedFormData.applicant.zip || '');
               // Re-syncing applicantZip after form reset
-    }
-    
-    // Ensure landlord fields are properly synchronized after form reset
-    if (parsedFormData.applicant?.landlordName !== undefined) {
-      form.setValue('applicantLandlordName', parsedFormData.applicant.landlordName || '');
+            }
+            
+            // Ensure landlord fields are properly synchronized after form reset
+            if (parsedFormData.applicant?.landlordName !== undefined) {
+              form.setValue('applicantLandlordName', parsedFormData.applicant.landlordName || '');
               // Re-syncing applicantLandlordName after form reset
-    }
-    if (parsedFormData.applicant?.landlordAddressLine1 !== undefined) {
-      form.setValue('applicantLandlordAddressLine1', parsedFormData.applicant.landlordAddressLine1 || '');
+            }
+            if (parsedFormData.applicant?.landlordAddressLine1 !== undefined) {
+              form.setValue('applicantLandlordAddressLine1', parsedFormData.applicant.landlordAddressLine1 || '');
               // Re-syncing applicantLandlordAddressLine1 after form reset
+            }
+            if (parsedFormData.applicant?.landlordAddressLine2 !== undefined) {
+              form.setValue('applicantLandlordAddressLine2', parsedFormData.applicant.landlordAddressLine2 || '');
+              console.log('🏠 Re-syncing applicantLandlordAddressLine2 after form reset:', parsedFormData.applicant.landlordAddressLine2 || '');
+            }
+            if (parsedFormData.applicant?.landlordCity !== undefined) {
+              form.setValue('applicantLandlordCity', parsedFormData.applicant.landlordCity || '');
+              console.log('🏠 Re-syncing applicantLandlordCity after form reset:', parsedFormData.applicant.landlordCity || '');
     }
     if (parsedFormData.applicant?.landlordAddressLine2 !== undefined) {
       form.setValue('applicantLandlordAddressLine2', parsedFormData.applicant.landlordAddressLine2 || '');
@@ -1800,8 +1808,33 @@ export function ApplicationForm() {
   const handleWebhookFileUrl = (person: string, documentType: string, fileUrl: string, fileName: string) => {
     setEncryptedDocuments((prev: any) => {
       const updated = { ...prev };
-      if (!updated[person] || !updated[person][documentType]) return prev;
-      updated[person][documentType] = updated[person][documentType].map((file: any) =>
+      
+      // Map plural person types to singular for encrypted documents
+      let mappedPerson = person;
+      if (person === 'coApplicants') {
+        mappedPerson = 'coApplicant';
+      } else if (person === 'guarantors') {
+        mappedPerson = 'guarantor';
+      }
+      
+      // Safety check: ensure person and documentType exist
+      if (!updated[mappedPerson]) {
+        console.log(`ℹ️ handleWebhookFileUrl: ${mappedPerson} not found in encryptedDocuments, skipping file URL update`);
+        return prev;
+      }
+      
+      if (!updated[mappedPerson][documentType]) {
+        console.log(`ℹ️ handleWebhookFileUrl: ${mappedPerson}.${documentType} not found in encryptedDocuments, skipping file URL update`);
+        return prev;
+      }
+      
+      // Safety check: ensure documentType is an array before calling .map()
+      if (!Array.isArray(updated[mappedPerson][documentType])) {
+        console.warn(`⚠️ handleWebhookFileUrl: ${mappedPerson}.${documentType} is not an array:`, updated[mappedPerson][documentType]);
+        return prev;
+      }
+      
+      updated[mappedPerson][documentType] = updated[mappedPerson][documentType].map((file: any) =>
         file.filename === fileName ? { ...file, fileUrl } : file
       );
       return updated;
@@ -1809,14 +1842,39 @@ export function ApplicationForm() {
   };
 
   // Enhanced webhook response handler
-  const handleWebhookResponse = (person: 'applicant' | 'coApplicant' | 'guarantor' | 'occupants', documentType: string, response: any) => {
+  const handleWebhookResponse = (person: 'applicant' | 'coApplicant' | 'coApplicants' | 'guarantor' | 'guarantors' | 'occupants', documentTypeOrIndex: string, response: any) => {
     console.log(`📥 === WEBHOOK RESPONSE RECEIVED ===`);
     console.log(`👤 Person: ${person}`);
-    console.log(`📄 Document Type: ${documentType}`);
+    console.log(`📄 Document Type or Index: ${documentTypeOrIndex}`);
     console.log(`📨 Raw Response:`, response);
     
-    // Store webhook response
-    const responseKey = person === 'occupants' ? `occupants_${documentType}` : `${person}_${documentType}`;
+    // Store webhook response with proper key generation
+    let responseKey: string;
+    
+    if (person === 'coApplicants') {
+      // Handle coApplicants with index (e.g., coApplicants_0_photo_id)
+      // The documentTypeOrIndex should already contain the index, so we need to extract it
+      if (documentTypeOrIndex.includes('_')) {
+        // If documentTypeOrIndex contains underscore, it might already have the index
+        responseKey = `coApplicants_${documentTypeOrIndex}`;
+      } else {
+        // Otherwise, use the default index 0
+        responseKey = `coApplicants_0_${documentTypeOrIndex}`;
+      }
+    } else if (person === 'guarantors') {
+      // Handle guarantors with index (e.g., guarantors_0_photo_id)
+      if (documentTypeOrIndex.includes('_')) {
+        responseKey = `guarantors_${documentTypeOrIndex}`;
+      } else {
+        responseKey = `guarantors_0_${documentTypeOrIndex}`;
+      }
+    } else if (person === 'occupants') {
+      responseKey = `occupants_${documentTypeOrIndex}`;
+    } else {
+      // Handle applicant, coApplicant, guarantor (singular)
+      responseKey = `${person}_${documentTypeOrIndex}`;
+    }
+    
     console.log(`🔑 Setting webhook response for key: ${responseKey}`);
     console.log(`🔑 Previous webhook responses:`, webhookResponses);
     
@@ -1839,8 +1897,16 @@ export function ApplicationForm() {
     let responseType = 'unknown';
     
     if (typeof response === 'string') {
-      fileUrl = response;
-      responseType = 'string';
+      // Check if the response is actually a valid URL or just a document type identifier
+      if (response.startsWith('http://') || response.startsWith('https://') || response.startsWith('s3://')) {
+        fileUrl = response;
+        responseType = 'url_string';
+      } else {
+        // This is likely a document type identifier, not a file URL
+        console.log(`ℹ️ Response appears to be a document type identifier: ${response}`);
+        responseType = 'document_type';
+        // Don't treat this as a file URL
+      }
     } else if (response && response.body) {
       fileUrl = response.body;
       responseType = 'body';
@@ -1854,20 +1920,18 @@ export function ApplicationForm() {
     console.log(`  - File URL: ${fileUrl}`);
     console.log(`  - Has File URL: ${!!fileUrl}`);
 
-    if (fileUrl) {
+    if (fileUrl && responseType !== 'document_type') {
       console.log(`✅ File URL successfully extracted: ${fileUrl}`);
       
-
-
       // Also update the webhook file URL for encrypted documents
       // Use person-specific filename to maintain context
-      const personSpecificFilename = `${person}_${documentType}_${Date.now()}`;
+      const personSpecificFilename = `${person}_${documentTypeOrIndex}_${Date.now()}`;
       console.log(`🔑 Setting webhook file URL with person-specific filename: ${personSpecificFilename}`);
-      handleWebhookFileUrl(person, documentType, fileUrl, personSpecificFilename);
+      handleWebhookFileUrl(person, documentTypeOrIndex, fileUrl, personSpecificFilename);
       
-      console.log(`✅ Webhook response processing completed for ${person} ${documentType}`);
+      console.log(`✅ Webhook response processing completed for ${person} ${documentTypeOrIndex}`);
     } else {
-      console.warn(`⚠️ No file URL found in webhook response for ${person} ${documentType}`);
+      console.log(`ℹ️ Webhook response stored but no file URL processing needed for ${person} ${documentTypeOrIndex}`);
     }
     
     console.log(`=== END WEBHOOK RESPONSE ===`);
@@ -2172,6 +2236,18 @@ export function ApplicationForm() {
   };
 
   const handleEncryptedDocumentChange = async (person: string, documentType: string, encryptedFiles: EncryptedFile[]) => {
+    // Safety check: ensure encryptedFiles is an array
+    if (!Array.isArray(encryptedFiles)) {
+      console.error('❌ handleEncryptedDocumentChange: encryptedFiles is not an array:', {
+        person,
+        documentType,
+        encryptedFiles,
+        type: typeof encryptedFiles,
+        isArray: Array.isArray(encryptedFiles)
+      });
+      return; // Exit early to prevent crash
+    }
+    
     console.log('handleEncryptedDocumentChange called:', { person, documentType, encryptedFilesCount: encryptedFiles.length });
     
     // Special debugging for guarantor documents
@@ -2195,7 +2271,7 @@ export function ApplicationForm() {
     // Track uploadedDocuments for webhook
     const sectionKey = `${person}_${documentType}`;
     // Map docs and include file_url if present on the file
-    const docs = encryptedFiles.map(file => ({
+    const docs = (encryptedFiles || []).map(file => ({
       reference_id: file.uploadDate + '-' + file.filename, // or use a better unique id if available
       file_name: file.filename,
       section_name: sectionKey,
@@ -2211,7 +2287,7 @@ export function ApplicationForm() {
     });
 
     // Track uploaded files metadata for webhook - OPTIMIZED VERSION
-    const filesMetadata = encryptedFiles.map(file => ({
+    const filesMetadata = (encryptedFiles || []).map(file => ({
       file_name: file.filename,
       file_size: file.originalSize,
       mime_type: file.mimeType,
@@ -2993,7 +3069,7 @@ export function ApplicationForm() {
           },
           
           // Co-Applicants (nested objects)
-          coApplicants: formData.coApplicants.map((coApplicant: any) => ({
+          coApplicants: (formData.coApplicants || []).map((coApplicant: any) => ({
             email: coApplicant.email || formData.coApplicantEmail,
             phone: formatPhoneForPayload(coApplicant.phone || formData.coApplicantPhone),
             zip: coApplicant.zip || formData.coApplicantZip,
@@ -3026,7 +3102,7 @@ export function ApplicationForm() {
             incomeFrequency: coApplicant.incomeFrequency,
             otherIncome: coApplicant.otherIncome,
             otherIncomeSource: coApplicant.otherIncomeSource,
-            bankRecords: coApplicant.bankRecords.map((record: any) => ({
+            bankRecords: (coApplicant.bankRecords || []).map((record: any) => ({
                 bankName: record.bankName,
                 accountType: record.accountType,
                 accountNumber: record.accountNumber || ""
@@ -3038,14 +3114,14 @@ export function ApplicationForm() {
             coApplicantIncomeFrequency: coApplicant.incomeFrequency,
             coApplicantOtherIncome: coApplicant.otherIncome,
             coApplicantOtherIncomeSource: coApplicant.otherIncomeSource,
-            coApplicantBankRecords: coApplicant.bankRecords.map((record: any) => ({
+            coApplicantBankRecords: (coApplicant.bankRecords || []).map((record: any) => ({
                 bankName: record.bankName,
                 accountType: record.accountType
               })),
           })),
           
           // Guarantors (nested objects)
-          guarantors: formData.guarantors.map((guarantor: any) => ({
+          guarantors: (formData.guarantors || []).map((guarantor: any) => ({
             email: guarantor.email || formData.guarantorEmail,
             phone: formatPhoneForPayload(guarantor.phone || formData.guarantorPhone),
             zip: guarantor.zip || formData.guarantorZip,
@@ -3067,8 +3143,12 @@ export function ApplicationForm() {
             lengthAtAddressMonths: guarantor.lengthAtAddressMonths,
             landlordName: guarantor.landlordName,
             landlordAddressLine1: guarantor.landlordAddressLine1,
-            landlordState: guarantor.landlordState,
             landlordAddressLine2: guarantor.landlordAddressLine2,
+            landlordCity: guarantor.landlordCity,
+            landlordState: guarantor.landlordState,
+            landlordZipCode: guarantor.landlordZipCode,
+            landlordPhone: guarantor.landlordPhone,
+            landlordEmail: guarantor.landlordEmail,
             currentRent: guarantor.currentRent,
             reasonForMoving: guarantor.reasonForMoving,
             employmentType: guarantor.employmentType,
@@ -3079,7 +3159,7 @@ export function ApplicationForm() {
             incomeFrequency: guarantor.incomeFrequency,
             otherIncome: guarantor.otherIncome,
             otherIncomeSource: guarantor.otherIncomeSource,
-            bankRecords: guarantor.bankRecords.map((record: any) => ({
+            bankRecords: (guarantor.bankRecords || []).map((record: any) => ({
                 bankName: record.bankName,
                 accountType: record.accountType,
                 accountNumber: record.accountNumber || ""
@@ -3087,11 +3167,11 @@ export function ApplicationForm() {
             guarantorPosition: guarantor.position,
             guarantorStartDate: safeDateToISO(guarantor.employmentStart),
             guarantorSalary: guarantor.salary,
-              // Add missing income frequency and other income fields for guarantor
+            // Add missing income frequency and other income fields for guarantor
             guarantorIncomeFrequency: guarantor.incomeFrequency,
             guarantorOtherIncome: guarantor.otherIncome,
             guarantorOtherIncomeSource: guarantor.otherIncomeSource,
-            guarantorBankRecords: guarantor.bankRecords.map((record: any) => ({
+            guarantorBankRecords: (guarantor.bankRecords || []).map((record: any) => ({
                 bankName: record.bankName,
                 accountType: record.accountType
               })),
@@ -3386,8 +3466,8 @@ export function ApplicationForm() {
             hasGuarantor: hasGuarantor,
             
             // Co-Applicants - Complete data (if exists)
-            ...(hasCoApplicant && formData.coApplicants.length > 0 ? {
-              coApplicants: formData.coApplicants.map((coApplicant: any) => ({
+            ...(hasCoApplicant && (formData.coApplicants || []).length > 0 ? {
+              coApplicants: (formData.coApplicants || []).map((coApplicant: any) => ({
                 name: coApplicant.name,
                 relationship: coApplicant.relationship,
                 dob: coApplicant.dob,
@@ -3420,7 +3500,7 @@ export function ApplicationForm() {
                 incomeFrequency: coApplicant.incomeFrequency,
                 otherIncome: coApplicant.otherIncome,
                 otherIncomeSource: coApplicant.otherIncomeSource,
-                bankRecords: coApplicant.bankRecords.map((record: any) => ({
+                bankRecords: (coApplicant.bankRecords || []).map((record: any) => ({
                 bankName: record.bankName,
                 accountType: record.accountType
               })),
@@ -3431,7 +3511,7 @@ export function ApplicationForm() {
                 coApplicantIncomeFrequency: coApplicant.incomeFrequency,
                 coApplicantOtherIncome: coApplicant.otherIncome,
                 coApplicantOtherIncomeSource: coApplicant.otherIncomeSource,
-                coApplicantBankRecords: coApplicant.bankRecords.map((record: any) => ({
+                coApplicantBankRecords: (coApplicant.bankRecords || []).map((record: any) => ({
                   bankName: record.bankName,
                   accountType: record.accountType
                 }))
@@ -3439,8 +3519,8 @@ export function ApplicationForm() {
             } : {}),
             
             // Guarantors - Complete data (if exists)
-            ...(hasGuarantor && formData.guarantors.length > 0 ? {
-              guarantors: formData.guarantors.map((guarantor: any) => ({
+            ...(hasGuarantor && (formData.guarantors || []).length > 0 ? {
+              guarantors: (formData.guarantors || []).map((guarantor: any) => ({
                 name: guarantor.name,
                 relationship: guarantor.relationship,
                 dob: guarantor.dob,
@@ -3473,7 +3553,7 @@ export function ApplicationForm() {
                 incomeFrequency: guarantor.incomeFrequency,
                 otherIncome: guarantor.otherIncome,
                 otherIncomeSource: guarantor.otherIncomeSource,
-                bankRecords: guarantor.bankRecords.map((record: any) => ({
+                bankRecords: (guarantor.bankRecords || []).map((record: any) => ({
                 bankName: record.bankName,
                   accountType: record.accountType,
                   accountNumber: record.accountNumber || ""
@@ -3485,7 +3565,7 @@ export function ApplicationForm() {
                 guarantorIncomeFrequency: guarantor.incomeFrequency,
                 guarantorOtherIncome: guarantor.otherIncome,
                 guarantorOtherIncomeSource: guarantor.otherIncomeSource,
-                guarantorBankRecords: guarantor.bankRecords.map((record: any) => ({
+                guarantorBankRecords: (guarantor.bankRecords || []).map((record: any) => ({
                   bankName: record.bankName,
                   accountType: record.accountType
                 }))
@@ -3537,20 +3617,20 @@ export function ApplicationForm() {
                 hasBankRecords: !!(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0)
               },
               coApplicants: hasCoApplicant ? {
-                bankRecords: formData.coApplicants.map((coApplicant: any) => ({
-                  bankName: coApplicant.bankRecords[0].bankName,
-                  accountType: coApplicant.bankRecords[0].accountType,
-                  totalBankRecords: coApplicant.bankRecords.length,
+                bankRecords: (formData.coApplicants || []).map((coApplicant: any) => ({
+                  bankName: coApplicant.bankRecords?.[0]?.bankName || '',
+                  accountType: coApplicant.bankRecords?.[0]?.accountType || '',
+                  totalBankRecords: coApplicant.bankRecords?.length || 0,
                   hasBankRecords: !!(coApplicant.bankRecords && coApplicant.bankRecords.length > 0)
                 })),
                 totalBankRecords: formData.coApplicants.reduce((total: number, coApplicant: any) => total + coApplicant.bankRecords.length, 0),
                 hasBankRecords: !!(formData.coApplicants?.[0]?.bankRecords?.length)
               } : null,
               guarantors: hasGuarantor ? {
-                bankRecords: formData.guarantors.map((guarantor: any) => ({
-                  bankName: guarantor.bankRecords[0].bankName,
-                  accountType: guarantor.bankRecords[0].accountType,
-                  totalBankRecords: guarantor.bankRecords.length,
+                bankRecords: (formData.guarantors || []).map((guarantor: any) => ({
+                  bankName: guarantor.bankRecords?.[0]?.bankName || '',
+                  accountType: guarantor.bankRecords?.[0]?.accountType || '',
+                  totalBankRecords: guarantor.bankRecords?.length || 0,
                   hasBankRecords: !!(guarantor.bankRecords && guarantor.bankRecords.length > 0)
                 })),
                 totalBankRecords: formData.guarantors.reduce((total: number, guarantor: any) => total + guarantor.bankRecords.length, 0),
@@ -3563,8 +3643,8 @@ export function ApplicationForm() {
                                  (hasGuarantor ? formData.guarantors.reduce((total: number, guarantor: any) => total + guarantor.bankRecords.length, 0) : 0),
                 peopleWithBankRecords: [
                   ...(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0 ? ['applicant'] : []),
-                  ...(hasCoApplicant ? formData.coApplicants.map((coApplicant: any) => `coApplicant_${coApplicant.name}`) : []),
-                  ...(hasGuarantor ? formData.guarantors.map((guarantor: any) => `guarantor_${guarantor.name}`) : [])
+                  ...(hasCoApplicant ? (formData.coApplicants || []).map((coApplicant: any) => `coApplicant_${coApplicant.name}`) : []),
+                  ...(hasGuarantor ? (formData.guarantors || []).map((guarantor: any) => `guarantor_${guarantor.name}`) : [])
                 ]
               }
             },
@@ -3594,8 +3674,8 @@ export function ApplicationForm() {
           console.log('📊 Co-Applicant income frequency:', (webhookPayload as any).coApplicantsIncomeFrequency);
           console.log('📊 Guarantor income frequency:', (webhookPayload as any).guarantorsIncomeFrequency);
           console.log('📊 Form data applicant income frequency:', formData.applicant?.incomeFrequency);
-          console.log('📊 Form data co-applicants income frequency:', formData.coApplicants.map((coApplicant: any) => coApplicant.incomeFrequency).join(', '));
-          console.log('📊 Form data guarantors income frequency:', formData.guarantors.map((guarantor: any) => guarantor.incomeFrequency).join(', '));
+          console.log('📊 Form data co-applicants income frequency:', (formData.coApplicants || []).map((coApplicant: any) => coApplicant.incomeFrequency).join(', '));
+          console.log('📊 Form data guarantors income frequency:', (formData.guarantors || []).map((guarantor: any) => guarantor.incomeFrequency).join(', '));
           console.log('=== END INCOME FREQUENCY DEBUG ===');
           
           if (payloadSize > 50 * 1024 * 1024) { // 50MB limit
@@ -4865,18 +4945,6 @@ export function ApplicationForm() {
                       .map(([key, value]) => [key.replace('applicant_', ''), value])
                   )
                 }}
-                // Debug: Log what webhook responses are being filtered for applicant
-                // Original webhookResponses: {applicant_employment_letter: "...", coApplicant_photo_id: "...", guarantor_social_security: "..."}
-                // Filtered for applicant: {employment_letter: "...", ...}
-                // Log the filtering process
-                // console.log('🔍 Filtering webhook responses for applicant:', {
-                //   original: webhookResponses,
-                //   filtered: Object.fromEntries(
-                //     Object.entries(webhookResponses)
-                //       .filter(([key]) => key.startsWith('applicant_'))
-                //       .map(([key, value]) => [key.replace('applicant_', ''), value])
-                //   )
-                // });
                 onDocumentChange={(documentType, files) => {
                   handleDocumentChange('applicant', documentType, files);
                 }}
@@ -5486,7 +5554,7 @@ export function ApplicationForm() {
         }
         // Wrapper functions for SupportingDocuments to match expected signature
         const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicants', '0', documentType, files);
-        const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicants', '0', documentType, encryptedFiles);
+        const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicants', documentType, encryptedFiles);
         const coApplicantWebhookResponse = (documentType: string, response: any) => {
           handleWebhookResponse('coApplicants', '0', documentType, response);
         };
@@ -5511,14 +5579,15 @@ export function ApplicationForm() {
                             .map(([key, value]) => [key.replace(`coApplicants_${index}_`, ''), value])
                         )
                       }}
+                      originalWebhookResponses={webhookResponses}
                       onDocumentChange={(documentType: string, files: File[]) => 
                         handleDocumentChange('coApplicants', index.toString(), documentType, files)
                       }
                       onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => 
-                        handleEncryptedDocumentChange('coApplicants', index.toString(), documentType, encryptedFiles)
+                        handleEncryptedDocumentChange('coApplicants', documentType, encryptedFiles)
                       }
                       onWebhookResponse={(documentType: string, response: any) => {
-                        handleWebhookResponse('coApplicants', index.toString(), documentType, response);
+                        handleWebhookResponse('coApplicants', `${index}_${documentType}`, response);
                       }}
                   referenceId={referenceId}
                   enableWebhook={true}
@@ -5545,18 +5614,6 @@ export function ApplicationForm() {
               <div className="text-sm text-muted-foreground mt-2">
                 List any other people who will be living in the apartment
               </div>
-                
-                {/* Debug: Show current webhook responses for occupants */}
-                {Object.keys(formData.webhookResponses || {}).filter(key => key.startsWith('occupants_')).length > 0 && (
-                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="text-xs font-medium text-blue-800 mb-2">🔍 Debug: Occupant Webhook Responses</div>
-                    {Object.entries(formData.webhookResponses || {}).filter(([key]) => key.startsWith('occupants_')).map(([key, value]) => (
-                      <div key={key} className="text-xs text-blue-700 mb-1">
-                        <strong>{key}:</strong> {typeof value === 'string' ? value : JSON.stringify(value)}
-                      </div>
-                    ))}
-                  </div>
-                )}
             </CardHeader>
             <CardContent className="space-y-8">
               {(formData.occupants || []).map((occupant: any, idx: number) => (
@@ -6194,8 +6251,14 @@ export function ApplicationForm() {
                           Object.entries(formData)
                             .filter(([key]) => key.startsWith(`guarantors_${index}_`))
                             .map(([key, value]) => [key.replace(`guarantors_${index}_`, ''), value])
+                        ),
+                        webhookResponses: Object.fromEntries(
+                          Object.entries(webhookResponses)
+                            .filter(([key]) => key.startsWith(`guarantors_${index}_`))
+                            .map(([key, value]) => [key.replace(`guarantors_${index}_`, ''), value])
                         )
                       }}
+                      originalWebhookResponses={webhookResponses}
                       onDocumentChange={guarantorDocumentChange}
                       onEncryptedDocumentChange={guarantorEncryptedDocumentChange}
                       onWebhookResponse={guarantorWebhookResponse}
