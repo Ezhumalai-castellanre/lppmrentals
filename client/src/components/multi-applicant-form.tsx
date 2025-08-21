@@ -300,12 +300,12 @@ export function MultiApplicantForm() {
 
   return (
     <div className="space-y-8 p-6">
-      {/* Co-Applicant Section */}
+      {/* Guarantor Section */}
       <Card className="form-section border-l-4 border-l-green-500">
         <CardHeader>
           <CardTitle className="flex items-center text-green-700 dark:text-green-400">
             <Users className="w-5 h-5 mr-2" />
-            Co-Applicant Information
+            Guarantor Information
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -318,14 +318,14 @@ export function MultiApplicantForm() {
               }}
             />
             <Label htmlFor="hasCoApplicant" className="text-base font-medium">
-              Add Co-Applicant
+              Add Guarantor
             </Label>
           </div>
 
           {hasCoApplicant && (
             <div className="space-y-4">
               <div className="flex items-center space-x-4">
-                <Label className="text-sm font-medium">How many Co-Applicants?</Label>
+                <Label className="text-sm font-medium">How many Guarantors?</Label>
                 <Select
                   value={coApplicantCount.toString()}
                   onValueChange={(value) => handleCoApplicantCountChange(parseInt(value))}
@@ -334,21 +334,21 @@ export function MultiApplicantForm() {
                     <SelectValue placeholder="Select number" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 Co-Applicant</SelectItem>
-                    <SelectItem value="2">2 Co-Applicants</SelectItem>
-                    <SelectItem value="3">3 Co-Applicants</SelectItem>
-                    <SelectItem value="4">4 Co-Applicants</SelectItem>
+                    <SelectItem value="1">1 Guarantor</SelectItem>
+                    <SelectItem value="2">2 Guarantors</SelectItem>
+                    <SelectItem value="3">3 Guarantors</SelectItem>
+                    <SelectItem value="4">4 Guarantors</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Render co-applicant forms based on count */}
+              {/* Render guarantor forms based on count */}
               {Array.from({ length: coApplicantCount }, (_, index) => (
                 <Card key={index} className="form-section border-l-4 border-l-blue-500">
                   <CardHeader>
                     <CardTitle className="flex items-center text-blue-700 dark:text-blue-400">
                       <UserCheck className="w-5 h-5 mr-2" />
-                      Co-Applicant {index + 1}
+                      Guarantor {index + 1}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 sm:p-8">
@@ -717,7 +717,7 @@ export function MultiApplicantForm() {
         <CardContent>
           <div className="space-y-2">
             <p><strong>Primary Applicant:</strong> 1</p>
-            <p><strong>Co-Applicants:</strong> {hasCoApplicant ? coApplicantCount : 0}</p>
+            <p><strong>Guarantors:</strong> {hasCoApplicant ? coApplicantCount : 0}</p>
             <p><strong>Guarantors:</strong> {hasGuarantor ? guarantorCount : 0}</p>
             <p><strong>Total People:</strong> 1 + {hasCoApplicant ? coApplicantCount : 0} + {hasGuarantor ? guarantorCount : 0} = {1 + (hasCoApplicant ? coApplicantCount : 0) + (hasGuarantor ? guarantorCount : 0)}</p>
           </div>

@@ -701,8 +701,8 @@ export default function MissingDocumentsPage() {
                                   {item.applicantType === "Applicant" && (
                                     <span>Applicant: {item.parentItemName}</span>
                                   )}
-                                  {item.applicantType === "Co-Applicant" && item.coApplicantName && (
-                                    <span className="text-blue-600">Co-Applicant: {item.coApplicantName}</span>
+                                  {item.applicantType === "Guarantor" && item.coApplicantName && (
+                                    <span className="text-blue-600">Guarantor: {item.coApplicantName}</span>
                                   )}
                                   {item.applicantType === "Guarantor" && item.guarantorName && (
                                     <span className="text-green-600">Guarantor: {item.guarantorName}</span>
@@ -912,8 +912,8 @@ export default function MissingDocumentsPage() {
                                   {item.applicantType === "Applicant" && (
                                     <span>Applicant: {item.parentItemName}</span>
                                   )}
-                                  {item.applicantType === "Co-Applicant" && item.coApplicantName && (
-                                    <span className="text-blue-600">Co-Applicant: {item.coApplicantName}</span>
+                                  {item.applicantType === "Guarantor" && item.coApplicantName && (
+                                    <span className="text-blue-600">Guarantor: {item.coApplicantName}</span>
                                   )}
                                   {item.applicantType === "Guarantor" && item.guarantorName && (
                                     <span className="text-green-600">Guarantor: {item.guarantorName}</span>

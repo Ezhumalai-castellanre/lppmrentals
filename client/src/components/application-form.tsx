@@ -6234,44 +6234,47 @@ export function ApplicationForm() {
           <div className="space-y-6">
             <Card className="form-section border-l-4 border-l-orange-500">
               <CardHeader>
-                <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
-                  <FolderOpen className="w-5 h-5 mr-2" />
-                  Guarantor Documents
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
-                  <div key={index} className="mb-8 last:mb-0">
-                    <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
-                      Guarantor {index + 1} Documents
-                    </h3>
-                    <SupportingDocuments
-                      formData={{
-                        ...Object.fromEntries(
-                          Object.entries(formData)
-                            .filter(([key]) => key.startsWith(`guarantors_${index}_`))
-                            .map(([key, value]) => [key.replace(`guarantors_${index}_`, ''), value])
-                        ),
-                        webhookResponses: Object.fromEntries(
-                          Object.entries(webhookResponses)
-                            .filter(([key]) => key.startsWith(`guarantors_${index}_`))
-                            .map(([key, value]) => [key.replace(`guarantors_${index}_`, ''), value])
-                        )
-                      }}
-                      originalWebhookResponses={webhookResponses}
-                      onDocumentChange={guarantorDocumentChange}
-                      onEncryptedDocumentChange={guarantorEncryptedDocumentChange}
-                      onWebhookResponse={guarantorWebhookResponse}
-                      referenceId={referenceId}
-                      enableWebhook={true}
-                      applicationId={user?.applicantId || 'unknown'}
-                      applicantId={user?.id}
-                      zoneinfo={user?.zoneinfo}
-                      showOnlyGuarantor={true}
-                    />
-                  </div>
-                ))}
-              </CardContent>
+                                  <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
+                    <FolderOpen className="w-5 h-5 mr-2" />
+                    Guarantor Documents
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Wrapper functions for SupportingDocuments to match expected signature */}
+                  {Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
+                    <div key={index} className="mb-8 last:mb-0">
+                      <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
+                        Guarantor {index + 1} Documents
+                      </h3>
+                      <SupportingDocuments
+                        formData={{
+                          ...formData,
+                          webhookResponses: Object.fromEntries(
+                            Object.entries(webhookResponses)
+                              .filter(([key]) => key.startsWith(`guarantors_${index}_`))
+                              .map(([key, value]) => [key.replace(`guarantors_${index}_`, ''), value])
+                          )
+                        }}
+                        originalWebhookResponses={webhookResponses}
+                        onDocumentChange={(documentType: string, files: File[]) => 
+                          handleDocumentChange('guarantors', index.toString(), documentType, files)
+                        }
+                        onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => 
+                          handleEncryptedDocumentChange('guarantors', documentType, encryptedFiles)
+                        }
+                        onWebhookResponse={(documentType: string, response: any) => {
+                          handleWebhookResponse('guarantors', `${index}_${documentType}`, response);
+                        }}
+                        referenceId={referenceId}
+                        enableWebhook={true}
+                        applicationId={user?.applicantId || 'unknown'}
+                        applicantId={user?.id}
+                        zoneinfo={user?.zoneinfo}
+                        showOnlyGuarantor={true}
+                      />
+                    </div>
+                  ))}
+                </CardContent>
             </Card>
           </div>
         );

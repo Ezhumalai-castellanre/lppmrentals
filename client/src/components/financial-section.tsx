@@ -24,7 +24,7 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
     const guarantorIndex = parseInt(person.replace('guarantors_', ''), 10);
     personData = formData.guarantors?.[guarantorIndex] || {};
   } else if (person.startsWith('coApplicants_')) {
-    // Extract co-applicant index and get data from coApplicants array
+    // Extract guarantor index and get data from guarantors array
     const coApplicantIndex = parseInt(person.replace('coApplicants_', ''), 10);
     personData = formData.coApplicants?.[coApplicantIndex] || {};
   } else {

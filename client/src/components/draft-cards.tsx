@@ -476,11 +476,11 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
               </div>
             </div>
 
-            {/* Co-Applicant Section */}
+            {/* Guarantor Section */}
             <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
               <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
                 <Users className="w-4 h-4 mr-2 text-purple-600" />
-                Co-Applicant Information
+                Guarantor Information
               </h5>
               <div className="space-y-3 text-sm">
                 {Object.entries(formSummary).filter(([key, value]) => 
@@ -501,7 +501,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-xs sm:text-sm italic">No co-applicant information</p>
+                  <p className="text-gray-500 text-xs sm:text-sm italic">No guarantor information</p>
                 )}
               </div>
             </div>
@@ -598,11 +598,11 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                   </div>
                 )}
                 
-                {/* Co-Applicant Bank Records */}
+                {/* Guarantor Bank Records */}
                 {formSummary.coApplicantBankRecords && Array.isArray(formSummary.coApplicantBankRecords) && (
                   <div className="space-y-2">
                     <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
-                      Co-Applicant Bank Records ({formSummary.coApplicantBankRecords.length} accounts):
+                      Guarantor Bank Records ({formSummary.coApplicantBankRecords.length} accounts):
                     </div>
                     <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
                       {formSummary.coApplicantBankRecords.map((bank: any, index: number) => (
