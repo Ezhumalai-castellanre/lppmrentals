@@ -1790,18 +1790,36 @@ export function ApplicationForm() {
     }, 100);
   };
 
-  const handleDocumentChange = async (person: string, documentType: string, files: File[]) => {
-    console.log(`📁 Document change for ${person} ${documentType}:`, files.length, 'files');
+  const handleDocumentChange = async (person: string, documentType: string, files: File[], index?: number) => {
+    console.log(`🚀 === DOCUMENT CHANGE DEBUG ===`);
+    console.log(`📁 Document change for ${person} ${documentType}:`, files.length, 'files', 'index:', index);
     
-    setDocuments((prev: any) => ({
-      ...prev,
-      [person]: {
-        ...prev[person],
-        [documentType]: files,
-      },
-    }));
+    // Handle array-based people (guarantors, coApplicants) with index
+    let actualPerson = person;
+    let actualDocumentType = documentType;
     
-
+    if (index !== undefined && (person === 'guarantors' || person === 'coApplicants')) {
+      // For array-based people, create indexed keys
+      actualPerson = `${person}_${index}`;
+      actualDocumentType = documentType;
+      console.log(`🚀 Array-based person detected: ${person} -> ${actualPerson}`);
+    }
+    
+    console.log(`🚀 Final storage keys: actualPerson=${actualPerson}, actualDocumentType=${actualDocumentType}`);
+    
+    setDocuments((prev: any) => {
+      const newDocs = {
+        ...prev,
+        [actualPerson]: {
+          ...prev[actualPerson],
+          [actualDocumentType]: files,
+        },
+      };
+      console.log(`🚀 Documents state updated:`, newDocs);
+      return newDocs;
+    });
+    
+    console.log(`🚀 === END DOCUMENT CHANGE DEBUG ===`);
   };
 
   // Handler to attach webhook file URL to encrypted file
@@ -2235,7 +2253,7 @@ export function ApplicationForm() {
     window.open(fileUrl, '_blank');
   };
 
-  const handleEncryptedDocumentChange = async (person: string, documentType: string, encryptedFiles: EncryptedFile[]) => {
+  const handleEncryptedDocumentChange = async (person: string, documentType: string, encryptedFiles: EncryptedFile[], index?: number) => {
     // Safety check: ensure encryptedFiles is an array
     if (!Array.isArray(encryptedFiles)) {
       console.error('❌ handleEncryptedDocumentChange: encryptedFiles is not an array:', {
@@ -2248,34 +2266,59 @@ export function ApplicationForm() {
       return; // Exit early to prevent crash
     }
     
-    console.log('handleEncryptedDocumentChange called:', { person, documentType, encryptedFilesCount: encryptedFiles.length });
+    console.log('🚀 === ENCRYPTED DOCUMENT CHANGE DEBUG ===');
+    console.log('handleEncryptedDocumentChange called:', { person, documentType, encryptedFilesCount: encryptedFiles.length, index });
     
     // Special debugging for guarantor documents
-    if (person === 'guarantor') {
+    if (person === 'guarantor' || person === 'guarantors') {
       console.log('🚀 GUARANTOR ENCRYPTED DOCUMENT CHANGE:', {
         person,
         documentType,
+        index,
         encryptedFilesCount: encryptedFiles.length,
         encryptedFiles: encryptedFiles.map(f => ({ filename: f.filename, size: f.encryptedData.length }))
       });
     }
     
+    // Special debugging for co-applicant documents
+    if (person === 'coApplicant' || person === 'coApplicants') {
+      console.log('🚀 CO-APPLICANT ENCRYPTED DOCUMENT CHANGE:', {
+        person,
+        documentType,
+        index,
+        encryptedFilesCount: encryptedFiles.length,
+        encryptedFiles: encryptedFiles.map(f => ({ filename: f.filename, size: f.encryptedData.length }))
+      });
+    }
+    console.log('🚀 === END ENCRYPTED DOCUMENT CHANGE DEBUG ===');
+    
+    // Handle array-based people (guarantors, coApplicants) with index
+    let actualPerson = person;
+    let actualDocumentType = documentType;
+    
+    if (index !== undefined && (person === 'guarantors' || person === 'coApplicants')) {
+      // For array-based people, create indexed keys
+      actualPerson = `${person}_${index}`;
+      actualDocumentType = documentType;
+      console.log(`🚀 Encrypted: Array-based person detected: ${person} -> ${actualPerson}, index: ${index}`);
+    }
+    
     setEncryptedDocuments((prev: any) => ({
       ...prev,
-      [person]: {
-        ...prev[person],
-        [documentType]: encryptedFiles,
+      [actualPerson]: {
+        ...prev[actualPerson],
+        [actualDocumentType]: encryptedFiles,
       },
     }));
 
     // Track uploadedDocuments for webhook
-    const sectionKey = `${person}_${documentType}`;
+    const sectionKey = `${actualPerson}_${actualDocumentType}`;
     // Map docs and include file_url if present on the file
     const docs = (encryptedFiles || []).map(file => ({
       reference_id: file.uploadDate + '-' + file.filename, // or use a better unique id if available
       file_name: file.filename,
       section_name: sectionKey,
-      documents: documentType, // <-- Now included
+      documents: actualDocumentType, // <-- Now included
       file_url: file.fileUrl || '' // Use fileUrl if present, else blank
     }));
     setUploadedDocuments(prev => {
@@ -2313,7 +2356,7 @@ export function ApplicationForm() {
     });
 
     // Note: Draft saving is now manual - only when Save Draft button is clicked
-    console.log('📁 File uploaded successfully for:', person, documentType, '- Draft will be saved when Save Draft button is clicked');
+    console.log('📁 File uploaded successfully for:', actualPerson, actualDocumentType, '- Draft will be saved when Save Draft button is clicked');
   };
 
   const handleSignatureChange = async (person: string, index?: string, signature?: string) => {
