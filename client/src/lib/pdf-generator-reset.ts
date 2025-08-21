@@ -448,12 +448,22 @@ export class ResetPDFGenerator {
       this.addSignature("Primary Applicant", formData.signatures.applicant);
     }
     
-    if (formData.signatures.coApplicant) {
-      this.addSignature("Co-Applicant", formData.signatures.coApplicant);
+    // Add co-applicant signatures
+    if (formData.signatures.coApplicants) {
+      Object.entries(formData.signatures.coApplicants).forEach(([index, signature]) => {
+        if (signature) {
+          this.addSignature(`Co-Applicant ${parseInt(index) + 1}`, signature);
+        }
+      });
     }
     
-    if (formData.signatures.guarantor) {
-      this.addSignature("Guarantor", formData.signatures.guarantor);
+    // Add guarantor signatures
+    if (formData.signatures.guarantors) {
+      Object.entries(formData.signatures.guarantors).forEach(([index, signature]) => {
+        if (signature) {
+          this.addSignature(`Guarantor ${parseInt(index) + 1}`, signature);
+        }
+      });
     }
     
     // Add footer

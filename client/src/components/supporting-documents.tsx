@@ -171,7 +171,7 @@ export const SupportingDocuments = ({
         {
           id: "employment_letter",
           name: "Employment Letter",
-          required: true,
+          required: false, // Will be conditionally required based on employment type
           acceptedTypes: ".jpg,.jpeg,.png,.pdf"
         },
         {
@@ -848,27 +848,44 @@ export const SupportingDocuments = ({
   function filterDocumentsByEmploymentType(documents: CategoryInfo[], employmentType: string | undefined) {
     if (!employmentType) return documents;
     
-    return documents.map(category => ({
-      ...category,
-      documents: category.documents.filter(document => {
-        // For salaried/employed: show Employment Letter, hide Accountant Letter
-        if (employmentType === 'salaried' || employmentType === 'employed') {
-          return document.id !== 'accountant_letter';
-        }
+    // Filter documents based on employment type
+    return documents.map(category => {
+      if (category.category === 'Employment Documents') {
+        let filteredDocuments = [...category.documents];
         
-        // For self-employed: show Financial Documents, hide Employment Documents
         if (employmentType === 'self-employed') {
-          return category.category !== 'Employment Documents';
+          // Self-Employed: Remove Employment Letter, keep only Pay Stubs
+          filteredDocuments = filteredDocuments.filter(doc => doc.id !== 'employment_letter');
+        } else if (employmentType === 'student' || employmentType === 'salaried') {
+          // Student and Salaried: Make Employment Letter required
+          filteredDocuments = filteredDocuments.map(doc => {
+            if (doc.id === 'employment_letter') {
+              return { ...doc, required: true };
+            }
+            return doc;
+          });
         }
         
-        // For other employment types: show all documents
-        if (["unemployed", "retired", "student"].includes(employmentType)) {
-          return true;
-        }
+        return {
+          ...category,
+          documents: filteredDocuments
+        };
+      } else if (category.category === 'Financial Documents') {
+        let filteredDocuments = [...category.documents];
         
-        return true;
-      })
-    })).filter(category => category.documents.length > 0); // Remove empty categories
+        if (employmentType === 'student' || employmentType === 'salaried') {
+          // Student and Salaried: Remove Accountant Letter
+          filteredDocuments = filteredDocuments.filter(doc => doc.id !== 'accountant_letter');
+        }
+        // Self-Employed: Keep Accountant Letter (no filtering needed)
+        
+        return {
+          ...category,
+          documents: filteredDocuments
+        };
+      }
+      return category;
+    });
   }
 
   // Determine which employment type to use based on the section being displayed
@@ -929,6 +946,25 @@ export const SupportingDocuments = ({
             {category.icon}
             <h3 className="font-medium text-gray-800">{category.category}</h3>
           </div>
+          
+          {/* Employment Type Info Note */}
+          {category.category === 'Employment Documents' && (
+            <div className="mb-4 p-3 bg-green-50 rounded-lg">
+              <div className="text-xs text-green-700">
+                <span className="font-medium">Employment Type Requirements:</span> 
+                {(() => {
+                  if (relevantEmploymentType === 'self-employed') {
+                    return ' Self-Employed: Pay Stubs only (no Employment Letter), Accountant Letter required.';
+                  } else if (relevantEmploymentType === 'student') {
+                    return ' Student: Employment Letter + Pay Stubs (no Accountant Letter).';
+                  } else if (relevantEmploymentType === 'salaried') {
+                    return ' Salaried: Employment Letter + Pay Stubs (no Accountant Letter).';
+                  }
+                  return ' Please select your employment type in the Financial Information section to see specific requirements.';
+                })()}
+              </div>
+            </div>
+          )}
           
           {/* Pay Stubs Info Note */}
           {category.category === 'Employment Documents' && (

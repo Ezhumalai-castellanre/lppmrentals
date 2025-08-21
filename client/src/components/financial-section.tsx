@@ -88,12 +88,14 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
             value={personData.employmentType || ''}
             onValueChange={(value) => {
               handleChange('employmentType', value);
-              // Auto-set default frequency values when employment type changes
-              if (value === 'salaried' && !personData.incomeFrequency) {
-                handleChange('incomeFrequency', 'yearly');
-              } else if (value === 'self-employed' && !personData.incomeFrequency) {
-                handleChange('incomeFrequency', 'monthly');
-              }
+                             // Auto-set default frequency values when employment type changes
+               if (value === 'salaried' && !personData.incomeFrequency) {
+                 handleChange('incomeFrequency', 'yearly');
+               } else if (value === 'self-employed' && !personData.incomeFrequency) {
+                 handleChange('incomeFrequency', 'monthly');
+               } else if (value === 'student' && !personData.incomeFrequency) {
+                 handleChange('incomeFrequency', 'monthly');
+               }
               // Auto-set default other income frequency if not set
               if (!personData.otherIncomeFrequency) {
                 handleChange('otherIncomeFrequency', 'monthly');
@@ -104,14 +106,15 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
               <SelectValue placeholder="Select employment type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="salaried">Salaried</SelectItem>
+              <SelectItem value="student">Student</SelectItem>
               <SelectItem value="self-employed">Self-Employed</SelectItem>
+                             <SelectItem value="salaried">Salaried</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Dynamic Fields Based on Employment Type */}
-        {personData.employmentType === 'salaried' && (
+                 {/* Dynamic Fields Based on Employment Type */}
+         {personData.employmentType === 'salaried' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="form-field">
               <Label htmlFor={`${person}-employer`}>Employer Name *</Label>
@@ -155,6 +158,51 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
             </div>
           </div>
         )}
+        {personData.employmentType === 'student' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-field">
+              <Label htmlFor={`${person}-schoolName`}>School/University Name *</Label>
+              <Input
+                id={`${person}-schoolName`}
+                placeholder="School or university name"
+                value={personData.schoolName || ""}
+                onChange={(e) => handleChange("schoolName", e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="form-field">
+              <Label htmlFor={`${person}-studentId`}>Student ID (Optional)</Label>
+              <Input
+                id={`${person}-studentId`}
+                placeholder="Student ID number"
+                value={personData.studentId || ""}
+                onChange={(e) => handleChange("studentId", e.target.value)}
+                className="input-field"
+              />
+            </div>
+            <div className="form-field">
+              <Label htmlFor={`${person}-expectedGraduation`}>Expected Graduation Date</Label>
+              <DatePicker
+                value={personData.expectedGraduation ? new Date(personData.expectedGraduation) : undefined}
+                onChange={(date) => handleDateChange("expectedGraduation", date)}
+                placeholder="Select expected graduation date"
+                disabled={(date) => date < new Date()}
+              />
+            </div>
+            <div className="form-field">
+              <IncomeWithFrequencyInput
+                name={`${person}-income`}
+                label="Income ($) *"
+                value={personData.income || ""}
+                frequency={personData.incomeFrequency || "monthly"}
+                onValueChange={(value) => handleChange("income", value)}
+                onFrequencyChange={(frequency) => handleChange("incomeFrequency", frequency)}
+                required={true}
+              />
+            </div>
+          </div>
+        )}
+
         {personData.employmentType === 'self-employed' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="form-field">

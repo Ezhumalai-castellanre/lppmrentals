@@ -456,8 +456,16 @@ export function ApplicationForm() {
     hasCoApplicant: false,
     hasGuarantor: false,
   });
-  const [signatures, setSignatures] = useState<any>({});
-  const [signatureTimestamps, setSignatureTimestamps] = useState<any>({});
+  const [signatures, setSignatures] = useState<any>({
+    applicant: null,
+    coApplicants: {},
+    guarantors: {}
+  });
+  const [signatureTimestamps, setSignatureTimestamps] = useState<any>({
+    applicant: null,
+    coApplicants: {},
+    guarantors: {}
+  });
   const [documents, setDocuments] = useState<any>({});
   const [encryptedDocuments, setEncryptedDocuments] = useState<any>({});
   const [hasCoApplicant, setHasCoApplicant] = useState(false);
@@ -2232,18 +2240,41 @@ export function ApplicationForm() {
     console.log('📁 File uploaded successfully for:', person, documentType, '- Draft will be saved when Save Draft button is clicked');
   };
 
-  const handleSignatureChange = async (person: string, signature: string) => {
-    setSignatures((prev: any) => ({
-      ...prev,
-      [person]: signature,
-    }));
-    setSignatureTimestamps((prev: any) => ({
-      ...prev,
-      [person]: new Date().toISOString(),
-    }));
+  const handleSignatureChange = async (person: string, index?: string, signature?: string) => {
+    // Handle both old format (person, signature) and new format (person, index, signature)
+    let actualPerson = person;
+    let actualSignature = signature || index;
+    let actualIndex = signature ? index : undefined;
 
-    // Note: Draft saving is now manual - only when Save Draft button is clicked
-    console.log('✍️ Signature updated for:', person, '- Draft will be saved when Save Draft button is clicked');
+    if (actualIndex !== undefined) {
+      // New format: person is the type (e.g., 'coApplicants'), index is the position
+      setSignatures((prev: any) => ({
+        ...prev,
+        [actualPerson]: {
+          ...prev[actualPerson],
+          [actualIndex]: actualSignature,
+        },
+      }));
+      setSignatureTimestamps((prev: any) => ({
+        ...prev,
+        [actualPerson]: {
+          ...prev[actualPerson],
+          [actualIndex]: new Date().toISOString(),
+        },
+      }));
+      console.log(`✍️ Signature updated for: ${actualPerson}[${actualIndex}] - Draft will be saved when Save Draft button is clicked`);
+    } else {
+      // Old format: person is the identifier (e.g., 'applicant')
+      setSignatures((prev: any) => ({
+        ...prev,
+        [actualPerson]: actualSignature,
+      }));
+      setSignatureTimestamps((prev: any) => ({
+        ...prev,
+        [actualPerson]: new Date().toISOString(),
+      }));
+      console.log(`✍️ Signature updated for: ${actualPerson} - Draft will be saved when Save Draft button is clicked`);
+    }
   };
 
   // Enhanced document change handlers for each person type
@@ -3482,8 +3513,14 @@ export function ApplicationForm() {
             // Signatures (optimized to avoid large base64 data)
             signatures: {
               applicant: signatures.applicant ? "SIGNED" : null,
-              coApplicants: formData.coApplicants.length > 0 ? formData.coApplicants.map((coApplicant: any) => coApplicant.name).join(', ') : null,
-              guarantors: formData.guarantors.length > 0 ? formData.guarantors.map((guarantor: any) => guarantor.name).join(', ') : null,
+              coApplicants: Object.keys(signatures.coApplicants || {}).length > 0 ? 
+                Object.entries(signatures.coApplicants).map(([index, signature]) => 
+                  signature ? `Co-Applicant ${parseInt(index) + 1} SIGNED` : null
+                ).filter(Boolean).join(', ') : null,
+              guarantors: Object.keys(signatures.guarantors || {}).length > 0 ? 
+                Object.entries(signatures.guarantors).map(([index, signature]) => 
+                  signature ? `Guarantor ${parseInt(index) + 1} SIGNED` : null
+                ).filter(Boolean).join(', ') : null,
             },
             signatureTimestamps: signatureTimestamps,
             
@@ -6186,25 +6223,25 @@ export function ApplicationForm() {
                   />
                 </div>
 
-                {hasCoApplicant && (
-                  <div>
-                    <Label className="text-base font-medium">Co-Applicant Signature *</Label>
+                {hasCoApplicant && Array.from({ length: formData.coApplicantCount || 1 }, (_, index) => (
+                  <div key={`co-applicant-signature-${index}`}>
+                    <Label className="text-base font-medium">Co-Applicant {index + 1} Signature *</Label>
                     <SignaturePad 
-                      onSignatureChange={(signature) => handleSignatureChange('coApplicants', '0', signature)}
+                      onSignatureChange={(signature) => handleSignatureChange('coApplicants', index.toString(), signature)}
                       className="mt-2"
                     />
                   </div>
-                )}
+                ))}
 
-                {hasGuarantor && (
-                  <div>
-                    <Label className="text-base font-medium">Guarantor Signature *</Label>
+                {hasGuarantor && Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
+                  <div key={`guarantor-signature-${index}`}>
+                    <Label className="text-base font-medium">Guarantor {index + 1} Signature *</Label>
                     <SignaturePad 
-                      onSignatureChange={(signature) => handleSignatureChange('guarantors', '0', signature)}
+                      onSignatureChange={(signature) => handleSignatureChange('guarantors', index.toString(), signature)}
                       className="mt-2"
                     />
                   </div>
-                )}
+                ))}
               </CardContent>
             </Card>
           </div>
@@ -6284,8 +6321,8 @@ export function ApplicationForm() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* Progress Bar */}
-          <div className="mb-8">
+          {/* Progress Bar - Hidden */}
+          {/* <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-semibold text-gray-900">
                 Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep]?.title}
@@ -6301,7 +6338,6 @@ export function ApplicationForm() {
               ></div>
           </div>
           
-            {/* Step Navigation */}
             <div className="flex flex-wrap gap-2 mt-4">
             {STEPS.map((step, index) => {
               return (
@@ -6327,7 +6363,7 @@ export function ApplicationForm() {
               );
             })}
           </div>
-        </div>
+        </div> */}
 
           {/* Form Content */}
               {renderStep()}
