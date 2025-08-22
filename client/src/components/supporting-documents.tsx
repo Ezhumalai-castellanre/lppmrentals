@@ -160,6 +160,7 @@ export const SupportingDocuments = ({
   const [reuploadRequested, setReuploadRequested] = useState<Record<string, boolean>>({});
 
   // Pay Stubs frequency options and their corresponding counts
+  // When income frequency is Weekly: Pay Stubs 4, Every 2 weeks 2, Monthly 1, Quarterly 1, Yearly 1
   const payStubsFrequencyOptions = [
     { value: 'weekly', label: 'Weekly', count: 4 },
     { value: 'bi-weekly', label: 'Every 2 weeks', count: 2 },
@@ -170,19 +171,66 @@ export const SupportingDocuments = ({
 
   // Function to get current income frequency based on context
   const getCurrentIncomeFrequency = (): string => {
+    console.log('🔍 getCurrentIncomeFrequency called with:', {
+      showOnlyCoApplicant,
+      showOnlyGuarantor,
+      index,
+      coApplicantsData: formData.coApplicants,
+      guarantorsData: formData.guarantors,
+      legacyCoApplicant: formData.coApplicant,
+      legacyGuarantor: formData.guarantor,
+      applicant: formData.applicant
+    });
+    
+    // Handle array-based co-applicants and guarantors
+    if (showOnlyCoApplicant && index !== undefined) {
+      // For co-applicants with index
+      const coApplicantData = formData.coApplicants?.[index];
+      console.log(`🔍 Co-applicant ${index} data:`, coApplicantData);
+      if (coApplicantData?.incomeFrequency) {
+        console.log(`✅ Found co-applicant ${index} income frequency:`, coApplicantData.incomeFrequency);
+        return coApplicantData.incomeFrequency;
+      }
+    } else if (showOnlyGuarantor && index !== undefined) {
+      // For guarantors with index
+      const guarantorData = formData.guarantors?.[index];
+      console.log(`🔍 Guarantor ${index} data:`, guarantorData);
+      if (guarantorData?.incomeFrequency) {
+        console.log(`✅ Found guarantor ${index} income frequency:`, guarantorData.incomeFrequency);
+        return guarantorData.incomeFrequency;
+      }
+    }
+    
+    // Fallback to legacy format
     if (showOnlyCoApplicant && formData.coApplicant?.incomeFrequency) {
+      console.log('✅ Found legacy co-applicant income frequency:', formData.coApplicant.incomeFrequency);
       return formData.coApplicant.incomeFrequency;
     } else if (showOnlyGuarantor && formData.guarantor?.incomeFrequency) {
+      console.log('✅ Found legacy guarantor income frequency:', formData.guarantor.incomeFrequency);
       return formData.guarantor.incomeFrequency;
     } else if (formData.applicant?.incomeFrequency) {
+      console.log('✅ Found applicant income frequency:', formData.applicant.incomeFrequency);
       return formData.applicant.incomeFrequency;
     }
+    
+    console.log('⚠️ No income frequency found, using default: monthly');
     return 'monthly'; // Default fallback
   };
 
   // Function to generate Pay Stubs sections based on frequency
   const generatePayStubsSections = (frequency: string): DocumentInfo[] => {
-    const count = payStubsFrequencyOptions.find(opt => opt.value === frequency)?.count || 1;
+    console.log('🔍 generatePayStubsSections called with frequency:', frequency);
+    
+    const frequencyOption = payStubsFrequencyOptions.find(opt => opt.value === frequency);
+    const count = frequencyOption?.count || 1;
+    
+    console.log('🔍 Pay stubs generation:', {
+      frequency,
+      frequencyOption,
+      count,
+      allOptions: payStubsFrequencyOptions
+    });
+    
     const sections: DocumentInfo[] = [];
     
     for (let i = 1; i <= count; i++) {
@@ -195,6 +243,7 @@ export const SupportingDocuments = ({
       });
     }
     
+    console.log(`✅ Generated ${sections.length} pay stubs sections:`, sections);
     return sections;
   };
 
@@ -1488,14 +1537,20 @@ export const SupportingDocuments = ({
   const filteredDocuments = filterDocumentsByEmploymentType(requiredDocuments, relevantEmploymentType);
 
   // Process Pay Stubs sections based on frequency
+  console.log('🔍 Processing documents for pay stubs generation...');
+  const currentIncomeFrequency = getCurrentIncomeFrequency();
+  console.log('🔍 Current income frequency for document processing:', currentIncomeFrequency);
+  
   const processedDocuments = (filteredDocuments || []).map(category => {
     if (category.category === 'Employment Documents') {
+      console.log('🔍 Processing Employment Documents category...');
       return {
         ...category,
         documents: category.documents.flatMap(document => {
           if (document.isPayStubs) {
+            console.log('🔍 Found pay stubs document, generating sections...');
             // Generate Pay Stubs sections based on frequency
-            return generatePayStubsSections(getCurrentIncomeFrequency());
+            return generatePayStubsSections(currentIncomeFrequency);
           }
           return [document];
         })
@@ -1503,6 +1558,8 @@ export const SupportingDocuments = ({
     }
     return category;
   });
+  
+  console.log('🔍 Processed documents:', processedDocuments);
 
   // Add Other Occupant Documents category if there are other occupants
   const otherOccupants = Array.isArray(formData?.otherOccupants) ? formData.otherOccupants : [];
@@ -1554,7 +1611,9 @@ export const SupportingDocuments = ({
           {category.category === 'Employment Documents' && (
             <div className="mb-4 p-3 bg-blue-50 rounded-lg">
               <div className="text-xs text-blue-700">
-                <span className="font-medium">Pay Stubs Info:</span> Based on your income frequency selection in the Financial Information section, {payStubsFrequencyOptions.find(opt => opt.value === getCurrentIncomeFrequency())?.count} Pay Stubs section{payStubsFrequencyOptions.find(opt => opt.value === getCurrentIncomeFrequency())?.count !== 1 ? 's' : ''} will be created for you to upload.
+                <span className="font-medium">Pay Stubs Info:</span> Based on your income frequency selection in the Financial Information section, {payStubsFrequencyOptions.find(opt => opt.value === currentIncomeFrequency)?.count} Pay Stubs section{payStubsFrequencyOptions.find(opt => opt.value === currentIncomeFrequency)?.count !== 1 ? 's' : ''} will be created for you to upload.
+                <br />
+                <span className="font-medium">Current Frequency:</span> {currentIncomeFrequency.charAt(0).toUpperCase() + currentIncomeFrequency.slice(1)} - {payStubsFrequencyOptions.find(opt => opt.value === currentIncomeFrequency)?.label} ({payStubsFrequencyOptions.find(opt => opt.value === currentIncomeFrequency)?.count} section{payStubsFrequencyOptions.find(opt => opt.value === currentIncomeFrequency)?.count !== 1 ? 's' : ''})
               </div>
             </div>
           )}
