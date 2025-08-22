@@ -51,7 +51,7 @@ export class DynamoDBService {
     });
     
     // Initialize client lazily when needed
-    this.initializeClient();
+    this.initializeClientWithRetry();
   }
 
   // Initialize DynamoDB client with authenticated credentials
@@ -98,8 +98,6 @@ export class DynamoDBService {
       this.testConnection().then(success => {
         if (success) {
           console.log('✅ DynamoDB service initialized successfully');
-        } else {
-          console.warn('⚠️ DynamoDB service initialized with connection issues');
         }
       });
     } catch (error) {
@@ -108,10 +106,93 @@ export class DynamoDBService {
     }
   }
 
+  // Check if user needs to re-authenticate
+  private async checkAuthenticationStatus(): Promise<boolean> {
+    try {
+      const { fetchAuthSession } = await import('aws-amplify/auth');
+      const session = await fetchAuthSession();
+      
+      if (!session.tokens?.idToken) {
+        console.warn('⚠️ No ID token available');
+        return false;
+      }
+      
+      // Check if token is expired (with some buffer time)
+      const tokenExp = session.tokens.idToken.payload?.exp;
+      if (tokenExp) {
+        const currentTime = Math.floor(Date.now() / 1000);
+        const bufferTime = 300; // 5 minutes buffer
+        
+        if (currentTime >= (tokenExp - bufferTime)) {
+          console.warn('⚠️ Token is expired or will expire soon');
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error checking authentication status:', error);
+      return false;
+    }
+  }
+
+  // Handle token expiration and credential refresh
+  private async handleTokenExpiration(): Promise<void> {
+    try {
+      console.log('🔄 Handling token expiration, refreshing credentials...');
+      
+      // Clear the current client to force re-initialization
+      this.client = null;
+      
+      // Wait a moment for any ongoing operations to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Re-initialize the client with fresh credentials
+      await this.initializeClientWithRetry();
+      
+      console.log('✅ Credentials refreshed successfully');
+    } catch (error) {
+      console.error('❌ Failed to refresh credentials:', error);
+      throw error;
+    }
+  }
+
+  // Enhanced client initialization with token refresh and retry logic
+  private async initializeClientWithRetry(): Promise<void> {
+    try {
+      console.log('🔐 Initializing DynamoDB client with retry logic...');
+      
+      // Try to refresh the auth session first
+      try {
+        const { fetchAuthSession } = await import('aws-amplify/auth');
+        const session = await fetchAuthSession();
+        
+        if (!session.tokens?.idToken) {
+          console.warn('⚠️ No ID token available, attempting to refresh...');
+          // Force a session refresh
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const refreshedSession = await fetchAuthSession();
+          
+          if (!refreshedSession.tokens?.idToken) {
+            console.error('❌ Still no ID token after refresh attempt');
+            throw new Error('No valid ID token available');
+          }
+        }
+      } catch (refreshError) {
+        console.warn('⚠️ Session refresh failed, proceeding with current session:', refreshError);
+      }
+      
+      await this.initializeClient();
+    } catch (error) {
+      console.error('❌ Error in initializeClientWithRetry:', error);
+      this.client = null;
+    }
+  }
+
   // Get authenticated client, reinitialize if needed
   private async getClient(): Promise<DynamoDBClient> {
     if (!this.client) {
-      await this.initializeClient();
+      await this.initializeClientWithRetry();
     }
 
     // Brief retries in case tokens are not yet available immediately after sign-in
@@ -119,7 +200,7 @@ export class DynamoDBService {
     while (!this.client && attempts < 2) {
       attempts += 1;
       await new Promise(resolve => setTimeout(resolve, 400));
-      await this.initializeClient();
+      await this.initializeClientWithRetry();
     }
 
     if (!this.client) {
@@ -429,119 +510,86 @@ export class DynamoDBService {
 
   // Save draft data with application_id/applicantId validation and mapping
   async saveDraft(draftData: DraftData | FormDataWithApplicationId): Promise<boolean> {
-    try {
-      const client = await this.getClient();
-      
-      // Clean form data to ensure consistency between application_id and applicantId
-      const cleanedFormData = this.cleanFormDataForConsistency(draftData);
-      
-      // Map application_id to applicantId for DynamoDB
-      const applicantId = this.mapApplicationIdToApplicantId(cleanedFormData);
-      if (!applicantId) {
-        console.error('❌ No application_id or applicantId found in draft data');
-        return false;
-      }
-      
-      // Get the application_id for logging (could be from either interface)
-      const applicationIdForLogging = 'application_id' in cleanedFormData ? cleanedFormData.application_id : cleanedFormData.applicantId;
-      
-      console.log('💾 Saving draft to DynamoDB:', {
-        table: this.tableName,
-        application_id: applicationIdForLogging,
-        applicantId: applicantId, // DynamoDB partition key
-        reference_id: draftData.reference_id,
-        current_step: draftData.current_step
-      });
-
-      // Validate that application_id/applicantId matches the authenticated user's zoneinfo
-      const isValidApplicationId = await this.validateApplicationId(applicantId);
-      if (!isValidApplicationId) {
-        console.error('❌ Invalid application_id - must match authenticated user\'s zoneinfo value');
-        return false;
-      }
-
-      // Log raw data sizes to identify what's causing the size issue
-      const rawSizes = {
-        formData: JSON.stringify(draftData.form_data || {}).length,
-        uploadedFiles: JSON.stringify(draftData.uploaded_files_metadata || {}).length,
-        webhookResponses: JSON.stringify(draftData.webhook_responses || {}).length,
-        signatures: JSON.stringify(draftData.signatures || {}).length,
-        encryptedDocuments: JSON.stringify(draftData.encrypted_documents || {}).length
-      };
-      
-      console.log('📊 Raw data sizes before cleaning:', {
-        ...rawSizes,
-        totalRawSize: Object.values(rawSizes).reduce((sum, size) => sum + size, 0)
-      });
-
-      // Validate required fields
-      if (!applicantId) {
-        console.error('❌ Missing required field: applicantId (mapped from application_id)');
-        return false;
-      }
-
-      if (!draftData.reference_id) {
-        console.error('❌ Missing required field: reference_id');
-        return false;
-      }
-
-      // Clean and validate the data before saving
-      let cleanFormData = this.cleanDataForDynamoDB(draftData.form_data);
-      let cleanUploadedFiles = this.cleanDataForDynamoDB(draftData.uploaded_files_metadata || {});
-      let cleanWebhookResponses = this.cleanDataForDynamoDB(draftData.webhook_responses || {});
-      let cleanSignatures = this.cleanDataForDynamoDB(draftData.signatures || {});
-      let cleanEncryptedDocuments = this.cleanDataForDynamoDB(draftData.encrypted_documents || {});
-
-      // Check sizes before saving to prevent DynamoDB size limit errors
-      const sizes = {
-        formData: JSON.stringify(cleanFormData).length,
-        uploadedFiles: JSON.stringify(cleanUploadedFiles).length,
-        webhookResponses: JSON.stringify(cleanWebhookResponses).length,
-        signatures: JSON.stringify(cleanSignatures).length,
-        encryptedDocuments: JSON.stringify(cleanEncryptedDocuments).length
-      };
-      
-      const totalSize = Object.values(sizes).reduce((sum, size) => sum + size, 0);
-      
-      console.log('📏 Data sizes before saving:', {
-        ...sizes,
-        totalSize,
-        maxAllowed: 400 * 1024, // 400KB in bytes
-        isOverLimit: totalSize > 400 * 1024
-      });
-      
-      // If data is too large, implement aggressive truncation
-      if (totalSize > 400 * 1024) {
-        console.warn('⚠️ Data exceeds 400KB limit, implementing aggressive truncation');
+    const maxRetries = 3;
+    let attempts = 0;
+    
+    while (attempts < maxRetries) {
+      try {
+        attempts++;
+        console.log(`🔄 Attempt ${attempts} of ${maxRetries} to save draft...`);
         
-        // Truncate the largest fields first
-        if (sizes.encryptedDocuments > 100 * 1024) {
-          console.warn('⚠️ Truncating encrypted documents from', sizes.encryptedDocuments, 'to 100KB');
-          cleanEncryptedDocuments = this.truncateLargeData(cleanEncryptedDocuments, 100 * 1024);
+        // Check authentication status before proceeding
+        const isAuthenticated = await this.checkAuthenticationStatus();
+        if (!isAuthenticated) {
+          console.warn('⚠️ User not authenticated, attempting to refresh credentials...');
+          await this.handleTokenExpiration();
+          continue;
         }
         
-        if (sizes.formData > 150 * 1024) {
-          console.warn('⚠️ Truncating form data from', sizes.formData, 'to 150KB');
-          cleanFormData = this.truncateLargeData(cleanFormData, 150 * 1024);
+        const client = await this.getClient();
+        
+        // Clean form data to ensure consistency between application_id and applicantId
+        const cleanedFormData = this.cleanFormDataForConsistency(draftData);
+        
+        // Map application_id to applicantId for DynamoDB
+        const applicantId = this.mapApplicationIdToApplicantId(cleanedFormData);
+        if (!applicantId) {
+          console.error('❌ No application_id or applicantId found in draft data');
+          return false;
         }
         
-        if (sizes.uploadedFiles > 50 * 1024) {
-          console.warn('⚠️ Truncating uploaded files from', sizes.uploadedFiles, 'to 50KB');
-          cleanUploadedFiles = this.truncateLargeData(cleanUploadedFiles, 50 * 1024);
-        }
+        // Get the application_id for logging (could be from either interface)
+        const applicationIdForLogging = 'application_id' in cleanedFormData ? cleanedFormData.application_id : cleanedFormData.applicantId;
         
-        if (sizes.webhookResponses > 50 * 1024) {
-          console.warn('⚠️ Truncating webhook responses from', sizes.webhookResponses, 'to 50KB');
-          cleanWebhookResponses = this.truncateLargeData(cleanWebhookResponses, 50 * 1024);
+        console.log('💾 Saving draft to DynamoDB:', {
+          table: this.tableName,
+          application_id: applicationIdForLogging,
+          applicantId: applicantId, // DynamoDB partition key
+          reference_id: draftData.reference_id,
+          current_step: draftData.current_step
+        });
+
+        // Validate that application_id/applicantId matches the authenticated user's zoneinfo
+        const isValidApplicationId = await this.validateApplicationId(applicantId);
+        if (!isValidApplicationId) {
+          console.error('❌ Invalid application_id - must match authenticated user\'s zoneinfo value');
+          return false;
         }
+
+        // Log raw data sizes to identify what's causing the size issue
+        const rawSizes = {
+          formData: JSON.stringify(draftData.form_data || {}).length,
+          uploadedFiles: JSON.stringify(draftData.uploaded_files_metadata || {}).length,
+          webhookResponses: JSON.stringify(draftData.webhook_responses || {}).length,
+          signatures: JSON.stringify(draftData.signatures || {}).length,
+          encryptedDocuments: JSON.stringify(draftData.encrypted_documents || {}).length
+        };
         
-        if (sizes.signatures > 50 * 1024) {
-          console.warn('⚠️ Truncating signatures from', sizes.signatures, 'to 50KB');
-          cleanSignatures = this.truncateLargeData(cleanSignatures, 50 * 1024);
+        console.log('📊 Raw data sizes before cleaning:', {
+          ...rawSizes,
+          totalRawSize: Object.values(rawSizes).reduce((sum, size) => sum + size, 0)
+        });
+
+        // Validate required fields
+        if (!applicantId) {
+          console.error('❌ Missing required field: applicantId (mapped from application_id)');
+          return false;
         }
-        
-        // Recalculate sizes after truncation
-        const newSizes = {
+
+        if (!draftData.reference_id) {
+          console.error('❌ Missing required field: reference_id');
+          return false;
+        }
+
+        // Clean and validate the data before saving
+        let cleanFormData = this.cleanDataForDynamoDB(draftData.form_data);
+        let cleanUploadedFiles = this.cleanDataForDynamoDB(draftData.uploaded_files_metadata || {});
+        let cleanWebhookResponses = this.cleanDataForDynamoDB(draftData.webhook_responses || {});
+        let cleanSignatures = this.cleanDataForDynamoDB(draftData.signatures || {});
+        let cleanEncryptedDocuments = this.cleanDataForDynamoDB(draftData.encrypted_documents || {});
+
+        // Check sizes before saving to prevent DynamoDB size limit errors
+        const sizes = {
           formData: JSON.stringify(cleanFormData).length,
           uploadedFiles: JSON.stringify(cleanUploadedFiles).length,
           webhookResponses: JSON.stringify(cleanWebhookResponses).length,
@@ -549,96 +597,167 @@ export class DynamoDBService {
           encryptedDocuments: JSON.stringify(cleanEncryptedDocuments).length
         };
         
-        const newTotalSize = Object.values(newSizes).reduce((sum, size) => sum + size, 0);
+        const totalSize = Object.values(sizes).reduce((sum, size) => sum + size, 0);
         
-        console.log('📏 Data sizes after truncation:', {
-          ...newSizes,
-          newTotalSize,
-          reduction: totalSize - newTotalSize
+        console.log('📏 Data sizes before saving:', {
+          ...sizes,
+          totalSize,
+          maxAllowed: 400 * 1024, // 400KB in bytes
+          isOverLimit: totalSize > 400 * 1024
         });
-      }
+        
+        // If data is too large, implement aggressive truncation
+        if (totalSize > 400 * 1024) {
+          console.warn('⚠️ Data exceeds 400KB limit, implementing aggressive truncation');
+          
+          // Truncate the largest fields first
+          if (sizes.encryptedDocuments > 100 * 1024) {
+            console.warn('⚠️ Truncating encrypted documents from', sizes.encryptedDocuments, 'to 100KB');
+            cleanEncryptedDocuments = this.truncateLargeData(cleanEncryptedDocuments, 100 * 1024);
+          }
+          
+          if (sizes.formData > 150 * 1024) {
+            console.warn('⚠️ Truncating form data from', sizes.formData, 'to 150KB');
+            cleanFormData = this.truncateLargeData(cleanFormData, 150 * 1024);
+          }
+          
+          if (sizes.uploadedFiles > 50 * 1024) {
+            console.warn('⚠️ Truncating uploaded files from', sizes.uploadedFiles, 'to 50KB');
+            cleanUploadedFiles = this.truncateLargeData(cleanUploadedFiles, 50 * 1024);
+          }
+          
+          if (sizes.webhookResponses > 50 * 1024) {
+            console.warn('⚠️ Truncating webhook responses from', sizes.webhookResponses, 'to 50KB');
+            cleanWebhookResponses = this.truncateLargeData(cleanWebhookResponses, 50 * 1024);
+          }
+          
+          if (sizes.signatures > 50 * 1024) {
+            console.warn('⚠️ Truncating signatures from', sizes.signatures, 'to 50KB');
+            cleanSignatures = this.truncateLargeData(cleanSignatures, 50 * 1024);
+          }
+          
+          // Recalculate sizes after truncation
+          const newSizes = {
+            formData: JSON.stringify(cleanFormData).length,
+            uploadedFiles: JSON.stringify(cleanUploadedFiles).length,
+            webhookResponses: JSON.stringify(cleanWebhookResponses).length,
+            signatures: JSON.stringify(cleanSignatures).length,
+            encryptedDocuments: JSON.stringify(cleanEncryptedDocuments).length
+          };
+          
+          const newTotalSize = Object.values(newSizes).reduce((sum, size) => sum + size, 0);
+          
+          console.log('📏 Data sizes after truncation:', {
+            ...newSizes,
+            newTotalSize,
+            reduction: totalSize - newTotalSize
+          });
+        }
 
-      // Final size check before saving
-      const finalSizes = {
-        formData: JSON.stringify(cleanFormData).length,
-        uploadedFiles: JSON.stringify(cleanUploadedFiles).length,
-        webhookResponses: JSON.stringify(cleanWebhookResponses).length,
-        signatures: JSON.stringify(cleanSignatures).length,
-        encryptedDocuments: JSON.stringify(cleanEncryptedDocuments).length
-      };
-      
-      const finalTotalSize = Object.values(finalSizes).reduce((sum, size) => sum + size, 0);
-      
-      if (finalTotalSize > 400 * 1024) {
-        console.error('❌ Data still too large after truncation:', {
-          finalTotalSize,
-          maxAllowed: 400 * 1024,
-          sizes: finalSizes
-        });
-        
-        // Analyze the data structure to identify large fields
-        console.log('🔍 Analyzing data structure to identify large fields...');
-        const formDataAnalysis = this.analyzeDataStructure(cleanFormData, 'form_data');
-        const encryptedDocsAnalysis = this.analyzeDataStructure(cleanEncryptedDocuments, 'encrypted_documents');
-        
-        // Sort by size to show largest fields first
-        const allAnalysis = [...formDataAnalysis, ...encryptedDocsAnalysis]
-          .sort((a, b) => b.size - a.size)
-          .slice(0, 20); // Show top 20 largest fields
-        
-        console.log('🔍 Top 20 largest fields:', allAnalysis);
-        
-        // Try to save only essential data
-        console.warn('⚠️ Attempting to save only essential data...');
-        const essentialData = {
-          applicantId: applicantId, // Use the mapped applicantId
-          reference_id: draftData.reference_id,
-          current_step: draftData.current_step || 0,
-          last_updated: draftData.last_updated || new Date().toISOString(),
-          status: draftData.status || 'draft',
-          form_data: { _truncated: true, _message: 'Data too large, only essential fields saved' }
+        // Final size check before saving
+        const finalSizes = {
+          formData: JSON.stringify(cleanFormData).length,
+          uploadedFiles: JSON.stringify(cleanUploadedFiles).length,
+          webhookResponses: JSON.stringify(cleanWebhookResponses).length,
+          signatures: JSON.stringify(cleanSignatures).length,
+          encryptedDocuments: JSON.stringify(cleanEncryptedDocuments).length
         };
         
-        const essentialCommand = new PutItemCommand({
+        const finalTotalSize = Object.values(finalSizes).reduce((sum, size) => sum + size, 0);
+        
+        if (finalTotalSize > 400 * 1024) {
+          console.error('❌ Data still too large after truncation:', {
+            finalTotalSize,
+            maxAllowed: 400 * 1024,
+            sizes: finalSizes
+          });
+          
+          // Analyze the data structure to identify large fields
+          console.log('🔍 Analyzing data structure to identify large fields...');
+          const formDataAnalysis = this.analyzeDataStructure(cleanFormData, 'form_data');
+          const encryptedDocsAnalysis = this.analyzeDataStructure(cleanEncryptedDocuments, 'encrypted_documents');
+          
+          // Sort by size to show largest fields first
+          const allAnalysis = [...formDataAnalysis, ...encryptedDocsAnalysis]
+            .sort((a, b) => b.size - a.size)
+            .slice(0, 20); // Show top 20 largest fields
+          
+          console.log('🔍 Top 20 largest fields:', allAnalysis);
+          
+          // Try to save only essential data
+          console.warn('⚠️ Attempting to save only essential data...');
+          const essentialData = {
+            applicantId: applicantId, // Use the mapped applicantId
+            reference_id: draftData.reference_id,
+            current_step: draftData.current_step || 0,
+            last_updated: draftData.last_updated || new Date().toISOString(),
+            status: draftData.status || 'draft',
+            form_data: { _truncated: true, _message: 'Data too large, only essential fields saved' }
+          };
+          
+          const essentialCommand = new PutItemCommand({
+            TableName: this.tableName,
+            Item: {
+              applicantId: { S: essentialData.applicantId },
+              reference_id: { S: essentialData.reference_id },
+              current_step: { N: essentialData.current_step.toString() },
+              last_updated: { S: essentialData.last_updated },
+              status: { S: essentialData.status },
+              form_data: { S: JSON.stringify(essentialData.form_data) },
+            },
+          });
+          
+          await client.send(essentialCommand);
+          console.log('✅ Essential data saved successfully (full data was too large)');
+          return true;
+        }
+
+        const command = new PutItemCommand({
           TableName: this.tableName,
           Item: {
-            applicantId: { S: essentialData.applicantId },
-            reference_id: { S: essentialData.reference_id },
-            current_step: { N: essentialData.current_step.toString() },
-            last_updated: { S: essentialData.last_updated },
-            status: { S: essentialData.status },
-            form_data: { S: JSON.stringify(essentialData.form_data) },
+            applicantId: { S: applicantId }, // Use the mapped applicantId
+            reference_id: { S: draftData.reference_id },
+            form_data: { S: JSON.stringify(cleanFormData) },
+            current_step: { N: (draftData.current_step || 0).toString() },
+            last_updated: { S: draftData.last_updated || new Date().toISOString() },
+            status: { S: draftData.status || 'draft' },
+            uploaded_files_metadata: { S: JSON.stringify(cleanUploadedFiles) },
+            webhook_responses: { S: JSON.stringify(cleanWebhookResponses) },
+            signatures: { S: JSON.stringify(cleanSignatures) },
+            encrypted_documents: { S: JSON.stringify(cleanEncryptedDocuments) },
           },
         });
-        
-        await client.send(essentialCommand);
-        console.log('✅ Essential data saved successfully (full data was too large)');
+
+        await client.send(command);
+        console.log('✅ Draft saved successfully to DynamoDB with validated applicantId');
         return true;
-      }
-
-      const command = new PutItemCommand({
-        TableName: this.tableName,
-        Item: {
-          applicantId: { S: applicantId }, // Use the mapped applicantId
-          reference_id: { S: draftData.reference_id },
-          form_data: { S: JSON.stringify(cleanFormData) },
-          current_step: { N: (draftData.current_step || 0).toString() },
-          last_updated: { S: draftData.last_updated || new Date().toISOString() },
-          status: { S: draftData.status || 'draft' },
-          uploaded_files_metadata: { S: JSON.stringify(cleanUploadedFiles) },
-          webhook_responses: { S: JSON.stringify(cleanWebhookResponses) },
-          signatures: { S: JSON.stringify(cleanSignatures) },
-          encrypted_documents: { S: JSON.stringify(cleanEncryptedDocuments) },
-        },
-      });
-
-      await client.send(command);
-      console.log('✅ Draft saved successfully to DynamoDB with validated applicantId');
-      return true;
-    } catch (error) {
-      console.error('❌ Error saving draft to DynamoDB:', error);
-      return false;
+             } catch (error: any) {
+         console.error(`❌ Error saving draft on attempt ${attempts}:`, error);
+         
+         // Check for authentication-related errors that can be resolved by refreshing credentials
+         if (attempts < maxRetries && (
+           error.name === 'NotAuthorizedException' || 
+           error.name === 'AccessDeniedException' ||
+           error.name === 'ExpiredTokenException' ||
+           error.message?.includes('Token expired') ||
+           error.message?.includes('Invalid login token')
+         )) {
+           console.warn(`⚠️ Authentication error detected on attempt ${attempts}. Attempting to refresh credentials and retry...`);
+           try {
+             await this.handleTokenExpiration();
+             continue; // Retry the current attempt with new credentials
+           } catch (refreshError) {
+             console.error('❌ Failed to refresh credentials:', refreshError);
+             return false;
+           }
+         }
+         
+         // For other errors, don't retry
+         return false;
+       }
     }
+    console.error(`❌ Failed to save draft after ${maxRetries} attempts.`);
+    return false;
   }
 
   // Clean data to ensure it's safe for DynamoDB

@@ -1679,12 +1679,17 @@ export function ApplicationForm() {
 
   // Helper function to update array items (coApplicants, guarantors)
   const updateArrayItem = (arrayName: string, index: number, field: string, value: any) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      [arrayName]: prev[arrayName]?.map((item: any, i: number) => 
-        i === index ? { ...item, [field]: value } : item
-      ) || []
-    }));
+    console.log(`🔄 updateArrayItem: ${arrayName}[${index}].${field} = ${value}`);
+    setFormData((prev: any) => {
+      const updated = {
+        ...prev,
+        [arrayName]: prev[arrayName]?.map((item: any, i: number) => 
+          i === index ? { ...item, [field]: value } : item
+        ) || []
+      };
+      console.log(`🔄 Updated ${arrayName}:`, updated[arrayName]);
+      return updated;
+    });
   };
 
   // Handle building selection
@@ -2088,7 +2093,7 @@ export function ApplicationForm() {
         console.warn('⚠️ Failed to save draft to DynamoDB');
         toast({
           title: 'Failed to Save Draft',
-          description: 'There was an error saving your draft. Please try again.',
+          description: 'There was an error saving your draft. This may be due to an expired session. Please try refreshing the page and signing in again.',
           variant: 'destructive',
         });
       }
@@ -3789,7 +3794,7 @@ export function ApplicationForm() {
           console.log('  - Applicant SSN:', webhookPayload.applicantSsn);
           console.log('  - Other Occupants Count:', webhookPayload.otherOccupants?.length || 0);
           console.log('  - Bank Records - Applicant:', webhookPayload.applicantBankRecords?.length || 0);
-          console.log('  - Bank Records - Co-Applicants:', webhookPayload.coApplicantsBankRecords?.length || 0);
+          console.log('  - Bank Records - Co-Applicants:', webhookPayload.bankInformation?.coApplicants?.totalBankRecords || 0);
           console.log('  - Bank Records - Guarantors:', webhookPayload.guarantorsBankRecords?.length || 0);
           console.log('  - Legal Questions:', {
             landlordTenantLegalAction: webhookPayload.landlordTenantLegalAction,
@@ -5306,8 +5311,8 @@ export function ApplicationForm() {
                               className="w-full mt-1"
                             />
                           </FormControl>
-                  {form.formState.errors[`coApplicants.${index}.email`]?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors[`coApplicants.${index}.email`].message}</span>
+                  {form.formState.errors[`coApplicants.${index}.email` as keyof typeof form.formState.errors]?.message && (
+                    <span className="text-red-500 text-xs">{(form.formState.errors[`coApplicants.${index}.email` as keyof typeof form.formState.errors] as any)?.message}</span>
                   )}
                         </FormItem>
                         <FormItem>
@@ -5324,8 +5329,8 @@ export function ApplicationForm() {
                               className="w-full mt-1"
                             />
                           </FormControl>
-                  {form.formState.errors[`coApplicants.${index}.license`]?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors[`coApplicants.${index}.license`].message}</span>
+                  {form.formState.errors[`coApplicants.${index}.license` as keyof typeof form.formState.errors]?.message && (
+                    <span className="text-red-500 text-xs">{(form.formState.errors[`coApplicants.${index}.license` as keyof typeof form.formState.errors] as any)?.message}</span>
                   )}
                         </FormItem>
                 <div className="space-y-2">
@@ -5344,7 +5349,7 @@ export function ApplicationForm() {
                 <div className="space-y-2">
                 <FormField
                     control={form.control}
-                    name="coApplicants.0.address"
+                    name={`coApplicants.${index}.address`}
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel className="mb-0.5">Street Address</FormLabel>
@@ -5378,8 +5383,8 @@ export function ApplicationForm() {
                               className="w-full mt-1"
                             />
                           </FormControl>
-                        {form.formState.errors['coApplicants.0.zip']?.message && (
-                          <span className="text-red-500 text-xs">{form.formState.errors['coApplicants.0.zip'].message}</span>
+                        {form.formState.errors[`coApplicants.${index}.zip` as keyof typeof form.formState.errors]?.message && (
+                          <span className="text-red-500 text-xs">{(form.formState.errors[`coApplicants.${index}.zip` as keyof typeof form.formState.errors] as any)?.message}</span>
                         )}
                         </FormItem>
                 </div>
@@ -5387,15 +5392,15 @@ export function ApplicationForm() {
                 <div className="space-y-2">
                   {/* Replace State* and City* text inputs with StateCitySelector */}
                   <StateCitySelector
-                    selectedState={formData.coApplicants?.[0]?.state || ''}
-                    selectedCity={formData.coApplicants?.[0]?.city || ''}
+                    selectedState={formData.coApplicants?.[index]?.state || ''}
+                    selectedCity={formData.coApplicants?.[index]?.city || ''}
                     onStateChange={(state) => {
-                      updateFormData('coApplicants', '0', 'state', state);
+                      updateFormData('coApplicants', index.toString(), 'state', state);
                       // Clear city if state changes
-                      updateFormData('coApplicants', '0', 'city', '');
+                      updateFormData('coApplicants', index.toString(), 'city', '');
                     }}
                     onCityChange={(city) => {
-                      updateFormData('coApplicants', '0', 'city', city);
+                      updateFormData('coApplicants', index.toString(), 'city', city);
                     }}
                     stateLabel="State*"
                     cityLabel="City*"
@@ -5411,8 +5416,8 @@ export function ApplicationForm() {
                             <Input 
                         type="number"
                         min={0}
-                        value={formData.coApplicants?.[0]?.lengthAtAddressYears ?? ''}
-                        onChange={e => updateFormData('coApplicants', '0', 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
+                        value={formData.coApplicants?.[index]?.lengthAtAddressYears ?? ''}
+                        onChange={e => updateFormData('coApplicants', index.toString(), 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
                         placeholder="e.g. 2 years"
                               className="w-full mt-1"
                             />
@@ -5420,8 +5425,8 @@ export function ApplicationForm() {
                               type="number"
                         min={0}
                         max={11}
-                        value={formData.coApplicants?.[0]?.lengthAtAddressMonths ?? ''}
-                        onChange={e => updateFormData('coApplicants', '0', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
+                        value={formData.coApplicants?.[index]?.lengthAtAddressMonths ?? ''}
+                        onChange={e => updateFormData('coApplicants', index.toString(), 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
                         placeholder="e.g. 4 months"
                           className="w-full mt-1"
                       />
@@ -5431,10 +5436,10 @@ export function ApplicationForm() {
                       <FormControl>
                         <Input 
                           placeholder="Enter landlord's name" 
-                          value={formData.coApplicants?.[0]?.landlordName || ''}
+                          value={formData.coApplicants?.[index]?.landlordName || ''}
                           className="input-field w-full mt-1 border-gray-300 bg-white"
                           onChange={(e) => {
-                            updateFormData('coApplicants', '0', 'landlordName', e.target.value);
+                            updateFormData('coApplicants', index.toString(), 'landlordName', e.target.value);
                           }}
                         />
                       </FormControl>
@@ -5444,10 +5449,10 @@ export function ApplicationForm() {
                       <FormControl>
                         <Input 
                           placeholder="Enter landlord's street address" 
-                          value={formData.coApplicants?.[0]?.landlordAddressLine1 || ''}
+                          value={formData.coApplicants?.[index]?.landlordAddressLine1 || ''}
                           className="input-field w-full mt-1 border-gray-300 bg-white"
                           onChange={(e) => {
-                            updateFormData('coApplicants', '0', 'landlordAddressLine1', e.target.value);
+                            updateFormData('coApplicants', index.toString(), 'landlordAddressLine1', e.target.value);
                           }}
                         />
                       </FormControl>
@@ -5457,10 +5462,10 @@ export function ApplicationForm() {
                       <FormControl>
                         <Input 
                           placeholder="Apartment, suite, etc." 
-                          value={formData.coApplicants?.[0]?.landlordAddressLine2 || ''}
+                          value={formData.coApplicants?.[index]?.landlordAddressLine2 || ''}
                           className="input-field w-full mt-1 border-gray-300 bg-white"
                           onChange={(e) => {
-                            updateFormData('coApplicants', '0', 'landlordAddressLine2', e.target.value);
+                            updateFormData('coApplicants', index.toString(), 'landlordAddressLine2', e.target.value);
                           }}
                         />
                       </FormControl>
@@ -5468,9 +5473,9 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <StateSelector
-                          selectedState={formData.coApplicants?.[0]?.landlordState || ''}
+                          selectedState={formData.coApplicants?.[index]?.landlordState || ''}
                           onStateChange={(value) => {
-                            updateFormData('coApplicants', '0', 'landlordState', value);
+                            updateFormData('coApplicants', index.toString(), 'landlordState', value);
                           }}
                           label="Landlord State"
                           className="w-full mt-1"
@@ -5480,10 +5485,10 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <CitySelector
-                          selectedState={formData.coApplicants?.[0]?.landlordState || ''}
-                          selectedCity={formData.coApplicants?.[0]?.landlordCity || ''}
+                          selectedState={formData.coApplicants?.[index]?.landlordState || ''}
+                          selectedCity={formData.coApplicants?.[index]?.landlordCity || ''}
                           onCityChange={(value) => {
-                            updateFormData('coApplicants', '0', 'landlordCity', value);
+                            updateFormData('coApplicants', index.toString(), 'landlordCity', value);
                           }}
                           label="Landlord City"
                           className="w-full mt-1"
@@ -5493,12 +5498,12 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <ZIPInput
-                          name="coApplicants.0.landlordZipCode"
+                          name={`coApplicants.${index}.landlordZipCode`}
                           label="Landlord ZIP Code"
                           placeholder="Enter landlord's ZIP code"
-                          value={formData.coApplicants?.[0]?.landlordZipCode || ''}
+                          value={formData.coApplicants?.[index]?.landlordZipCode || ''}
                           onChange={(value) => {
-                            updateFormData('coApplicants', '0', 'landlordZipCode', value);
+                            updateFormData('coApplicants', index.toString(), 'landlordZipCode', value);
                           }}
                           className="w-full mt-1"
                         />
@@ -5507,12 +5512,12 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <PhoneInput
-                          name="coApplicants.0.landlordPhone"
+                          name={`coApplicants.${index}.landlordPhone`}
                           label="Landlord Phone Number"
                           placeholder="Enter landlord's phone number"
-                          value={formData.coApplicants?.[0]?.landlordPhone || ''}
+                          value={formData.coApplicants?.[index]?.landlordPhone || ''}
                           onChange={(value) => {
-                            updateFormData('coApplicants', '0', 'landlordPhone', value);
+                            updateFormData('coApplicants', index.toString(), 'landlordPhone', value);
                           }}
                           className="w-full mt-1"
                         />
@@ -5521,27 +5526,27 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <EmailInput
-                          name="coApplicants.0.landlordEmail"
+                          name={`coApplicants.${index}.landlordEmail`}
                           label="Landlord Email Address (Optional)"
                           placeholder="Enter landlord's email address"
-                          value={formData.coApplicants?.[0]?.landlordEmail || ''}
+                          value={formData.coApplicants?.[index]?.landlordEmail || ''}
                           onChange={(value) => {
-                            updateFormData('coApplicants', '0', 'landlordEmail', value);
+                            updateFormData('coApplicants', index.toString(), 'landlordEmail', value);
                           }}
                           className="w-full mt-1"
                         />
                       </FormControl>
                     </FormItem>
                     <div>
-                      <Label htmlFor="coApplicants.0.currentRent" className="mb-0.5">Monthly Rent</Label>
+                      <Label htmlFor={`coApplicants.${index}.currentRent`} className="mb-0.5">Monthly Rent</Label>
                       <Input
-                        id="coApplicants.0.currentRent"
+                        id={`coApplicants.${index}.currentRent`}
                         type="number"
                         placeholder="0.00"
-                        value={formData.coApplicants?.[0]?.currentRent?.toString() || ''}
+                        value={formData.coApplicants?.[index]?.currentRent?.toString() || ''}
                         onChange={e => {
                           const numValue = parseFloat(e.target.value) || 0;
-                          updateFormData('coApplicants', '0', 'currentRent', numValue);
+                          updateFormData('coApplicants', index.toString(), 'currentRent', numValue);
                         }}
                         className="input-field w-full mt-1"
                       />
@@ -5551,10 +5556,10 @@ export function ApplicationForm() {
                       <FormControl>
                         <Textarea 
                           placeholder="Please explain your reason for moving" 
-                          value={formData.coApplicants?.[0]?.reasonForMoving || ''}
+                          value={formData.coApplicants?.[index]?.reasonForMoving || ''}
                           className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
                           onChange={(e) => {
-                            updateFormData('coApplicants', '0', 'reasonForMoving', e.target.value);
+                            updateFormData('coApplicants', index.toString(), 'reasonForMoving', e.target.value);
                           }}
                         />
                       </FormControl>
