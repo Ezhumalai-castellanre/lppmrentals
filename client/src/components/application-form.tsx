@@ -6283,18 +6283,156 @@ export function ApplicationForm() {
                           className="w-full mt-1"
                         />
                       </div>
-                      </div>
-                        </CardContent>
-                      </Card>
-                                         ))}
-                    </div>
-                )}
-                      
-                      
 
-                </CardContent>
-              </Card>
-                  </div>
+                      </div>
+                      
+                      {/* Landlord Information - Matching Co-Applicant layout */}
+                      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
+                          <FormLabel className="mb-0.5 col-span-2">Landlord Information</FormLabel>
+                        </div>
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Landlord Name</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter landlord's name" 
+                              value={formData.guarantors[index]?.landlordName || ''}
+                              className="input-field w-full mt-1 border-gray-300 bg-white"
+                              onChange={(e) => {
+                                updateFormData('guarantors', index.toString(), 'landlordName', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Landlord Street Address</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter landlord's street address" 
+                              value={formData.guarantors[index]?.landlordAddressLine1 || ''}
+                              className="input-field w-full mt-1 border-gray-300 bg-white"
+                              onChange={(e) => {
+                                updateFormData('guarantors', index.toString(), 'landlordAddressLine1', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Landlord Address Line 2 (Optional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Apartment, suite, etc." 
+                              value={formData.guarantors[index]?.landlordAddressLine2 || ''}
+                              className="input-field w-full mt-1 border-gray-300 bg-white"
+                              onChange={(e) => {
+                                updateFormData('guarantors', index.toString(), 'landlordAddressLine2', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <StateSelector
+                              selectedState={formData.guarantors[index]?.landlordState || ''}
+                              onStateChange={(value) => {
+                                updateFormData('guarantors', index.toString(), 'landlordState', value);
+                              }}
+                              label="Landlord State"
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <CitySelector
+                              selectedState={formData.guarantors[index]?.landlordState || ''}
+                              selectedCity={formData.guarantors[index]?.landlordCity || ''}
+                              onCityChange={(value) => {
+                                updateFormData('guarantors', index.toString(), 'landlordCity', value);
+                              }}
+                              label="Landlord City"
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <ZIPInput
+                              name={`guarantors.${index}.landlordZipCode`}
+                              label="Landlord ZIP Code"
+                              placeholder="Enter landlord's ZIP code"
+                              value={formData.guarantors[index]?.landlordZipCode || ''}
+                              onChange={(value) => {
+                                updateFormData('guarantors', index.toString(), 'landlordZipCode', value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <PhoneInput
+                              name={`guarantors.${index}.landlordPhone`}
+                              label="Landlord Phone Number"
+                              placeholder="Enter landlord's phone number"
+                              value={formData.guarantors[index]?.landlordPhone || ''}
+                              onChange={(value) => {
+                                updateFormData('guarantors', index.toString(), 'landlordPhone', value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <EmailInput
+                              name={`guarantors.${index}.landlordEmail`}
+                              label="Landlord Email Address (Optional)"
+                              placeholder="Enter landlord's email address"
+                              value={formData.guarantors[index]?.landlordEmail || ''}
+                              onChange={(value) => {
+                                updateFormData('guarantors', index.toString(), 'landlordEmail', value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <div>
+                          <Label htmlFor={`guarantors.${index}.currentRent`} className="mb-0.5">Monthly Rent</Label>
+                          <Input
+                            id={`guarantors.${index}.currentRent`}
+                            type="number"
+                            placeholder="0.00"
+                            value={formData.guarantors[index]?.currentRent?.toString() || ''}
+                            onChange={e => {
+                              const numValue = parseFloat(e.target.value) || 0;
+                              updateFormData('guarantors', index.toString(), 'currentRent', numValue);
+                            }}
+                            className="input-field w-full mt-1"
+                          />
+                        </div>
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Please explain your reason for moving" 
+                              value={formData.guarantors[index]?.reasonForMoving || ''}
+                              className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
+                              onChange={(e) => {
+                                updateFormData('guarantors', index.toString(), 'reasonForMoving', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
         );
 
       case 10:
