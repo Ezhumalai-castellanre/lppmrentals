@@ -5591,7 +5591,7 @@ export function ApplicationForm() {
                 <CardHeader>
                   <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                     <CalendarDays className="w-5 h-5 mr-2" />
-                    Financial Information {index + 2} - Co-Applicant {index + 1}
+                    Financial Information - Co-Applicant {index + 1}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -5663,37 +5663,82 @@ export function ApplicationForm() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <SupportingDocuments
-                  formData={{
-                    ...formData,
-                    webhookResponses: Object.fromEntries(
-                      Object.entries(webhookResponses)
-                            .filter(([key]) => key.startsWith(`coApplicants_${index}_`))
-                            .map(([key, value]) => [key.replace(`coApplicants_${index}_`, ''), value])
-                        )
-                      }}
-                      originalWebhookResponses={webhookResponses}
-                      onDocumentChange={(documentType: string, files: File[]) => {
-                        console.log(`🔑 Co-Applicant ${index + 1} document change for ${documentType}:`, files.length, 'files');
-                        handleDocumentChange('coApplicants', documentType, files, index);
-                      }}
-                      onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => {
-                        console.log(`🔑 Co-Applicant ${index + 1} encrypted document change for ${documentType}:`, encryptedFiles.length, 'files');
-                        handleEncryptedDocumentChange('coApplicants', documentType, encryptedFiles, index);
-                      }}
-                      onWebhookResponse={(documentType: string, response: any) => {
-                        // Pass the document type and index to the function
-                        console.log(`🔑 Co-Applicant ${index + 1} webhook response for ${documentType}:`, response);
-                        handleWebhookResponse('coApplicants', documentType, response, index);
-                      }}
-                      referenceId={referenceId}
-                      enableWebhook={true}
-                      applicationId={user?.applicantId || 'unknown'}
-                      applicantId={user?.id}
-                      zoneinfo={user?.zoneinfo}
-                      showOnlyCoApplicant={true}
-                      index={index}
-                />
+                {/* Employment Type Selection for Co-Applicant Documents */}
+                {!formData.coApplicants?.[index]?.employmentType ? (
+                  <div className="space-y-4">
+                    <div className="text-gray-500 text-sm mb-4">Please select Employment Type to upload supporting documents for Co-Applicant {index + 1}.</div>
+                    
+                    <div className="form-field">
+                      <Label htmlFor={`coApplicant-${index}-employmentType`}>Employment Type *</Label>
+                      <Select
+                        value={formData.coApplicants?.[index]?.employmentType || ''}
+                        onValueChange={(value) => {
+                          updateFormData('coApplicants', index.toString(), 'employmentType', value);
+                        }}
+                      >
+                        <SelectTrigger className="input-field">
+                          <SelectValue placeholder="Select employment type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="student">Student</SelectItem>
+                          <SelectItem value="self-employed">Self-Employed</SelectItem>
+                          <SelectItem value="salaried">Salaried</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Info blocks: Security Notice and Important Notes */}
+                    <div className="flex flex-col space-y-1.5 p-6">
+                      <div className="tracking-tight text-lg font-medium">Supporting Documents</div>
+                      <div className="bg-green-50 p-3 rounded-lg">
+                        <p className="text-sm text-green-800">
+                          <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+                      <h4 className="font-medium text-yellow-900 mb-2">Important Notes:</h4>
+                      <ul className="text-sm text-yellow-800 space-y-1">
+                        <li>• Documents must be current and legible</li>
+                        <li>• Corporate applicants require additional documentation</li>
+                        <li>• Self-employed applicants need accountant verification</li>
+                        <li>• Incomplete applications will delay processing</li>
+                      </ul>
+                    </div>
+                  </div>
+                ) : (
+                  <SupportingDocuments
+                    formData={{
+                      ...formData,
+                      webhookResponses: Object.fromEntries(
+                        Object.entries(webhookResponses)
+                              .filter(([key]) => key.startsWith(`coApplicants_${index}_`))
+                              .map(([key, value]) => [key.replace(`coApplicants_${index}_`, ''), value])
+                          )
+                        }}
+                        originalWebhookResponses={webhookResponses}
+                        onDocumentChange={(documentType: string, files: File[]) => {
+                          console.log(`🔑 Co-Applicant ${index + 1} document change for ${documentType}:`, files.length, 'files');
+                          handleDocumentChange('coApplicants', documentType, files, index);
+                        }}
+                        onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => {
+                          console.log(`🔑 Co-Applicant ${index + 1} encrypted document change for ${documentType}:`, encryptedFiles.length, 'files');
+                          handleEncryptedDocumentChange('coApplicants', documentType, encryptedFiles, index);
+                        }}
+                        onWebhookResponse={(documentType: string, response: any) => {
+                          // Pass the document type and index to the function
+                          console.log(`🔑 Co-Applicant ${index + 1} webhook response for ${documentType}:`, response);
+                          handleWebhookResponse('coApplicants', documentType, response, index);
+                        }}
+                        referenceId={referenceId}
+                        enableWebhook={true}
+                        applicationId={user?.applicantId || 'unknown'}
+                        applicantId={user?.id}
+                        zoneinfo={user?.zoneinfo}
+                        showOnlyCoApplicant={true}
+                        index={index}
+                  />
+                )}
               </CardContent>
             </Card>
               ))}
@@ -6204,82 +6249,97 @@ export function ApplicationForm() {
                       </FormItem>
                       <div className="space-y-2">
                         <StateSelector
-                                selectedState={formData.guarantors[index]?.licenseState || ''}
-                                onStateChange={(state) => updateFormData('guarantors', index.toString(), 'licenseState', state)}
+                          selectedState={formData.guarantors[index]?.licenseState || ''}
+                          onStateChange={(state) => updateFormData('guarantors', index.toString(), 'licenseState', state)}
                           label="License State"
                           required={false}
                           className="w-full mt-1"
                         />
                       </div>
-                            
-                            <h5 className="col-span-2">Current Address</h5>
-                            <div className="col-span-2">
+                    </div>
+                    
+                    {/* Current Address Section - Outside the main grid */}
+                    <h5>Current Address</h5>
+                    <div className="space-y-2"></div>
+                 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                      <div className="col-span-2">
                         <FormItem>
                           <FormLabel className="mb-0.5">Street Address</FormLabel>
                           <FormControl>
                             <Input 
                               placeholder="Enter street address" 
-                                    value={formData.guarantors[index]?.address || ''}
+                              value={formData.guarantors[index]?.address || ''}
                               className="input-field w-full mt-1"
                               onChange={(e) => {
-                                      updateFormData('guarantors', index.toString(), 'address', e.target.value);
+                                updateFormData('guarantors', index.toString(), 'address', e.target.value);
                               }}
                             />
                           </FormControl>
                         </FormItem>
-                            </div>
-                        <FormItem>
-                          <FormControl>
-                            <ZIPInput
-                                  name={`guarantors.${index}.zip`}
-                              label="ZIP Code*"
-                              placeholder="ZIP code"
-                                  value={formData.guarantors[index]?.zip || ''}
-                              onChange={(value) => {
-                                    updateFormData('guarantors', index.toString(), 'zip', value);
-                              }}
-                              required={true}
-                              className="w-full mt-1"
-                            />
-                          </FormControl>
-                        </FormItem>
-                            
-                            <div className="col-span-2">
-                        <StateCitySelector
-                                selectedState={formData.guarantors[index]?.state || ''}
-                                selectedCity={formData.guarantors[index]?.city || ''}
-                          onStateChange={(state) => {
-                                  updateFormData('guarantors', index.toString(), 'state', state);
-                                  // Clear city if state changes
-                                  updateFormData('guarantors', index.toString(), 'city', '');
-                          }}
-                          onCityChange={(city) => {
-                                  updateFormData('guarantors', index.toString(), 'city', city);
-                          }}
-                          stateLabel="State*"
-                          cityLabel="City*"
-                          required={true}
-                          className="mb-4"
-                        />
                       </div>
-                  
-                            <div className="col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
+                      <FormItem>
+                        <FormControl>
+                          <ZIPInput
+                            name={`guarantors.${index}.zip`}
+                            label="ZIP Code*"
+                            placeholder="ZIP code"
+                            value={formData.guarantors[index]?.zip || ''}
+                            onChange={(value) => {
+                              updateFormData('guarantors', index.toString(), 'zip', value);
+                            }}
+                            required={true}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <FormItem>
+                        <FormControl>
+                          <StateSelector
+                            selectedState={formData.guarantors[index]?.state || ''}
+                            onStateChange={(state) => {
+                              updateFormData('guarantors', index.toString(), 'state', state);
+                              // Clear city if state changes
+                              updateFormData('guarantors', index.toString(), 'city', '');
+                            }}
+                            label="State*"
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <FormItem>
+                        <FormControl>
+                          <CitySelector
+                            selectedState={formData.guarantors[index]?.state || ''}
+                            selectedCity={formData.guarantors[index]?.city || ''}
+                            onCityChange={(city) => {
+                              updateFormData('guarantors', index.toString(), 'city', city);
+                            }}
+                            label="City*"
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    </div>
+                    
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                      <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
                         <FormLabel className="mb-0.5 col-span-2">Length of Stay at Current Address</FormLabel>
-                        <Input
+                        <Input 
                           type="number"
                           min={0}
-                                placeholder="Years"
-                                value={formData.guarantors[index]?.lengthAtAddressYears || ''}
-                                onChange={e => updateFormData('guarantors', index.toString(), 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
+                          value={formData.guarantors[index]?.lengthAtAddressYears ?? ''}
+                          onChange={e => updateFormData('guarantors', index.toString(), 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
+                          placeholder="e.g. 2 years"
                           className="w-full mt-1"
                         />
-                        <Input
+                        <Input 
                           type="number"
                           min={0}
                           max={11}
-                                placeholder="Months"
-                                value={formData.guarantors[index]?.lengthAtAddressMonths || ''}
-                                onChange={e => updateFormData('guarantors', index.toString(), 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
+                          value={formData.guarantors[index]?.lengthAtAddressMonths ?? ''}
+                          onChange={e => updateFormData('guarantors', index.toString(), 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
+                          placeholder="e.g. 4 months"
                           className="w-full mt-1"
                         />
                       </div>
@@ -6438,39 +6498,72 @@ export function ApplicationForm() {
       case 10:
         return (
           <div className="space-y-6">
-            <Card className="form-section border-l-4 border-l-orange-500">
-              <CardHeader>
-                <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
-                  <CalendarDays className="w-5 h-5 mr-2" />
-                  Guarantor Financial Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
-                  <div key={index} className="mb-8 last:mb-0">
-                    <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
-                      Financial Information {3 + index} - Guarantor {index + 1}
-                    </h3>
-                    <FinancialSection 
-                      title={`Guarantor ${index + 1} Financial Information`}
-                      person={`guarantors_${index}`}
-                      formData={formData}
-                      updateFormData={updateFormData}
-                      form={form}
-                    />
+            {!hasGuarantor ? (
+              <Card className="form-section border-l-4 border-l-orange-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
+                    <CalendarDays className="w-5 h-5 mr-2" />
+                    Guarantor Financial Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <div className="text-gray-500 text-lg mb-2">Guarantor Financial Information Unavailable</div>
+                    <div className="text-gray-400 text-sm">Please check "Add Guarantor" to access financial information.</div>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="form-section border-l-4 border-l-orange-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
+                    <CalendarDays className="w-5 h-5 mr-2" />
+                    Guarantor Financial Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
+                    <div key={index} className="mb-8 last:mb-0">
+                      <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
+                        Financial Information 3 - Guarantor {index + 1}
+                      </h3>
+                      <FinancialSection 
+                        title={`Guarantor ${index + 1} Financial Information`}
+                        person={`guarantors_${index}`}
+                        formData={formData}
+                        updateFormData={updateFormData}
+                        form={form}
+                      />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
         );
 
       case 11:
         return (
           <div className="space-y-6">
-            <Card className="form-section border-l-4 border-l-orange-500">
-              <CardHeader>
-                                  <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
+            {!hasGuarantor ? (
+              <Card className="form-section border-l-4 border-l-orange-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
+                    <FolderOpen className="w-5 h-5 mr-2" />
+                    Guarantor Documents
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <div className="text-gray-500 text-lg mb-2">Guarantor Documents Unavailable</div>
+                    <div className="text-gray-400 text-sm">Please check "Add Guarantor" to upload documents.</div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="form-section border-l-4 border-l-orange-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
                     <FolderOpen className="w-5 h-5 mr-2" />
                     Guarantor Documents
                   </CardTitle>
@@ -6482,38 +6575,91 @@ export function ApplicationForm() {
                       <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
                         Guarantor {index + 1} Documents
                       </h3>
-                      <SupportingDocuments
-                        formData={{
-                          ...formData,
-                          webhookResponses: Object.fromEntries(
-                            Object.entries(webhookResponses)
-                              .filter(([key]) => key.startsWith(`guarantors_${index}_`))
-                              .map(([key, value]) => [key.replace(`guarantors_${index}_`, ''), value])
-                          )
-                        }}
-                        originalWebhookResponses={webhookResponses}
-                        onDocumentChange={(documentType: string, files: File[]) => 
-                          handleDocumentChange('guarantors', documentType, files, index)
-                        }
-                        onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => 
-                          handleEncryptedDocumentChange('guarantors', documentType, encryptedFiles, index)
-                        }
-                        onWebhookResponse={(documentType: string, response: any) => {
-                          // Pass the document type and index to the function
-                          handleWebhookResponse('guarantors', documentType, response, index);
-                        }}
-                        referenceId={referenceId}
-                        enableWebhook={true}
-                        applicationId={user?.applicantId || 'unknown'}
-                        applicantId={user?.id}
-                        zoneinfo={user?.zoneinfo}
-                        showOnlyGuarantor={true}
-                        index={index}
-                      />
+                      {/* Employment Type Selection for Guarantor Documents */}
+                      {!formData.guarantors?.[index]?.employmentType ? (
+                        <div className="space-y-4">
+                          <div className="text-gray-500 text-sm mb-4">Please select Employment Type to upload supporting documents for Guarantor {index + 1}.</div>
+                          
+                          <div className="form-field">
+                            <Label htmlFor={`guarantor-${index}-employmentType`}>Employment Type *</Label>
+                            <div className="text-sm text-amber-600 dark:text-amber-400 mb-2">
+                              Guarantor cannot be a student, only employment/ self-employment options
+                            </div>
+                            <Select
+                              value={formData.guarantors?.[index]?.employmentType || ''}
+                              onValueChange={(value) => {
+                                // Prevent guarantors from selecting student employment type
+                                if (value === 'student') {
+                                  return; // Don't allow this selection
+                                }
+                                updateFormData('guarantors', index.toString(), 'employmentType', value);
+                              }}
+                            >
+                              <SelectTrigger className="input-field">
+                                <SelectValue placeholder="Select employment type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {/* Students option NOT available for Guarantors */}
+                                <SelectItem value="self-employed">Self-Employed</SelectItem>
+                                <SelectItem value="salaried">Salaried</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          {/* Info blocks: Security Notice and Important Notes */}
+                          <div className="flex flex-col space-y-1.5 p-6">
+                            <div className="tracking-tight text-lg font-medium">Supporting Documents</div>
+                            <div className="bg-green-50 p-3 rounded-lg">
+                              <p className="text-sm text-green-800">
+                                <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+                            <h4 className="font-medium text-yellow-900 mb-2">Important Notes:</h4>
+                            <ul className="text-sm text-yellow-800 space-y-1">
+                              <li>• Documents must be current and legible</li>
+                              <li>• Corporate applicants require additional documentation</li>
+                              <li>• Self-employed applicants need accountant verification</li>
+                              <li>• Incomplete applications will delay processing</li>
+                            </ul>
+                          </div>
+                        </div>
+                      ) : (
+                        <SupportingDocuments
+                          formData={{
+                            ...formData,
+                            webhookResponses: Object.fromEntries(
+                              Object.entries(webhookResponses)
+                                .filter(([key]) => key.startsWith(`guarantors_${index}_`))
+                                .map(([key, value]) => [key.replace(`guarantors_${index}_`, ''), value])
+                            )
+                          }}
+                          originalWebhookResponses={webhookResponses}
+                          onDocumentChange={(documentType: string, files: File[]) => 
+                            handleDocumentChange('guarantors', documentType, files, index)
+                          }
+                          onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => 
+                            handleEncryptedDocumentChange('guarantors', documentType, encryptedFiles, index)
+                          }
+                          onWebhookResponse={(documentType: string, response: any) => {
+                            // Pass the document type and index to the function
+                            handleWebhookResponse('guarantors', documentType, response, index);
+                          }}
+                          referenceId={referenceId}
+                          enableWebhook={true}
+                          applicationId={user?.applicantId || 'unknown'}
+                          applicantId={user?.id}
+                          zoneinfo={user?.zoneinfo}
+                          showOnlyGuarantor={true}
+                          index={index}
+                        />
+                      )}
                     </div>
                   ))}
                 </CardContent>
-            </Card>
+              </Card>
+            )}
           </div>
         );
 
@@ -6597,11 +6743,39 @@ export function ApplicationForm() {
 
   // Step navigation handlers
   const handlePrevious = () => {
-    setCurrentStep((prev: number) => Math.max(prev - 1, 0));
+    setCurrentStep((prev: number) => {
+      let prevStep = prev - 1;
+      
+      // If coming back from Other Occupants (step 8) and no co-applicant is selected, go back to Add Co-Applicant step (step 5)
+      if (!hasCoApplicant && prev === 8) {
+        prevStep = 5; // Go back to Add Co-Applicant step
+      }
+      
+      // If coming back from Digital Signatures (step 12) and no guarantor is selected, go back to Add Guarantor step (step 9)
+      if (!hasGuarantor && prev === 12) {
+        prevStep = 9; // Go back to Add Guarantor step
+      }
+      
+      return Math.max(prevStep, 0);
+    });
   };
 
   const handleNext = () => {
-    setCurrentStep((prev: number) => Math.min(prev + 1, STEPS.length - 1));
+    setCurrentStep((prev: number) => {
+      let nextStep = prev + 1;
+      
+      // If moving to co-applicant steps (step 6, 7) and no co-applicant is selected, skip to Other Occupants (step 8)
+      if (!hasCoApplicant && (nextStep === 6 || nextStep === 7)) {
+        nextStep = 8; // Skip to Other Occupants
+      }
+      
+      // If moving to guarantor steps (step 10, 11) and no guarantor is selected, skip to Digital Signatures (step 12)
+      if (!hasGuarantor && (nextStep === 10 || nextStep === 11)) {
+        nextStep = 12; // Skip to Digital Signatures
+      }
+      
+      return Math.min(nextStep, STEPS.length - 1);
+    });
   };
 
   return (
