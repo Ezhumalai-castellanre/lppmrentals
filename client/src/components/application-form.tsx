@@ -1745,6 +1745,9 @@ export function ApplicationForm() {
           coApplicantCount: 1,
           guarantorCount: 1,
 
+          // Initialize co-applicants array
+          coApplicants: [],
+
           // Legal Questions
           landlordTenantLegalAction: '',
           brokenLease: '',
@@ -3446,11 +3449,7 @@ export function ApplicationForm() {
             email: guarantor.email || formData.guarantorEmail,
             phone: formatPhoneForPayload(guarantor.phone || formData.guarantorPhone),
             zip: guarantor.zip || formData.guarantorZip,
-            landlordZipCode: guarantor.landlordZipCode || formData.guarantorLandlordZipCode,
-            landlordPhone: guarantor.landlordPhone || formData.guarantorLandlordPhone,
-            landlordEmail: guarantor.landlordEmail || formData.guarantorLandlordEmail,
             city: guarantor.city,
-            landlordCity: guarantor.landlordCity,
             name: guarantor.name,
             licenseState: guarantor.licenseState,
             address: guarantor.address,
@@ -3479,6 +3478,7 @@ export function ApplicationForm() {
             income: guarantor.income,
             incomeFrequency: guarantor.incomeFrequency,
             otherIncome: guarantor.otherIncome,
+            otherIncomeFrequency: guarantor.otherIncomeFrequency || "monthly",
             otherIncomeSource: guarantor.otherIncomeSource,
             bankRecords: (guarantor.bankRecords || []).map((record: any) => ({
                 bankName: record.bankName,
@@ -3622,7 +3622,8 @@ export function ApplicationForm() {
         console.log('Current window location:', window.location.href);
         
         // Check if submit-application endpoint exists, if not, skip server submission
-        const apiEndpoint = '/api';
+        // Use Netlify functions endpoint for local development, or AWS Lambda for production
+        const apiEndpoint = import.meta.env.DEV ? '/api' : 'https://your-aws-api-gateway-url.amazonaws.com/prod';
         const submitEndpoint = apiEndpoint + '/submit-application';
         
         // Validate required fields before submission
@@ -4041,7 +4042,7 @@ export function ApplicationForm() {
           console.log('  - Other Occupants Count:', webhookPayload.otherOccupants?.length || 0);
           console.log('  - Bank Records - Applicant:', webhookPayload.applicantBankRecords?.length || 0);
           console.log('  - Bank Records - Co-Applicants:', webhookPayload.bankInformation?.coApplicants?.totalBankRecords || 0);
-          console.log('  - Bank Records - Guarantors:', webhookPayload.guarantorsBankRecords?.length || 0);
+          console.log('  - Bank Records - Guarantors:', webhookPayload.guarantors?.length ? webhookPayload.guarantors.reduce((total: number, guar: any) => total + (guar.bankRecords?.length || 0), 0) : 0);
           console.log('  - Legal Questions:', {
             landlordTenantLegalAction: webhookPayload.landlordTenantLegalAction,
             brokenLease: webhookPayload.brokenLease
@@ -5330,10 +5331,58 @@ export function ApplicationForm() {
                       setHasCoApplicant(isChecked);
                       form.setValue('hasCoApplicant', isChecked);
                       // Also update the formData state to keep everything in sync
-                      setFormData((prev: any) => ({
-                        ...prev,
-                        hasCoApplicant: isChecked
-                      }));
+                      setFormData((prev: any) => {
+                        const updated = {
+                          ...prev,
+                          hasCoApplicant: isChecked
+                        };
+                        
+                        // Initialize coApplicants array if checking the checkbox
+                        if (isChecked && (!prev.coApplicants || !Array.isArray(prev.coApplicants))) {
+                          updated.coApplicantCount = 1;
+                          updated.coApplicants = [{
+                            name: '',
+                            relationship: '',
+                            dob: undefined,
+                            ssn: '',
+                            phone: '',
+                            email: '',
+                            license: '',
+                            licenseState: '',
+                            address: '',
+                            city: '',
+                            state: '',
+                            zip: '',
+                            lengthAtAddressYears: undefined,
+                            lengthAtAddressMonths: undefined,
+                            landlordName: '',
+                            landlordAddressLine1: '',
+                            landlordAddressLine2: '',
+                            landlordCity: '',
+                            landlordState: '',
+                            landlordZipCode: '',
+                            landlordPhone: '',
+                            landlordEmail: '',
+                            currentRent: undefined,
+                            reasonForMoving: '',
+                            employmentType: '',
+                            employer: '',
+                            position: '',
+                            employmentStart: undefined,
+                            income: '',
+                            incomeFrequency: 'yearly',
+                            businessName: '',
+                            businessType: '',
+                            yearsInBusiness: '',
+                            otherIncome: '',
+                            otherIncomeFrequency: 'monthly',
+                            otherIncomeSource: '',
+                            bankRecords: []
+                          }];
+                        }
+                        
+                        return updated;
+                      });
                     }}
                   />
                   <Label htmlFor="hasCoApplicant" className="text-base font-medium">
@@ -6274,10 +6323,58 @@ export function ApplicationForm() {
                       setHasGuarantor(isChecked);
                       form.setValue('hasGuarantor', isChecked);
                       // Also update the formData state to keep everything in sync
-                      setFormData((prev: any) => ({
-                        ...prev,
-                        hasGuarantor: isChecked
-                      }));
+                      setFormData((prev: any) => {
+                        const updated = {
+                          ...prev,
+                          hasGuarantor: isChecked
+                        };
+                        
+                        // Initialize guarantors array if checking the checkbox
+                        if (isChecked && (!prev.guarantors || !Array.isArray(prev.guarantors))) {
+                          updated.guarantorCount = 1;
+                          updated.guarantors = [{
+                            name: '',
+                            relationship: '',
+                            dob: undefined,
+                            ssn: '',
+                            phone: '',
+                            email: '',
+                            license: '',
+                            licenseState: '',
+                            address: '',
+                            city: '',
+                            state: '',
+                            zip: '',
+                            lengthAtAddressYears: undefined,
+                            lengthAtAddressMonths: undefined,
+                            landlordName: '',
+                            landlordAddressLine1: '',
+                            landlordAddressLine2: '',
+                            landlordCity: '',
+                            landlordState: '',
+                            landlordZipCode: '',
+                            landlordPhone: '',
+                            landlordEmail: '',
+                            currentRent: undefined,
+                            reasonForMoving: '',
+                            employmentType: '',
+                            employer: '',
+                            position: '',
+                            employmentStart: undefined,
+                            income: '',
+                            incomeFrequency: 'yearly',
+                            businessName: '',
+                            businessType: '',
+                            yearsInBusiness: '',
+                            otherIncome: '',
+                            otherIncomeFrequency: 'monthly',
+                            otherIncomeSource: '',
+                            bankRecords: []
+                          }];
+                        }
+                        
+                        return updated;
+                      });
                     }}
                   />
                   <Label htmlFor="hasGuarantor" className="text-base font-medium">

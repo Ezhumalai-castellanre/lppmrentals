@@ -1460,8 +1460,13 @@ export const SupportingDocuments = ({
   // Handle new co-applicant array structure
   let coApplicantEmploymentType: string | undefined;
   if (showOnlyCoApplicant && formData?.coApplicants && Array.isArray(formData.coApplicants)) {
-    // Get the first co-applicant's employment type when showing only co-applicant
-    coApplicantEmploymentType = formData.coApplicants[0]?.employmentType;
+    // Get the specific co-applicant's employment type based on index
+    if (index !== undefined) {
+      coApplicantEmploymentType = formData.coApplicants[index]?.employmentType;
+    } else {
+      // Fallback to first co-applicant if no index provided
+      coApplicantEmploymentType = formData.coApplicants[0]?.employmentType;
+    }
   } else {
     // Fallback to legacy structure
     coApplicantEmploymentType = formData?.coApplicant?.employmentType;
@@ -1470,8 +1475,13 @@ export const SupportingDocuments = ({
   // Handle new guarantor array structure
   let guarantorEmploymentType: string | undefined;
   if (showOnlyGuarantor && formData?.guarantors && Array.isArray(formData.guarantors)) {
-    // Get the first guarantor's employment type when showing only guarantor
-    guarantorEmploymentType = formData.guarantors[0]?.employmentType;
+    // Get the specific guarantor's employment type based on index
+    if (index !== undefined) {
+      guarantorEmploymentType = formData.guarantors[index]?.employmentType;
+    } else {
+      // Fallback to first guarantor if no index provided
+      guarantorEmploymentType = formData.guarantors[0]?.employmentType;
+    }
   } else {
     // Fallback to legacy structure
     guarantorEmploymentType = formData?.guarantor?.employmentType;
