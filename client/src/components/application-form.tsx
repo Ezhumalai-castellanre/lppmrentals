@@ -1793,6 +1793,7 @@ export function ApplicationForm() {
   const handleDocumentChange = async (person: string, documentType: string, files: File[], index?: number) => {
     console.log(`🚀 === DOCUMENT CHANGE DEBUG ===`);
     console.log(`📁 Document change for ${person} ${documentType}:`, files.length, 'files', 'index:', index);
+    console.log(`📁 Files:`, files.map(f => ({ name: f.name, size: f.size, lastModified: f.lastModified })));
     
     // Handle array-based people (guarantors, coApplicants) with index
     let actualPerson = person;
@@ -1808,6 +1809,7 @@ export function ApplicationForm() {
     console.log(`🚀 Final storage keys: actualPerson=${actualPerson}, actualDocumentType=${actualDocumentType}`);
     
     setDocuments((prev: any) => {
+      console.log(`🚀 Previous documents state:`, prev);
       const newDocs = {
         ...prev,
         [actualPerson]: {
@@ -1824,73 +1826,99 @@ export function ApplicationForm() {
 
   // Handler to attach webhook file URL to encrypted file
   const handleWebhookFileUrl = (person: string, documentType: string, fileUrl: string, fileName: string) => {
+    console.log(`🔍 handleWebhookFileUrl called with:`, { person, documentType, fileUrl, fileName });
+    
     setEncryptedDocuments((prev: any) => {
       const updated = { ...prev };
       
-      // Map plural person types to singular for encrypted documents
-      let mappedPerson = person;
-      if (person === 'coApplicants') {
-        mappedPerson = 'coApplicant';
-      } else if (person === 'guarantors') {
-        mappedPerson = 'guarantor';
+      // Handle indexed person types (e.g., coApplicants_1, guarantors_2)
+      let searchPerson = person;
+      let searchDocumentType = documentType;
+      
+      // If person contains underscore, it's already indexed (e.g., coApplicants_1)
+      if (person.includes('_')) {
+        searchPerson = person;
+        console.log(`🔍 handleWebhookFileUrl: Person is already indexed: ${searchPerson}`);
+      } else {
+        // Map plural person types to singular for backward compatibility
+        if (person === 'coApplicants') {
+          searchPerson = 'coApplicant';
+          console.log(`🔍 handleWebhookFileUrl: Mapped coApplicants to coApplicant: ${searchPerson}`);
+        } else if (person === 'guarantors') {
+          searchPerson = 'guarantor';
+          console.log(`🔍 handleWebhookFileUrl: Mapped guarantors to guarantor: ${searchPerson}`);
+        }
       }
       
+      console.log(`🔍 handleWebhookFileUrl: Searching for ${searchPerson}.${searchDocumentType}`);
+      console.log(`🔍 Available keys in encryptedDocuments:`, Object.keys(updated));
+      
       // Safety check: ensure person and documentType exist
-      if (!updated[mappedPerson]) {
-        console.log(`ℹ️ handleWebhookFileUrl: ${mappedPerson} not found in encryptedDocuments, skipping file URL update`);
+      if (!updated[searchPerson]) {
+        console.log(`ℹ️ handleWebhookFileUrl: ${searchPerson} not found in encryptedDocuments, skipping file URL update`);
+        console.log(`ℹ️ Available persons:`, Object.keys(updated));
         return prev;
       }
       
-      if (!updated[mappedPerson][documentType]) {
-        console.log(`ℹ️ handleWebhookFileUrl: ${mappedPerson}.${documentType} not found in encryptedDocuments, skipping file URL update`);
+      if (!updated[searchPerson][searchDocumentType]) {
+        console.log(`ℹ️ handleWebhookFileUrl: ${searchPerson}.${searchDocumentType} not found in encryptedDocuments, skipping file URL update`);
+        console.log(`ℹ️ Available document types for ${searchPerson}:`, Object.keys(updated[searchPerson] || {}));
         return prev;
       }
       
       // Safety check: ensure documentType is an array before calling .map()
-      if (!Array.isArray(updated[mappedPerson][documentType])) {
-        console.warn(`⚠️ handleWebhookFileUrl: ${mappedPerson}.${documentType} is not an array:`, updated[mappedPerson][documentType]);
+      if (!Array.isArray(updated[searchPerson][searchDocumentType])) {
+        console.warn(`⚠️ handleWebhookFileUrl: ${searchPerson}.${searchDocumentType} is not an array:`, updated[searchPerson][searchDocumentType]);
         return prev;
       }
       
-      updated[mappedPerson][documentType] = updated[mappedPerson][documentType].map((file: any) =>
+      updated[searchPerson][searchDocumentType] = updated[searchPerson][searchDocumentType].map((file: any) =>
         file.filename === fileName ? { ...file, fileUrl } : file
       );
+      
+      console.log(`✅ handleWebhookFileUrl: Successfully updated ${searchPerson}.${searchDocumentType} with file URL for ${fileName}`);
       return updated;
     });
   };
 
   // Enhanced webhook response handler
-  const handleWebhookResponse = (person: 'applicant' | 'coApplicant' | 'coApplicants' | 'guarantor' | 'guarantors' | 'occupants', documentTypeOrIndex: string, response: any) => {
+  const handleWebhookResponse = (person: 'applicant' | 'coApplicant' | 'coApplicants' | 'guarantor' | 'guarantors' | 'occupants', documentTypeOrIndex: string, response: any, index?: number) => {
     console.log(`📥 === WEBHOOK RESPONSE RECEIVED ===`);
     console.log(`👤 Person: ${person}`);
     console.log(`📄 Document Type or Index: ${documentTypeOrIndex}`);
     console.log(`📨 Raw Response:`, response);
+    console.log(`🔢 Index: ${index}`);
     
     // Store webhook response with proper key generation
     let responseKey: string;
     
     if (person === 'coApplicants') {
-      // Handle coApplicants with index (e.g., coApplicants_0_photo_id)
-      // The documentTypeOrIndex should already contain the index, so we need to extract it
-      if (documentTypeOrIndex.includes('_')) {
-        // If documentTypeOrIndex contains underscore, it might already have the index
-        responseKey = `coApplicants_${documentTypeOrIndex}`;
+      // Handle coApplicants with index
+      if (index !== undefined) {
+        responseKey = `coApplicants_${index}_${documentTypeOrIndex}`;
+        console.log(`🔑 Co-Applicant with index ${index}: responseKey = ${responseKey}`);
       } else {
-        // Otherwise, use the default index 0
+        // Fallback to default index 0
         responseKey = `coApplicants_0_${documentTypeOrIndex}`;
+        console.log(`🔑 Co-Applicant fallback to index 0: responseKey = ${responseKey}`);
       }
     } else if (person === 'guarantors') {
-      // Handle guarantors with index (e.g., guarantors_0_photo_id)
-      if (documentTypeOrIndex.includes('_')) {
-        responseKey = `guarantors_${documentTypeOrIndex}`;
+      // Handle guarantors with index
+      if (index !== undefined) {
+        responseKey = `guarantors_${index}_${documentTypeOrIndex}`;
+        console.log(`🔑 Guarantor with index ${index}: responseKey = ${responseKey}`);
       } else {
+        // Fallback to default index 0
         responseKey = `guarantors_0_${documentTypeOrIndex}`;
+        console.log(`🔑 Guarantor fallback to index 0: responseKey = ${responseKey}`);
       }
     } else if (person === 'occupants') {
       responseKey = `occupants_${documentTypeOrIndex}`;
+      console.log(`🔑 Occupant: responseKey = ${responseKey}`);
     } else {
       // Handle applicant, coApplicant, guarantor (singular)
       responseKey = `${person}_${documentTypeOrIndex}`;
+      console.log(`🔑 Singular person: responseKey = ${responseKey}`);
     }
     
     console.log(`🔑 Setting webhook response for key: ${responseKey}`);
@@ -1942,12 +1970,28 @@ export function ApplicationForm() {
       console.log(`✅ File URL successfully extracted: ${fileUrl}`);
       
       // Also update the webhook file URL for encrypted documents
-      // Use person-specific filename to maintain context
-      const personSpecificFilename = `${person}_${documentTypeOrIndex}_${Date.now()}`;
-      console.log(`🔑 Setting webhook file URL with person-specific filename: ${personSpecificFilename}`);
-      handleWebhookFileUrl(person, documentTypeOrIndex, fileUrl, personSpecificFilename);
+      // Construct the full indexed person key for array-based people
+      let fullPersonKey: string = person;
+      let documentTypeOnly: string = documentTypeOrIndex;
       
-      console.log(`✅ Webhook response processing completed for ${person} ${documentTypeOrIndex}`);
+      if (person === 'coApplicants' && index !== undefined) {
+        // For coApplicants, use the index parameter directly
+        fullPersonKey = `coApplicants_${index}`;
+        documentTypeOnly = documentTypeOrIndex;
+        console.log(`🔑 Co-Applicant detected: constructing full person key: ${person} -> ${fullPersonKey}, document type: ${documentTypeOnly}`);
+      } else if (person === 'guarantors' && index !== undefined) {
+        // For guarantors, use the index parameter directly
+        fullPersonKey = `guarantors_${index}`;
+        documentTypeOnly = documentTypeOrIndex;
+        console.log(`🔑 Guarantor detected: constructing full person key: ${person} -> ${fullPersonKey}, document type: ${documentTypeOnly}`);
+      }
+      
+      // Use person-specific filename to maintain context
+      const personSpecificFilename = `${fullPersonKey}_${documentTypeOrIndex}_${Date.now()}`;
+      console.log(`🔑 Setting webhook file URL with full person key: ${fullPersonKey} and document type: ${documentTypeOnly}`);
+      handleWebhookFileUrl(fullPersonKey, documentTypeOnly, fileUrl, personSpecificFilename);
+      
+      console.log(`✅ Webhook response processing completed for ${fullPersonKey} ${documentTypeOrIndex}`);
     } else {
       console.log(`ℹ️ Webhook response stored but no file URL processing needed for ${person} ${documentTypeOrIndex}`);
     }
@@ -2268,6 +2312,12 @@ export function ApplicationForm() {
     
     console.log('🚀 === ENCRYPTED DOCUMENT CHANGE DEBUG ===');
     console.log('handleEncryptedDocumentChange called:', { person, documentType, encryptedFilesCount: encryptedFiles.length, index });
+    console.log('🚀 Encrypted files details:', encryptedFiles.map(f => ({ 
+      filename: f.filename, 
+      size: f.encryptedData.length,
+      originalSize: f.originalSize,
+      uploadDate: f.uploadDate
+    })));
     
     // Special debugging for guarantor documents
     if (person === 'guarantor' || person === 'guarantors') {
@@ -5596,10 +5646,10 @@ export function ApplicationForm() {
           );
         }
         // Wrapper functions for SupportingDocuments to match expected signature
-        const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicants', '0', documentType, files);
-        const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicants', documentType, encryptedFiles);
+        const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicants', documentType, files, 0);
+        const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicants', documentType, encryptedFiles, 0);
         const coApplicantWebhookResponse = (documentType: string, response: any) => {
-          handleWebhookResponse('coApplicants', '0', documentType, response);
+          handleWebhookResponse('coApplicants', `0_${documentType}`, response);
         };
         return (
           hasCoApplicant ? (
@@ -5623,21 +5673,26 @@ export function ApplicationForm() {
                         )
                       }}
                       originalWebhookResponses={webhookResponses}
-                      onDocumentChange={(documentType: string, files: File[]) => 
-                        handleDocumentChange('coApplicants', index.toString(), documentType, files)
-                      }
-                      onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => 
-                        handleEncryptedDocumentChange('coApplicants', documentType, encryptedFiles)
-                      }
-                      onWebhookResponse={(documentType: string, response: any) => {
-                        handleWebhookResponse('coApplicants', `${index}_${documentType}`, response);
+                      onDocumentChange={(documentType: string, files: File[]) => {
+                        console.log(`🔑 Co-Applicant ${index + 1} document change for ${documentType}:`, files.length, 'files');
+                        handleDocumentChange('coApplicants', documentType, files, index);
                       }}
-                  referenceId={referenceId}
-                  enableWebhook={true}
-                  applicationId={user?.applicantId || 'unknown'}
-                  applicantId={user?.id}
-                  zoneinfo={user?.zoneinfo}
-                  showOnlyCoApplicant={true}
+                      onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => {
+                        console.log(`🔑 Co-Applicant ${index + 1} encrypted document change for ${documentType}:`, encryptedFiles.length, 'files');
+                        handleEncryptedDocumentChange('coApplicants', documentType, encryptedFiles, index);
+                      }}
+                      onWebhookResponse={(documentType: string, response: any) => {
+                        // Pass the document type and index to the function
+                        console.log(`🔑 Co-Applicant ${index + 1} webhook response for ${documentType}:`, response);
+                        handleWebhookResponse('coApplicants', documentType, response, index);
+                      }}
+                      referenceId={referenceId}
+                      enableWebhook={true}
+                      applicationId={user?.applicantId || 'unknown'}
+                      applicantId={user?.id}
+                      zoneinfo={user?.zoneinfo}
+                      showOnlyCoApplicant={true}
+                      index={index}
                 />
               </CardContent>
             </Card>
@@ -6300,13 +6355,14 @@ export function ApplicationForm() {
                         }}
                         originalWebhookResponses={webhookResponses}
                         onDocumentChange={(documentType: string, files: File[]) => 
-                          handleDocumentChange('guarantors', index.toString(), documentType, files)
+                          handleDocumentChange('guarantors', documentType, files, index)
                         }
                         onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => 
-                          handleEncryptedDocumentChange('guarantors', documentType, encryptedFiles)
+                          handleEncryptedDocumentChange('guarantors', documentType, encryptedFiles, index)
                         }
                         onWebhookResponse={(documentType: string, response: any) => {
-                          handleWebhookResponse('guarantors', `${index}_${documentType}`, response);
+                          // Pass the document type and index to the function
+                          handleWebhookResponse('guarantors', documentType, response, index);
                         }}
                         referenceId={referenceId}
                         enableWebhook={true}
@@ -6314,6 +6370,7 @@ export function ApplicationForm() {
                         applicantId={user?.id}
                         zoneinfo={user?.zoneinfo}
                         showOnlyGuarantor={true}
+                        index={index}
                       />
                     </div>
                   ))}

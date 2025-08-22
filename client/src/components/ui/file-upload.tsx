@@ -85,6 +85,15 @@ export function FileUpload({
 
   const handleFiles = useCallback(async (newFiles: FileList | File[]) => {
     try {
+      console.log(`📁 FileUpload: handleFiles called with ${newFiles.length} files for ${sectionName}`);
+      console.log(`📁 FileUpload: Current files state:`, files.map(f => ({ name: f.name, size: f.size })));
+      
+      // Clear previous state for single file uploads
+      if (!multiple) {
+        console.log(`🧹 FileUpload: Clearing previous state for single file upload`);
+        clearFiles();
+      }
+      
       setIsEncrypting(true);
       setError("");
 
@@ -121,6 +130,12 @@ export function FileUpload({
 
       // Update files state
       const updatedFiles = multiple ? [...files, ...validFiles] : validFiles;
+      console.log(`📁 FileUpload: Updating files state:`, {
+        previousFiles: files.map(f => ({ name: f.name, size: f.size })),
+        newFiles: validFiles.map(f => ({ name: f.name, size: f.size })),
+        updatedFiles: updatedFiles.map(f => ({ name: f.name, size: f.size })),
+        isMultiple: multiple
+      });
       setFiles(updatedFiles);
       onFileChange(updatedFiles);
 
@@ -196,6 +211,20 @@ export function FileUpload({
       const updatedEncryptedFiles = (encryptedFiles || []).filter((_, i) => i !== index);
       setEncryptedFiles(updatedEncryptedFiles);
       onEncryptedFilesChange(updatedEncryptedFiles);
+    }
+  };
+
+  // Function to clear all files
+  const clearFiles = () => {
+    console.log(`🧹 FileUpload: Clearing all files for ${sectionName}`);
+    setFiles([]);
+    setEncryptedFiles([]);
+    setWebhookResponse(null);
+    setUploadStatus({});
+    setError("");
+    onFileChange([]);
+    if (onEncryptedFilesChange) {
+      onEncryptedFilesChange([]);
     }
   };
 

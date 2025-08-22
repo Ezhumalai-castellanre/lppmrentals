@@ -63,10 +63,12 @@ interface SupportingDocumentsProps {
   showOnlyCoApplicant?: boolean;
   showOnlyGuarantor?: boolean;
   showOnlyApplicant?: boolean;
+  index?: number; // Add index parameter for array-based people (coApplicants, guarantors)
 }
 
 export const SupportingDocuments = ({
   formData,
+  originalWebhookResponses,
   onDocumentChange,
   onEncryptedDocumentChange,
   onWebhookResponse,
@@ -77,7 +79,8 @@ export const SupportingDocuments = ({
   zoneinfo,
   showOnlyCoApplicant = false,
   showOnlyGuarantor = false,
-  showOnlyApplicant = false
+  showOnlyApplicant = false,
+  index
 }: SupportingDocumentsProps): JSX.Element => {
   
   // Debug component props
@@ -86,8 +89,19 @@ export const SupportingDocuments = ({
     showOnlyGuarantor,
     showOnlyApplicant,
     referenceId,
-    applicationId
+    applicationId,
+    index,
+    hasOriginalWebhookResponses: !!originalWebhookResponses,
+    originalWebhookResponsesKeys: originalWebhookResponses ? Object.keys(originalWebhookResponses) : []
   });
+  
+  // Debug index parameter specifically
+  if (index !== undefined) {
+    console.log(`🔍 SupportingDocuments: Index parameter received: ${index} (type: ${typeof index})`);
+    console.log(`🔍 SupportingDocuments: This should be for ${showOnlyCoApplicant ? 'Co-Applicant' : showOnlyGuarantor ? 'Guarantor' : 'Unknown'} ${index + 1}`);
+  } else {
+    console.log(`🔍 SupportingDocuments: No index parameter received`);
+  }
 
   // Helper function to get person type from document ID
   const getPersonType = (documentId: string): 'applicant' | 'coApplicant' | 'guarantor' | 'otherOccupants' => {
@@ -1671,31 +1685,208 @@ export const SupportingDocuments = ({
                         return (
                           <>
                             <FileUpload
-                              onFileChange={(files) => onDocumentChange(document.id, files)}
-                              onEncryptedFilesChange={(encryptedFiles) => onEncryptedDocumentChange?.(document.id, encryptedFiles)}
+                              onFileChange={(files) => {
+                                // Always pass the original document ID to the parent function
+                                // The parent function will handle the index parameter separately
+                                console.log(`🔑 SupportingDocuments: Calling onDocumentChange for ${document.id} with index ${index}`);
+                                console.log(`🔑 SupportingDocuments: Files to upload:`, files.map(f => ({ name: f.name, size: f.size, lastModified: f.lastModified })));
+                                console.log(`🔑 SupportingDocuments: This should upload to ${showOnlyCoApplicant ? 'Co-Applicant' : showOnlyGuarantor ? 'Guarantor' : 'Unknown'} ${index !== undefined ? index + 1 : 'Unknown'}`);
+                                
+                                // For co-applicants and guarantors, we need to create a custom function that includes the index
+                                if (showOnlyCoApplicant && index !== undefined) {
+                                  // Create a custom document change handler that includes the index
+                                  const customDocumentChange = (documentType: string, files: File[]) => {
+                                    console.log(`🔑 Custom co-applicant document change: ${documentType} with index ${index}`);
+                                    // Call the parent's onDocumentChange with the index
+                                    (onDocumentChange as any)(documentType, files, index);
+                                  };
+                                  customDocumentChange(document.id, files);
+                                } else if (showOnlyGuarantor && index !== undefined) {
+                                  // Create a custom document change handler that includes the index
+                                  const customDocumentChange = (documentType: string, files: File[]) => {
+                                    console.log(`🔑 Custom guarantor document change: ${documentType} with index ${index}`);
+                                    // Call the parent's onDocumentChange with the index
+                                    (onDocumentChange as any)(documentType, files, index);
+                                  };
+                                  customDocumentChange(document.id, files);
+                                } else {
+                                  // For regular applicants, call normally
+                                  onDocumentChange(document.id, files);
+                                }
+                              }}
+                              onEncryptedFilesChange={(encryptedFiles) => {
+                                // Always pass the original document ID to the parent function
+                                // The parent function will handle the index parameter separately
+                                console.log(`🔑 SupportingDocuments: Calling onEncryptedDocumentChange for ${document.id} with index ${index}`);
+                                console.log(`🔑 SupportingDocuments: Encrypted files to upload:`, encryptedFiles.map(f => ({ 
+                                  filename: f.filename, 
+                                  size: f.encryptedData.length,
+                                  originalSize: f.originalSize,
+                                  uploadDate: f.uploadDate
+                                })));
+                                console.log(`🔑 SupportingDocuments: This should upload to ${showOnlyCoApplicant ? 'Co-Applicant' : showOnlyGuarantor ? 'Guarantor' : 'Unknown'} ${index !== undefined ? index + 1 : 'Unknown'}`);
+                                
+                                // For co-applicants and guarantors, we need to create a custom function that includes the index
+                                if (showOnlyCoApplicant && index !== undefined) {
+                                  // Create a custom encrypted document change handler that includes the index
+                                  const customEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => {
+                                    console.log(`🔑 Custom co-applicant encrypted document change: ${documentType} with index ${index}`);
+                                    // Call the parent's onEncryptedDocumentChange with the index
+                                    (onEncryptedDocumentChange as any)?.(documentType, encryptedFiles, index);
+                                  };
+                                  customEncryptedDocumentChange(document.id, encryptedFiles);
+                                } else if (showOnlyGuarantor && index !== undefined) {
+                                  // Create a custom encrypted document change handler that includes the index
+                                  const customEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => {
+                                    console.log(`🔑 Custom guarantor encrypted document change: ${documentType} with index ${index}`);
+                                    // Call the parent's onEncryptedDocumentChange with the index
+                                    (onEncryptedDocumentChange as any)?.(documentType, encryptedFiles, index);
+                                  };
+                                  customEncryptedDocumentChange(document.id, encryptedFiles);
+                                } else {
+                                  // For regular applicants, call normally
+                                  onEncryptedDocumentChange?.(document.id, encryptedFiles);
+                                }
+                              }}
                               onWebhookResponse={(response) => {
                                 // Clear re-upload state when file is uploaded
                                 setReuploadRequested(prev => ({
                                   ...prev,
                                   [document.id]: false
                                 }));
-                                onWebhookResponse?.(document.id, response);
+                                // Always pass the original document ID to the parent function
+                                // The parent function will handle the index parameter separately
+                                console.log(`🔑 SupportingDocuments: Calling onWebhookResponse for ${document.id} with index ${index}`);
+                                
+                                // For co-applicants and guarantors, we need to create a custom function that includes the index
+                                if (showOnlyCoApplicant && index !== undefined) {
+                                  // Create a custom webhook response handler that includes the index
+                                  const customWebhookResponse = (documentType: string, response: any) => {
+                                    console.log(`🔑 Custom co-applicant webhook response: ${documentType} with index ${index}`);
+                                    // Call the parent's onWebhookResponse with the index
+                                    (onWebhookResponse as any)?.(documentType, response, index);
+                                  };
+                                  customWebhookResponse(document.id, response);
+                                } else if (showOnlyGuarantor && index !== undefined) {
+                                  // Create a custom webhook response handler that includes the index
+                                  const customWebhookResponse = (documentType: string, response: any) => {
+                                    console.log(`🔑 Custom guarantor webhook response: ${documentType} with index ${index}`);
+                                    // Call the parent's onWebhookResponse with the index
+                                    (onWebhookResponse as any)?.(documentType, response, index);
+                                  };
+                                  customWebhookResponse(document.id, response);
+                                } else {
+                                  // For regular applicants, call normally
+                                  onWebhookResponse?.(document.id, response);
+                                }
                               }}
-                              initialWebhookResponse={formData.webhookResponses?.[document.id]}
+                              initialWebhookResponse={
+                                // For indexed people (coApplicants, guarantors), we need to look up the webhook response
+                                // using the original webhook responses with the indexed key
+                                (() => {
+                                  if (index !== undefined && (showOnlyCoApplicant || showOnlyGuarantor) && originalWebhookResponses) {
+                                    const indexedKey = `${showOnlyCoApplicant ? 'coApplicants' : 'guarantors'}_${index}_${document.id}`;
+                                    const response = originalWebhookResponses[indexedKey];
+                                    console.log(`🔍 SupportingDocuments: Looking up webhook response for ${indexedKey}:`, response);
+                                    return response;
+                                  } else {
+                                    const response = formData.webhookResponses?.[document.id];
+                                    console.log(`🔍 SupportingDocuments: Looking up webhook response for ${document.id}:`, response);
+                                    return response;
+                                  }
+                                })()
+                              }
                               accept={document.acceptedTypes}
                               multiple={false}
                               maxFiles={1}
                               maxSize={50}
-                              label={`Upload ${document.name}`}
+                              label={
+                                // For co-applicants and guarantors, include the index in the label
+                                (() => {
+                                  if (showOnlyCoApplicant && index !== undefined) {
+                                    return `Upload Co-Applicant ${index + 1} - ${document.name}`;
+                                  } else if (showOnlyGuarantor && index !== undefined) {
+                                    return `Upload Guarantor ${index + 1} - ${document.name}`;
+                                  } else {
+                                    return `Upload ${document.name}`;
+                                  }
+                                })()
+                              }
                               className="mt-2"
                               enableEncryption={true}
-                              referenceId={referenceId}
-                              sectionName={document.id}
-                              documentName={document.name}
+                              referenceId={
+                                // For co-applicants and guarantors, include the index in the reference ID
+                                (() => {
+                                  if (showOnlyCoApplicant && index !== undefined) {
+                                    return `${referenceId}_coApplicant_${index}`;
+                                  } else if (showOnlyGuarantor && index !== undefined) {
+                                    return `${referenceId}_guarantor_${index}`;
+                                  } else {
+                                    return referenceId;
+                                  }
+                                })()
+                              }
+                              sectionName={
+                                // For co-applicants and guarantors, include the index in the section name
+                                (() => {
+                                  if (showOnlyCoApplicant && index !== undefined) {
+                                    return `coApplicants_${index}_${document.id}`;
+                                  } else if (showOnlyGuarantor && index !== undefined) {
+                                    return `guarantors_${index}_${document.id}`;
+                                  } else {
+                                    return document.id;
+                                  }
+                                })()
+                              }
+                              documentName={
+                                // For co-applicants and guarantors, include the index in the document name
+                                (() => {
+                                  if (showOnlyCoApplicant && index !== undefined) {
+                                    return `Co-Applicant ${index + 1} - ${document.name}`;
+                                  } else if (showOnlyGuarantor && index !== undefined) {
+                                    return `Guarantor ${index + 1} - ${document.name}`;
+                                  } else {
+                                    return document.name;
+                                  }
+                                })()
+                              }
                               enableWebhook={enableWebhook}
-                              applicationId={applicationId}
-                              zoneinfo={zoneinfo}
-                              commentId={document.id}
+                              applicationId={
+                                // For co-applicants and guarantors, include the index in the application ID
+                                (() => {
+                                  if (showOnlyCoApplicant && index !== undefined) {
+                                    return `${applicationId}_coApplicant_${index}`;
+                                  } else if (showOnlyGuarantor && index !== undefined) {
+                                    return `${applicationId}_guarantor_${index}`;
+                                  } else {
+                                    return applicationId;
+                                  }
+                                })()
+                              }
+                              zoneinfo={
+                                // For co-applicants and guarantors, include the index in the zoneinfo
+                                (() => {
+                                  if (showOnlyCoApplicant && index !== undefined) {
+                                    return `${zoneinfo}_coApplicant_${index}`;
+                                  } else if (showOnlyGuarantor && index !== undefined) {
+                                    return `${zoneinfo}_guarantor_${index}`;
+                                  } else {
+                                    return zoneinfo;
+                                  }
+                                })()
+                              }
+                              commentId={
+                                // For co-applicants and guarantors, include the index in the comment ID
+                                (() => {
+                                  if (showOnlyCoApplicant && index !== undefined) {
+                                    return `coApplicants_${index}_${document.id}`;
+                                  } else if (showOnlyGuarantor && index !== undefined) {
+                                    return `guarantors_${index}_${document.id}`;
+                                  } else {
+                                    return document.id;
+                                  }
+                                })()
+                              }
                             />
                             {/* Show cancel button when re-upload is requested */}
                             {reuploadRequested[document.id] && (
