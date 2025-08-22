@@ -1014,8 +1014,8 @@ export class WebhookService {
 
     // Transform the data into the exact structure needed
     const transformedData = {
-      // Application section
-      application: {
+      // Application section - use new nested structure if available
+      application: formData.application || {
         buildingAddress: formData.buildingAddress,
         apartmentNumber: formData.apartmentNumber,
         apartmentType: formData.apartmentType,
@@ -1025,8 +1025,8 @@ export class WebhookService {
         howDidYouHearOther: formData.howDidYouHearOther || ""
       },
 
-      // Applicant section
-      applicant: {
+      // Applicant section - use new nested structure if available
+      applicant: formData.applicant || {
         name: formData.applicantName,
         email: formData.applicantEmail,
         phone: formData.applicantPhone,
@@ -1055,16 +1055,19 @@ export class WebhookService {
         employer: formData.applicantEmployerName,
         position: formData.applicantPosition,
         employmentStart: formData.applicantStartDate,
-        // Fix: Use flat fields first since that's where the data actually is
         income: formData.applicantSalary || formData.applicant?.income || formData.applicant?.salary || "",
         incomeFrequency: formData.applicantIncomeFrequency || formData.applicant?.incomeFrequency || "monthly",
+        businessName: formData.applicant?.businessName || "",
+        businessType: formData.applicant?.businessType || "",
+        yearsInBusiness: formData.applicant?.yearsInBusiness || "",
         otherIncome: formData.applicantOtherIncome || formData.applicant?.otherIncome || "",
+        otherIncomeFrequency: formData.applicant?.otherIncomeFrequency || "monthly",
         otherIncomeSource: formData.applicantOtherIncomeSource || formData.applicant?.otherIncomeSource || "",
-        bankRecords: formData.applicantBankRecords || []
+        bankRecords: formData.applicantBankRecords || formData.applicant?.bankRecords || []
       },
 
-      // Co-Applicant section (if exists)
-      coApplicant: formData.hasCoApplicant ? {
+      // Co-Applicants section - use new nested structure if available
+      coApplicants: formData.coApplicants || (formData.hasCoApplicant ? [{
         email: formData.coApplicantEmail,
         phone: formData.coApplicantPhone,
         address: formData.coApplicantAddress || formData.coApplicant?.address || "",
@@ -1094,16 +1097,16 @@ export class WebhookService {
         employer: formData.coApplicantEmployerName,
         position: formData.coApplicantPosition,
         employmentStart: formData.coApplicantStartDate,
-        // Fix: Use flat fields first since that's where the data actually is
         income: formData.coApplicantSalary || formData.coApplicant?.income || formData.coApplicant?.salary || "",
         incomeFrequency: formData.coApplicantIncomeFrequency || formData.coApplicant?.incomeFrequency || "monthly",
         otherIncome: formData.coApplicantOtherIncome || formData.coApplicant?.otherIncome || "",
         otherIncomeSource: formData.coApplicantOtherIncomeSource || formData.coApplicant?.otherIncomeSource || "",
-        bankRecords: formData.coApplicantBankRecords || []
-      } : undefined,
+        otherIncomeFrequency: formData.coApplicant?.otherIncomeFrequency || "monthly",
+        bankRecords: formData.coApplicantBankRecords || formData.coApplicant?.bankRecords || []
+      }] : []),
 
-      // Guarantor section (if exists)
-      guarantor: formData.hasGuarantor ? {
+      // Guarantors section - use new nested structure if available
+      guarantors: formData.guarantors || (formData.hasGuarantor ? [{
         email: formData.guarantorEmail,
         phone: formData.guarantorPhone,
         address: formData.guarantorAddress || formData.guarantor?.address || "",
@@ -1130,16 +1133,16 @@ export class WebhookService {
         currentRent: formData.guarantorCurrentRent,
         reasonForMoving: formData.guarantorReasonForMoving,
         employmentType: formData.guarantorEmploymentType,
-        businessName: formData.guarantorBusinessName || "",
-        businessType: formData.guarantorBusinessType || "",
-        yearsInBusiness: formData.guarantorYearsInBusiness || "",
-        // Fix: Use flat fields first since that's where the data actually is
+        businessName: formData.guarantorBusinessName || formData.guarantor?.businessName || "",
+        businessType: formData.guarantorBusinessType || formData.guarantor?.businessType || "",
+        yearsInBusiness: formData.guarantorYearsInBusiness || formData.guarantor?.yearsInBusiness || "",
         income: formData.guarantorSalary || formData.guarantor?.income || formData.guarantor?.salary || "",
         incomeFrequency: formData.guarantorIncomeFrequency || formData.guarantor?.incomeFrequency || "monthly",
         otherIncome: formData.guarantorOtherIncome || formData.guarantor?.otherIncome || "",
         otherIncomeSource: formData.guarantorOtherIncomeSource || formData.guarantor?.otherIncomeSource || "",
-        bankRecords: formData.guarantorBankRecords || []
-      } : undefined,
+        otherIncomeFrequency: formData.guarantor?.otherIncomeFrequency || "monthly",
+        bankRecords: formData.guarantorBankRecords || formData.guarantor?.bankRecords || []
+      }] : []),
 
       // Occupants section
       occupants: (formData.otherOccupants || []).map((occupant: any) => ({

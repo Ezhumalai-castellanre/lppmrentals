@@ -179,14 +179,11 @@ const applicationSchema = z.object({
     bankRecords: z.array(z.any()).optional(),
   })).max(4, "Maximum 4 co-applicants allowed"),
 
-  // Guarantors (Array of up to 4)
+  // Guarantors (Array of up to 4) - Only required when hasGuarantor is true
   guarantors: z.array(z.object({
-    name: z.string().min(1, "Full name is required"),
+    name: z.string().optional(), // Make optional since validation depends on hasGuarantor
     relationship: z.string().optional(),
-    dob: z.date({
-      required_error: "Date of birth is required",
-      invalid_type_error: "Please select a valid date of birth",
-    }),
+    dob: z.date().optional(), // Make optional since validation depends on hasGuarantor
     ssn: z.string().optional().refine((val) => !val || validateSSN(val), {
       message: "Please enter a valid 9-digit Social Security Number"
     }),
@@ -310,6 +307,31 @@ const applicationSchema = z.object({
   // Legal Questions
   landlordTenantLegalAction: z.string().optional(),
   brokenLease: z.string().optional(),
+}).refine((data) => {
+  // Custom validation for co-applicants
+  if (data.hasCoApplicant && data.coApplicants && data.coApplicants.length > 0) {
+    for (let i = 0; i < data.coApplicants.length; i++) {
+      const coApplicant = data.coApplicants[i];
+      if (!coApplicant.name || !coApplicant.dob) {
+        return false;
+      }
+    }
+  }
+  
+  // Custom validation for guarantors
+  if (data.hasGuarantor && data.guarantors && data.guarantors.length > 0) {
+    for (let i = 0; i < data.guarantors.length; i++) {
+      const guarantor = data.guarantors[i];
+      if (!guarantor.name || !guarantor.dob) {
+        return false;
+      }
+    }
+  }
+  
+  return true;
+}, {
+  message: "Required fields must be filled for co-applicants and guarantors when enabled",
+  path: ["coApplicants", "guarantors"]
 });
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
@@ -1199,6 +1221,74 @@ export function ApplicationForm() {
             }
           }
           
+          // Also check for coApplicants array (new format)
+          if (parsedFormData.coApplicants && Array.isArray(parsedFormData.coApplicants) && parsedFormData.coApplicants.length > 0) {
+            // Auto-check co-applicant checkbox if there's co-applicant data but no explicit flag
+            if (parsedFormData.hasCoApplicant === undefined) {
+              // Auto-detected co-applicant data, checking checkbox
+              setHasCoApplicant(true);
+              form.setValue('hasCoApplicant', true);
+              // Also update formData state
+              setFormData((prev: any) => ({
+                ...prev,
+                hasCoApplicant: true
+              }));
+            }
+            
+            // Set coApplicantCount based on the array length
+            if (parsedFormData.coApplicantCount === undefined) {
+              const count = parsedFormData.coApplicants.length;
+              setFormData((prev: any) => ({
+                ...prev,
+                coApplicantCount: count
+              }));
+              form.setValue('coApplicantCount', count);
+            }
+            
+            // Set form values for each co-applicant
+            parsedFormData.coApplicants.forEach((coApplicant: any, index: number) => {
+              if (coApplicant.name) form.setValue(`coApplicants.${index}.name`, coApplicant.name);
+              if (coApplicant.relationship) form.setValue(`coApplicants.${index}.relationship`, coApplicant.relationship);
+              if (coApplicant.dob) form.setValue(`coApplicants.${index}.dob`, new Date(coApplicant.dob));
+              if (coApplicant.ssn) form.setValue(`coApplicants.${index}.ssn`, coApplicant.ssn);
+              if (coApplicant.phone) form.setValue(`coApplicants.${index}.phone`, coApplicant.phone);
+              if (coApplicant.email) form.setValue(`coApplicants.${index}.email`, coApplicant.email);
+              if (coApplicant.license) form.setValue(`coApplicants.${index}.license`, coApplicant.license);
+              if (coApplicant.licenseState) form.setValue(`coApplicants.${index}.licenseState`, coApplicant.licenseState);
+              if (coApplicant.address) form.setValue(`coApplicants.${index}.address`, coApplicant.address);
+              if (coApplicant.city) form.setValue(`coApplicants.${index}.city`, coApplicant.city);
+              if (coApplicant.state) form.setValue(`coApplicants.${index}.state`, coApplicant.state);
+              if (coApplicant.zip) form.setValue(`coApplicants.${index}.zip`, coApplicant.zip);
+              if (coApplicant.lengthAtAddressYears !== undefined) form.setValue(`coApplicants.${index}.lengthAtAddressYears`, coApplicant.lengthAtAddressYears);
+              if (coApplicant.lengthAtAddressMonths !== undefined) form.setValue(`coApplicants.${index}.lengthAtAddressMonths`, coApplicant.lengthAtAddressMonths);
+              if (coApplicant.landlordName) form.setValue(`coApplicants.${index}.landlordName`, coApplicant.landlordName);
+              if (coApplicant.landlordAddressLine1) form.setValue(`coApplicants.${index}.landlordAddressLine1`, coApplicant.landlordAddressLine1);
+              if (coApplicant.landlordAddressLine2) form.setValue(`coApplicants.${index}.landlordAddressLine2`, coApplicant.landlordAddressLine2);
+              if (coApplicant.landlordCity) form.setValue(`coApplicants.${index}.landlordCity`, coApplicant.landlordCity);
+              if (coApplicant.landlordState) form.setValue(`coApplicants.${index}.landlordState`, coApplicant.landlordState);
+              if (coApplicant.landlordZipCode) form.setValue(`coApplicants.${index}.landlordZipCode`, coApplicant.landlordZipCode);
+              if (coApplicant.landlordPhone) form.setValue(`coApplicants.${index}.landlordPhone`, coApplicant.landlordPhone);
+              if (coApplicant.landlordEmail) form.setValue(`coApplicants.${index}.landlordEmail`, coApplicant.landlordEmail);
+              if (coApplicant.currentRent !== undefined) form.setValue(`coApplicants.${index}.currentRent`, coApplicant.currentRent);
+              if (coApplicant.reasonForMoving) form.setValue(`coApplicants.${index}.reasonForMoving`, coApplicant.reasonForMoving);
+              if (coApplicant.employmentType) form.setValue(`coApplicants.${index}.employmentType`, coApplicant.employmentType);
+              if (coApplicant.employer) form.setValue(`coApplicants.${index}.employer`, coApplicant.employer);
+              if (coApplicant.position) form.setValue(`coApplicants.${index}.position`, coApplicant.position);
+              if (coApplicant.employmentStart) form.setValue(`coApplicants.${index}.employmentStart`, new Date(coApplicant.employmentStart));
+              if (coApplicant.income) form.setValue(`coApplicants.${index}.income`, coApplicant.income);
+              if (coApplicant.incomeFrequency) form.setValue(`coApplicants.${index}.incomeFrequency`, coApplicant.incomeFrequency);
+              if (coApplicant.businessName) form.setValue(`coApplicants.${index}.businessName`, coApplicant.businessName);
+              if (coApplicant.businessType) form.setValue(`coApplicants.${index}.businessType`, coApplicant.businessType);
+              if (coApplicant.yearsInBusiness) form.setValue(`coApplicants.${index}.yearsInBusiness`, coApplicant.yearsInBusiness);
+              if (coApplicant.otherIncome) form.setValue(`coApplicants.${index}.otherIncome`, coApplicant.otherIncome);
+              if (coApplicant.otherIncomeFrequency) form.setValue(`coApplicants.${index}.otherIncomeFrequency`, coApplicant.otherIncomeFrequency);
+              if (coApplicant.otherIncomeSource) form.setValue(`coApplicants.${index}.otherIncomeSource`, coApplicant.otherIncomeSource);
+              if (coApplicant.bankRecords && Array.isArray(coApplicant.bankRecords)) {
+                form.setValue(`coApplicants.${index}.bankRecords`, coApplicant.bankRecords);
+              }
+            });
+          }
+          
           // Restore guarantor information (only fields that exist in schema)
           if (parsedFormData.guarantor) {
             const guarantor = parsedFormData.guarantor;
@@ -1231,6 +1321,74 @@ export function ApplicationForm() {
                 hasGuarantor: true
               }));
             }
+          }
+          
+          // Also check for guarantors array (new format)
+          if (parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0) {
+            // Auto-check guarantor checkbox if there's guarantor data but no explicit flag
+            if (parsedFormData.hasGuarantor === undefined) {
+              // Auto-detected guarantor data, checking checkbox
+              setHasGuarantor(true);
+              form.setValue('hasGuarantor', true);
+              // Also update formData state
+              setFormData((prev: any) => ({
+                ...prev,
+                hasGuarantor: true
+              }));
+            }
+            
+            // Set guarantorCount based on the array length
+            if (parsedFormData.guarantorCount === undefined) {
+              const count = parsedFormData.guarantors.length;
+              setFormData((prev: any) => ({
+                ...prev,
+                guarantorCount: count
+              }));
+              form.setValue('guarantorCount', count);
+            }
+            
+            // Set form values for each guarantor
+            parsedFormData.guarantors.forEach((guarantor: any, index: number) => {
+              if (guarantor.name) form.setValue(`guarantors.${index}.name`, guarantor.name);
+              if (guarantor.relationship) form.setValue(`guarantors.${index}.relationship`, guarantor.relationship);
+              if (guarantor.dob) form.setValue(`guarantors.${index}.dob`, new Date(guarantor.dob));
+              if (guarantor.ssn) form.setValue(`guarantors.${index}.ssn`, guarantor.ssn);
+              if (guarantor.phone) form.setValue(`guarantors.${index}.phone`, guarantor.phone);
+              if (guarantor.email) form.setValue(`guarantors.${index}.email`, guarantor.email);
+              if (guarantor.license) form.setValue(`guarantors.${index}.license`, guarantor.license);
+              if (guarantor.licenseState) form.setValue(`guarantors.${index}.licenseState`, guarantor.licenseState);
+              if (guarantor.address) form.setValue(`guarantors.${index}.address`, guarantor.address);
+              if (guarantor.city) form.setValue(`guarantors.${index}.city`, guarantor.city);
+              if (guarantor.state) form.setValue(`guarantors.${index}.state`, guarantor.state);
+              if (guarantor.zip) form.setValue(`guarantors.${index}.zip`, guarantor.zip);
+              if (guarantor.lengthAtAddressYears !== undefined) form.setValue(`guarantors.${index}.lengthAtAddressYears`, guarantor.lengthAtAddressYears);
+              if (guarantor.lengthAtAddressMonths !== undefined) form.setValue(`guarantors.${index}.lengthAtAddressMonths`, guarantor.lengthAtAddressMonths);
+              if (guarantor.landlordName) form.setValue(`guarantors.${index}.landlordName`, guarantor.landlordName);
+              if (guarantor.landlordAddressLine1) form.setValue(`guarantors.${index}.landlordAddressLine1`, guarantor.landlordAddressLine1);
+              if (guarantor.landlordAddressLine2) form.setValue(`guarantors.${index}.landlordAddressLine2`, guarantor.landlordAddressLine2);
+              if (guarantor.landlordCity) form.setValue(`guarantors.${index}.landlordCity`, guarantor.landlordCity);
+              if (guarantor.landlordState) form.setValue(`guarantors.${index}.landlordState`, guarantor.landlordState);
+              if (guarantor.landlordZipCode) form.setValue(`guarantors.${index}.landlordZipCode`, guarantor.landlordZipCode);
+              if (guarantor.landlordPhone) form.setValue(`guarantors.${index}.landlordPhone`, guarantor.landlordPhone);
+              if (guarantor.landlordEmail) form.setValue(`guarantors.${index}.landlordEmail`, guarantor.landlordEmail);
+              if (guarantor.currentRent !== undefined) form.setValue(`guarantors.${index}.currentRent`, guarantor.currentRent);
+              if (guarantor.reasonForMoving) form.setValue(`guarantors.${index}.reasonForMoving`, guarantor.reasonForMoving);
+              if (guarantor.employmentType) form.setValue(`guarantors.${index}.employmentType`, guarantor.employmentType);
+              if (guarantor.employer) form.setValue(`guarantors.${index}.employer`, guarantor.employer);
+              if (guarantor.position) form.setValue(`guarantors.${index}.position`, guarantor.position);
+              if (guarantor.employmentStart) form.setValue(`guarantors.${index}.employmentStart`, new Date(guarantor.employmentStart));
+              if (guarantor.income) form.setValue(`guarantors.${index}.income`, guarantor.income);
+              if (guarantor.incomeFrequency) form.setValue(`guarantors.${index}.incomeFrequency`, guarantor.incomeFrequency);
+              if (guarantor.businessName) form.setValue(`guarantors.${index}.businessName`, guarantor.businessName);
+              if (guarantor.businessType) form.setValue(`guarantors.${index}.businessType`, guarantor.businessType);
+              if (guarantor.yearsInBusiness) form.setValue(`guarantors.${index}.yearsInBusiness`, guarantor.yearsInBusiness);
+              if (guarantor.otherIncome) form.setValue(`guarantors.${index}.otherIncome`, guarantor.otherIncome);
+              if (guarantor.otherIncomeFrequency) form.setValue(`guarantors.${index}.otherIncomeFrequency`, guarantor.otherIncomeFrequency);
+              if (guarantor.otherIncomeSource) form.setValue(`guarantors.${index}.otherIncomeSource`, guarantor.otherIncomeSource);
+              if (guarantor.bankRecords && Array.isArray(guarantor.bankRecords)) {
+                form.setValue(`guarantors.${index}.bankRecords`, guarantor.bankRecords);
+              }
+            });
           }
           
           // Restore co-applicant and guarantor flags
@@ -1361,7 +1519,9 @@ export function ApplicationForm() {
         hasCoApplicant: parsedFormData.hasCoApplicant,
         hasGuarantor: parsedFormData.hasGuarantor,
         coApplicantDataExists: parsedFormData.coApplicant ? hasCoApplicantData(parsedFormData.coApplicant) : false,
-        guarantorDataExists: parsedFormData.guarantor ? hasGuarantorData(parsedFormData.guarantor) : false
+        coApplicantsDataExists: parsedFormData.coApplicants && Array.isArray(parsedFormData.coApplicants) && parsedFormData.coApplicants.length > 0,
+        guarantorDataExists: parsedFormData.guarantor ? hasGuarantorData(parsedFormData.guarantor) : false,
+        guarantorsDataExists: parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0
       });
       
       // Force a re-render by updating the formData state
@@ -1389,7 +1549,13 @@ export function ApplicationForm() {
         reasonForMoving: parsedFormData.applicant?.reasonForMoving || '',
         lengthAtAddressYears: parsedFormData.applicant?.lengthAtAddressYears,
         lengthAtAddressMonths: parsedFormData.applicant?.lengthAtAddressMonths
-      }
+      },
+      // Restore co-applicants array
+      coApplicants: parsedFormData.coApplicants || [],
+      // Restore guarantors array
+      guarantors: parsedFormData.guarantors || [],
+      // Restore occupants array
+      occupants: parsedFormData.occupants || []
     }));
     }, 100);
           
@@ -2049,8 +2215,42 @@ export function ApplicationForm() {
       // Get the latest form data from state
       const currentFormData = formData;
       
+      // Ensure coApplicants and guarantors arrays are properly included
+      const enhancedFormData = {
+        ...currentFormData,
+        // Ensure coApplicants array is included
+        coApplicants: currentFormData.coApplicants || [],
+        // Ensure guarantors array is included  
+        guarantors: currentFormData.guarantors || [],
+        // Ensure counts are set
+        coApplicantCount: currentFormData.coApplicantCount || (currentFormData.coApplicants?.length || 0),
+        guarantorCount: currentFormData.guarantorCount || (currentFormData.guarantors?.length || 0)
+      };
+      
+      // Debug: Log what's in the enhancedFormData before cleaning
+      console.log('🔍 === DEBUG: ENHANCED FORM DATA BEFORE CLEANING ===');
+      console.log('📊 enhancedFormData.coApplicants:', enhancedFormData.coApplicants);
+      console.log('📊 enhancedFormData.coApplicant:', enhancedFormData.coApplicant);
+      console.log('📊 enhancedFormData.hasCoApplicant:', enhancedFormData.hasCoApplicant);
+      console.log('📊 enhancedFormData.coApplicantCount:', enhancedFormData.coApplicantCount);
+      console.log('📊 enhancedFormData.guarantors:', enhancedFormData.guarantors);
+      console.log('📊 enhancedFormData.guarantor:', enhancedFormData.guarantor);
+      console.log('📊 enhancedFormData.hasGuarantor:', enhancedFormData.hasGuarantor);
+      console.log('=== END DEBUG ===');
+      
       // Clean up the form data before saving to remove empty values and ensure consistency
-      const cleanedFormData = cleanFormDataForStorage(currentFormData);
+      const cleanedFormData = cleanFormDataForStorage(enhancedFormData);
+      
+      // Debug: Log what's in the cleanedFormData after cleaning
+      console.log('🔍 === DEBUG: CLEANED FORM DATA AFTER CLEANING ===');
+      console.log('📊 cleanedFormData.coApplicants:', cleanedFormData.coApplicants);
+      console.log('📊 cleanedFormData.coApplicant:', cleanedFormData.coApplicant);
+      console.log('📊 cleanedFormData.hasCoApplicant:', cleanedFormData.hasCoApplicant);
+      console.log('📊 cleanedFormData.coApplicantCount:', cleanedFormData.coApplicantCount);
+      console.log('📊 cleanedFormData.guarantors:', cleanedFormData.guarantors);
+      console.log('📊 cleanedFormData.guarantor:', cleanedFormData.guarantor);
+      console.log('📊 cleanedFormData.hasGuarantor:', cleanedFormData.hasGuarantor);
+      console.log('=== END DEBUG ===');
       
       // ALWAYS use the current user's zoneinfo for both fields
       const enhancedFormDataSnapshot = {
@@ -2175,7 +2375,7 @@ export function ApplicationForm() {
       });
     }
     
-    // Clean coApplicant section
+    // Clean coApplicant section (legacy format)
     if (data.coApplicant) {
       cleaned.coApplicant = {};
       Object.entries(data.coApplicant).forEach(([key, value]) => {
@@ -2185,7 +2385,22 @@ export function ApplicationForm() {
       });
     }
     
-    // Clean guarantor section
+    // Clean coApplicants array (new format)
+    if (data.coApplicants && Array.isArray(data.coApplicants)) {
+      cleaned.coApplicants = data.coApplicants.map((coApplicant: any) => {
+        const cleanCoApplicant: any = {};
+        if (coApplicant) {
+          Object.entries(coApplicant).forEach(([key, value]) => {
+            if (value !== '' && value !== null && value !== undefined) {
+              cleanCoApplicant[key] = value;
+            }
+          });
+        }
+        return cleanCoApplicant;
+      }).filter((coApplicant: any) => Object.keys(coApplicant).length > 0);
+    }
+    
+    // Clean guarantor section (legacy format)
     if (data.guarantor) {
       cleaned.guarantor = {};
       Object.entries(data.guarantor).forEach(([key, value]) => {
@@ -2193,6 +2408,21 @@ export function ApplicationForm() {
           cleaned.guarantor[key] = value;
         }
       });
+    }
+    
+    // Clean guarantors array (new format)
+    if (data.guarantors && Array.isArray(data.guarantors)) {
+      cleaned.guarantors = data.guarantors.map((guarantor: any) => {
+        const cleanGuarantor: any = {};
+        if (guarantor) {
+          Object.entries(guarantor).forEach(([key, value]) => {
+            if (value !== '' && value !== null && value !== undefined) {
+              cleanGuarantor[key] = value;
+            }
+          });
+        }
+        return cleanGuarantor;
+      }).filter((guarantor: any) => Object.keys(guarantor).length > 0);
     }
     
     // Clean occupants array
@@ -2212,7 +2442,7 @@ export function ApplicationForm() {
     
     // Copy other fields
     Object.entries(data).forEach(([key, value]) => {
-      if (!['application', 'applicant', 'coApplicant', 'guarantor', 'occupants'].includes(key)) {
+      if (!['application', 'applicant', 'coApplicant', 'coApplicants', 'guarantor', 'guarantors', 'occupants'].includes(key)) {
         cleaned[key] = value;
       }
     });
@@ -3157,7 +3387,11 @@ export function ApplicationForm() {
             employmentStart: safeDateToISO(formData.applicant?.employmentStart),
             income: formData.applicant?.income,
             incomeFrequency: formData.applicant?.incomeFrequency,
+            businessName: formData.applicant?.businessName,
+            businessType: formData.applicant?.businessType,
+            yearsInBusiness: formData.applicant?.yearsInBusiness,
             otherIncome: formData.applicant?.otherIncome,
+            otherIncomeFrequency: formData.applicant?.otherIncomeFrequency,
             otherIncomeSource: formData.applicant?.otherIncomeSource,
             bankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
               bankName: record.bankName,
@@ -3205,17 +3439,6 @@ export function ApplicationForm() {
                 accountType: record.accountType,
                 accountNumber: record.accountNumber || ""
               })),
-            coApplicantPosition: coApplicant.position,
-            coApplicantStartDate: safeDateToISO(coApplicant.employmentStart),
-            coApplicantSalary: coApplicant.income,
-              // Add missing income frequency and other income fields for co-applicant
-            coApplicantIncomeFrequency: coApplicant.incomeFrequency,
-            coApplicantOtherIncome: coApplicant.otherIncome,
-            coApplicantOtherIncomeSource: coApplicant.otherIncomeSource,
-            coApplicantBankRecords: (coApplicant.bankRecords || []).map((record: any) => ({
-                bankName: record.bankName,
-                accountType: record.accountType
-              })),
           })),
           
           // Guarantors (nested objects)
@@ -3262,17 +3485,7 @@ export function ApplicationForm() {
                 accountType: record.accountType,
                 accountNumber: record.accountNumber || ""
               })),
-            guarantorPosition: guarantor.position,
-            guarantorStartDate: safeDateToISO(guarantor.employmentStart),
-            guarantorSalary: guarantor.salary,
-            // Add missing income frequency and other income fields for guarantor
-            guarantorIncomeFrequency: guarantor.incomeFrequency,
-            guarantorOtherIncome: guarantor.otherIncome,
-            guarantorOtherIncomeSource: guarantor.otherIncomeSource,
-            guarantorBankRecords: (guarantor.bankRecords || []).map((record: any) => ({
-                bankName: record.bankName,
-                accountType: record.accountType
-              })),
+
           })),
           
           // Occupants (array)
@@ -3286,13 +3499,18 @@ export function ApplicationForm() {
             documents: occupant.documents || {}
           })),
           
-          // Additional fields
+          // Core metadata fields
           applicantName: data.applicantName || formData.applicant?.name,
           applicantEmail: data.applicantEmail || formData.applicant?.email,
           application_id: user.applicantId,
+          applicantId: user.applicantId,
           zoneinfo: user.applicantId,
           hasCoApplicant: hasCoApplicant,
           hasGuarantor: hasGuarantor,
+          coApplicantCount: (formData.coApplicants || []).length,
+          guarantorCount: (formData.guarantors || []).length,
+          landlordTenantLegalAction: formData.landlordTenantLegalAction || "",
+          brokenLease: formData.brokenLease || "",
           webhookSummary: getWebhookSummary(),
         };
 
@@ -3403,33 +3621,9 @@ export function ApplicationForm() {
         console.log('  - moveInDate (optimized):', serverOptimizedData.application?.moveInDate);
         console.log('Current window location:', window.location.href);
         
-        // Use the regular API endpoint for local development
+        // Check if submit-application endpoint exists, if not, skip server submission
         const apiEndpoint = '/api';
-        console.log('Making request to:', window.location.origin + apiEndpoint + '/submit-application');
-        
-        // Extract basic user info for identification
-        const userInfo = {
-          name: serverOptimizedData.applicantName,
-          email: serverOptimizedData.applicantEmail,
-          phone: serverOptimizedData.applicant?.phone,
-          applicationType: 'rental'
-        };
-
-        // Validate user info
-        if (!userInfo.name || !userInfo.email) {
-          throw new Error('Name and email are required for submission.');
-        }
-
-        const requestBody = {
-          applicationData: serverOptimizedData,
-          userInfo: userInfo
-        };
-        
-        // Log request body size instead of full content
-        const requestBodySize = JSON.stringify(requestBody).length;
-        console.log(`📊 Request body size: ${Math.round(requestBodySize/1024)}KB`);
-        console.log(`📊 Request body size in MB: ${Math.round(requestBodySize/(1024*1024)*100)/100}MB`);
-        console.log('Request body structure:', Object.keys(requestBody));
+        const submitEndpoint = apiEndpoint + '/submit-application';
         
         // Validate required fields before submission
         if (!serverOptimizedData.applicant?.dob) {
@@ -3442,48 +3636,95 @@ export function ApplicationForm() {
           throw new Error('Full name is required. Please enter your full name.');
         }
         
-        // Create AbortController for submission timeout
-        const submissionController = new AbortController();
-        const submissionTimeoutId = setTimeout(() => submissionController.abort(), 45000); // 45 second timeout
-        
         let serverSubmissionOk = false;
         let submissionResult: any = null;
-        const submissionResponse = await fetch(apiEndpoint + '/submit-application', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-          signal: submissionController.signal
-        });
-
-        clearTimeout(submissionTimeoutId);
-
-        if (!submissionResponse.ok) {
-          const errorText = await submissionResponse.text();
-          console.error('Submission response error:', submissionResponse.status, submissionResponse.statusText);
-          console.error('Error response body:', errorText);
+        
+        // Try server submission first, but fall back to webhook if it fails
+        try {
+          console.log('🔍 Attempting server submission...');
           
-          // Handle specific error cases
-          if (submissionResponse.status === 413) {
-            throw new Error('Application data is too large. Please reduce file sizes and try again.');
-          } else if (submissionResponse.status === 504) {
-            throw new Error('Submission timed out. Please try again with smaller files or fewer files at once.');
-          } else if (submissionResponse.status === 404) {
-            console.warn('Server endpoint not found (404). Proceeding with direct webhook fallback.');
-            serverSubmissionOk = false;
-          } else {
-            throw new Error(`Submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
+          // Extract basic user info for identification
+          const userInfo = {
+            name: serverOptimizedData.applicantName,
+            email: serverOptimizedData.applicantEmail,
+            phone: serverOptimizedData.applicant?.phone,
+            applicationType: 'rental'
+          };
+
+          // Validate user info
+          if (!userInfo.name || !userInfo.email) {
+            throw new Error('Name and email are required for submission.');
           }
-        } else {
-          submissionResult = await submissionResponse.json();
-          serverSubmissionOk = true;
-          console.log('✅ === SERVER SUBMISSION RESULT ===');
-          console.log('📤 Data sent to server:', JSON.stringify(requestBody, null, 2));
-          console.log('📥 Server response:', JSON.stringify(submissionResult, null, 2));
-          if (submissionResult?.application_id) console.log('🔗 Application ID:', submissionResult.application_id);
-          if (submissionResult?.reference_id) console.log('🔗 Reference ID:', submissionResult.reference_id);
-          console.log('=== END SERVER SUBMISSION ===');
+
+          const requestBody = {
+            applicationData: serverOptimizedData,
+            userInfo: userInfo
+          };
+          
+          // Log request body size instead of full content
+          const requestBodySize = JSON.stringify(requestBody).length;
+          console.log(`📊 Request body size: ${Math.round(requestBodySize/1024)}KB`);
+          console.log(`📊 Request body size in MB: ${Math.round(requestBodySize/(1024*1024)*100)/100}MB`);
+          console.log('Request body structure:', Object.keys(requestBody));
+          
+          // Create AbortController for submission timeout
+          const submissionController = new AbortController();
+          const submissionTimeoutId = setTimeout(() => submissionController.abort(), 45000); // 45 second timeout
+          
+          const submissionResponse = await fetch(submitEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+            signal: submissionController.signal
+          });
+
+          clearTimeout(submissionTimeoutId);
+
+          if (!submissionResponse.ok) {
+            const errorText = await submissionResponse.text();
+            console.error('Submission response error:', submissionResponse.status, submissionResponse.statusText);
+            console.error('Error response body:', errorText);
+            
+            // Handle specific error cases
+            if (submissionResponse.status === 413) {
+              throw new Error('Application data is too large. Please reduce file sizes and try again.');
+            } else if (submissionResponse.status === 504) {
+              throw new Error('Submission timed out. Please try again with smaller files or fewer files at once.');
+            } else if (submissionResponse.status === 500) {
+              console.warn('⚠️ Server error (500). Proceeding with webhook fallback.');
+              serverSubmissionOk = false;
+              // Don't throw error, just continue to webhook fallback
+              console.log('🔄 500 error caught, will proceed with webhook submission');
+            } else {
+              throw new Error(`Submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
+            }
+          } else {
+            submissionResult = await submissionResponse.json();
+            serverSubmissionOk = true;
+            console.log('✅ === SERVER SUBMISSION RESULT ===');
+            console.log('📤 Data sent to server:', JSON.stringify(requestBody, null, 2));
+            console.log('📥 Server response:', JSON.stringify(submissionResult, null, 2));
+            if (submissionResult?.application_id) console.log('🔗 Application ID:', submissionResult.application_id);
+            if (submissionResult?.reference_id) console.log('🔗 Reference ID:', submissionResult.reference_id);
+            console.log('=== END SERVER SUBMISSION ===');
+          }
+        } catch (error) {
+          console.warn('⚠️ Server submission failed. Proceeding with webhook fallback:', error);
+          serverSubmissionOk = false;
+        }
+        
+        // If server submission failed or endpoint doesn't exist, inform user about webhook fallback
+        if (!serverSubmissionOk) {
+          console.log('📤 Proceeding with webhook submission fallback...');
+          toast({
+            title: "Application Submission",
+            description: "Submitting application via webhook system. This may take a moment.",
+          });
+          
+          // Skip the rest of the server submission logic and go directly to webhook
+          console.log('🔄 Bypassing server submission, proceeding with webhook submission...');
         }
 
         // Mark draft as submitted in DynamoDB
@@ -3501,7 +3742,12 @@ export function ApplicationForm() {
         }
 
         // Note: Encrypted data and files are now sent separately via webhooks
-        console.log('Application submitted successfully. Files and encrypted data sent via webhooks.');
+        if (serverSubmissionOk) {
+          console.log('✅ Server submission successful. Files and encrypted data sent via webhooks.');
+        } else {
+          console.log('📤 Server submission failed. Proceeding with webhook submission fallback.');
+          console.log('🔄 This is expected behavior when server endpoint is not available.');
+        }
 
         // On form submit, send complete form data, application_id, and uploadedDocuments to the webhook
         try {

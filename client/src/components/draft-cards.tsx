@@ -103,144 +103,166 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
   const getFormDataSummary = (formData: any) => {
     if (!formData) return {} as any;
     
-    // Extract all available fields dynamically
-    const allFields: any = {};
+    // Handle both old flat format and new nested format
+    const isNewFormat = formData.application && formData.applicant;
     
-    // Recursively extract all nested fields
-    const extractFields = (obj: any, prefix = '') => {
-      if (obj && typeof obj === 'object') {
-        Object.entries(obj).forEach(([key, value]) => {
-          // Skip webhookSummary completely
-          if (key === 'webhookSummary') {
-            return;
-          }
-          
-          const fieldKey = prefix ? `${prefix}_${key}` : key;
-          
-          if (value && typeof value === 'object' && !Array.isArray(value)) {
-            extractFields(value, fieldKey);
-          } else if (value !== null && value !== undefined && value !== '') {
-            // Special handling for fields that might be stringified objects/arrays
-            if (typeof value === 'string' && (value.includes('[object Object]') || value.includes('[') && value.includes(']'))) {
-              try {
-                const parsed = JSON.parse(value);
-                allFields[fieldKey] = parsed;
-                console.log(`�� Parsed ${fieldKey} from string:`, parsed);
-              } catch (e) {
-                allFields[fieldKey] = value;
-                console.log(`⚠️ Failed to parse ${fieldKey}:`, value);
-              }
-            } else {
-              allFields[fieldKey] = value;
-            }
-          }
-        });
-      }
-    };
-    
-    extractFields(formData);
-    
-    // Debug logging for extracted fields
-    console.log('🔍 All extracted fields:', allFields);
-    console.log('🔍 Applicant fields in allFields:', {
-      applicantName: allFields.applicantName,
-      applicantEmail: allFields.applicantEmail,
-      applicant_name: allFields.applicant_name,
-      applicant_email: allFields.applicant_email
-    });
-    
-    // Debug the extractFields function specifically for applicant data
-    console.log('🔍 ExtractFields debugging for applicant:', {
-      formDataHasApplicant: !!formData.applicant,
-      formDataApplicantType: typeof formData.applicant,
-      formDataApplicantKeys: formData.applicant ? Object.keys(formData.applicant) : [],
-      extractedApplicantKeys: Object.keys(allFields).filter(key => key.startsWith('applicant')),
-      allExtractedKeys: Object.keys(allFields)
-    });
-    
-    // Special handling for bankRecords - extract from nested structure
-    if (formData.applicant && formData.applicant.bankRecords) {
-      allFields.applicantBankRecords = formData.applicant.bankRecords;
-      console.log('🏦 Found bankRecords in applicant:', allFields.applicantBankRecords);
-    }
-    if (formData.coApplicant && formData.coApplicant.bankRecords) {
-      allFields.coApplicantBankRecords = formData.coApplicant.bankRecords;
-      console.log('🏦 Found bankRecords in coApplicant:', allFields.coApplicantBankRecords);
-    }
-    if (formData.guarantor && formData.guarantor.bankRecords) {
-      allFields.guarantorBankRecords = formData.guarantor.bankRecords;
-      console.log('🏦 Found bankRecords in guarantor:', allFields.guarantorBankRecords);
-    }
-    
-    // Debug logging for specific fields
-    if (allFields.bankRecords) {
-      console.log('🏦 bankRecords field:', allFields.bankRecords);
-      console.log('🏦 bankRecords type:', typeof allFields.bankRecords);
-      console.log('🏦 bankRecords isArray:', Array.isArray(allFields.bankRecords));
-    }
-    
-    // Enhanced applicant field extraction with comprehensive fallbacks
-    const applicantName = formData.applicant?.name ?? 
-                         formData.applicantName ?? 
-                         allFields.applicant_name ?? 
-                         allFields.applicantName ?? 
-                         allFields.name ?? 
-                         'Not specified';
-                         
-    const applicantEmail = formData.applicant?.email ?? 
-                          formData.applicantEmail ?? 
-                          allFields.applicant_email ?? 
-                          allFields.applicantEmail ?? 
-                          allFields.email ?? 
-                          'Not specified';
-    
-    // Direct debugging of the applicant section
-    console.log('🔍 Direct applicant section check:', {
-      formDataApplicant: formData.applicant,
-      applicantNameDirect: formData.applicant?.name,
-      applicantEmailDirect: formData.applicant?.email,
-      applicantSectionKeys: formData.applicant ? Object.keys(formData.applicant) : [],
-      applicantSectionValues: formData.applicant ? Object.values(formData.applicant) : []
-    });
-    
-    console.log('🔍 Enhanced applicant field extraction:', {
-      applicantName,
-      applicantEmail,
-      sources: {
-        nested: formData.applicant?.name,
-        topLevel: formData.applicantName,
-        extracted_name: allFields.applicant_name,
-        extracted_applicantName: allFields.applicantName,
-        extracted_name_direct: allFields.name,
-        extracted_email_direct: allFields.email
-      }
-    });
-    
-    // Additional debugging for the specific issue
-    console.log('🔍 FormData structure analysis:', {
-      hasApplicantSection: !!formData.applicant,
-      applicantSectionType: typeof formData.applicant,
-      applicantSectionKeys: formData.applicant ? Object.keys(formData.applicant) : [],
-      applicantNameValue: formData.applicant?.name,
-      applicantEmailValue: formData.applicant?.email,
-      allFieldsKeys: Object.keys(allFields),
-      applicantRelatedKeys: Object.keys(allFields).filter(key => key.includes('applicant') || key.includes('name') || key.includes('email'))
-    });
-    
-    return {
-      // Core application fields
-      buildingAddress: formData.buildingAddress ?? formData.application?.buildingAddress ?? 'Not specified',
-      apartmentNumber: formData.apartmentNumber ?? formData.application?.apartmentNumber ?? 'Not specified',
-      apartmentType: formData.apartmentType ?? formData.application?.apartmentType ?? 'Not specified',
-      monthlyRent: formData.monthlyRent ?? formData.application?.monthlyRent ?? 'Not specified',
-      moveInDate: formData.moveInDate ?? formData.application?.moveInDate ?? 'Not specified',
-      howDidYouHear: formData.howDidYouHear ?? formData.application?.howDidYouHear ?? 'Not specified',
-      applicantName,
-      applicantEmail,
+    if (isNewFormat) {
+      // New nested format - extract from nested objects
+      return {
+        // Application Info
+        buildingAddress: formData.application?.buildingAddress || 'Not specified',
+        apartmentNumber: formData.application?.apartmentNumber || 'Not specified',
+        apartmentType: formData.application?.apartmentType || 'Not specified',
+        monthlyRent: formData.application?.monthlyRent || 'Not specified',
+        moveInDate: formData.application?.moveInDate || 'Not specified',
+        howDidYouHear: formData.application?.howDidYouHear || 'Not specified',
+        
+        // Applicant Info
+        applicantName: formData.applicant?.name || formData.applicantName || 'Not specified',
+        applicantEmail: formData.applicant?.email || formData.applicantEmail || 'Not specified',
+        
+        // Applicant details
+        applicant_phone: formData.applicant?.phone,
+        applicant_address: formData.applicant?.address,
+        applicant_city: formData.applicant?.city,
+        applicant_state: formData.applicant?.state,
+        applicant_zip: formData.applicant?.zip,
+        applicant_dob: formData.applicant?.dob,
+        applicant_ssn: formData.applicant?.ssn,
+        applicant_license: formData.applicant?.license,
+        applicant_licenseState: formData.applicant?.licenseState,
+        applicant_lengthAtAddressYears: formData.applicant?.lengthAtAddressYears,
+        applicant_lengthAtAddressMonths: formData.applicant?.lengthAtAddressMonths,
+        applicant_landlordName: formData.applicant?.landlordName,
+        applicant_landlordAddressLine1: formData.applicant?.landlordAddressLine1,
+        applicant_landlordAddressLine2: formData.applicant?.landlordAddressLine2,
+        applicant_landlordCity: formData.applicant?.landlordCity,
+        applicant_landlordState: formData.applicant?.landlordState,
+        applicant_landlordZipCode: formData.applicant?.landlordZipCode,
+        applicant_landlordPhone: formData.applicant?.landlordPhone,
+        applicant_landlordEmail: formData.applicant?.landlordEmail,
+        applicant_currentRent: formData.applicant?.currentRent,
+        applicant_reasonForMoving: formData.applicant?.reasonForMoving,
+        applicant_age: formData.applicant?.age,
+        applicant_employmentType: formData.applicant?.employmentType,
+        applicant_employer: formData.applicant?.employer,
+        applicant_position: formData.applicant?.position,
+        applicant_employmentStart: formData.applicant?.employmentStart,
+        applicant_income: formData.applicant?.income,
+        applicant_incomeFrequency: formData.applicant?.incomeFrequency,
+        applicant_businessName: formData.applicant?.businessName,
+        applicant_businessType: formData.applicant?.businessType,
+        applicant_yearsInBusiness: formData.applicant?.yearsInBusiness,
+        applicant_otherIncome: formData.applicant?.otherIncome,
+        applicant_otherIncomeSource: formData.applicant?.otherIncomeSource,
+        applicant_bankRecords: formData.applicant?.bankRecords,
+        
+        // Co-Applicants (new format)
+        coApplicants: formData.coApplicants || [],
+        
+        // Co-Applicants Bank Records (extracted from nested structure)
+        coApplicantsBankRecords: (formData.coApplicants || []).map((coApp: any) => coApp.bankRecords || []).flat().filter((record: any) => record && Object.keys(record).length > 0),
+        
+        // Guarantors (new format)
+        guarantors: formData.guarantors || [],
+        
+        // Guarantors Bank Records (extracted from nested structure)
+        guarantorsBankRecords: (formData.guarantors || []).map((guar: any) => guar.bankRecords || []).flat(),
+        
+
+        
+        // Occupants
+        occupants: formData.occupants || [],
+        
+        // Additional fields
+        hasCoApplicant: formData.hasCoApplicant,
+        hasGuarantor: formData.hasGuarantor,
+        coApplicantCount: formData.coApplicantCount,
+        guarantorCount: formData.guarantorCount,
+        landlordTenantLegalAction: formData.landlordTenantLegalAction,
+        brokenLease: formData.brokenLease,
+        application_id: formData.application_id,
+        applicantId: formData.applicantId,
+        zoneinfo: formData.zoneinfo,
+        webhookSummary: formData.webhookSummary,
+      };
+    } else {
+      // Old flat format - extract all available fields dynamically
+      const allFields: any = {};
       
-      // All other fields
-      ...allFields
-    };
+      // Recursively extract all nested fields
+      const extractFields = (obj: any, prefix = '') => {
+        if (obj && typeof obj === 'object') {
+          Object.entries(obj).forEach(([key, value]) => {
+            // Skip webhookSummary completely
+            if (key === 'webhookSummary') {
+              return;
+            }
+            
+            const fieldKey = prefix ? `${prefix}_${key}` : key;
+            
+            if (value && typeof value === 'object' && !Array.isArray(value)) {
+              extractFields(value, fieldKey);
+            } else if (value !== null && value !== undefined && value !== '') {
+              // Special handling for fields that might be stringified objects/arrays
+              if (typeof value === 'string' && (value.includes('[object Object]') || value.includes('[') && value.includes(']'))) {
+                                  try {
+                    const parsed = JSON.parse(value);
+                    allFields[fieldKey] = parsed;
+                  } catch (e) {
+                    allFields[fieldKey] = value;
+                  }
+              } else {
+                allFields[fieldKey] = value;
+              }
+            }
+          });
+        }
+      };
+      
+      extractFields(formData);
+      
+      // Special handling for bankRecords - extract from nested structure
+      if (formData.applicant && formData.applicant.bankRecords) {
+        allFields.applicantBankRecords = formData.applicant.bankRecords;
+      }
+      if (formData.coApplicants && formData.coApplicants.length > 0) {
+        allFields.coApplicantsBankRecords = formData.coApplicants.map((coApp: any) => coApp.bankRecords || []).flat();
+      }
+      if (formData.guarantors && formData.guarantors.length > 0) {
+        allFields.guarantorsBankRecords = formData.guarantors.map((guar: any) => guar.bankRecords || []).flat();
+      }
+      
+      // Enhanced applicant field extraction with comprehensive fallbacks
+      const applicantName = formData.applicant?.name ?? 
+                           formData.applicantName ?? 
+                           allFields.applicant_name ?? 
+                           allFields.applicantName ?? 
+                           allFields.name ?? 
+                           'Not specified';
+                           
+      const applicantEmail = formData.applicant?.email ?? 
+                            formData.applicantEmail ?? 
+                            allFields.applicant_email ?? 
+                            allFields.applicantEmail ?? 
+                            allFields.email ?? 
+                            'Not specified';
+      
+      return {
+        // Core application fields
+        buildingAddress: formData.buildingAddress ?? formData.application?.buildingAddress ?? 'Not specified',
+        apartmentNumber: formData.apartmentNumber ?? formData.application?.apartmentNumber ?? 'Not specified',
+        apartmentType: formData.apartmentType ?? formData.application?.apartmentType ?? 'Not specified',
+        monthlyRent: formData.monthlyRent ?? formData.application?.monthlyRent ?? 'Not specified',
+        moveInDate: formData.moveInDate ?? formData.application?.moveInDate ?? 'Not specified',
+        howDidYouHear: formData.howDidYouHear ?? formData.application?.howDidYouHear ?? 'Not specified',
+        applicantName,
+        applicantEmail,
+        
+        // All other fields
+        ...allFields
+      };
+    }
   };
 
   // Enhanced webhook responses parsing
@@ -274,64 +296,6 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
 
   const formSummary = getFormDataSummary(normalizedFormData);
   const webhookSummary = getWebhookDataSummary(draft.webhook_responses);
-
-  // Log the full draft object to see what's available
-  console.log('🔍 Full draft object:', draft);
-  console.log('🔍 Draft form_data (JSON):', JSON.stringify(normalizedFormData, null, 2));
-  console.log('🔍 Draft form_data type:', typeof draft.form_data);
-  
-  // Check if the draft actually contains applicant data
-  console.log('🔍 Draft data completeness check:', {
-    hasFormData: !!draft.form_data,
-    formDataKeys: Object.keys(normalizedFormData),
-    hasApplicantSection: !!normalizedFormData.applicant,
-    applicantData: normalizedFormData.applicant,
-    applicantNameInDraft: normalizedFormData.applicant?.name,
-    applicantEmailInDraft: normalizedFormData.applicant?.email,
-    draftStatus: draft.status,
-    lastUpdated: draft.last_updated
-  });
-  
-  // Deep dive into the applicant section structure
-  if (normalizedFormData.applicant) {
-    console.log('🔍 Applicant section deep dive:', {
-      applicantSection: normalizedFormData.applicant,
-      applicantSectionType: typeof normalizedFormData.applicant,
-      applicantSectionKeys: Object.keys(normalizedFormData.applicant),
-      applicantNameValue: normalizedFormData.applicant.name,
-      applicantEmailValue: normalizedFormData.applicant.email,
-      applicantNameType: typeof normalizedFormData.applicant.name,
-      applicantEmailType: typeof normalizedFormData.applicant.email
-    });
-  } else {
-    console.log('⚠️ No applicant section found in normalizedFormData');
-    console.log('🔍 Available top-level keys:', Object.keys(normalizedFormData));
-    console.log('🔍 Looking for applicant-related keys:', Object.keys(normalizedFormData).filter(key => key.includes('applicant') || key.includes('name') || key.includes('email')));
-  }
-  
-  // Debug logging for applicant fields specifically
-  console.log('🔍 Applicant fields debug:', {
-    applicantName: normalizedFormData.applicantName,
-    applicantEmail: normalizedFormData.applicantEmail,
-    applicantNameFromNested: normalizedFormData.applicant?.name,
-    applicantEmailFromNested: normalizedFormData.applicant?.email,
-    allApplicantFields: normalizedFormData.applicant,
-    applicantSection: normalizedFormData.applicant
-  });
-  
-  console.log('🔍 Form summary applicant fields:', {
-    applicantName: formSummary.applicantName,
-    applicantEmail: formSummary.applicantEmail
-  });
-  
-  // Additional debugging for the specific fields mentioned by user
-  console.log('🔍 User mentioned fields debug:', {
-    fullName: normalizedFormData.applicant?.name,
-    email: normalizedFormData.applicant?.email,
-    phone: normalizedFormData.applicant?.phone,
-    ssn: normalizedFormData.applicant?.ssn,
-    dob: normalizedFormData.applicant?.dob
-  });
   
   const progressPercentage = Math.round((draft.current_step / 12) * 100); // Assuming 8 total steps
 
@@ -464,7 +428,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-2 border-t border-gray-200">
                   {Object.entries(formSummary).filter(([key, value]) => 
                     key.startsWith('applicant') && 
-                    !['applicantName', 'applicantEmail', 'ibankRecords', 'Id', 'BankRecords'].includes(key) &&
+                    !['applicantName', 'applicantEmail', 'applicant_bankRecords', 'Id', 'BankRecords'].includes(key) &&
                     value !== 'Not specified' && value !== null && value !== undefined
                   ).map(([key, value]) => (
                     <div key={key} className="flex items-center space-x-2">
@@ -476,62 +440,66 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
               </div>
             </div>
 
-            {/* Guarantor Section */}
+            {/* Co-Applicants Section */}
             <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
               <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
                 <Users className="w-4 h-4 mr-2 text-purple-600" />
-                Guarantor Information
+                Co-Applicants Information
               </h5>
               <div className="space-y-3 text-sm">
-                {Object.entries(formSummary).filter(([key, value]) => 
-                  key.startsWith('coApplicant') && 
-                  !['ibankRecords', 'Id', 'BankRecords'].includes(key) &&
-                  value !== 'Not specified' && value !== null && value !== undefined
-                ).length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                    {Object.entries(formSummary).filter(([key, value]) => 
-                      key.startsWith('coApplicant') && 
-                      !['ibankRecords', 'Id', 'BankRecords'].includes(key) &&
-                      value !== 'Not specified' && value !== null && value !== undefined
-                    ).map(([key, value]) => (
-                      <div key={key} className="flex items-center space-x-2">
-                        <span className="text-gray-600 font-medium capitalize text-xs sm:text-sm">{key.replace('coApplicant', '').replace(/_/g, ' ')}:</span>
-                        <span className="text-gray-700 text-xs sm:text-sm">{String(value)}</span>
+                {formSummary.coApplicants && Array.isArray(formSummary.coApplicants) && formSummary.coApplicants.length > 0 ? (
+                  <div className="space-y-3">
+                    {formSummary.coApplicants.map((coApp: any, index: number) => (
+                      <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200 border-l-4 border-l-purple-500">
+                        <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Co-Applicant {index + 1}</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
+                          {Object.entries(coApp).filter(([key, value]) => 
+                            value !== null && value !== undefined && value !== '' && 
+                            !['documents', 'bankRecords'].includes(key)
+                          ).map(([key, value]) => (
+                            <div key={key} className="flex items-center space-x-2">
+                              <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
+                              <span className="text-gray-700">{String(value) || 'Not specified'}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-xs sm:text-sm italic">No guarantor information</p>
+                  <p className="text-gray-500 text-xs sm:text-sm italic">No co-applicants information</p>
                 )}
               </div>
             </div>
 
-            {/* Guarantor Section */}
+            {/* Guarantors Section */}
             <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
               <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
                 <Shield className="w-4 h-4 mr-2 text-orange-600" />
-                Guarantor Information
+                Guarantors Information
               </h5>
               <div className="space-y-3 text-sm">
-                {Object.entries(formSummary).filter(([key, value]) => 
-                  key.startsWith('guarantor') && 
-                  !['ibankRecords', 'Id', 'BankRecords'].includes(key) &&
-                  value !== 'Not specified' && value !== null && value !== undefined
-                ).length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                    {Object.entries(formSummary).filter(([key, value]) => 
-                      key.startsWith('guarantor') && 
-                      !['ibankRecords', 'Id', 'BankRecords'].includes(key) &&
-                      value !== 'Not specified' && value !== null && value !== undefined
-                    ).map(([key, value]) => (
-                      <div key={key} className="flex items-center space-x-2">
-                        <span className="text-gray-600 font-medium capitalize text-xs sm:text-sm">{key.replace('guarantor', '').replace(/_/g, ' ')}:</span>
-                        <span className="text-gray-700 text-xs sm:text-sm">{String(value)}</span>
+                {formSummary.guarantors && Array.isArray(formSummary.guarantors) && formSummary.guarantors.length > 0 ? (
+                  <div className="space-y-3">
+                    {formSummary.guarantors.map((guar: any, index: number) => (
+                      <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200 border-l-4 border-l-orange-500">
+                        <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Guarantor {index + 1}</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
+                          {Object.entries(guar).filter(([key, value]) => 
+                            value !== null && value !== undefined && value !== '' && 
+                            !['documents', 'bankRecords'].includes(key)
+                          ).map(([key, value]) => (
+                            <div key={key} className="flex items-center space-x-2">
+                              <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
+                              <span className="text-gray-700">{String(value) || 'Not specified'}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-xs sm:text-sm italic">No guarantor information</p>
+                  <p className="text-gray-500 text-xs sm:text-sm italic">No guarantors information</p>
                 )}
               </div>
             </div>
@@ -575,13 +543,13 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
               <div className="space-y-3 text-sm">
                 
                 {/* Special handling for bank records */}
-                {formSummary.applicantBankRecords && Array.isArray(formSummary.applicantBankRecords) && (
+                {(formSummary.applicantBankRecords || formSummary.applicant_bankRecords) && Array.isArray(formSummary.applicantBankRecords || formSummary.applicant_bankRecords) && (
                   <div className="space-y-2">
                     <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
-                      Applicant Bank Records ({formSummary.applicantBankRecords.length} accounts):
+                      Applicant Bank Records ({(formSummary.applicantBankRecords || formSummary.applicant_bankRecords).length} accounts):
                     </div>
                     <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
-                      {formSummary.applicantBankRecords.map((bank: any, index: number) => (
+                      {(formSummary.applicantBankRecords || formSummary.applicant_bankRecords).map((bank: any, index: number) => (
                         <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200">
                           <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Bank Account {index + 1}</div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
@@ -598,14 +566,14 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                   </div>
                 )}
                 
-                {/* Guarantor Bank Records */}
-                {formSummary.coApplicantBankRecords && Array.isArray(formSummary.coApplicantBankRecords) && (
+                {/* Co-Applicants Bank Records */}
+                {formSummary.coApplicantsBankRecords && Array.isArray(formSummary.coApplicantsBankRecords) && formSummary.coApplicantsBankRecords.length > 0 && (
                   <div className="space-y-2">
                     <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
-                      Guarantor Bank Records ({formSummary.coApplicantBankRecords.length} accounts):
+                      Co-Applicants Bank Records ({formSummary.coApplicantsBankRecords.length} accounts):
                     </div>
                     <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
-                      {formSummary.coApplicantBankRecords.map((bank: any, index: number) => (
+                      {formSummary.coApplicantsBankRecords.map((bank: any, index: number) => (
                         <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200">
                           <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Bank Account {index + 1}</div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
@@ -622,14 +590,16 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                   </div>
                 )}
                 
-                {/* Guarantor Bank Records */}
-                {formSummary.guarantorBankRecords && Array.isArray(formSummary.guarantorBankRecords) && (
+
+                
+                {/* Guarantors Bank Records */}
+                {formSummary.guarantorsBankRecords && Array.isArray(formSummary.guarantorsBankRecords) && formSummary.guarantorsBankRecords.length > 0 && (
                   <div className="space-y-2">
                     <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
-                      Guarantor Bank Records ({formSummary.guarantorBankRecords.length} accounts):
+                      Guarantors Bank Records ({formSummary.guarantorsBankRecords.length} accounts):
                     </div>
                     <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
-                      {formSummary.guarantorBankRecords.map((bank: any, index: number) => (
+                      {formSummary.guarantorsBankRecords.map((bank: any, index: number) => (
                         <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200">
                           <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Bank Account {index + 1}</div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
@@ -645,10 +615,14 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                     </div>
                   </div>
                 )}
+                
+
+                
+
                 
                 {/* Other fields */}
                 {Object.entries(formSummary).filter(([key, value]) => 
-                  !['buildingAddress', 'apartmentNumber', 'apartmentType', 'monthlyRent', 'moveInDate', 'howDidYouHear', 'applicantName', 'applicantEmail', 'occupants', 'occupantsList', 'bankRecords', 'applicantBankRecords', 'coApplicantBankRecords', 'guarantorBankRecords', 'webhookSummary'].includes(key) &&
+                  !['buildingAddress', 'apartmentNumber', 'apartmentType', 'monthlyRent', 'moveInDate', 'howDidYouHear', 'applicantName', 'applicantEmail', 'occupants', 'occupantsList', 'bankRecords', 'applicantBankRecords', 'coApplicantsBankRecords', 'guarantorsBankRecords', 'webhookSummary', 'coApplicants', 'guarantors', 'hasCoApplicant', 'hasGuarantor', 'coApplicantCount', 'guarantorCount', 'landlordTenantLegalAction', 'brokenLease', 'application_id', 'applicantId', 'zoneinfo'].includes(key) &&
                   !key.startsWith('applicant') &&
                   !key.startsWith('application') &&
                   !key.startsWith('coApplicant') &&
