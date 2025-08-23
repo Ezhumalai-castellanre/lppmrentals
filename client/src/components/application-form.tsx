@@ -2284,7 +2284,7 @@ export function ApplicationForm() {
         encrypted_documents: encryptedDocuments,
       };
 
-      const saveResult = await dynamoDBService.saveDraft(draftData);
+      const saveResult = await dynamoDBService.saveDraft(draftData, draftData.applicantId);
       if (saveResult) {
         console.log('💾 Draft saved to DynamoDB successfully');
         toast({

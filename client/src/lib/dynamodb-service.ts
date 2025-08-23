@@ -508,87 +508,24 @@ export class DynamoDBService {
     }
   }
 
-  // Save draft data with application_id/applicantId validation and mapping
-  async saveDraft(draftData: DraftData | FormDataWithApplicationId): Promise<boolean> {
+  // Save draft data to DynamoDB with hybrid storage for large data
+  async saveDraft(draftData: DraftData, applicantId: string): Promise<boolean> {
     const maxRetries = 3;
     let attempts = 0;
-    
+
     while (attempts < maxRetries) {
+      attempts++;
+      console.log(`📝 Attempt ${attempts} to save draft to DynamoDB`);
+
       try {
-        attempts++;
-        console.log(`🔄 Attempt ${attempts} of ${maxRetries} to save draft...`);
-        
-        // Check authentication status before proceeding
-        const isAuthenticated = await this.checkAuthenticationStatus();
-        if (!isAuthenticated) {
-          console.warn('⚠️ User not authenticated, attempting to refresh credentials...');
-          await this.handleTokenExpiration();
-          continue;
-        }
-        
-        const client = await this.getClient();
-        
-        // Clean form data to ensure consistency between application_id and applicantId
-        const cleanedFormData = this.cleanFormDataForConsistency(draftData);
-        
-        // Map application_id to applicantId for DynamoDB
-        const applicantId = this.mapApplicationIdToApplicantId(cleanedFormData);
-        if (!applicantId) {
-          console.error('❌ No application_id or applicantId found in draft data');
-          return false;
-        }
-        
-        // Get the application_id for logging (could be from either interface)
-        const applicationIdForLogging = 'application_id' in cleanedFormData ? cleanedFormData.application_id : cleanedFormData.applicantId;
-        
-        console.log('💾 Saving draft to DynamoDB:', {
-          table: this.tableName,
-          application_id: applicationIdForLogging,
-          applicantId: applicantId, // DynamoDB partition key
-          reference_id: draftData.reference_id,
-          current_step: draftData.current_step
-        });
+        // Clean and prepare data
+        const cleanFormData = this.cleanFormDataForConsistency(draftData.form_data || {});
+        const cleanUploadedFiles = draftData.uploaded_files_metadata || {};
+        const cleanWebhookResponses = draftData.webhook_responses || {};
+        const cleanSignatures = draftData.signatures || {};
+        const cleanEncryptedDocuments = draftData.encrypted_documents || {};
 
-        // Validate that application_id/applicantId matches the authenticated user's zoneinfo
-        const isValidApplicationId = await this.validateApplicationId(applicantId);
-        if (!isValidApplicationId) {
-          console.error('❌ Invalid application_id - must match authenticated user\'s zoneinfo value');
-          return false;
-        }
-
-        // Log raw data sizes to identify what's causing the size issue
-        const rawSizes = {
-          formData: JSON.stringify(draftData.form_data || {}).length,
-          uploadedFiles: JSON.stringify(draftData.uploaded_files_metadata || {}).length,
-          webhookResponses: JSON.stringify(draftData.webhook_responses || {}).length,
-          signatures: JSON.stringify(draftData.signatures || {}).length,
-          encryptedDocuments: JSON.stringify(draftData.encrypted_documents || {}).length
-        };
-        
-        console.log('📊 Raw data sizes before cleaning:', {
-          ...rawSizes,
-          totalRawSize: Object.values(rawSizes).reduce((sum, size) => sum + size, 0)
-        });
-
-        // Validate required fields
-        if (!applicantId) {
-          console.error('❌ Missing required field: applicantId (mapped from application_id)');
-          return false;
-        }
-
-        if (!draftData.reference_id) {
-          console.error('❌ Missing required field: reference_id');
-          return false;
-        }
-
-        // Clean and validate the data before saving
-        let cleanFormData = this.cleanDataForDynamoDB(draftData.form_data);
-        let cleanUploadedFiles = this.cleanDataForDynamoDB(draftData.uploaded_files_metadata || {});
-        let cleanWebhookResponses = this.cleanDataForDynamoDB(draftData.webhook_responses || {});
-        let cleanSignatures = this.cleanDataForDynamoDB(draftData.signatures || {});
-        let cleanEncryptedDocuments = this.cleanDataForDynamoDB(draftData.encrypted_documents || {});
-
-        // Check sizes before saving to prevent DynamoDB size limit errors
+        // Calculate sizes
         const sizes = {
           formData: JSON.stringify(cleanFormData).length,
           uploadedFiles: JSON.stringify(cleanUploadedFiles).length,
@@ -596,7 +533,7 @@ export class DynamoDBService {
           signatures: JSON.stringify(cleanSignatures).length,
           encryptedDocuments: JSON.stringify(cleanEncryptedDocuments).length
         };
-        
+
         const totalSize = Object.values(sizes).reduce((sum, size) => sum + size, 0);
         
         console.log('📏 Data sizes before saving:', {
@@ -605,117 +542,55 @@ export class DynamoDBService {
           maxAllowed: 400 * 1024, // 400KB in bytes
           isOverLimit: totalSize > 400 * 1024
         });
-        
-        // If data is too large, implement aggressive truncation
-        if (totalSize > 400 * 1024) {
-          console.warn('⚠️ Data exceeds 400KB limit, implementing aggressive truncation');
-          
-          // Truncate the largest fields first
-          if (sizes.encryptedDocuments > 100 * 1024) {
-            console.warn('⚠️ Truncating encrypted documents from', sizes.encryptedDocuments, 'to 100KB');
-            cleanEncryptedDocuments = this.truncateLargeData(cleanEncryptedDocuments, 100 * 1024);
-          }
-          
-          if (sizes.formData > 150 * 1024) {
-            console.warn('⚠️ Truncating form data from', sizes.formData, 'to 150KB');
-            cleanFormData = this.truncateLargeData(cleanFormData, 150 * 1024);
-          }
-          
-          if (sizes.uploadedFiles > 50 * 1024) {
-            console.warn('⚠️ Truncating uploaded files from', sizes.uploadedFiles, 'to 50KB');
-            cleanUploadedFiles = this.truncateLargeData(cleanUploadedFiles, 50 * 1024);
-          }
-          
-          if (sizes.webhookResponses > 50 * 1024) {
-            console.warn('⚠️ Truncating webhook responses from', sizes.webhookResponses, 'to 50KB');
-            cleanWebhookResponses = this.truncateLargeData(cleanWebhookResponses, 50 * 1024);
-          }
-          
-          if (sizes.signatures > 50 * 1024) {
-            console.warn('⚠️ Truncating signatures from', sizes.signatures, 'to 50KB');
-            cleanSignatures = this.truncateLargeData(cleanSignatures, 50 * 1024);
-          }
-          
-          // Recalculate sizes after truncation
-          const newSizes = {
-            formData: JSON.stringify(cleanFormData).length,
-            uploadedFiles: JSON.stringify(cleanUploadedFiles).length,
-            webhookResponses: JSON.stringify(cleanWebhookResponses).length,
-            signatures: JSON.stringify(cleanSignatures).length,
-            encryptedDocuments: JSON.stringify(cleanEncryptedDocuments).length
-          };
-          
-          const newTotalSize = Object.values(newSizes).reduce((sum, size) => sum + size, 0);
-          
-          console.log('📏 Data sizes after truncation:', {
-            ...newSizes,
-            newTotalSize,
-            reduction: totalSize - newTotalSize
-          });
-        }
 
-        // Final size check before saving
-        const finalSizes = {
-          formData: JSON.stringify(cleanFormData).length,
-          uploadedFiles: JSON.stringify(cleanUploadedFiles).length,
-          webhookResponses: JSON.stringify(cleanWebhookResponses).length,
-          signatures: JSON.stringify(cleanSignatures).length,
-          encryptedDocuments: JSON.stringify(cleanEncryptedDocuments).length
-        };
-        
-        const finalTotalSize = Object.values(finalSizes).reduce((sum, size) => sum + size, 0);
-        
-        if (finalTotalSize > 400 * 1024) {
-          console.error('❌ Data still too large after truncation:', {
-            finalTotalSize,
-            maxAllowed: 400 * 1024,
-            sizes: finalSizes
-          });
+        // If data is too large, implement hybrid storage approach
+        if (totalSize > 400 * 1024) {
+          console.warn('⚠️ Data exceeds 400KB limit, implementing hybrid storage approach');
           
-          // Analyze the data structure to identify large fields
-          console.log('🔍 Analyzing data structure to identify large fields...');
-          const formDataAnalysis = this.analyzeDataStructure(cleanFormData, 'form_data');
-          const encryptedDocsAnalysis = this.analyzeDataStructure(cleanEncryptedDocuments, 'encrypted_documents');
-          
-          // Sort by size to show largest fields first
-          const allAnalysis = [...formDataAnalysis, ...encryptedDocsAnalysis]
-            .sort((a, b) => b.size - a.size)
-            .slice(0, 20); // Show top 20 largest fields
-          
-          console.log('🔍 Top 20 largest fields:', allAnalysis);
-          
-          // Try to save only essential data
-          console.warn('⚠️ Attempting to save only essential data...');
-          const essentialData = {
-            applicantId: applicantId, // Use the mapped applicantId
-            reference_id: draftData.reference_id,
-            current_step: draftData.current_step || 0,
-            last_updated: draftData.last_updated || new Date().toISOString(),
-            status: draftData.status || 'draft',
-            form_data: { _truncated: true, _message: 'Data too large, only essential fields saved' }
-          };
-          
-          const essentialCommand = new PutItemCommand({
+          // Store large data in S3 and keep only references in DynamoDB
+          const hybridData = await this.implementHybridStorage({
+            formData: cleanFormData,
+            uploadedFiles: cleanUploadedFiles,
+            webhookResponses: cleanWebhookResponses,
+            signatures: cleanSignatures,
+            encryptedDocuments: cleanEncryptedDocuments
+          }, applicantId);
+
+          // Get DynamoDB client
+          const client = await this.getClient();
+
+          // Save the hybrid data structure to DynamoDB
+          const command = new PutItemCommand({
             TableName: this.tableName,
             Item: {
-              applicantId: { S: essentialData.applicantId },
-              reference_id: { S: essentialData.reference_id },
-              current_step: { N: essentialData.current_step.toString() },
-              last_updated: { S: essentialData.last_updated },
-              status: { S: essentialData.status },
-              form_data: { S: JSON.stringify(essentialData.form_data) },
+              applicantId: { S: applicantId },
+              reference_id: { S: draftData.reference_id },
+              form_data: { S: JSON.stringify(hybridData.formData) },
+              current_step: { N: (draftData.current_step || 0).toString() },
+              last_updated: { S: draftData.last_updated || new Date().toISOString() },
+              status: { S: draftData.status || 'draft' },
+              uploaded_files_metadata: { S: JSON.stringify(hybridData.uploadedFiles) },
+              webhook_responses: { S: JSON.stringify(hybridData.webhookResponses) },
+              signatures: { S: JSON.stringify(hybridData.signatures) },
+              encrypted_documents: { S: JSON.stringify(hybridData.encryptedDocuments) },
+              storage_mode: { S: 'hybrid' }, // Indicate this uses hybrid storage
+              s3_references: { S: JSON.stringify(hybridData.s3References) }
             },
           });
-          
-          await client.send(essentialCommand);
-          console.log('✅ Essential data saved successfully (full data was too large)');
+
+          await client.send(command);
+          console.log('✅ Draft saved successfully using hybrid storage approach');
           return true;
         }
 
+        // Get DynamoDB client
+        const client = await this.getClient();
+
+        // If data fits, save normally
         const command = new PutItemCommand({
           TableName: this.tableName,
           Item: {
-            applicantId: { S: applicantId }, // Use the mapped applicantId
+            applicantId: { S: applicantId },
             reference_id: { S: draftData.reference_id },
             form_data: { S: JSON.stringify(cleanFormData) },
             current_step: { N: (draftData.current_step || 0).toString() },
@@ -725,6 +600,7 @@ export class DynamoDBService {
             webhook_responses: { S: JSON.stringify(cleanWebhookResponses) },
             signatures: { S: JSON.stringify(cleanSignatures) },
             encrypted_documents: { S: JSON.stringify(cleanEncryptedDocuments) },
+            storage_mode: { S: 'direct' } // Indicate this is stored directly
           },
         });
 
@@ -914,6 +790,111 @@ export class DynamoDBService {
     } catch (error) {
       console.warn('⚠️ Error truncating data:', error);
       return { _truncated: true, _error: 'Failed to truncate data' };
+    }
+  }
+
+  // Implement hybrid storage for large data
+  private async implementHybridStorage(data: any, applicantId: string): Promise<{
+    formData: any;
+    uploadedFiles: any;
+    webhookResponses: any;
+    signatures: any;
+    encryptedDocuments: any;
+    s3References: string[];
+  }> {
+    const s3References: string[] = [];
+    const referenceId = data.reference_id || `draft_${Date.now()}`;
+
+    // Save form data to S3 if it exists
+    if (data.formData && typeof data.formData === 'object') {
+      const formDataS3Key = `form_data/${applicantId}/${referenceId}.json`;
+      const formDataS3Url = await this.uploadToS3(JSON.stringify(data.formData), formDataS3Key);
+      s3References.push(formDataS3Url);
+    }
+
+    // Save uploaded files to S3 if they exist
+    if (data.uploadedFiles && typeof data.uploadedFiles === 'object') {
+      const uploadedFilesS3Key = `uploaded_files/${applicantId}/${referenceId}.json`;
+      const uploadedFilesS3Url = await this.uploadToS3(JSON.stringify(data.uploadedFiles), uploadedFilesS3Key);
+      s3References.push(uploadedFilesS3Url);
+    }
+
+    // Save webhook responses to S3 if they exist
+    if (data.webhookResponses && typeof data.webhookResponses === 'object') {
+      const webhookResponsesS3Key = `webhook_responses/${applicantId}/${referenceId}.json`;
+      const webhookResponsesS3Url = await this.uploadToS3(JSON.stringify(data.webhookResponses), webhookResponsesS3Key);
+      s3References.push(webhookResponsesS3Url);
+    }
+
+    // Save signatures to S3 if they exist
+    if (data.signatures && typeof data.signatures === 'object') {
+      const signaturesS3Key = `signatures/${applicantId}/${referenceId}.json`;
+      const signaturesS3Url = await this.uploadToS3(JSON.stringify(data.signatures), signaturesS3Key);
+      s3References.push(signaturesS3Url);
+    }
+
+    // Save encrypted documents to S3 if they exist
+    if (data.encryptedDocuments && typeof data.encryptedDocuments === 'object') {
+      const encryptedDocumentsS3Key = `encrypted_documents/${applicantId}/${referenceId}.json`;
+      const encryptedDocumentsS3Url = await this.uploadToS3(JSON.stringify(data.encryptedDocuments), encryptedDocumentsS3Key);
+      s3References.push(encryptedDocumentsS3Url);
+    }
+
+    // Return the cleaned data and S3 references
+    return {
+      formData: data.formData,
+      uploadedFiles: data.uploadedFiles,
+      webhookResponses: data.webhookResponses,
+      signatures: data.signatures,
+      encryptedDocuments: data.encryptedDocuments,
+      s3References: s3References
+    };
+  }
+
+  // Upload data to S3
+  private async uploadToS3(data: string, key: string): Promise<string> {
+    try {
+      const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+      const s3Client = new S3Client({ region: this.region });
+
+      const command = new PutObjectCommand({
+        Bucket: environment.s3.bucketName,
+        Key: key,
+        Body: data,
+        ContentType: 'application/json',
+      });
+
+      await s3Client.send(command);
+      const s3Url = `https://${environment.s3.bucketName}.s3.${this.region}.amazonaws.com/${key}`;
+      console.log(`✅ Data uploaded to S3: ${s3Url}`);
+      return s3Url;
+    } catch (error: any) {
+      console.error(`❌ Error uploading data to S3:`, error);
+      throw new Error(`Failed to upload data to S3: ${error.message}`);
+    }
+  }
+
+  // Download data from S3
+  private async downloadFromS3(s3Url: string): Promise<any> {
+    try {
+      const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
+      const s3Client = new S3Client({ region: this.region });
+
+      const key = s3Url.replace(`https://${environment.s3.bucketName}.s3.${this.region}.amazonaws.com/`, '');
+      const command = new GetObjectCommand({
+        Bucket: environment.s3.bucketName,
+        Key: key,
+      });
+
+      const response = await s3Client.send(command);
+      const data = await response.Body?.transformToString();
+      if (data) {
+        return JSON.parse(data);
+      }
+      throw new Error(`No data found for S3 key: ${key}`);
+    } catch (error: any) {
+      console.error(`❌ Error downloading data from S3:`, error);
+      throw new Error(`Failed to download data from S3: ${error.message}`);
     }
   }
 
@@ -1342,7 +1323,7 @@ export const dynamoDBUtils = {
       draftData.applicantId = zoneinfo;
     }
     
-    return dynamoDBService.saveDraft(draftData);
+    return dynamoDBService.saveDraft(draftData, draftData.applicantId);
   },
 
   // Get draft using current user's zoneinfo
