@@ -97,6 +97,77 @@ export class S3Service {
   }
 
   /**
+   * Upload a PDF from base64 data to S3 using the existing working S3 presign setup
+   */
+  static async uploadPDFFromBase64(
+    pdfBase64: string,
+    fileName: string,
+    referenceId: string,
+    applicationId: string
+  ): Promise<S3UploadResult> {
+    try {
+      console.log(`🚀 Starting PDF S3 upload using existing presign setup: ${fileName}`);
+      console.log(`📊 PDF size: ${(pdfBase64.length / 1024 / 1024).toFixed(2)}MB`);
+
+      // Get the current user's zoneinfo from Cognito attributes
+      let zoneinfo = applicationId; // fallback
+      try {
+        const { fetchUserAttributes } = await import('aws-amplify/auth');
+        const attributes = await fetchUserAttributes();
+        zoneinfo = attributes.zoneinfo || attributes['custom:zoneinfo'] || applicationId;
+        console.log(`🌍 Using zoneinfo: ${zoneinfo}`);
+      } catch (error) {
+        console.warn('⚠️ Could not get user zoneinfo, using applicationId as fallback:', error);
+        zoneinfo = applicationId;
+      }
+
+      // Convert base64 to File object to use existing working S3 presign flow
+      const binaryString = atob(pdfBase64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      // Create a File object from the binary data
+      const pdfFile = new File([bytes], fileName, { type: 'application/pdf' });
+      console.log(`📄 Created File object: ${pdfFile.name}, size: ${pdfFile.size} bytes`);
+
+      // Use the existing working S3 presign flow from WebhookService
+      const { WebhookService } = await import('./webhook-service');
+      
+      const result = await WebhookService.uploadFileToS3AndSendToWebhook(
+        pdfFile,
+        referenceId,
+        'pdfs', // sectionName
+        applicationId, // documentName - using applicationId as requested
+        applicationId, // applicationId
+        zoneinfo, // zoneinfo
+        undefined // commentId
+      );
+
+      if (result.success) {
+        console.log(`✅ PDF S3 upload successful using existing presign setup: ${fileName}`);
+        console.log(`🔗 S3 URL: ${result.url}`);
+        
+        return {
+          success: true,
+          url: result.url!,
+          key: result.key!,
+        };
+      } else {
+        throw new Error(result.error || 'S3 upload failed');
+      }
+
+    } catch (error) {
+      console.error(`❌ PDF S3 upload failed for ${fileName}:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown PDF S3 upload error',
+      };
+    }
+  }
+
+  /**
    * Upload multiple files to S3
    */
   static async uploadFiles(

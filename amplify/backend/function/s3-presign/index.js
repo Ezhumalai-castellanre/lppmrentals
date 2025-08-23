@@ -34,7 +34,7 @@ exports.handler = async (event) => {
     }
 
     const body = JSON.parse(event.body);
-    const { fileName, fileType, referenceId, sectionName, zoneinfo } = body;
+    const { fileName, fileType, referenceId, sectionName, zoneinfo, documentName } = body;
 
     if (!fileName || !fileType || !referenceId || !sectionName || !zoneinfo) {
       return {
@@ -52,14 +52,13 @@ exports.handler = async (event) => {
     const bucketName = process.env.AWS_S3_BUCKET_NAME || 'supportingdocuments-storage-2025';
     const timestamp = Date.now();
     const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const key = `documents/${zoneinfo}/${sectionName}/${timestamp}_${safeFileName}`;
+    const key = `documents/${zoneinfo}/${sectionName}/${documentName || 'default'}/${timestamp}_${safeFileName}`;
 
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: key,
-      ContentType: fileType,
-      ACL: "private",
-      ServerSideEncryption: "AES256"
+      ContentType: fileType
+      // Removed ACL and ServerSideEncryption to avoid permission issues
     });
 
     const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); // URL valid for 1 hour

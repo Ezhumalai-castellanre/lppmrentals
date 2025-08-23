@@ -1,4 +1,4 @@
-
+import { S3Service } from './s3-service';
 
 export interface FileUploadWebhookData {
   reference_id: string;
@@ -206,6 +206,10 @@ export interface PDFWebhookData {
   file_name: string;
   file_base64: string;
   submission_type: 'pdf_generation';
+  s3_url?: string; // Added for S3 uploads
+  s3_key?: string; // Added for S3 uploads
+  file_size?: number; // Added for S3 uploads
+  file_type?: string; // Added for S3 uploads
 }
 
 // Helper function to extract URL from webhook response
@@ -1224,17 +1228,38 @@ export class WebhookService {
     fileName: string = 'rental-application.pdf'
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      // First, upload PDF to S3
+      console.log(`📤 Uploading PDF to S3 first: ${fileName}`);
+      const s3Result = await S3Service.uploadPDFFromBase64(
+        pdfBase64,
+        fileName,
+        referenceId,
+        applicationId
+      );
+
+      if (!s3Result.success) {
+        console.error('❌ Failed to upload PDF to S3:', s3Result.error);
+        return {
+          success: false,
+          error: `Failed to upload PDF to S3: ${s3Result.error}`
+        };
+      }
+
+      // Now send the S3 URL in the webhook
       const webhookData: PDFWebhookData = {
         reference_id: referenceId,
         application_id: applicationId,
         applicant_id: applicantId,
         file_name: fileName,
-        file_base64: pdfBase64,
-        submission_type: 'pdf_generation'
+        s3_url: s3Result.url,
+        s3_key: s3Result.key,
+        submission_type: 'pdf_generation',
+        file_size: Math.round(pdfBase64.length / 1024), // Size in KB
+        file_type: 'application/pdf'
       };
 
-      console.log(`Sending PDF to webhook: ${fileName}`);
-      console.log(`PDF size: ${Math.round(pdfBase64.length / 1024)} KB`);
+      console.log(`📤 Sending PDF webhook with S3 URL: ${fileName}`);
+      console.log(`🔗 S3 URL: ${s3Result.url}`);
 
       const response = await fetch(this.WEBHOOK_PROXY_URL, {
         method: 'POST',
@@ -1256,7 +1281,7 @@ export class WebhookService {
         };
       }
 
-      console.log('✅ PDF sent to webhook successfully');
+      console.log('✅ PDF uploaded to S3 and webhook sent successfully');
       return { success: true };
 
     } catch (error) {
