@@ -13,17 +13,22 @@ export class S3Service {
   private static bucketName: string;
   private static region: string;
 
-  private static getS3Client(): S3Client {
+  private static async getS3Client(): Promise<S3Client> {
     if (!this.s3Client) {
       this.bucketName = import.meta.env.VITE_AWS_S3_BUCKET_NAME || 'supportingdocuments-storage-2025';
       this.region = import.meta.env.VITE_AWS_REGION || 'us-east-1';
       
+      // Get temporary AWS credentials for the authenticated user
+      const { getTemporaryAwsCredentials } = await import('./aws-config');
+      const credentials = await getTemporaryAwsCredentials();
+      
+      if (!credentials) {
+        throw new Error('Failed to get AWS credentials for authenticated user');
+      }
+      
       this.s3Client = new S3Client({
         region: this.region,
-        credentials: {
-          accessKeyId: import.meta.env.VITE_AWS_ACCESS_KEY_ID || '',
-          secretAccessKey: import.meta.env.VITE_AWS_SECRET_ACCESS_KEY || '',
-        },
+        credentials: credentials,
       });
     }
     return this.s3Client;
@@ -39,7 +44,7 @@ export class S3Service {
     documentName: string
   ): Promise<S3UploadResult> {
     try {
-      const s3Client = this.getS3Client();
+      const s3Client = await this.getS3Client();
       
       // Generate unique key for the file
       const timestamp = Date.now();
@@ -191,7 +196,7 @@ export class S3Service {
    */
   static async getPresignedUrl(key: string): Promise<string | null> {
     try {
-      const s3Client = this.getS3Client();
+      const s3Client = await this.getS3Client();
       
       const getCommand = new GetObjectCommand({
         Bucket: this.bucketName,

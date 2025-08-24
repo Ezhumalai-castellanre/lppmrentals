@@ -855,7 +855,19 @@ export class DynamoDBService {
   private async uploadToS3(data: string, key: string): Promise<string> {
     try {
       const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
-      const s3Client = new S3Client({ region: this.region });
+      
+      // Get temporary AWS credentials for the authenticated user
+      const { getTemporaryAwsCredentials } = await import('./aws-config');
+      const credentials = await getTemporaryAwsCredentials();
+      
+      if (!credentials) {
+        throw new Error('Failed to get AWS credentials for authenticated user');
+      }
+
+      const s3Client = new S3Client({ 
+        region: this.region,
+        credentials: credentials
+      });
 
       const command = new PutObjectCommand({
         Bucket: environment.s3.bucketName,
@@ -878,7 +890,19 @@ export class DynamoDBService {
   private async downloadFromS3(s3Url: string): Promise<any> {
     try {
       const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
-      const s3Client = new S3Client({ region: this.region });
+      
+      // Get temporary AWS credentials for the authenticated user
+      const { getTemporaryAwsCredentials } = await import('./aws-config');
+      const credentials = await getTemporaryAwsCredentials();
+      
+      if (!credentials) {
+        throw new Error('Failed to get AWS credentials for authenticated user');
+      }
+
+      const s3Client = new S3Client({ 
+        region: this.region,
+        credentials: credentials
+      });
 
       const key = s3Url.replace(`https://${environment.s3.bucketName}.s3.${this.region}.amazonaws.com/`, '');
       const command = new GetObjectCommand({
@@ -888,10 +912,7 @@ export class DynamoDBService {
 
       const response = await s3Client.send(command);
       const data = await response.Body?.transformToString();
-      if (data) {
-        return JSON.parse(data);
-      }
-      throw new Error(`No data found for S3 key: ${key}`);
+      return data ? JSON.parse(data) : null;
     } catch (error: any) {
       console.error(`❌ Error downloading data from S3:`, error);
       throw new Error(`Failed to download data from S3: ${error.message}`);

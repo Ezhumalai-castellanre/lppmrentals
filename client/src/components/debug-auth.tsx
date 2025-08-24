@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { testAwsConfiguration, getTemporaryAwsCredentials } from '@/lib/aws-config';
 import { DynamoDBService } from '@/lib/dynamodb-service';
+import { DebugAwsCredentials } from './debug-aws-credentials';
 
 export const DebugAuth: React.FC = () => {
   const [testResults, setTestResults] = useState<any>(null);
@@ -153,5 +154,10 @@ export const DebugAuth: React.FC = () => {
         </div>
       </CardContent>
     </Card>
+
+    {/* AWS Credentials Debug Component */}
+    <div className="mt-8">
+      <DebugAwsCredentials />
+    </div>
   );
 };
