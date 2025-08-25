@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { Button } from "./button";
 import { Card } from "./card";
 import { Upload, X, FileText, Shield, Loader2, CheckCircle, AlertCircle } from "lucide-react";
