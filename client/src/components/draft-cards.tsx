@@ -5,8 +5,8 @@ import { Badge } from "./ui/badge";
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { FileText, Clock, Edit, Trash2, Building, User, Calendar, DollarSign, CheckCircle, File, Eye, Users, Shield } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
-import { dynamoDBService } from "@/lib/dynamodb-service";
+import { useAuth } from "../hooks/use-auth";
+import { dynamoDBService } from "../lib/dynamodb-service";
 import { format } from "date-fns";
 
 interface DraftData {

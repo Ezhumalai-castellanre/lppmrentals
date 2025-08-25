@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/use-auth';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
+import { useAuth } from '../hooks/use-auth';
+import { Button } from '../components/ui/button';
+import { Avatar, AvatarFallback } from '../components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import { Badge } from '../components/ui/badge';
 import { LogOut, Home, Lock, FileText, TestTube, Wrench } from 'lucide-react';
 import LogoutButton from './logout-button';
 import { useLocation } from 'wouter';
-import { dynamoDBService } from '@/lib/dynamodb-service';
+import { dynamoDBService } from '../lib/dynamodb-service';
 
 const NavHeader: React.FC = () => {
   const { user } = useAuth();

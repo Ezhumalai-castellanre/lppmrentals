@@ -2,9 +2,9 @@ import { useState, useCallback } from "react";
 import { Button } from "./button";
 import { Card } from "./card";
 import { Upload, X, FileText, Shield, Loader2, CheckCircle, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { encryptFiles, validateFileForEncryption, type EncryptedFile } from "@/lib/file-encryption";
-import { WebhookService } from "@/lib/webhook-service";
+import { cn } from "../../lib/utils";
+import { encryptFiles, validateFileForEncryption, type EncryptedFile } from "../../lib/file-encryption";
+import { WebhookService } from "../../lib/webhook-service";
 
 interface FileUploadProps {
   onFileChange: (files: File[]) => void;

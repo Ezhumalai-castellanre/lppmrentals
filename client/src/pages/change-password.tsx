@@ -1,7 +1,7 @@
 import React from 'react';
-import { useAuth } from '@/hooks/use-auth';
-import ChangePassword from '@/components/change-password';
-import { Button } from '@/components/ui/button';
+import { useAuth } from '../hooks/use-auth';
+import ChangePassword from '../components/change-password';
+import { Button } from '../components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useLocation } from 'wouter';
 

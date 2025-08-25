@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { MondayForm } from '@/components/monday-form';
-import { RentalItem } from '@/lib/monday-api';
+import { MondayForm } from '../components/monday-form';
+import { RentalItem } from '../lib/monday-api';
 
 export default function MondayApplicationPage() {
   const [selectedRental, setSelectedRental] = useState<RentalItem | null>(null);

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { UnitItem } from '@/lib/monday-api';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { UnitItem } from '../lib/monday-api';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
 import { MapPin, DollarSign, Image, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 interface UnitDetailModalProps {

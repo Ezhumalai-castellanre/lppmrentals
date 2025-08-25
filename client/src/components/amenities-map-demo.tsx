@@ -1,6 +1,6 @@
 import React from 'react';
 import { PropertyAmenitiesMap } from './property-amenities-map';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 
 export function AmenitiesMapDemo() {
   // Sample coordinates for demo purposes

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 import { Label } from './label';
 import { FormMessage } from './form';
-import { USA_STATES, getCitiesForState } from '@/lib/usa-data';
+import { USA_STATES, getCitiesForState } from '../../lib/usa-data';
 
 interface StateCitySelectorProps {
   selectedState: string;

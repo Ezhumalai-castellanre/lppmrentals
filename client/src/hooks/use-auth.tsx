@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { signIn, signUp, confirmSignUp, signOut, resetPassword, confirmResetPassword, resendSignUpCode, getCurrentUser, fetchUserAttributes, updatePassword } from 'aws-amplify/auth';
-import { generateLppmNumber, generateLppmUincid } from '@/lib/utils';
-import { getCurrentUserWithDebug, getUserAttributesWithDebug } from '@/lib/aws-config';
+import { generateLppmNumber, generateLppmUincid } from '../lib/utils';
+import { getCurrentUserWithDebug, getUserAttributesWithDebug } from '../lib/aws-config';
 
 interface User {
   id: string;

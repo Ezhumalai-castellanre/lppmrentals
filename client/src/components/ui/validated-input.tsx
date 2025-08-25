@@ -12,7 +12,7 @@ import {
   validateEmail,
   validateDriverLicense,
   validateIncome
-} from '@/lib/validation';
+} from '../../lib/validation';
 
 interface ValidatedInputProps {
   label: string;

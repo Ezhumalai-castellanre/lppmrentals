@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { useAuth } from '@/hooks/use-auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '../hooks/use-auth';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Alert, AlertDescription } from '../components/ui/alert';
 import { Loader2, AlertTriangle, CheckCircle, Camera, Home } from 'lucide-react';
-import { FileUpload } from '@/components/ui/file-upload';
-import { encryptFiles, type EncryptedFile } from '@/lib/file-encryption';
-import { WebhookService } from '@/lib/webhook-service';
+import { FileUpload } from '../components/ui/file-upload';
+import { encryptFiles, type EncryptedFile } from '../lib/file-encryption';
+import { WebhookService } from '../lib/webhook-service';
 
 interface MaintenanceRequestData {
   unit: string;

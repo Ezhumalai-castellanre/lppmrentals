@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardFooter } from "../components/ui/card"
+import { Button } from "../components/ui/button"
+import { Badge } from "../components/ui/badge"
 import { MapPin, Heart, Star, Loader2, Search, ChevronLeft, ChevronRight } from "lucide-react"
-import { MondayApiService, RentalItem } from "@/lib/monday-api"
+import { MondayApiService, RentalItem } from "../lib/monday-api"
 import { useLocation } from "wouter"
 
 export function RentalListings() {

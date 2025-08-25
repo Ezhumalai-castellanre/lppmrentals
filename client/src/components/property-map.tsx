@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { RentalItem } from '@/lib/monday-api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { RentalItem } from '../lib/monday-api';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
 import { Home, MapPin, DollarSign, Eye, Send } from 'lucide-react';
 
 const GOOGLE_MAPS_JS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_JS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyA4xghdRPy2jN6K2oCw_BccNsXqrgPdL-E';

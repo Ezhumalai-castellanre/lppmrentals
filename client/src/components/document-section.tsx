@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileUpload } from "@/components/ui/file-upload";
-import { type EncryptedFile } from "@/lib/file-encryption";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { FileUpload } from "../components/ui/file-upload";
+import { type EncryptedFile } from "../lib/file-encryption";
 
 interface DocumentSectionProps {
   title: string;
