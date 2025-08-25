@@ -5,6 +5,8 @@ applications:
       phases:
         preBuild:
           commands:
+            - node --version
+            - npm --version
             - cd client
             - npm ci
         build:
@@ -20,7 +22,7 @@ applications:
           - client/node_modules/**/*
     env:
       runtime-versions:
-        nodejs: 20
+        nodejs: 20.x
     customHeaders:
       - pattern: '**/*'
         headers:
