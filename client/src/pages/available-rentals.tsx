@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { MondayApiService, RentalItem } from '../lib/monday-api';
-import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardHeader, CardFooter } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Separator } from '../components/ui/separator';
 import { Eye, Send, MapPin, Home, DollarSign, ChevronLeft, ChevronRight, Image } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
-import { PropertyMap } from '@/components/property-map';
+import { useAuth } from '../hooks/use-auth';
+import { PropertyMap } from '../components/property-map';
 
 // PropertyCard Component
 function PropertyCard({ rental, onViewDetails, onApplyNow }: {
