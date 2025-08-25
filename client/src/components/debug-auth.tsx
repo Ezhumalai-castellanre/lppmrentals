@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { testAwsConfiguration, getTemporaryAwsCredentials } from '@/lib/aws-config';
-import { DynamoDBService } from '@/lib/dynamodb-service';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { testAwsConfiguration, getTemporaryAwsCredentials } from '../lib/aws-config';
+import { DynamoDBService } from '../lib/dynamodb-service';
 import { DebugAwsCredentials } from './debug-aws-credentials';
 
 export const DebugAuth: React.FC = () => {
