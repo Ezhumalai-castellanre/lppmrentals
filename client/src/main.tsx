@@ -22,7 +22,11 @@ import "./lib/aws-config";
       'message port closed',
       'websocket connection to ws://localhost:8098/',
       'websocket connection to ws://localhost:8098',
+      'websocket connection to',
+      'websocket connection failed',
+      'websocket failed',
       'inject.bundle.js',
+      'inject.bundle',
       'runtime.lasterror',
       'chrome-extension://',
       'moz-extension://',
@@ -30,6 +34,9 @@ import "./lib/aws-config";
       'ms-browser-extension://',
       'extension://',
       'localhost:8098',
+      'localhost:8098/',
+      'ws://localhost:8098',
+      'ws://localhost:8098/',
       'injected css loaded successfully',
       'unchecked runtime.lasterror',
       'multi-tabs.js',
@@ -221,7 +228,53 @@ import "./lib/aws-config";
       }
       originalMethods.log.apply(console, args);
     };
-  }, 100); // Check every 100ms
+    
+    // Re-apply WebSocket blocking
+    if (window.WebSocket) {
+      const OriginalWebSocket = window.WebSocket;
+      const WebSocketConstructor = function(this: any, url: string | URL, protocols?: string | string[]) {
+        const urlStr = String(url || '');
+        if (urlStr.includes('localhost:8098') || 
+            urlStr.includes('ws://localhost:8098') ||
+            urlStr.includes('localhost:8098/') ||
+            urlStr.includes('ws://localhost:8098/')) {
+          
+          // Return a dummy WebSocket that does nothing
+          const dummyWebSocket = {
+            readyState: 3, // CLOSED
+            url: urlStr,
+            protocol: protocols ? (Array.isArray(protocols) ? protocols[0] : protocols) : '',
+            extensions: '',
+            bufferedAmount: 0,
+            onopen: null,
+            onclose: null,
+            onmessage: null,
+            onerror: null,
+            send: function() { return; },
+            close: function() { return; },
+            addEventListener: function() { return; },
+            removeEventListener: function() { return; },
+            dispatchEvent: function() { return false; }
+          };
+          
+          // Set prototype to match WebSocket
+          Object.setPrototypeOf(dummyWebSocket, WebSocket.prototype);
+          return dummyWebSocket;
+        }
+        return new OriginalWebSocket(url, protocols);
+      };
+      
+      // Set up the constructor properly
+      WebSocketConstructor.prototype = OriginalWebSocket.prototype;
+      WebSocketConstructor.CONNECTING = OriginalWebSocket.CONNECTING;
+      WebSocketConstructor.OPEN = OriginalWebSocket.OPEN;
+      WebSocketConstructor.CLOSING = OriginalWebSocket.CLOSING;
+      WebSocketConstructor.CLOSED = OriginalWebSocket.CLOSED;
+      
+      // Override the WebSocket constructor
+      (window as any).WebSocket = WebSocketConstructor;
+    }
+  }, 50); // Check every 50ms for more aggressive blocking
   
 })();
 

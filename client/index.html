@@ -10,7 +10,7 @@
     <link rel="shortcut icon" type="image/png" href="https://www.jotform.com/uploads/CRP_Affordable/form_files/image_686d7ef15b36a.png?nc=1" />
     <link rel="apple-touch-icon" href="https://www.jotform.com/uploads/CRP_Affordable/form_files/image_686d7ef15b36a.png?nc=1" />
     
-    <!-- Simple WebSocket blocking for localhost:8098 -->
+    <!-- Enhanced WebSocket blocking for localhost:8098 and inject.bundle.js -->
     <script>
       (function() {
         'use strict';
@@ -45,17 +45,50 @@
           return new OriginalWebSocket(url, protocols);
         };
         
-        // Block console errors for WebSocket failures
+        // Enhanced console error blocking
         const originalError = console.error;
         console.error = function(...args) {
           const message = args.join(' ');
           if (message.includes('WebSocket connection to ws://localhost:8098/') ||
               message.includes('localhost:8098') ||
-              message.includes('inject.bundle.js')) {
+              message.includes('inject.bundle.js') ||
+              message.includes('WebSocket connection to') ||
+              message.includes('failed')) {
             return; // Suppress these errors
           }
           originalError.apply(console, args);
         };
+        
+        // Block all WebSocket-related errors globally
+        window.addEventListener('error', function(event) {
+          const message = String(event.message || '');
+          const filename = String(event.filename || '');
+          if (message.includes('localhost:8098') || 
+              message.includes('inject.bundle.js') ||
+              message.includes('WebSocket') ||
+              filename.includes('inject.bundle.js')) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return false;
+          }
+        }, true);
+        
+        // Continuous monitoring to catch late-arriving errors
+        setInterval(() => {
+          // Re-apply console overrides
+          console.error = function(...args) {
+            const message = args.join(' ');
+            if (message.includes('WebSocket connection to ws://localhost:8098/') ||
+                message.includes('localhost:8098') ||
+                message.includes('inject.bundle.js') ||
+                message.includes('WebSocket connection to') ||
+                message.includes('failed')) {
+              return; // Suppress these errors
+            }
+            originalError.apply(console, args);
+          };
+        }, 50); // Check every 50ms
+        
       })();
     </script>
     

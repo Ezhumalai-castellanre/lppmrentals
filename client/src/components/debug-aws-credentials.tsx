@@ -1,13 +1,54 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { getTemporaryAwsCredentials, testAwsConfiguration } from '../lib/aws-config';
+import { getTemporaryAwsCredentials, testAwsConfiguration, getAwsCredentialsForS3 } from '../lib/aws-config';
 
 export const DebugAwsCredentials: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [credentials, setCredentials] = useState<any>(null);
   const [testResult, setTestResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [authState, setAuthState] = useState<any>(null);
+
+  const testAuthState = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🔍 Testing authentication state...');
+      
+      // Test current authentication state
+      const { fetchAuthSession, getCurrentUser } = await import('aws-amplify/auth');
+      
+      const session = await fetchAuthSession();
+      const currentUser = await getCurrentUser();
+      
+      const authInfo = {
+        session: {
+          hasTokens: !!session.tokens,
+          hasAccessToken: !!session.tokens?.accessToken,
+          hasIdToken: !!session.tokens?.idToken,
+          hasIdentityId: !!session.identityId,
+          tokenTypes: session.tokens ? Object.keys(session.tokens) : 'none'
+        },
+        user: {
+          username: currentUser.username,
+          userId: currentUser.userId,
+          signInDetails: currentUser.signInDetails
+        }
+      };
+      
+      setAuthState(authInfo);
+      console.log('✅ Authentication state:', authInfo);
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      console.error('❌ Authentication state test failed:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const testCredentials = async () => {
     setIsLoading(true);
@@ -83,6 +124,36 @@ export const DebugAwsCredentials: React.FC = () => {
     }
   };
 
+  const testEnhancedCredentials = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🧪 Testing enhanced AWS credentials...');
+      
+      const credentials = await getAwsCredentialsForS3();
+      setCredentials(credentials);
+      
+      if (credentials) {
+        console.log('✅ Enhanced credentials obtained:', {
+          accessKeyId: credentials.accessKeyId ? '***configured***' : 'missing',
+          secretAccessKey: credentials.secretAccessKey ? '***configured***' : 'missing',
+          sessionToken: credentials.sessionToken ? '***configured***' : 'missing',
+          expiration: credentials.expiration,
+        });
+      } else {
+        console.log('❌ Failed to get enhanced credentials');
+      }
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      console.error('❌ Enhanced credentials test failed:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Card className="w-full max-w-4xl">
       <CardHeader>
@@ -92,13 +163,29 @@ export const DebugAwsCredentials: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button 
+            onClick={testAuthState} 
+            disabled={isLoading}
+            variant="outline"
+          >
+            {isLoading ? 'Testing...' : '🔍 Test Auth State'}
+          </Button>
+          
           <Button 
             onClick={testCredentials} 
             disabled={isLoading}
             variant="outline"
           >
-            {isLoading ? 'Testing...' : 'Test AWS Credentials'}
+            {isLoading ? 'Testing...' : '🔑 Test Credentials'}
+          </Button>
+          
+          <Button 
+            onClick={testEnhancedCredentials} 
+            disabled={isLoading}
+            variant="outline"
+          >
+            {isLoading ? 'Testing...' : '🚀 Test Enhanced Credentials'}
           </Button>
           
           <Button 
@@ -106,7 +193,7 @@ export const DebugAwsCredentials: React.FC = () => {
             disabled={isLoading || !credentials}
             variant="outline"
           >
-            {isLoading ? 'Testing...' : 'Test S3 Upload'}
+            {isLoading ? 'Testing...' : '📤 Test S3 Upload'}
           </Button>
         </div>
 
@@ -114,6 +201,20 @@ export const DebugAwsCredentials: React.FC = () => {
           <div className="p-4 bg-red-50 border border-red-200 rounded-md">
             <h4 className="font-semibold text-red-800">❌ Error</h4>
             <p className="text-red-700">{error}</p>
+          </div>
+        )}
+
+        {authState && (
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+            <h4 className="font-semibold text-yellow-800">🔍 Authentication State</h4>
+            <div className="text-sm text-yellow-700 space-y-1">
+              <p><strong>Session Tokens:</strong> {authState.session.tokenTypes}</p>
+              <p><strong>Has Access Token:</strong> {authState.session.hasAccessToken ? 'Yes' : 'No'}</p>
+              <p><strong>Has ID Token:</strong> {authState.session.hasIdToken ? 'Yes' : 'No'}</p>
+              <p><strong>Has Identity ID:</strong> {authState.session.hasIdentityId ? 'Yes' : 'No'}</p>
+              <p><strong>Username:</strong> {authState.user.username}</p>
+              <p><strong>User ID:</strong> {authState.user.userId}</p>
+            </div>
           </div>
         )}
 
@@ -141,8 +242,10 @@ export const DebugAwsCredentials: React.FC = () => {
         <div className="text-sm text-gray-600">
           <h4 className="font-semibold mb-2">🔍 What This Tests:</h4>
           <ul className="list-disc list-inside space-y-1">
+            <li>Current authentication state and session tokens</li>
             <li>AWS Cognito authentication and session</li>
             <li>Identity Pool temporary credentials generation</li>
+            <li>Fallback credentials from environment variables</li>
             <li>S3 client creation with proper credentials</li>
             <li>Basic S3 upload functionality</li>
           </ul>

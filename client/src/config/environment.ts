@@ -68,5 +68,8 @@ export const logEnvironmentConfig = () => {
     s3Bucket: environment.s3.bucketName,
     isDevelopment: environment.app.isDevelopment,
     isProduction: environment.app.isProduction,
+    // Check for fallback credentials
+    hasAccessKey: !!import.meta.env.VITE_AWS_ACCESS_KEY_ID,
+    hasSecretKey: !!import.meta.env.VITE_AWS_SECRET_ACCESS_KEY,
   });
 };

@@ -67,27 +67,120 @@ export const getAwsCredentials = async () => {
 // Function to get temporary AWS credentials using Identity Pool
 export const getTemporaryAwsCredentials = async () => {
   try {
-    const session = await fetchAuthSession();
+    console.log('🔑 Attempting to get temporary AWS credentials...');
     
-    if (!session.tokens?.accessToken || !environment.aws.identityPoolId) {
-      console.warn('Missing required tokens or Identity Pool ID for AWS credentials');
+    const session = await fetchAuthSession();
+    console.log('📋 Auth session:', {
+      hasTokens: !!session.tokens,
+      hasAccessToken: !!session.tokens?.accessToken,
+      hasIdToken: !!session.tokens?.idToken,
+      hasIdentityId: !!session.identityId,
+      tokens: session.tokens ? Object.keys(session.tokens) : 'none'
+    });
+    
+    if (!session.tokens?.accessToken) {
+      console.warn('❌ No access token available in session');
+      return null;
+    }
+    
+    if (!environment.aws.identityPoolId) {
+      console.warn('❌ No Identity Pool ID configured');
+      return null;
+    }
+    
+    if (!environment.aws.userPoolId) {
+      console.warn('❌ No User Pool ID configured');
       return null;
     }
 
-    const credentials = await fromCognitoIdentityPool({
-      client: new CognitoIdentityClient({ region: environment.aws.region }),
+    console.log('🔧 Creating Cognito Identity client...');
+    const cognitoIdentityClient = new CognitoIdentityClient({ 
+      region: environment.aws.region 
+    });
+    
+    const loginKey = `cognito-idp.${environment.aws.region}.amazonaws.com/${environment.aws.userPoolId}`;
+    const idToken = session.tokens.idToken?.toString();
+    
+    console.log('🔑 Login configuration:', {
+      loginKey,
+      hasIdToken: !!idToken,
+      identityPoolId: environment.aws.identityPoolId,
+      region: environment.aws.region
+    });
+
+    const credentialProvider = fromCognitoIdentityPool({
+      client: cognitoIdentityClient,
       identityPoolId: environment.aws.identityPoolId,
       logins: {
-        [`cognito-idp.${environment.aws.region}.amazonaws.com/${environment.aws.userPoolId}`]: 
-          session.tokens.idToken?.toString() || ''
+        [loginKey]: idToken || ''
       }
+    });
+
+    // Resolve the credential provider to get actual credentials
+    const credentials = await credentialProvider();
+    
+    console.log('✅ Temporary credentials obtained successfully:', {
+      hasAccessKey: !!credentials.accessKeyId,
+      hasSecretKey: !!credentials.secretAccessKey,
+      hasSessionToken: !!credentials.sessionToken,
+      expiration: credentials.expiration
     });
 
     return credentials;
   } catch (error) {
-    console.error('Error getting temporary AWS credentials:', error);
+    console.error('❌ Error getting temporary AWS credentials:', error);
+    
+    // Provide more detailed error information
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+    }
+    
     return null;
   }
+};
+
+// Fallback credential provider for development/testing
+export const getFallbackCredentials = () => {
+  const accessKeyId = import.meta.env.VITE_AWS_ACCESS_KEY_ID;
+  const secretAccessKey = import.meta.env.VITE_AWS_SECRET_ACCESS_KEY;
+  
+  if (accessKeyId && secretAccessKey) {
+    console.log('⚠️ Using fallback credentials from environment variables');
+    return {
+      accessKeyId,
+      secretAccessKey,
+      sessionToken: undefined,
+      expiration: undefined
+    };
+  }
+  
+  return null;
+};
+
+// Enhanced credential provider that tries multiple sources
+export const getAwsCredentialsForS3 = async () => {
+  console.log('🔑 Getting AWS credentials for S3 operations...');
+  
+  // First, try to get temporary credentials from authenticated session
+  const tempCredentials = await getTemporaryAwsCredentials();
+  if (tempCredentials) {
+    console.log('✅ Using temporary credentials from authenticated session');
+    return tempCredentials;
+  }
+  
+  // Fallback to environment variables if available
+  const fallbackCredentials = getFallbackCredentials();
+  if (fallbackCredentials) {
+    console.log('⚠️ Using fallback credentials from environment variables');
+    return fallbackCredentials;
+  }
+  
+  console.error('❌ No AWS credentials available from any source');
+  return null;
 };
 
 // Enhanced function to get user attributes

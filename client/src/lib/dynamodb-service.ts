@@ -856,13 +856,19 @@ export class DynamoDBService {
     try {
       const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
       
-      // Get temporary AWS credentials for the authenticated user
-      const { getTemporaryAwsCredentials } = await import('./aws-config');
-      const credentials = await getTemporaryAwsCredentials();
+      // Get AWS credentials using enhanced provider
+      const { getAwsCredentialsForS3 } = await import('./aws-config');
+      const credentials = await getAwsCredentialsForS3();
       
       if (!credentials) {
-        throw new Error('Failed to get AWS credentials for authenticated user');
+        throw new Error('Failed to get AWS credentials for S3 operations');
       }
+
+      console.log('🔑 Using AWS credentials for S3 upload:', {
+        hasAccessKey: !!credentials.accessKeyId,
+        hasSecretKey: !!credentials.secretAccessKey,
+        hasSessionToken: !!credentials.sessionToken
+      });
 
       const s3Client = new S3Client({ 
         region: this.region,
@@ -891,13 +897,19 @@ export class DynamoDBService {
     try {
       const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
       
-      // Get temporary AWS credentials for the authenticated user
-      const { getTemporaryAwsCredentials } = await import('./aws-config');
-      const credentials = await getTemporaryAwsCredentials();
+      // Get AWS credentials using enhanced provider
+      const { getAwsCredentialsForS3 } = await import('./aws-config');
+      const credentials = await getAwsCredentialsForS3();
       
       if (!credentials) {
-        throw new Error('Failed to get AWS credentials for authenticated user');
+        throw new Error('Failed to get AWS credentials for S3 operations');
       }
+
+      console.log('🔑 Using AWS credentials for S3 download:', {
+        hasAccessKey: !!credentials.accessKeyId,
+        hasSecretKey: !!credentials.secretAccessKey,
+        hasSessionToken: !!credentials.sessionToken
+      });
 
       const s3Client = new S3Client({ 
         region: this.region,

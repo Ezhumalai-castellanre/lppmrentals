@@ -92,71 +92,71 @@ export const DebugAuth: React.FC = () => {
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>🔧 AWS Authentication Debug</CardTitle>
-        <CardDescription>
-          Test and troubleshoot AWS authentication and DynamoDB connection issues
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <Button 
-            onClick={runAwsTest} 
-            disabled={isLoading}
-            variant="outline"
-          >
-            {isLoading ? 'Testing...' : '🧪 Test AWS Config'}
-          </Button>
-          
-          <Button 
-            onClick={testTemporaryCredentials} 
-            disabled={isLoading}
-            variant="outline"
-          >
-            {isLoading ? 'Testing...' : '🔑 Test Credentials'}
-          </Button>
-          
-          <Button 
-            onClick={testDynamoDBConnection} 
-            disabled={isLoading}
-            variant="outline"
-          >
-            {isLoading ? 'Testing...' : '🗄️ Test DynamoDB'}
-          </Button>
-        </div>
-
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-            <h4 className="font-medium text-red-800">❌ Error</h4>
-            <p className="text-red-600 text-sm">{error}</p>
+    <div className="space-y-8">
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>🔧 AWS Authentication Debug</CardTitle>
+          <CardDescription>
+            Test and troubleshoot AWS authentication and DynamoDB connection issues
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              onClick={runAwsTest} 
+              disabled={isLoading}
+              variant="outline"
+            >
+              {isLoading ? 'Testing...' : '🧪 Test AWS Config'}
+            </Button>
+            
+            <Button 
+              onClick={testTemporaryCredentials} 
+              disabled={isLoading}
+              variant="outline"
+            >
+              {isLoading ? 'Testing...' : '🔑 Test Credentials'}
+            </Button>
+            
+            <Button 
+              onClick={testDynamoDBConnection} 
+              disabled={isLoading}
+              variant="outline"
+            >
+              {isLoading ? 'Testing...' : '🗄️ Test DynamoDB'}
+            </Button>
           </div>
-        )}
 
-        {testResults && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
-            <h4 className="font-medium text-blue-800">
-              {testResults.success ? '✅ Success' : '⚠️ Warning'}
-            </h4>
-            <p className="text-blue-600 text-sm mb-2">{testResults.message}</p>
-            <div className="text-xs text-blue-500">
-              <pre>{JSON.stringify(testResults, null, 2)}</pre>
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+              <h4 className="font-medium text-red-800">❌ Error</h4>
+              <p className="text-red-600 text-sm">{error}</p>
             </div>
+          )}
+
+          {testResults && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+              <h4 className="font-medium text-blue-800">
+                {testResults.success ? '✅ Success' : '⚠️ Warning'}
+              </h4>
+              <p className="text-red-600 text-sm mb-2">{testResults.message}</p>
+              <div className="text-xs text-blue-500">
+                <pre>{JSON.stringify(testResults, null, 2)}</pre>
+              </div>
+            </div>
+          )}
+
+          <div className="text-xs text-gray-500 space-y-1">
+            <p><strong>Environment Variables:</strong></p>
+            <p>Region: {import.meta.env.VITE_AWS_REGION || 'Not set'}</p>
+            <p>User Pool ID: {import.meta.env.VITE_AWS_USER_POOL_ID || 'Not set'}</p>
+            <p>Identity Pool ID: {import.meta.env.VITE_AWS_IDENTITY_POOL_ID || 'Not set'}</p>
+            <p>DynamoDB Table: {import.meta.env.VITE_AWS_DYNAMODB_TABLE_NAME || 'DraftSaved'}</p>
           </div>
-        )}
+        </CardContent>
+      </Card>
 
-        <div className="text-xs text-gray-500 space-y-1">
-          <p><strong>Environment Variables:</strong></p>
-          <p>Region: {import.meta.env.VITE_AWS_REGION || 'Not set'}</p>
-          <p>User Pool ID: {import.meta.env.VITE_AWS_USER_POOL_ID || 'Not set'}</p>
-          <p>Identity Pool ID: {import.meta.env.VITE_AWS_IDENTITY_POOL_ID || 'Not set'}</p>
-          <p>DynamoDB Table: {import.meta.env.VITE_AWS_DYNAMODB_TABLE_NAME || 'DraftSaved'}</p>
-        </div>
-      </CardContent>
-    </Card>
-
-    {/* AWS Credentials Debug Component */}
-    <div className="mt-8">
+      {/* AWS Credentials Debug Component */}
       <DebugAwsCredentials />
     </div>
   );
