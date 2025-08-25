@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@/hooks/use-auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '../hooks/use-auth';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Alert, AlertDescription } from '../components/ui/alert';
 import { Loader2, Search, ArrowLeft, AlertTriangle, CheckCircle, Clock, Share2, Link, X, Upload, ArrowDownToLine } from 'lucide-react';
-import { FileUpload } from '@/components/ui/file-upload';
-import { encryptFiles, validateFileForEncryption, type EncryptedFile } from '@/lib/file-encryption';
-import { WebhookService } from '@/lib/webhook-service';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
-import { getAllApplicantIdFormats, isValidLppmNumber } from '@/lib/utils';
-import { environment } from '@/config/environment';
+import { FileUpload } from '../components/ui/file-upload';
+import { encryptFiles, validateFileForEncryption, type EncryptedFile } from '../lib/file-encryption';
+import { WebhookService } from '../lib/webhook-service';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '../components/ui/dialog';
+import { getAllApplicantIdFormats, isValidLppmNumber } from '../lib/utils';
+import { environment } from '../config/environment';
 
 // Helper function to determine if a document type supports multiple files
 const isMultipleFileDocument = (documentName: string): boolean => {

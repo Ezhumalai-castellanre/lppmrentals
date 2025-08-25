@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { MondayApiService, RentalItem } from '../lib/monday-api';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
 import { 
   ArrowLeft,
   MapPin,
@@ -23,8 +23,8 @@ import {
   TreePine,
   Building2
 } from 'lucide-react';
-import { PropertyAmenitiesMap } from '@/components/property-amenities-map'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { PropertyAmenitiesMap } from '../components/property-amenities-map'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog'
 
 export default function PropertyDetailsPage() {
   const [, setLocation] = useLocation();

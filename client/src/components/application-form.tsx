@@ -3,40 +3,40 @@ import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { SignaturePad } from "@/components/ui/signature-pad";
-import { DatePicker } from "@/components/ui/date-picker";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
+import { Checkbox } from "./ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
+import { SignaturePad } from "./ui/signature-pad";
+import { DatePicker } from "./ui/date-picker";
 import { FinancialSection } from "./financial-section";
 import { DocumentSection } from "./document-section";
 import { SupportingDocuments } from "./supporting-documents";
-import { PDFGenerator } from "@/lib/pdf-generator";
-import { EnhancedPDFGenerator } from "@/lib/pdf-generator-enhanced";
-import { ResetPDFGenerator } from "@/lib/pdf-generator-reset";
+import { PDFGenerator } from "../lib/pdf-generator";
+import { EnhancedPDFGenerator } from "../lib/pdf-generator-enhanced";
+import { ResetPDFGenerator } from "../lib/pdf-generator-reset";
 import { Download, FileText, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search, Save, X } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "../hooks/use-toast";
+import { useAuth } from "../hooks/use-auth";
 
 
 import ApplicationInstructions from "./application-instructions";
 import { useRef } from "react";
 import { useLocation } from "wouter";
-import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "@/lib/file-encryption";
-import { WebhookService } from "@/lib/webhook-service";
-import { MondayApiService, type UnitItem } from "@/lib/monday-api";
-import { dynamoDBService, type DraftData } from "@/lib/dynamodb-service";
+import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "../lib/file-encryption";
+import { WebhookService } from "../lib/webhook-service";
+import { MondayApiService, type UnitItem } from "../lib/monday-api";
+import { dynamoDBService, type DraftData } from "../lib/dynamodb-service";
 
 
-import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "@/components/ui/validated-input";
-import { StateCitySelector, StateSelector, CitySelector } from "@/components/ui/state-city-selector";
-import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail, validateDriverLicense } from "@/lib/validation";
-import { FileUpload } from "@/components/ui/file-upload";
+import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "./ui/validated-input";
+import { StateCitySelector, StateSelector, CitySelector } from "./ui/state-city-selector";
+import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail, validateDriverLicense } from "../lib/validation";
+import { FileUpload } from "./ui/file-upload";
 
 
 

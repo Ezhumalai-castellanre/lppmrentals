@@ -1,4 +1,4 @@
-declare module '@/aws-exports.js' {
+declare module '../aws-exports.js' {
   const config: {
     API: {
       GraphQL: {

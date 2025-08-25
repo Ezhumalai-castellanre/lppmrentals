@@ -2,7 +2,7 @@ import { Amplify } from 'aws-amplify';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
 import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
-import { environment, validateEnvironment, logEnvironmentConfig } from '@/config/environment';
+import { environment, validateEnvironment, logEnvironmentConfig } from '../config/environment';
 
 // Validate environment configuration
 validateEnvironment();

@@ -5,17 +5,32 @@ applications:
       phases:
         preBuild:
           commands:
+            - echo "=== Starting preBuild phase ==="
             - node --version
             - npm --version
+            - echo "=== Setting up environment ==="
+            - export NODE_OPTIONS="--max-old-space-size=4096"
+            - export npm_config_platform=linux
+            - export npm_config_arch=x64
             - cd client
-            - rm -rf node_modules package-lock.json
-            - npm install --include=optional
-            - npm rebuild
+            - echo "=== Cleaning previous build artifacts ==="
+            - rm -rf node_modules package-lock.json dist .vite
+            - echo "=== Installing dependencies with all optional packages ==="
+            - npm install --include=optional --no-optional=false --force
+            - echo "=== Running custom Rollup dependency installer ==="
+            - chmod +x install-deps.sh
+            - ./install-deps.sh
+            - echo "=== Verifying critical dependencies ==="
+            - ls -la node_modules/@rollup/ || echo "Rollup not found in @rollup"
+            - ls -la node_modules/rollup/ || echo "Rollup not found in rollup"
+            - echo "=== PreBuild phase completed ==="
         build:
           commands:
+            - echo "=== Starting build phase ==="
             - npm run build
+            - echo "=== Build completed, checking output ==="
             - ls -la dist/
-            - echo "Build completed successfully"
+            - echo "=== Build phase completed successfully ==="
       artifacts:
         baseDirectory: client/dist
         files:
@@ -23,9 +38,13 @@ applications:
       cache:
         paths:
           - client/node_modules/**/*
-    env:
-      runtime-versions:
-        nodejs: 18.x
+          - client/.npm/**/*
+      env:
+        runtime-versions:
+          nodejs: 18.x
+        variables:
+          NODE_ENV: production
+          NODE_OPTIONS: "--max-old-space-size=4096"
     customHeaders:
       - pattern: '**/*'
         headers:
@@ -35,5 +54,13 @@ applications:
         headers:
           - key: Cache-Control
             value: no-store
+      - pattern: '**/*.js'
+        headers:
+          - key: Cache-Control
+            value: public, max-age=31536000, immutable
+      - pattern: '**/*.css'
+        headers:
+          - key: Cache-Control
+            value: public, max-age=31536000, immutable
     # Note: Client-side routing is handled by the _redirects file in the build output
 

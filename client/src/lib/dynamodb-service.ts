@@ -3,7 +3,7 @@ import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
 import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
-import { environment } from '@/config/environment';
+import { environment } from '../config/environment';
 
 export interface DraftData {
   zoneinfo: string; // Source of truth - user's zoneinfo value
