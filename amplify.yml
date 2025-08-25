@@ -8,7 +8,9 @@ applications:
             - node --version
             - npm --version
             - cd client
-            - npm ci
+            - rm -rf node_modules package-lock.json
+            - npm install --include=optional
+            - npm rebuild
         build:
           commands:
             - npm run build
