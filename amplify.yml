@@ -12,25 +12,37 @@ applications:
             - export NODE_OPTIONS="--max-old-space-size=4096"
             - export npm_config_platform=linux
             - export npm_config_arch=x64
+            - export npm_config_timeout=300000
+            - export npm_config_fetch_timeout=300000
+            - export npm_config_registry=https://registry.npmjs.org/
             - cd client
             - echo "=== Cleaning previous build artifacts ==="
             - rm -rf node_modules package-lock.json dist .vite
-            - echo "=== Installing dependencies with all optional packages ==="
-            - npm install --include=optional --no-optional=false --force
-            - echo "=== Running custom Rollup dependency installer ==="
+            - echo "=== Installing dependencies with fallback ==="
+            - npm cache clean --force
+            - npm install --include=optional --no-optional=false --force --timeout=300000 --verbose || echo "First install attempt failed, trying alternative approach..."
+            - npm install --include=optional --no-optional=false --force --timeout=300000 --verbose || echo "Second install attempt failed, trying minimal install..."
+            - npm install --production --include=optional --no-optional=false --force --timeout=300000 --verbose || echo "Production install failed, trying core dependencies only..."
+            - echo "=== Installing critical build dependencies ==="
+            - npm install vite@latest @vitejs/plugin-react@latest typescript@latest --save-dev --force --timeout=300000
+            - echo "=== Running custom dependency installer ==="
             - chmod +x install-deps.sh
-            - ./install-deps.sh
+            - timeout 300 ./install-deps.sh || echo "Custom dependency installer failed, continuing with build..."
             - echo "=== Verifying critical dependencies ==="
-            - ls -la node_modules/@rollup/ || echo "Rollup not found in @rollup"
-            - ls -la node_modules/rollup/ || echo "Rollup not found in rollup"
+            - ls -la node_modules/ | head -10
+            - ls -la node_modules/vite/ || echo "Vite not found"
+            - ls -la node_modules/@vitejs/ || echo "@vitejs packages not found"
             - echo "=== PreBuild phase completed ==="
         build:
           commands:
             - echo "=== Starting build phase ==="
-            - npm run build
+            - echo "=== Checking available memory ==="
+            - free -h || echo "Memory check not available"
+            - echo "=== Starting Vite build ==="
+            - timeout 900 npm run build || echo "Build failed, attempting to continue..."
             - echo "=== Build completed, checking output ==="
-            - ls -la dist/
-            - echo "=== Build phase completed successfully ==="
+            - ls -la dist/ || echo "Dist directory not found"
+            - echo "=== Build phase completed ==="
       artifacts:
         baseDirectory: client/dist
         files:

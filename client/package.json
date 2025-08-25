@@ -9,8 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "postinstall": "node -e \"try { require('@rollup/rollup-linux-x64-gnu'); console.log('✅ Linux x64 GNU Rollup binary found'); } catch(e) { console.log('⚠️  Linux x64 GNU Rollup binary not found, installing...'); require('child_process').execSync('npm install @rollup/rollup-linux-x64-gnu --include=optional --no-optional=false --force', {stdio: 'inherit'}); }\""
+    "preview": "vite preview"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.11.2",
