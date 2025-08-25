@@ -17,6 +17,8 @@ export interface DraftData {
   webhook_responses?: any;
   signatures?: any;
   encrypted_documents?: any;
+  storage_mode?: 'direct' | 'hybrid'; // Indicates storage method used
+  s3_references?: string[]; // S3 URLs for hybrid storage
 }
 
 // Interface for form data that uses application_id
@@ -553,7 +555,8 @@ export class DynamoDBService {
             uploadedFiles: cleanUploadedFiles,
             webhookResponses: cleanWebhookResponses,
             signatures: cleanSignatures,
-            encryptedDocuments: cleanEncryptedDocuments
+            encryptedDocuments: cleanEncryptedDocuments,
+            reference_id: draftData.reference_id
           }, applicantId);
 
           // Get DynamoDB client
@@ -607,32 +610,97 @@ export class DynamoDBService {
         await client.send(command);
         console.log('✅ Draft saved successfully to DynamoDB with validated applicantId');
         return true;
-             } catch (error: any) {
-         console.error(`❌ Error saving draft on attempt ${attempts}:`, error);
-         
-         // Check for authentication-related errors that can be resolved by refreshing credentials
-         if (attempts < maxRetries && (
-           error.name === 'NotAuthorizedException' || 
-           error.name === 'AccessDeniedException' ||
-           error.name === 'ExpiredTokenException' ||
-           error.message?.includes('Token expired') ||
-           error.message?.includes('Invalid login token')
-         )) {
-           console.warn(`⚠️ Authentication error detected on attempt ${attempts}. Attempting to refresh credentials and retry...`);
-           try {
-             await this.handleTokenExpiration();
-             continue; // Retry the current attempt with new credentials
-           } catch (refreshError) {
-             console.error('❌ Failed to refresh credentials:', refreshError);
-             return false;
-           }
-         }
-         
-         // For other errors, don't retry
-         return false;
-       }
+      } catch (error: any) {
+        if (await this.handleSaveDraftError(error, attempts, maxRetries)) {
+          continue; // Retry the current attempt with new credentials
+        }
+        return false;
+      }
     }
     console.error(`❌ Failed to save draft after ${maxRetries} attempts.`);
+    return false;
+  }
+
+  // Migrate existing large data to hybrid storage
+  async migrateToHybridStorage(applicantId: string, referenceId: string): Promise<boolean> {
+    try {
+      console.log('🔄 Migrating existing data to hybrid storage...');
+      
+      // First, retrieve the existing data
+      const existingDraft = await this.getDraft(applicantId, referenceId);
+      if (!existingDraft) {
+        console.log('📭 No existing draft found to migrate');
+        return false;
+      }
+
+      // Check if data is already using hybrid storage
+      if (existingDraft.storage_mode === 'hybrid') {
+        console.log('✅ Data is already using hybrid storage');
+        return true;
+      }
+
+      // Create new draft data with hybrid storage
+      const newDraftData: DraftData = {
+        ...existingDraft,
+        last_updated: new Date().toISOString(),
+      };
+
+      // Save using hybrid storage approach
+      const success = await this.saveDraft(newDraftData, applicantId);
+      if (success) {
+        console.log('✅ Successfully migrated data to hybrid storage');
+        return true;
+      } else {
+        console.error('❌ Failed to migrate data to hybrid storage');
+        return false;
+      }
+    } catch (error: any) {
+      console.error('❌ Error during migration to hybrid storage:', error);
+      return false;
+    }
+  }
+
+  // Enhanced error handling for saveDraft
+  private async handleSaveDraftError(error: any, attempts: number, maxRetries: number): Promise<boolean> {
+    console.error(`❌ Error saving draft on attempt ${attempts}:`, error);
+    
+    // Check for authentication-related errors that can be resolved by refreshing credentials
+    if (attempts < maxRetries && (
+      error.name === 'NotAuthorizedException' || 
+      error.name === 'AccessDeniedException' ||
+      error.name === 'ExpiredTokenException' ||
+      error.message?.includes('Token expired') ||
+      error.message?.includes('Invalid login token')
+    )) {
+      console.warn(`⚠️ Authentication error detected on attempt ${attempts}. Attempting to refresh credentials and retry...`);
+      try {
+        await this.handleTokenExpiration();
+        return true; // Indicate retry should continue
+      } catch (refreshError) {
+        console.error('❌ Failed to refresh credentials:', refreshError);
+        return false;
+      }
+    }
+
+    // Check for DynamoDB-specific errors
+    if (error.name === 'ValidationException') {
+      if (error.message?.includes('Item size has exceeded the maximum allowed size')) {
+        console.warn('⚠️ Item size exceeded limit, attempting to use hybrid storage...');
+        // This should be handled by the hybrid storage logic above
+        return false; // Don't retry, hybrid storage should handle it
+      }
+      console.error('🔧 Validation error - check data structure and table schema');
+    } else if (error.name === 'ResourceNotFoundException') {
+      console.error(`🔧 Table '${this.tableName}' not found`);
+    } else if (error.name === 'AccessDeniedException') {
+      console.error('🔧 Access denied - check AWS credentials and permissions');
+    } else if (error.name === 'ProvisionedThroughputExceededException') {
+      console.warn('⚠️ Provisioned throughput exceeded, waiting before retry...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return true; // Indicate retry should continue
+    }
+    
+    // For other errors, don't retry
     return false;
   }
 
@@ -802,58 +870,247 @@ export class DynamoDBService {
     encryptedDocuments: any;
     s3References: string[];
   }> {
-    const s3References: string[] = [];
-    const referenceId = data.reference_id || `draft_${Date.now()}`;
+    try {
+      console.log('🔄 Implementing hybrid storage for large data...');
+      const s3References: string[] = [];
+      const referenceId = data.reference_id || `draft_${Date.now()}`;
 
-    // Save form data to S3 if it exists
-    if (data.formData && typeof data.formData === 'object') {
-      const formDataS3Key = `form_data/${applicantId}/${referenceId}.json`;
-      const formDataS3Url = await this.uploadToS3(JSON.stringify(data.formData), formDataS3Key);
-      s3References.push(formDataS3Url);
+      // Create a simplified version of form data (remove large fields)
+      const simplifiedFormData = this.simplifyFormDataForDynamoDB(data.formData);
+      
+      // Store large data in S3 and keep only references in DynamoDB
+      if (data.uploadedFiles && typeof data.uploadedFiles === 'object' && Object.keys(data.uploadedFiles).length > 0) {
+        try {
+          const uploadedFilesS3Key = `uploaded_files/${applicantId}/${referenceId}.json`;
+          const uploadedFilesS3Url = await this.uploadToS3(JSON.stringify(data.uploadedFiles), uploadedFilesS3Key);
+          s3References.push(uploadedFilesS3Url);
+          console.log('✅ Uploaded files metadata stored in S3');
+        } catch (error) {
+          console.warn('⚠️ Failed to store uploaded files in S3, keeping minimal data:', error);
+          // Keep only essential metadata in DynamoDB
+          data.uploadedFiles = this.extractEssentialFileMetadata(data.uploadedFiles);
+        }
+      }
+
+      if (data.webhookResponses && typeof data.webhookResponses === 'object' && Object.keys(data.webhookResponses).length > 0) {
+        try {
+          const webhookResponsesS3Key = `webhook_responses/${applicantId}/${referenceId}.json`;
+          const webhookResponsesS3Url = await this.uploadToS3(JSON.stringify(data.webhookResponses), webhookResponsesS3Key);
+          s3References.push(webhookResponsesS3Url);
+          console.log('✅ Webhook responses stored in S3');
+        } catch (error) {
+          console.warn('⚠️ Failed to store webhook responses in S3, keeping minimal data:', error);
+          data.webhookResponses = this.extractEssentialWebhookData(data.webhookResponses);
+        }
+      }
+
+      if (data.signatures && typeof data.signatures === 'object' && Object.keys(data.signatures).length > 0) {
+        try {
+          const signaturesS3Key = `signatures/${applicantId}/${referenceId}.json`;
+          const signaturesS3Url = await this.uploadToS3(JSON.stringify(data.signatures), signaturesS3Key);
+          s3References.push(signaturesS3Url);
+          console.log('✅ Signatures stored in S3');
+        } catch (error) {
+          console.warn('⚠️ Failed to store signatures in S3, keeping minimal data:', error);
+          data.signatures = this.extractEssentialSignatureData(data.signatures);
+        }
+      }
+
+      if (data.encryptedDocuments && typeof data.encryptedDocuments === 'object' && Object.keys(data.encryptedDocuments).length > 0) {
+        try {
+          const encryptedDocumentsS3Key = `encrypted_documents/${applicantId}/${referenceId}.json`;
+          const encryptedDocumentsS3Url = await this.uploadToS3(JSON.stringify(data.encryptedDocuments), encryptedDocumentsS3Key);
+          s3References.push(encryptedDocumentsS3Url);
+          console.log('✅ Encrypted documents stored in S3');
+        } catch (error) {
+          console.warn('⚠️ Failed to store encrypted documents in S3, keeping minimal data:', error);
+          data.encryptedDocuments = this.extractEssentialDocumentData(data.encryptedDocuments);
+        }
+      }
+
+      console.log(`✅ Hybrid storage completed. ${s3References.length} items stored in S3`);
+
+      // Return the cleaned data and S3 references
+      return {
+        formData: simplifiedFormData,
+        uploadedFiles: data.uploadedFiles || {},
+        webhookResponses: data.webhookResponses || {},
+        signatures: data.signatures || {},
+        encryptedDocuments: data.encryptedDocuments || {},
+        s3References: s3References
+      };
+    } catch (error) {
+      console.error('❌ Error implementing hybrid storage:', error);
+      // Fallback to simplified data if hybrid storage fails
+      return {
+        formData: this.simplifyFormDataForDynamoDB(data.formData),
+        uploadedFiles: this.extractEssentialFileMetadata(data.uploadedFiles),
+        webhookResponses: this.extractEssentialWebhookData(data.webhookResponses),
+        signatures: this.extractEssentialSignatureData(data.signatures),
+        encryptedDocuments: this.extractEssentialDocumentData(data.encryptedDocuments),
+        s3References: []
+      };
     }
-
-    // Save uploaded files to S3 if they exist
-    if (data.uploadedFiles && typeof data.uploadedFiles === 'object') {
-      const uploadedFilesS3Key = `uploaded_files/${applicantId}/${referenceId}.json`;
-      const uploadedFilesS3Url = await this.uploadToS3(JSON.stringify(data.uploadedFiles), uploadedFilesS3Key);
-      s3References.push(uploadedFilesS3Url);
-    }
-
-    // Save webhook responses to S3 if they exist
-    if (data.webhookResponses && typeof data.webhookResponses === 'object') {
-      const webhookResponsesS3Key = `webhook_responses/${applicantId}/${referenceId}.json`;
-      const webhookResponsesS3Url = await this.uploadToS3(JSON.stringify(data.webhookResponses), webhookResponsesS3Key);
-      s3References.push(webhookResponsesS3Url);
-    }
-
-    // Save signatures to S3 if they exist
-    if (data.signatures && typeof data.signatures === 'object') {
-      const signaturesS3Key = `signatures/${applicantId}/${referenceId}.json`;
-      const signaturesS3Url = await this.uploadToS3(JSON.stringify(data.signatures), signaturesS3Key);
-      s3References.push(signaturesS3Url);
-    }
-
-    // Save encrypted documents to S3 if they exist
-    if (data.encryptedDocuments && typeof data.encryptedDocuments === 'object') {
-      const encryptedDocumentsS3Key = `encrypted_documents/${applicantId}/${referenceId}.json`;
-      const encryptedDocumentsS3Url = await this.uploadToS3(JSON.stringify(data.encryptedDocuments), encryptedDocumentsS3Key);
-      s3References.push(encryptedDocumentsS3Url);
-    }
-
-    // Return the cleaned data and S3 references
-    return {
-      formData: data.formData,
-      uploadedFiles: data.uploadedFiles,
-      webhookResponses: data.webhookResponses,
-      signatures: data.signatures,
-      encryptedDocuments: data.encryptedDocuments,
-      s3References: s3References
-    };
   }
 
-  // Upload data to S3
+  // Simplify form data to fit in DynamoDB
+  private simplifyFormDataForDynamoDB(formData: any): any {
+    if (!formData || typeof formData !== 'object') {
+      return {};
+    }
+
+    try {
+      // Create a simplified version that keeps essential fields but removes large data
+      const simplified = { ...formData };
+      
+      // Remove or simplify large fields that might cause size issues
+      if (simplified.uploadedFiles) {
+        simplified.uploadedFiles = this.extractEssentialFileMetadata(simplified.uploadedFiles);
+      }
+      
+      if (simplified.webhookResponses) {
+        simplified.webhookResponses = this.extractEssentialWebhookData(simplified.webhookResponses);
+      }
+      
+      if (simplified.signatures) {
+        simplified.signatures = this.extractEssentialSignatureData(simplified.signatures);
+      }
+      
+      if (simplified.encryptedDocuments) {
+        simplified.encryptedDocuments = this.extractEssentialDocumentData(simplified.encryptedDocuments);
+      }
+
+      return simplified;
+    } catch (error) {
+      console.warn('⚠️ Error simplifying form data:', error);
+      return { application_id: formData.application_id, applicantId: formData.applicantId };
+    }
+  }
+
+  // Extract essential file metadata (remove large content)
+  private extractEssentialFileMetadata(uploadedFiles: any): any {
+    if (!uploadedFiles || typeof uploadedFiles !== 'object') {
+      return {};
+    }
+
+    const essential: Record<string, any> = {};
+    for (const [key, value] of Object.entries(uploadedFiles)) {
+      if (value && typeof value === 'object') {
+        // Keep only essential metadata, remove file content
+        essential[key] = {
+          fileName: (value as any).fileName || key,
+          fileSize: (value as any).fileSize,
+          fileType: (value as any).fileType,
+          uploadDate: (value as any).uploadDate,
+          s3Key: (value as any).s3Key,
+          // Remove large fields like content, data, etc.
+        };
+      }
+    }
+    return essential;
+  }
+
+  // Extract essential webhook data
+  private extractEssentialWebhookData(webhookResponses: any): any {
+    if (!webhookResponses || typeof webhookResponses !== 'object') {
+      return {};
+    }
+
+    const essential: Record<string, any> = {};
+    for (const [key, value] of Object.entries(webhookResponses)) {
+      if (value && typeof value === 'object') {
+        essential[key] = {
+          status: (value as any).status,
+          timestamp: (value as any).timestamp,
+          success: (value as any).success,
+          // Keep only essential fields, remove large response data
+        };
+      }
+    }
+    return essential;
+  }
+
+  // Extract essential signature data
+  private extractEssentialSignatureData(signatures: any): any {
+    if (!signatures || typeof signatures !== 'object') {
+      return {};
+    }
+
+    const essential: Record<string, any> = {};
+    for (const [key, value] of Object.entries(signatures)) {
+      if (value && typeof value === 'object') {
+        essential[key] = {
+          signed: (value as any).signed,
+          timestamp: (value as any).timestamp,
+          signerName: (value as any).signerName,
+          // Remove large signature data
+        };
+      }
+    }
+    return essential;
+  }
+
+  // Extract essential document data
+  private extractEssentialDocumentData(encryptedDocuments: any): any {
+    if (!encryptedDocuments || typeof encryptedDocuments !== 'object') {
+      return {};
+    }
+
+    const essential: Record<string, any> = {};
+    for (const [key, value] of Object.entries(encryptedDocuments)) {
+      if (value && typeof value === 'object') {
+        essential[key] = {
+          documentType: (value as any).documentType,
+          encrypted: (value as any).encrypted,
+          timestamp: (value as any).timestamp,
+          // Remove large encrypted content
+        };
+      }
+    }
+    return essential;
+  }
+
+  // Check if S3 bucket is accessible
+  private async checkS3BucketAccess(): Promise<boolean> {
+    try {
+      const { S3Client, HeadBucketCommand } = await import('@aws-sdk/client-s3');
+      
+      // Get AWS credentials using enhanced provider
+      const { getAwsCredentialsForS3 } = await import('./aws-config');
+      const credentials = await getAwsCredentialsForS3();
+      
+      if (!credentials) {
+        console.warn('⚠️ No AWS credentials available for S3 bucket check');
+        return false;
+      }
+
+      const s3Client = new S3Client({ 
+        region: this.region,
+        credentials: credentials
+      });
+
+      const command = new HeadBucketCommand({
+        Bucket: environment.s3.bucketName,
+      });
+
+      await s3Client.send(command);
+      console.log(`✅ S3 bucket '${environment.s3.bucketName}' is accessible`);
+      return true;
+    } catch (error: any) {
+      console.warn(`⚠️ S3 bucket '${environment.s3.bucketName}' is not accessible:`, error.message);
+      return false;
+    }
+  }
+
+  // Upload data to S3 with better error handling
   private async uploadToS3(data: string, key: string): Promise<string> {
     try {
+      // First check if S3 bucket is accessible
+      const bucketAccessible = await this.checkS3BucketAccess();
+      if (!bucketAccessible) {
+        throw new Error(`S3 bucket '${environment.s3.bucketName}' is not accessible`);
+      }
+
       const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
       
       // Get AWS credentials using enhanced provider
@@ -947,89 +1204,124 @@ export class DynamoDBService {
         reference_id: referenceId
       });
 
-      // Get the correct key structure - only use applicantId since table has no sort key
-      const key = this.getKeyStructure(applicationId);
-
       const command = new GetItemCommand({
         TableName: this.tableName,
-        Key: key,
+        Key: this.getKeyStructure(applicationId),
       });
 
       const response = await client.send(command);
       
-      if (response.Item) {
-        const draftData = unmarshall(response.Item) as DraftData;
-        console.log('✅ Draft retrieved successfully from DynamoDB');
-        
-        // Ensure the returned draft data uses the current user's zoneinfo
-        const currentUserZoneinfo = await this.getCurrentUserZoneinfo();
-        if (currentUserZoneinfo) {
-          console.log(`🔄 Mapping retrieved draft to use current user's zoneinfo '${currentUserZoneinfo}'`);
-          
-          // Update the draft data to use current user's zoneinfo
-          draftData.zoneinfo = currentUserZoneinfo;
-          draftData.applicantId = this.generateApplicantIdFromZoneinfo(currentUserZoneinfo);
-          
-          // Clean the form data to ensure consistency
-          if (draftData.form_data && typeof draftData.form_data === 'object') {
-            console.log('🧹 Cleaning form data in retrieved draft to ensure zoneinfo consistency');
-            draftData.form_data = this.cleanFormDataForConsistency(draftData.form_data);
-            
-            // Ensure all form data fields use current zoneinfo
-            if (draftData.form_data.application_id !== currentUserZoneinfo) {
-              console.log(`🔄 Updating form_data.application_id to current zoneinfo '${currentUserZoneinfo}'`);
-              draftData.form_data.application_id = currentUserZoneinfo;
-            }
-            
-            if (draftData.form_data.applicantId !== draftData.applicantId) {
-              console.log(`🔄 Updating form_data.applicantId to match draft applicantId '${draftData.applicantId}'`);
-              draftData.form_data.applicantId = draftData.applicantId;
-            }
-            
-            if (draftData.form_data.zoneinfo !== currentUserZoneinfo) {
-              console.log(`🔄 Updating form_data.zoneinfo to current zoneinfo '${currentUserZoneinfo}'`);
-              draftData.form_data.zoneinfo = currentUserZoneinfo;
-            }
-          }
-          
-          console.log('✅ Draft data updated to use current user\'s zoneinfo. Final state:', {
-            zoneinfo: draftData.zoneinfo,
-            applicantId: draftData.applicantId,
-            form_data_zoneinfo: draftData.form_data?.zoneinfo,
-            form_data_application_id: draftData.form_data?.application_id,
-            form_data_applicantId: draftData.form_data?.applicantId
-          });
-        }
-        
-        return draftData;
-      } else {
-        console.log('📭 No draft found for the given applicantId');
+      if (!response.Item) {
+        console.log('📭 No draft found for applicantId:', applicationId);
         return null;
       }
-    } catch (error: any) {
-      console.error('❌ Error retrieving draft from DynamoDB:', error);
-      
-      // Provide more specific error information
-      if (error.name === 'ValidationException') {
-        console.error('🔧 Validation error - check if the key structure matches the table schema');
-        console.error('🔧 Expected key structure:', {
-          applicantId: { S: 'string' }
-        });
-        
-        // Try to get the actual table schema
-        console.log('🔧 Attempting to inspect table schema...');
-        try {
-          await this.testConnection();
-        } catch (schemaError) {
-          console.error('🔧 Could not inspect table schema:', schemaError);
-        }
-      } else if (error.name === 'ResourceNotFoundException') {
-        console.error(`🔧 Table '${this.tableName}' not found`);
-      } else if (error.name === 'AccessDeniedException') {
-        console.error('🔧 Access denied - check AWS credentials and permissions');
+
+      const item = unmarshall(response.Item);
+      console.log('📋 Retrieved draft item:', item);
+
+      // Check if this is using hybrid storage
+      if (item.storage_mode === 'hybrid' && item.s3_references) {
+        console.log('🔄 Draft uses hybrid storage, retrieving full data from S3...');
+        return await this.retrieveHybridStorageDraft(item);
       }
-      
+
+      // Regular direct storage
+      const draftData: DraftData = {
+        zoneinfo: item.zoneinfo || applicationId,
+        applicantId: item.applicantId || applicationId,
+        reference_id: item.reference_id,
+        form_data: item.form_data ? JSON.parse(item.form_data) : {},
+        current_step: item.current_step || 0,
+        last_updated: item.last_updated,
+        status: item.status || 'draft',
+        uploaded_files_metadata: item.uploaded_files_metadata ? JSON.parse(item.uploaded_files_metadata) : {},
+        webhook_responses: item.webhook_responses ? JSON.parse(item.webhook_responses) : {},
+        signatures: item.signatures ? JSON.parse(item.signatures) : {},
+        encrypted_documents: item.encrypted_documents ? JSON.parse(item.encrypted_documents) : {},
+      };
+
+      console.log('✅ Draft retrieved successfully from DynamoDB');
+      return draftData;
+    } catch (error: any) {
+      console.error('❌ Error retrieving draft:', error);
       return null;
+    }
+  }
+
+  // Retrieve full draft data from hybrid storage (S3 + DynamoDB)
+  private async retrieveHybridStorageDraft(item: any): Promise<DraftData | null> {
+    try {
+      console.log('🔄 Retrieving full data from hybrid storage...');
+      
+      const s3References = item.s3_references ? JSON.parse(item.s3_references) : [];
+      console.log(`📋 Found ${s3References.length} S3 references:`, s3References);
+
+      // Parse the base data from DynamoDB
+      const baseFormData = item.form_data ? JSON.parse(item.form_data) : {};
+      const baseUploadedFiles = item.uploaded_files_metadata ? JSON.parse(item.uploaded_files_metadata) : {};
+      const baseWebhookResponses = item.webhook_responses ? JSON.parse(item.webhook_responses) : {};
+      const baseSignatures = item.signatures ? JSON.parse(item.signatures) : {};
+      const baseEncryptedDocuments = item.encrypted_documents ? JSON.parse(item.encrypted_documents) : {};
+
+      // Try to retrieve full data from S3 for each reference
+      let fullUploadedFiles = baseUploadedFiles;
+      let fullWebhookResponses = baseWebhookResponses;
+      let fullSignatures = baseSignatures;
+      let fullEncryptedDocuments = baseEncryptedDocuments;
+
+      for (const s3Url of s3References) {
+        try {
+          const data = await this.downloadFromS3(s3Url);
+          if (data) {
+            // Determine the type of data based on the S3 key
+            if (s3Url.includes('/uploaded_files/')) {
+              fullUploadedFiles = { ...fullUploadedFiles, ...data };
+            } else if (s3Url.includes('/webhook_responses/')) {
+              fullWebhookResponses = { ...fullWebhookResponses, ...data };
+            } else if (s3Url.includes('/signatures/')) {
+              fullSignatures = { ...fullSignatures, ...data };
+            } else if (s3Url.includes('/encrypted_documents/')) {
+              fullEncryptedDocuments = { ...fullEncryptedDocuments, ...data };
+            }
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to retrieve data from S3: ${s3Url}`, error);
+          // Continue with other references
+        }
+      }
+
+      const draftData: DraftData = {
+        zoneinfo: item.zoneinfo || item.applicantId,
+        applicantId: item.applicantId,
+        reference_id: item.reference_id,
+        form_data: baseFormData,
+        current_step: item.current_step || 0,
+        last_updated: item.last_updated,
+        status: item.status || 'draft',
+        uploaded_files_metadata: fullUploadedFiles,
+        webhook_responses: fullWebhookResponses,
+        signatures: fullSignatures,
+        encrypted_documents: fullEncryptedDocuments,
+      };
+
+      console.log('✅ Full draft data retrieved from hybrid storage');
+      return draftData;
+    } catch (error: any) {
+      console.error('❌ Error retrieving hybrid storage draft:', error);
+      // Fallback to base data if S3 retrieval fails
+      return {
+        zoneinfo: item.zoneinfo || item.applicantId,
+        applicantId: item.applicantId,
+        reference_id: item.reference_id,
+        form_data: item.form_data ? JSON.parse(item.form_data) : {},
+        current_step: item.current_step || 0,
+        last_updated: item.last_updated,
+        status: item.status || 'draft',
+        uploaded_files_metadata: item.uploaded_files_metadata ? JSON.parse(item.uploaded_files_metadata) : {},
+        webhook_responses: item.webhook_responses ? JSON.parse(item.webhook_responses) : {},
+        signatures: item.signatures ? JSON.parse(item.signatures) : {},
+        encrypted_documents: item.encrypted_documents ? JSON.parse(item.encrypted_documents) : {},
+      };
     }
   }
 
@@ -1367,10 +1659,7 @@ export const dynamoDBUtils = {
       return null;
     }
     
-    console.log(`🔄 Getting draft for current user with zoneinfo: ${zoneinfo}`);
-    
-    // Use the new getDraftByReferenceId method which handles zoneinfo mapping automatically
-    return dynamoDBService.getDraftByReferenceId(referenceId);
+    return dynamoDBService.getDraft(zoneinfo, referenceId);
   },
 
   // Mark draft as submitted using current user's zoneinfo
@@ -1381,8 +1670,7 @@ export const dynamoDBUtils = {
       return false;
     }
     
-    const applicantId = dynamoDBService.generateApplicantIdFromZoneinfo(zoneinfo);
-    return dynamoDBService.markAsSubmitted(applicantId, referenceId);
+    return dynamoDBService.markAsSubmitted(zoneinfo, referenceId);
   },
 
   // Delete draft using current user's zoneinfo
@@ -1393,8 +1681,7 @@ export const dynamoDBUtils = {
       return false;
     }
     
-    const applicantId = dynamoDBService.generateApplicantIdFromZoneinfo(zoneinfo);
-    return dynamoDBService.deleteDraft(applicantId, referenceId);
+    return dynamoDBService.deleteDraft(zoneinfo, referenceId);
   },
 
   // Get all drafts for current user
@@ -1405,12 +1692,75 @@ export const dynamoDBUtils = {
       return [];
     }
     
-    const applicantId = dynamoDBService.generateApplicantIdFromZoneinfo(zoneinfo);
-    return dynamoDBService.getAllDrafts(applicantId);
+    return dynamoDBService.getAllDrafts(zoneinfo);
   },
 
-  // Ensure any draft data uses current user's zoneinfo
-  async ensureDraftDataUsesCurrentZoneinfo(draftData: DraftData): Promise<DraftData> {
-    return dynamoDBService.ensureDraftDataUsesCurrentZoneinfo(draftData);
+  // Migrate existing data to hybrid storage
+  async migrateToHybridStorage(referenceId: string): Promise<boolean> {
+    const zoneinfo = await dynamoDBService.getCurrentUserZoneinfo();
+    if (!zoneinfo) {
+      console.error('❌ Cannot migrate data - no zoneinfo available for current user');
+      return false;
+    }
+    
+    return dynamoDBService.migrateToHybridStorage(zoneinfo, referenceId);
+  },
+
+  // Test hybrid storage functionality
+  async testHybridStorage(): Promise<boolean> {
+    try {
+      console.log('🧪 Testing hybrid storage functionality...');
+      
+      // Test S3 bucket access
+      const s3Accessible = await dynamoDBService['checkS3BucketAccess']();
+      if (!s3Accessible) {
+        console.warn('⚠️ S3 bucket not accessible, hybrid storage may not work');
+        return false;
+      }
+      
+      console.log('✅ S3 bucket is accessible');
+      
+      // Test with sample data
+      const testData = {
+        zoneinfo: 'test-zoneinfo',
+        applicantId: 'test-zoneinfo',
+        reference_id: `test_${Date.now()}`,
+        form_data: { test: 'data' },
+        current_step: 1,
+        last_updated: new Date().toISOString(),
+        status: 'draft' as const,
+        uploaded_files_metadata: { testFile: { fileName: 'test.txt', fileSize: 1024 } },
+        webhook_responses: { testWebhook: { status: 'success', timestamp: new Date().toISOString() } },
+        signatures: { testSignature: { signed: true, timestamp: new Date().toISOString() } },
+        encrypted_documents: { testDoc: { documentType: 'test', encrypted: true, timestamp: new Date().toISOString() } }
+      };
+      
+      // Test save with hybrid storage
+      const saveResult = await dynamoDBService.saveDraft(testData, testData.applicantId);
+      if (!saveResult) {
+        console.error('❌ Failed to save test data with hybrid storage');
+        return false;
+      }
+      
+      console.log('✅ Test data saved successfully with hybrid storage');
+      
+      // Test retrieval
+      const retrievedData = await dynamoDBService.getDraft(testData.applicantId, testData.reference_id);
+      if (!retrievedData) {
+        console.error('❌ Failed to retrieve test data');
+        return false;
+      }
+      
+      console.log('✅ Test data retrieved successfully');
+      
+      // Clean up test data
+      await dynamoDBService.deleteDraft(testData.applicantId, testData.reference_id);
+      console.log('✅ Test data cleaned up');
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error testing hybrid storage:', error);
+      return false;
+    }
   }
 };

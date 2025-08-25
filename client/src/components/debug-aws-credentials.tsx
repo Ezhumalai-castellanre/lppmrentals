@@ -1,256 +1,249 @@
 import React, { useState } from 'react';
-import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getTemporaryAwsCredentials, testAwsConfiguration, getAwsCredentialsForS3 } from '../lib/aws-config';
+import { dynamoDBService } from '../lib/dynamodb-service';
 
-export const DebugAwsCredentials: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(false);
+export function DebugAwsCredentials() {
   const [credentials, setCredentials] = useState<any>(null);
-  const [testResult, setTestResult] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [authState, setAuthState] = useState<any>(null);
-
-  const testAuthState = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      console.log('🔍 Testing authentication state...');
-      
-      // Test current authentication state
-      const { fetchAuthSession, getCurrentUser } = await import('aws-amplify/auth');
-      
-      const session = await fetchAuthSession();
-      const currentUser = await getCurrentUser();
-      
-      const authInfo = {
-        session: {
-          hasTokens: !!session.tokens,
-          hasAccessToken: !!session.tokens?.accessToken,
-          hasIdToken: !!session.tokens?.idToken,
-          hasIdentityId: !!session.identityId,
-          tokenTypes: session.tokens ? Object.keys(session.tokens) : 'none'
-        },
-        user: {
-          username: currentUser.username,
-          userId: currentUser.userId,
-          signInDetails: currentUser.signInDetails
-        }
-      };
-      
-      setAuthState(authInfo);
-      console.log('✅ Authentication state:', authInfo);
-      
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError(errorMessage);
-      console.error('❌ Authentication state test failed:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [loading, setLoading] = useState(false);
+  const [testResults, setTestResults] = useState<any>({});
+  const [hybridStorageTest, setHybridStorageTest] = useState<any>({});
 
   const testCredentials = async () => {
-    setIsLoading(true);
-    setError(null);
-    
+    setLoading(true);
     try {
-      console.log('🧪 Testing AWS credentials...');
-      
-      // Test 1: Get temporary credentials
-      const tempCredentials = await getTemporaryAwsCredentials();
-      setCredentials(tempCredentials);
-      
-      if (tempCredentials) {
-        console.log('✅ Temporary credentials obtained:', {
-          accessKeyId: tempCredentials.accessKeyId ? '***configured***' : 'missing',
-          secretAccessKey: tempCredentials.secretAccessKey ? '***configured***' : 'missing',
-          sessionToken: tempCredentials.sessionToken ? '***configured***' : 'missing',
-          expiration: tempCredentials.expiration,
-        });
-      } else {
-        console.log('❌ Failed to get temporary credentials');
-      }
-      
-      // Test 2: Run full AWS configuration test
+      const creds = await getTemporaryAwsCredentials();
+      setCredentials(creds);
+      setTestResults({ success: true, message: 'Credentials obtained successfully' });
+    } catch (error: any) {
+      setTestResults({ success: false, message: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const testAwsConfig = async () => {
+    setLoading(true);
+    try {
       const result = await testAwsConfiguration();
-      setTestResult(result);
-      
-      console.log('✅ AWS configuration test completed:', result);
-      
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError(errorMessage);
-      console.error('❌ AWS credentials test failed:', err);
+      setTestResults(result);
+    } catch (error: any) {
+      setTestResults({ success: false, message: error.message });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const testS3Upload = async () => {
-    setIsLoading(true);
-    setError(null);
-    
+  const testS3Credentials = async () => {
+    setLoading(true);
     try {
-      console.log('🧪 Testing S3 upload with credentials...');
-      
-      // Create a simple test file
-      const testData = 'Hello World - Test S3 Upload';
-      const testFile = new File([testData], 'test.txt', { type: 'text/plain' });
-      
-      // Import and test S3 service
-      const { S3Service } = await import('../lib/s3-service');
-      
-      const result = await S3Service.uploadFile(
-        testFile,
-        'test-reference',
-        'test-section',
-        'test-document'
-      );
-      
-      if (result.success) {
-        console.log('✅ S3 upload test successful:', result);
-        setTestResult({ ...testResult, s3Test: result });
+      const creds = await getAwsCredentialsForS3();
+      if (creds) {
+        setTestResults({ success: true, message: 'S3 credentials obtained successfully' });
       } else {
-        throw new Error(result.error || 'S3 upload failed');
+        setTestResults({ success: false, message: 'Failed to get S3 credentials' });
       }
-      
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError(errorMessage);
-      console.error('❌ S3 upload test failed:', err);
+    } catch (error: any) {
+      setTestResults({ success: false, message: error.message });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const testEnhancedCredentials = async () => {
-    setIsLoading(true);
-    setError(null);
-    
+  const testHybridStorage = async () => {
+    setLoading(true);
     try {
-      console.log('🧪 Testing enhanced AWS credentials...');
+      console.log('🧪 Starting hybrid storage test...');
       
-      const credentials = await getAwsCredentialsForS3();
-      setCredentials(credentials);
-      
-      if (credentials) {
-        console.log('✅ Enhanced credentials obtained:', {
-          accessKeyId: credentials.accessKeyId ? '***configured***' : 'missing',
-          secretAccessKey: credentials.secretAccessKey ? '***configured***' : 'missing',
-          sessionToken: credentials.sessionToken ? '***configured***' : 'missing',
-          expiration: credentials.expiration,
-        });
-      } else {
-        console.log('❌ Failed to get enhanced credentials');
+      // Test S3 bucket access
+      const s3Accessible = await (dynamoDBService as any).checkS3BucketAccess();
+      if (!s3Accessible) {
+        console.warn('⚠️ S3 bucket not accessible, hybrid storage may not work');
+        setHybridStorageTest({ success: false, message: 'S3 bucket not accessible' });
+        return;
       }
       
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError(errorMessage);
-      console.error('❌ Enhanced credentials test failed:', err);
+      console.log('✅ S3 bucket is accessible');
+      
+      // Test with sample data
+      const testData = {
+        zoneinfo: 'test-zoneinfo',
+        applicantId: 'test-zoneinfo',
+        reference_id: `test_${Date.now()}`,
+        form_data: { test: 'data' },
+        current_step: 1,
+        last_updated: new Date().toISOString(),
+        status: 'draft' as const,
+        uploaded_files_metadata: { testFile: { fileName: 'test.txt', fileSize: 1024 } },
+        webhook_responses: { testWebhook: { status: 'success', timestamp: new Date().toISOString() } },
+        signatures: { testSignature: { signed: true, timestamp: new Date().toISOString() } },
+        encrypted_documents: { testDoc: { documentType: 'test', encrypted: true, timestamp: new Date().toISOString() } }
+      };
+      
+      // Test save with hybrid storage
+      const saveResult = await dynamoDBService.saveDraft(testData, testData.applicantId);
+      if (!saveResult) {
+        console.error('❌ Failed to save test data with hybrid storage');
+        setHybridStorageTest({ success: false, message: 'Failed to save test data with hybrid storage' });
+        return;
+      }
+      
+      console.log('✅ Test data saved successfully with hybrid storage');
+      
+      // Test retrieval
+      const retrievedData = await dynamoDBService.getDraft(testData.applicantId, testData.reference_id);
+      if (!retrievedData) {
+        console.error('❌ Failed to retrieve test data');
+        setHybridStorageTest({ success: false, message: 'Failed to retrieve test data' });
+        return;
+      }
+      
+      console.log('✅ Test data retrieved successfully');
+      
+      // Clean up test data
+      await dynamoDBService.deleteDraft(testData.applicantId, testData.reference_id);
+      console.log('✅ Test data cleaned up');
+      
+      setHybridStorageTest({ success: true, message: 'Hybrid storage test passed' });
+    } catch (error: any) {
+      console.error('🧪 Hybrid storage test error:', error);
+      setHybridStorageTest({ success: false, message: error.message });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const testLargeDataSave = async () => {
+    setLoading(true);
+    try {
+      console.log('🧪 Testing large data save...');
+      
+      // Create a large dataset that would exceed DynamoDB limits
+      const largeData = {
+        zoneinfo: 'test-large-data',
+        applicantId: 'test-large-data',
+        reference_id: `large_test_${Date.now()}`,
+        form_data: { 
+          test: 'data',
+          largeArray: Array(10000).fill('x').join(''), // Create large string
+          nestedData: {
+            level1: Array(1000).fill('nested').join(''),
+            level2: Array(1000).fill('deep').join('')
+          }
+        },
+        current_step: 1,
+        last_updated: new Date().toISOString(),
+        status: 'draft' as const,
+        uploaded_files_metadata: {
+          largeFile: {
+            fileName: 'large.txt',
+            fileSize: 1024 * 1024, // 1MB
+            content: Array(100000).fill('x').join(''), // Large content
+            metadata: Array(1000).fill('metadata').join('')
+          }
+        },
+        webhook_responses: {
+          largeResponse: {
+            status: 'success',
+            data: Array(5000).fill('response').join(''),
+            headers: Array(1000).fill('header').join('')
+          }
+        }
+      };
+
+      console.log('📏 Large data size:', JSON.stringify(largeData).length, 'bytes');
+      
+      const saveResult = await dynamoDBService.saveDraft(largeData, largeData.applicantId);
+      setHybridStorageTest({ 
+        success: saveResult, 
+        message: saveResult ? 'Large data saved successfully with hybrid storage' : 'Failed to save large data' 
+      });
+      
+      if (saveResult) {
+        // Clean up test data
+        await dynamoDBService.deleteDraft(largeData.applicantId, largeData.reference_id);
+        console.log('✅ Test data cleaned up');
+      }
+      
+    } catch (error: any) {
+      console.error('🧪 Large data test error:', error);
+      setHybridStorageTest({ success: false, message: error.message });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Card className="w-full max-w-4xl">
-      <CardHeader>
-        <CardTitle>🔧 AWS Credentials Debug</CardTitle>
-        <CardDescription>
-          Test AWS credentials and S3 functionality to troubleshoot upload issues
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex gap-2 flex-wrap">
-          <Button 
-            onClick={testAuthState} 
-            disabled={isLoading}
-            variant="outline"
-          >
-            {isLoading ? 'Testing...' : '🔍 Test Auth State'}
-          </Button>
-          
-          <Button 
-            onClick={testCredentials} 
-            disabled={isLoading}
-            variant="outline"
-          >
-            {isLoading ? 'Testing...' : '🔑 Test Credentials'}
-          </Button>
-          
-          <Button 
-            onClick={testEnhancedCredentials} 
-            disabled={isLoading}
-            variant="outline"
-          >
-            {isLoading ? 'Testing...' : '🚀 Test Enhanced Credentials'}
-          </Button>
-          
-          <Button 
-            onClick={testS3Upload} 
-            disabled={isLoading || !credentials}
-            variant="outline"
-          >
-            {isLoading ? 'Testing...' : '📤 Test S3 Upload'}
-          </Button>
-        </div>
-
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-            <h4 className="font-semibold text-red-800">❌ Error</h4>
-            <p className="text-red-700">{error}</p>
+    <div className="space-y-4 p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>🔑 AWS Credentials Debug</CardTitle>
+          <CardDescription>
+            Test AWS credentials and configuration
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Button onClick={testCredentials} disabled={loading}>
+              Test Temporary Credentials
+            </Button>
+            <Button onClick={testAwsConfig} disabled={loading}>
+              Test AWS Configuration
+            </Button>
+            <Button onClick={testS3Credentials} disabled={loading}>
+              Test S3 Credentials
+            </Button>
           </div>
-        )}
 
-        {authState && (
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-            <h4 className="font-semibold text-yellow-800">🔍 Authentication State</h4>
-            <div className="text-sm text-yellow-700 space-y-1">
-              <p><strong>Session Tokens:</strong> {authState.session.tokenTypes}</p>
-              <p><strong>Has Access Token:</strong> {authState.session.hasAccessToken ? 'Yes' : 'No'}</p>
-              <p><strong>Has ID Token:</strong> {authState.session.hasIdToken ? 'Yes' : 'No'}</p>
-              <p><strong>Has Identity ID:</strong> {authState.session.hasIdentityId ? 'Yes' : 'No'}</p>
-              <p><strong>Username:</strong> {authState.user.username}</p>
-              <p><strong>User ID:</strong> {authState.user.userId}</p>
+          {credentials && (
+            <div className="p-4 bg-gray-100 rounded">
+              <h4 className="font-semibold mb-2">Current Credentials:</h4>
+              <pre className="text-sm">
+                {JSON.stringify({
+                  hasAccessKey: !!credentials.accessKeyId,
+                  hasSecretKey: !!credentials.secretAccessKey,
+                  hasSessionToken: !!credentials.sessionToken,
+                  expiration: credentials.expiration
+                }, null, 2)}
+              </pre>
             </div>
-          </div>
-        )}
+          )}
 
-        {credentials && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-            <h4 className="font-semibold text-green-800">✅ AWS Credentials</h4>
-            <div className="text-sm text-green-700 space-y-1">
-              <p><strong>Access Key ID:</strong> {credentials.accessKeyId ? '***configured***' : 'missing'}</p>
-              <p><strong>Secret Access Key:</strong> {credentials.secretAccessKey ? '***configured***' : 'missing'}</p>
-              <p><strong>Session Token:</strong> {credentials.sessionToken ? '***configured***' : 'missing'}</p>
-              <p><strong>Expiration:</strong> {credentials.expiration ? new Date(credentials.expiration).toLocaleString() : 'N/A'}</p>
+          {Object.keys(testResults).length > 0 && (
+            <div className={`p-4 rounded ${testResults.success ? 'bg-green-100' : 'bg-red-100'}`}>
+              <h4 className="font-semibold mb-2">Test Results:</h4>
+              <p>{testResults.message}</p>
             </div>
-          </div>
-        )}
+          )}
+        </CardContent>
+      </Card>
 
-        {testResult && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
-            <h4 className="font-semibold text-blue-800">📋 Test Results</h4>
-            <pre className="text-sm text-blue-700 overflow-auto max-h-64">
-              {JSON.stringify(testResult, null, 2)}
-            </pre>
+      <Card>
+        <CardHeader>
+          <CardTitle>🧪 Hybrid Storage Test</CardTitle>
+          <CardDescription>
+            Test DynamoDB hybrid storage functionality for large data
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Button onClick={testHybridStorage} disabled={loading}>
+              Test Hybrid Storage
+            </Button>
+            <Button onClick={testLargeDataSave} disabled={loading}>
+              Test Large Data Save
+            </Button>
           </div>
-        )}
 
-        <div className="text-sm text-gray-600">
-          <h4 className="font-semibold mb-2">🔍 What This Tests:</h4>
-          <ul className="list-disc list-inside space-y-1">
-            <li>Current authentication state and session tokens</li>
-            <li>AWS Cognito authentication and session</li>
-            <li>Identity Pool temporary credentials generation</li>
-            <li>Fallback credentials from environment variables</li>
-            <li>S3 client creation with proper credentials</li>
-            <li>Basic S3 upload functionality</li>
-          </ul>
-        </div>
-      </CardContent>
-    </Card>
+          {Object.keys(hybridStorageTest).length > 0 && (
+            <div className={`p-4 rounded ${hybridStorageTest.success ? 'bg-green-100' : 'bg-red-100'}`}>
+              <h4 className="font-semibold mb-2">Hybrid Storage Test Results:</h4>
+              <p>{hybridStorageTest.message}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
-};
+}
