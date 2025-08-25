@@ -7140,9 +7140,13 @@ export function ApplicationForm() {
         nextStep = 8; // Skip to Other Occupants
       }
       
-      // If moving to guarantor steps (step 10, 11) and no guarantor is selected, skip to Digital Signatures (step 12)
-      if (!hasGuarantor && (nextStep === 10 || nextStep === 11)) {
-        nextStep = 12; // Skip to Digital Signatures
+      // Only skip guarantor steps if user is not already on them and trying to navigate TO them
+      // If user is already on step 10 or 11, allow them to proceed normally
+      if (!hasGuarantor && nextStep === 10 && prev < 10) {
+        nextStep = 12; // Skip to Digital Signatures only when navigating TO step 10
+      }
+      if (!hasGuarantor && nextStep === 11 && prev < 11) {
+        nextStep = 12; // Skip to Digital Signatures only when navigating TO step 11
       }
       
       return Math.min(nextStep, STEPS.length - 1);
