@@ -11,7 +11,6 @@ applications:
             - npm ci
         build:
           commands:
-            - cd client
             - npm run build
             - ls -la dist/
             - echo "Build completed successfully"
