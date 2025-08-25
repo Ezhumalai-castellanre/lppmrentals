@@ -79,6 +79,13 @@ else
     echo "❌ TypeScript not found - this is critical for build"
 fi
 
+echo "Checking Zod installation..."
+if [ -d "node_modules/zod" ]; then
+    echo "✅ Zod found"
+else
+    echo "❌ Zod not found - this is critical for build"
+fi
+
 # Only rebuild if we have native modules
 if [ -d "node_modules/@rollup" ] || [ -d "node_modules/rollup" ]; then
     echo "=== Rebuilding native modules ==="

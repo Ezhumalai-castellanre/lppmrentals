@@ -8,6 +8,8 @@ applications:
             - echo "=== Starting preBuild phase ==="
             - node --version
             - npm --version
+            - echo "=== Node.js version details ==="
+            - node -p "process.versions"
             - echo "=== Setting up environment ==="
             - export NODE_OPTIONS="--max-old-space-size=4096"
             - export npm_config_platform=linux
@@ -53,7 +55,7 @@ applications:
           - client/.npm/**/*
       env:
         runtime-versions:
-          nodejs: 18.x
+          nodejs: 20.19
         variables:
           NODE_ENV: production
           NODE_OPTIONS: "--max-old-space-size=4096"
