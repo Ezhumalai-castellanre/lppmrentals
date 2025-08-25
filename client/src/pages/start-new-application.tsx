@@ -1,6 +1,6 @@
 import React from 'react';
-import { StartNewApplicationSidebar } from '@/components/start-new-application-sidebar';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { StartNewApplicationSidebar } from '../components/start-new-application-sidebar';
+import { SidebarProvider } from '../components/ui/sidebar';
 
 export default function StartNewApplicationPage() {
   return (
