@@ -510,6 +510,154 @@ export class DynamoDBService {
     }
   }
 
+  // Apply ultra-aggressive data reduction for extremely large data
+  private applyUltraReduction(hybridData: any): any {
+    try {
+      console.log('🔧 Applying ultra-aggressive data reduction...');
+      
+      const ultraReduced = {
+        formData: this.extractMinimalFormData(hybridData.formData),
+        uploadedFiles: this.extractMinimalFileMetadata(hybridData.uploadedFiles),
+        webhookResponses: this.extractMinimalWebhookData(hybridData.webhookResponses),
+        signatures: this.extractMinimalSignatureData(hybridData.signatures),
+        encryptedDocuments: this.extractMinimalDocumentData(hybridData.encryptedDocuments),
+        s3References: hybridData.s3References || []
+      };
+
+      console.log('✅ Ultra-reduction completed');
+      return ultraReduced;
+    } catch (error) {
+      console.error('❌ Error applying ultra reduction:', error);
+      // Return minimal fallback data
+      return {
+        formData: { application_id: hybridData.formData?.application_id, applicantId: hybridData.formData?.applicantId },
+        uploadedFiles: {},
+        webhookResponses: {},
+        signatures: {},
+        encryptedDocuments: {},
+        s3References: hybridData.s3References || []
+      };
+    }
+  }
+
+  // Extract minimal form data (only essential fields)
+  private extractMinimalFormData(formData: any): any {
+    if (!formData || typeof formData !== 'object') {
+      return {};
+    }
+
+    // Keep only the most essential fields
+    return {
+      application_id: formData.application_id,
+      applicantId: formData.applicantId,
+      current_step: formData.current_step,
+      status: formData.status,
+      last_updated: formData.last_updated,
+      // Add any other absolutely critical fields here
+    };
+  }
+
+  // Extract minimal file metadata
+  private extractMinimalFileMetadata(uploadedFiles: any): any {
+    if (!uploadedFiles || typeof uploadedFiles !== 'object') {
+      return {};
+    }
+
+    const minimal: Record<string, any> = {};
+    for (const [key, value] of Object.entries(uploadedFiles)) {
+      if (value && typeof value === 'object') {
+        minimal[key] = {
+          fileName: (value as any).fileName || key,
+          // Keep only the most essential metadata
+        };
+      }
+    }
+    return minimal;
+  }
+
+  // Extract minimal webhook data
+  private extractMinimalWebhookData(webhookResponses: any): any {
+    if (!webhookResponses || typeof webhookResponses !== 'object') {
+      return {};
+    }
+
+    const minimal: Record<string, any> = {};
+    for (const [key, value] of Object.entries(webhookResponses)) {
+      if (value && typeof value === 'object') {
+        minimal[key] = {
+          status: (value as any).status,
+          // Keep only the most essential fields
+        };
+      }
+    }
+    return minimal;
+  }
+
+  // Extract minimal signature data
+  private extractMinimalSignatureData(signatures: any): any {
+    if (!signatures || typeof signatures !== 'object') {
+      return {};
+    }
+
+    const minimal: Record<string, any> = {};
+    for (const [key, value] of Object.entries(signatures)) {
+      if (value && typeof value === 'object') {
+        minimal[key] = {
+          signed: (value as any).signed,
+          // Keep only the most essential fields
+        };
+      }
+    }
+    return minimal;
+  }
+
+  // Extract minimal document data
+  private extractMinimalDocumentData(encryptedDocuments: any): any {
+    if (!encryptedDocuments || typeof encryptedDocuments !== 'object') {
+      return {};
+    }
+
+    const minimal: Record<string, any> = {};
+    for (const [key, value] of Object.entries(encryptedDocuments)) {
+      if (value && typeof value === 'object') {
+        minimal[key] = {
+          documentType: (value as any).documentType,
+          // Keep only the most essential fields
+        };
+      }
+    }
+    return minimal;
+  }
+
+  // Calculate final data size after hybrid storage processing
+  private calculateFinalDataSize(hybridData: any): number {
+    try {
+      const sizes = {
+        formData: JSON.stringify(hybridData.formData || {}).length,
+        uploadedFiles: JSON.stringify(hybridData.uploadedFiles || {}).length,
+        webhookResponses: JSON.stringify(hybridData.webhookResponses || {}).length,
+        signatures: JSON.stringify(hybridData.signatures || {}).length,
+        encryptedDocuments: JSON.stringify(hybridData.encryptedDocuments || {}).length,
+        s3References: JSON.stringify(hybridData.s3References || []).length
+      };
+
+      const totalSize = Object.values(sizes).reduce((sum, size) => sum + size, 0);
+      
+      console.log('📏 Final data sizes after hybrid storage processing:', {
+        ...sizes,
+        totalSize,
+        maxAllowed: 400 * 1024, // 400KB in bytes
+        isOverLimit: totalSize > 400 * 1024,
+        remainingSpace: (400 * 1024) - totalSize
+      });
+
+      return totalSize;
+    } catch (error) {
+      console.error('❌ Error calculating final data size:', error);
+      return 0;
+    }
+  }
+
   // Save draft data to DynamoDB with hybrid storage for large data
   async saveDraft(draftData: DraftData, applicantId: string): Promise<boolean> {
     const maxRetries = 3;
@@ -558,6 +706,30 @@ export class DynamoDBService {
             encryptedDocuments: cleanEncryptedDocuments,
             reference_id: draftData.reference_id
           }, applicantId);
+
+          // Calculate final size after hybrid storage processing
+          const finalSize = this.calculateFinalDataSize(hybridData);
+          
+          // Double-check that the final data will fit in DynamoDB
+          if (finalSize > 400 * 1024) {
+            console.error(`❌ Data still too large after hybrid storage: ${finalSize} bytes (max: 400KB)`);
+            console.warn('⚠️ Attempting to further reduce data size...');
+            
+            // Apply more aggressive data reduction
+            const ultraReducedData = this.applyUltraReduction(hybridData);
+            const ultraReducedSize = this.calculateFinalDataSize(ultraReducedData);
+            
+            if (ultraReducedSize > 400 * 1024) {
+              console.error(`❌ Data still too large after ultra reduction: ${ultraReducedSize} bytes`);
+              throw new Error(`Data exceeds DynamoDB size limit even after aggressive reduction: ${ultraReducedSize} bytes`);
+            }
+            
+            // Use the ultra-reduced data
+            Object.assign(hybridData, ultraReducedData);
+            console.log('✅ Ultra-reduced data fits in DynamoDB');
+          } else {
+            console.log('✅ Hybrid storage data fits in DynamoDB');
+          }
 
           // Get DynamoDB client
           const client = await this.getClient();
@@ -878,17 +1050,25 @@ export class DynamoDBService {
       // Create a simplified version of form data (remove large fields)
       const simplifiedFormData = this.simplifyFormDataForDynamoDB(data.formData);
       
+      // Initialize with minimal data structures
+      let finalUploadedFiles = {};
+      let finalWebhookResponses = {};
+      let finalSignatures = {};
+      let finalEncryptedDocuments = {};
+      
       // Store large data in S3 and keep only references in DynamoDB
       if (data.uploadedFiles && typeof data.uploadedFiles === 'object' && Object.keys(data.uploadedFiles).length > 0) {
         try {
           const uploadedFilesS3Key = `uploaded_files/${applicantId}/${referenceId}.json`;
           const uploadedFilesS3Url = await this.uploadToS3(JSON.stringify(data.uploadedFiles), uploadedFilesS3Key);
           s3References.push(uploadedFilesS3Url);
+          // Keep only essential metadata in DynamoDB
+          finalUploadedFiles = this.extractEssentialFileMetadata(data.uploadedFiles);
           console.log('✅ Uploaded files metadata stored in S3');
         } catch (error) {
           console.warn('⚠️ Failed to store uploaded files in S3, keeping minimal data:', error);
           // Keep only essential metadata in DynamoDB
-          data.uploadedFiles = this.extractEssentialFileMetadata(data.uploadedFiles);
+          finalUploadedFiles = this.extractEssentialFileMetadata(data.uploadedFiles);
         }
       }
 
@@ -897,10 +1077,12 @@ export class DynamoDBService {
           const webhookResponsesS3Key = `webhook_responses/${applicantId}/${referenceId}.json`;
           const webhookResponsesS3Url = await this.uploadToS3(JSON.stringify(data.webhookResponses), webhookResponsesS3Key);
           s3References.push(webhookResponsesS3Url);
+          // Keep only essential metadata in DynamoDB
+          finalWebhookResponses = this.extractEssentialWebhookData(data.webhookResponses);
           console.log('✅ Webhook responses stored in S3');
         } catch (error) {
           console.warn('⚠️ Failed to store webhook responses in S3, keeping minimal data:', error);
-          data.webhookResponses = this.extractEssentialWebhookData(data.webhookResponses);
+          finalWebhookResponses = this.extractEssentialWebhookData(data.webhookResponses);
         }
       }
 
@@ -909,10 +1091,12 @@ export class DynamoDBService {
           const signaturesS3Key = `signatures/${applicantId}/${referenceId}.json`;
           const signaturesS3Url = await this.uploadToS3(JSON.stringify(data.signatures), signaturesS3Key);
           s3References.push(signaturesS3Url);
+          // Keep only essential metadata in DynamoDB
+          finalSignatures = this.extractEssentialSignatureData(data.signatures);
           console.log('✅ Signatures stored in S3');
         } catch (error) {
           console.warn('⚠️ Failed to store signatures in S3, keeping minimal data:', error);
-          data.signatures = this.extractEssentialSignatureData(data.signatures);
+          finalSignatures = this.extractEssentialSignatureData(data.signatures);
         }
       }
 
@@ -921,22 +1105,24 @@ export class DynamoDBService {
           const encryptedDocumentsS3Key = `encrypted_documents/${applicantId}/${referenceId}.json`;
           const encryptedDocumentsS3Url = await this.uploadToS3(JSON.stringify(data.encryptedDocuments), encryptedDocumentsS3Key);
           s3References.push(encryptedDocumentsS3Url);
+          // Keep only essential metadata in DynamoDB
+          finalEncryptedDocuments = this.extractEssentialDocumentData(data.encryptedDocuments);
           console.log('✅ Encrypted documents stored in S3');
         } catch (error) {
           console.warn('⚠️ Failed to store encrypted documents in S3, keeping minimal data:', error);
-          data.encryptedDocuments = this.extractEssentialDocumentData(data.encryptedDocuments);
+          finalEncryptedDocuments = this.extractEssentialDocumentData(data.encryptedDocuments);
         }
       }
 
       console.log(`✅ Hybrid storage completed. ${s3References.length} items stored in S3`);
 
-      // Return the cleaned data and S3 references
+      // Return the cleaned data and S3 references - ensure all data is minimal
       return {
         formData: simplifiedFormData,
-        uploadedFiles: data.uploadedFiles || {},
-        webhookResponses: data.webhookResponses || {},
-        signatures: data.signatures || {},
-        encryptedDocuments: data.encryptedDocuments || {},
+        uploadedFiles: finalUploadedFiles,
+        webhookResponses: finalWebhookResponses,
+        signatures: finalSignatures,
+        encryptedDocuments: finalEncryptedDocuments,
         s3References: s3References
       };
     } catch (error) {
@@ -1269,25 +1455,30 @@ export class DynamoDBService {
       let fullSignatures = baseSignatures;
       let fullEncryptedDocuments = baseEncryptedDocuments;
 
-      for (const s3Url of s3References) {
-        try {
-          const data = await this.downloadFromS3(s3Url);
-          if (data) {
-            // Determine the type of data based on the S3 key
-            if (s3Url.includes('/uploaded_files/')) {
-              fullUploadedFiles = { ...fullUploadedFiles, ...data };
-            } else if (s3Url.includes('/webhook_responses/')) {
-              fullWebhookResponses = { ...fullWebhookResponses, ...data };
-            } else if (s3Url.includes('/signatures/')) {
-              fullSignatures = { ...fullSignatures, ...data };
-            } else if (s3Url.includes('/encrypted_documents/')) {
-              fullEncryptedDocuments = { ...fullEncryptedDocuments, ...data };
+      // Ensure s3References is an array before processing
+      if (Array.isArray(s3References)) {
+        for (const s3Url of s3References) {
+          try {
+            const data = await this.downloadFromS3(s3Url as string);
+            if (data) {
+              // Determine the type of data based on the S3 key
+              if (s3Url.includes('/uploaded_files/')) {
+                fullUploadedFiles = { ...fullUploadedFiles, ...data };
+              } else if (s3Url.includes('/webhook_responses/')) {
+                fullWebhookResponses = { ...fullWebhookResponses, ...data };
+              } else if (s3Url.includes('/signatures/')) {
+                fullSignatures = { ...fullSignatures, ...data };
+              } else if (s3Url.includes('/encrypted_documents/')) {
+                fullEncryptedDocuments = { ...fullEncryptedDocuments, ...data };
+              }
             }
+          } catch (error) {
+            console.warn(`⚠️ Failed to retrieve data from S3: ${s3Url}`, error);
+            // Continue with other references
           }
-        } catch (error) {
-          console.warn(`⚠️ Failed to retrieve data from S3: ${s3Url}`, error);
-          // Continue with other references
         }
+      } else {
+        console.warn('⚠️ s3_references is not an array:', typeof s3References);
       }
 
       const draftData: DraftData = {
@@ -1619,6 +1810,69 @@ export class DynamoDBService {
       }
       
       return false;
+    }
+  }
+
+  // Retrieve full data from hybrid storage (combines DynamoDB metadata with S3 content)
+  async getFullDraftData(applicantId: string, referenceId: string): Promise<DraftData | null> {
+    try {
+      console.log('📥 Retrieving full draft data from hybrid storage...');
+      
+      // First get the base data from DynamoDB
+      const baseDraft = await this.getDraft(applicantId, referenceId);
+      if (!baseDraft) {
+        console.log('📭 No base draft found in DynamoDB');
+        return null;
+      }
+
+      // Check if this is using hybrid storage
+      if (baseDraft.storage_mode === 'hybrid' && baseDraft.s3_references) {
+        console.log('🔄 Detected hybrid storage, retrieving full data from S3...');
+        
+        try {
+          const s3References = JSON.parse(baseDraft.s3_references);
+          const fullData: DraftData = { ...baseDraft };
+
+          // Ensure s3References is an array
+          if (Array.isArray(s3References)) {
+            // Retrieve data from S3 based on references
+            for (const s3Url of s3References) {
+              try {
+                const s3Data = await this.downloadFromS3(s3Url as string);
+                if (s3Data) {
+                  // Determine what type of data this is based on the S3 key
+                  if (s3Url.includes('uploaded_files')) {
+                    fullData.uploaded_files_metadata = s3Data;
+                  } else if (s3Url.includes('webhook_responses')) {
+                    fullData.webhook_responses = s3Data;
+                  } else if (s3Url.includes('signatures')) {
+                    fullData.signatures = s3Data;
+                  } else if (s3Url.includes('encrypted_documents')) {
+                    fullData.encrypted_documents = s3Data;
+                  }
+                }
+              } catch (s3Error) {
+                console.warn(`⚠️ Failed to retrieve data from S3 URL: ${s3Url}`, s3Error);
+              }
+            }
+          } else {
+            console.warn('⚠️ s3_references is not an array:', typeof s3References);
+          }
+
+          console.log('✅ Full draft data retrieved from hybrid storage');
+          return fullData;
+        } catch (error) {
+          console.error('❌ Error retrieving data from S3:', error);
+          // Return base data if S3 retrieval fails
+          return baseDraft;
+        }
+      } else {
+        console.log('📋 Draft uses direct storage, returning base data');
+        return baseDraft;
+      }
+    } catch (error) {
+      console.error('❌ Error retrieving full draft data:', error);
+      return null;
     }
   }
 }
