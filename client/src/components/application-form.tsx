@@ -307,31 +307,54 @@ const applicationSchema = z.object({
   // Legal Questions
   landlordTenantLegalAction: z.string().optional(),
   brokenLease: z.string().optional(),
-}).refine((data) => {
-  // Custom validation for co-applicants
-  if (data.hasCoApplicant && data.coApplicants && data.coApplicants.length > 0) {
-    for (let i = 0; i < data.coApplicants.length; i++) {
-      const coApplicant = data.coApplicants[i];
-      if (!coApplicant.name || !coApplicant.dob) {
-        return false;
-      }
+}).superRefine((data, ctx) => {
+  // Co-applicants validation when enabled
+  if (data.hasCoApplicant) {
+    if (!data.coApplicants || data.coApplicants.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Add at least one co-applicant",
+        path: ["coApplicants"]
+      });
+    } else {
+      data.coApplicants.forEach((coApplicant: any, index: number) => {
+        if (!coApplicant || typeof coApplicant !== "object") {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid co-applicant", path: ["coApplicants", index] });
+          return;
+        }
+        if (!coApplicant.name) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Full name is required", path: ["coApplicants", index, "name"] });
+        }
+        if (!coApplicant.dob) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date of birth is required", path: ["coApplicants", index, "dob"] });
+        }
+      });
     }
   }
-  
-  // Custom validation for guarantors
-  if (data.hasGuarantor && data.guarantors && data.guarantors.length > 0) {
-    for (let i = 0; i < data.guarantors.length; i++) {
-      const guarantor = data.guarantors[i];
-      if (!guarantor.name || !guarantor.dob) {
-        return false;
-      }
+
+  // Guarantors validation when enabled
+  if (data.hasGuarantor) {
+    if (!data.guarantors || data.guarantors.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Add at least one guarantor",
+        path: ["guarantors"]
+      });
+    } else {
+      data.guarantors.forEach((guarantor: any, index: number) => {
+        if (!guarantor || typeof guarantor !== "object") {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid guarantor", path: ["guarantors", index] });
+          return;
+        }
+        if (!guarantor.name) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Full name is required", path: ["guarantors", index, "name"] });
+        }
+        if (!guarantor.dob) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date of birth is required", path: ["guarantors", index, "dob"] });
+        }
+      });
     }
   }
-  
-  return true;
-}, {
-  message: "Required fields must be filled for co-applicants and guarantors when enabled",
-  path: ["coApplicants", "guarantors"]
 });
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
