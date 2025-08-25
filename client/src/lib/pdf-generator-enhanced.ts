@@ -16,19 +16,20 @@ interface FormData {
 
 export class EnhancedPDFGenerator {
   private doc: jsPDF;
-  private yPosition: number = 30;
+  private yPosition: number = 40; // Increased to account for 20px padding
   private readonly pageWidth: number = 210;
-  private readonly pageHeight: number = 297; // Added page height
-  private readonly marginLeft: number = 10; // Updated to 10px margin
-  private readonly marginRight: number = 10; // Updated to 10px margin
-  private readonly marginTop: number = 10; // Added top margin
-  private readonly marginBottom: number = 10; // Added bottom margin
-  private readonly contentWidth: number = 190; // Increased content width due to smaller margins
-  private readonly contentHeight: number = 277; // Page height minus top and bottom margins
+  private readonly pageHeight: number = 297;
+  private readonly marginLeft: number = 20; // Updated to 20px padding
+  private readonly marginRight: number = 20; // Updated to 20px padding
+  private readonly marginTop: number = 20; // Updated to 20px padding
+  private readonly marginBottom: number = 20; // Updated to 20px padding
+  private readonly contentWidth: number = 170; // Adjusted for 20px margins (210 - 40)
+  private readonly contentHeight: number = 257; // Page height minus top and bottom margins (297 - 40)
   private readonly primaryColor: number[] = [0, 102, 204]; // Blue
   private readonly secondaryColor: number[] = [51, 51, 51]; // Dark gray
   private readonly accentColor: number[] = [255, 193, 7]; // Gold
   private readonly lightGray: number[] = [245, 245, 245];
+  private readonly borderColor: number[] = [220, 220, 220]; // Light border
 
   constructor() {
     this.doc = new jsPDF();
@@ -48,7 +49,7 @@ export class EnhancedPDFGenerator {
   private addText(text: string, fontSize: number = 10, isBold: boolean = false, color?: number[]): void {
     this.doc.setFontSize(fontSize);
     this.doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-    if (color) {
+    if (color && color.length >= 3) {
       this.doc.setTextColor(color[0], color[1], color[2]);
     } else {
       this.doc.setTextColor(0, 0, 0);
@@ -109,15 +110,19 @@ export class EnhancedPDFGenerator {
   private addTableRow(label: string, value: string | number | undefined, highlight: boolean = false): void {
     // Show all fields, even if empty
     const displayValue = (value !== undefined && value !== null && value !== '') ? String(value) : 'Not provided';
-    const labelWidth = 55; // Reduced label width for better alignment
-    const valueStartX = this.marginLeft + labelWidth + 4; // Reduced gap between label and value to 4px
-    const valueWidth = this.contentWidth - labelWidth - 4; // Available width for value
+    const labelWidth = 60; // Increased label width for better alignment with 20px margins
+    const valueStartX = this.marginLeft + labelWidth + 8; // Increased gap between label and value to 8px for better spacing
+    const valueWidth = this.contentWidth - labelWidth - 8; // Available width for value
+    
+    // Add subtle row background for better readability
+    this.doc.setFillColor(this.lightGray[0], this.lightGray[1], this.lightGray[2]);
+    this.doc.rect(this.marginLeft, this.yPosition - 3, this.contentWidth, 10, 'F');
     
     // Add label with proper alignment
     this.doc.setFontSize(10);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(this.secondaryColor[0], this.secondaryColor[1], this.secondaryColor[2]);
-    this.doc.text(label, this.marginLeft, this.yPosition);
+    this.doc.text(label, this.marginLeft + 2, this.yPosition + 2);
     
     // Add value with proper alignment
     this.doc.setFont('helvetica', 'normal');
@@ -130,21 +135,21 @@ export class EnhancedPDFGenerator {
     }
     
     // Handle long values with text wrapping
-    if (displayValue.length > 30) {
+    if (displayValue.length > 25) {
       const lines = this.doc.splitTextToSize(displayValue, valueWidth);
-      this.doc.text(lines, valueStartX, this.yPosition);
-      this.yPosition += (lines.length - 1) * 5; // Adjusted line spacing
+      this.doc.text(lines, valueStartX, this.yPosition + 2);
+      this.yPosition += (lines.length - 1) * 6; // Improved line spacing
     } else {
-      this.doc.text(displayValue, valueStartX, this.yPosition);
+      this.doc.text(displayValue, valueStartX, this.yPosition + 2);
     }
     
-    this.yPosition += 7; // Adjusted row spacing for better readability
+    this.yPosition += 12; // Increased row spacing for better readability with 20px margins
   }
 
   private checkPageBreak(): void {
-    if (this.yPosition > this.pageHeight - this.marginBottom - 20) { // Updated to respect bottom margin
+    if (this.yPosition > this.pageHeight - this.marginBottom - 30) { // Updated to respect 20px bottom margin
       this.doc.addPage();
-      this.yPosition = this.marginTop + 20; // Start with top margin
+      this.yPosition = this.marginTop + 20; // Start with 20px top margin
       this.addPageHeader();
     }
   }
@@ -155,13 +160,13 @@ export class EnhancedPDFGenerator {
     this.doc.setFontSize(8);
     this.doc.setFont('helvetica', 'normal');
     this.doc.setTextColor(128, 128, 128);
-    this.doc.text(`Page ${pageCount}`, this.pageWidth - 20, this.marginTop + 5); // Updated position for top margin
+    this.doc.text(`Page ${pageCount}`, this.pageWidth - 30, this.marginTop + 10); // Updated position for 20px margin
     
     // Add company name in header
     this.doc.setFontSize(10);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
-    this.doc.text('Liberty Place Property Management', this.marginLeft, this.marginTop + 5); // Updated position for top margin
+    this.doc.text('Liberty Place Property Management', this.marginLeft, this.marginTop + 10); // Updated position for 20px margin
   }
 
   private addHeader(): void {
@@ -188,7 +193,7 @@ export class EnhancedPDFGenerator {
     this.doc.text("Tel: (646) 545-6700 | Fax: (646) 304-2255", this.marginLeft + 35, this.yPosition + 20);
     this.doc.text("Leasing Direct Line: (646) 545-6700", this.marginLeft + 35, this.yPosition + 24);
     
-    this.yPosition += 30; // Reduced spacing
+    this.yPosition += 35; // Increased spacing for better 20px padding
     
     // Title with decorative elements
     this.doc.setFillColor(this.accentColor[0], this.accentColor[1], this.accentColor[2]);
@@ -581,6 +586,216 @@ export class EnhancedPDFGenerator {
     this.doc.text("All information is encrypted and secure", this.marginLeft, this.yPosition);
   }
 
+  private addComprehensiveFileMapping(formData: FormData): void {
+    this.checkPageBreak();
+    
+    // Section header
+    this.addSection("📁 COMPREHENSIVE FILE MAPPING & DOCUMENT INDEX", true);
+    
+    // Create a structured file mapping table
+    const fileCategories = [
+      {
+        title: "Primary Applicant Documents",
+        documents: this.extractDocuments(formData.applicant, 'applicant'),
+        icon: "👤"
+      },
+      {
+        title: "Co-Applicant Documents",
+        documents: formData.coApplicant ? this.extractDocuments(formData.coApplicant, 'coApplicant') : [],
+        icon: "👥"
+      },
+      {
+        title: "Guarantor Documents",
+        documents: formData.guarantor ? this.extractDocuments(formData.guarantor, 'guarantor') : [],
+        icon: "🛡️"
+      },
+      {
+        title: "Occupant Documents",
+        documents: this.extractOccupantDocuments(formData.occupants || []),
+        icon: "🏠"
+      },
+      {
+        title: "Supporting Documents",
+        documents: this.extractSupportingDocuments(formData),
+        icon: "📋"
+      }
+    ];
+
+    // Render each category
+    fileCategories.forEach(category => {
+      if (category.documents.length > 0) {
+        this.addFileCategory(category.title, category.documents, category.icon);
+      }
+    });
+
+    // Add file summary
+    this.addFileSummary(fileCategories);
+  }
+
+  private extractDocuments(person: any, type: string): Array<{name: string, status: string, type: string, details?: string}> {
+    const documents: Array<{name: string, status: string, type: string, details?: string}> = [];
+    
+    if (!person) return documents;
+
+    // Basic identification documents
+    if (person.ssn) documents.push({ name: "Social Security Card", status: "✅ Provided", type: "Identification", details: `Last 4 digits: ****${person.ssn.slice(-4)}` });
+    if (person.license) documents.push({ name: "Driver's License", status: "✅ Provided", type: "Identification", details: `License #: ${person.license}` });
+    if (person.dob) documents.push({ name: "Date of Birth Verification", status: "✅ Provided", type: "Identification", details: `DOB: ${new Date(person.dob).toLocaleDateString()}` });
+
+    // Address documents
+    if (person.address) documents.push({ name: "Current Address", status: "✅ Provided", type: "Residence", details: `${person.address}, ${person.city}, ${person.state} ${person.zip}` });
+    if (person.landlordName) documents.push({ name: "Landlord Information", status: "✅ Provided", type: "Residence", details: `${person.landlordName} - ${person.landlordPhone || 'No phone'}` });
+
+    // Employment documents
+    if (person.employmentType) documents.push({ name: "Employment Type", status: "✅ Provided", type: "Employment", details: person.employmentType });
+    if (person.employer) documents.push({ name: "Employer Information", status: "✅ Provided", type: "Employment", details: `${person.employer} - ${person.position || 'No position'}` });
+    if (person.income) documents.push({ name: "Income Information", status: "✅ Provided", type: "Financial", details: `$${person.income} ${person.incomeFrequency || 'yearly'}` });
+
+    // Financial documents
+    if (person.bankRecords && person.bankRecords.length > 0) {
+      person.bankRecords.forEach((record: any, index: number) => {
+        documents.push({ 
+          name: `Bank Account ${index + 1}`, 
+          status: "✅ Provided", 
+          type: "Financial", 
+          details: `${record.bankName || 'Unknown Bank'} - ${record.accountType || 'Unknown Type'}` 
+        });
+      });
+    }
+
+    // Business documents (for self-employed)
+    if (person.employmentType === 'self-employed') {
+      if (person.businessName) documents.push({ name: "Business Name", status: "✅ Provided", type: "Business", details: person.businessName });
+      if (person.businessType) documents.push({ name: "Business Type", status: "✅ Provided", type: "Business", details: person.businessType });
+      if (person.yearsInBusiness) documents.push({ name: "Years in Business", status: "✅ Provided", type: "Business", details: `${person.yearsInBusiness} years` });
+    }
+
+    return documents;
+  }
+
+  private extractOccupantDocuments(occupants: any[]): Array<{name: string, status: string, type: string, details?: string}> {
+    const documents: Array<{name: string, status: string, type: string, details?: string}> = [];
+    
+    occupants.forEach((occupant, index) => {
+      if (occupant.name) {
+        documents.push({ 
+          name: `Occupant ${index + 1} - ${occupant.name}`, 
+          status: "✅ Provided", 
+          type: "Residence", 
+          details: `Age: ${occupant.age || 'Not specified'}, Relationship: ${occupant.relationship || 'Not specified'}` 
+        });
+      }
+    });
+
+    return documents;
+  }
+
+  private extractSupportingDocuments(formData: FormData): Array<{name: string, status: string, type: string, details?: string}> {
+    const documents: Array<{name: string, status: string, type: string, details?: string}> = [];
+    
+    // Application documents
+    if (formData.application) {
+      if (formData.application.buildingAddress) documents.push({ name: "Building Address", status: "✅ Provided", type: "Property", details: formData.application.buildingAddress });
+      if (formData.application.apartmentNumber) documents.push({ name: "Apartment Number", status: "✅ Provided", type: "Property", details: formData.application.apartmentNumber });
+      if (formData.application.monthlyRent) documents.push({ name: "Monthly Rent", status: "✅ Provided", type: "Property", details: `$${formData.application.monthlyRent}` });
+      if (formData.application.moveInDate) documents.push({ name: "Move-in Date", status: "✅ Provided", type: "Property", details: new Date(formData.application.moveInDate).toLocaleDateString() });
+    }
+
+    // Legal questions
+    if (formData.jsonPayload) {
+      if (formData.jsonPayload.landlordTenantLegalAction) documents.push({ name: "Legal Action History", status: "✅ Provided", type: "Legal", details: formData.jsonPayload.landlordTenantLegalAction });
+      if (formData.jsonPayload.brokenLease) documents.push({ name: "Lease History", status: "✅ Provided", type: "Legal", details: formData.jsonPayload.brokenLease });
+    }
+
+    return documents;
+  }
+
+  private addFileCategory(title: string, documents: Array<{name: string, status: string, type: string, details?: string}>, icon: string) {
+    this.checkPageBreak();
+    
+    // Category header
+    this.doc.setFontSize(11);
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
+    this.doc.text(`${icon} ${title}`, this.marginLeft, this.yPosition);
+    this.yPosition += 8;
+
+    // Add documents in a table format
+    documents.forEach((doc, index) => {
+      this.checkPageBreak();
+      
+      // Document row with border
+      this.doc.setDrawColor(this.borderColor[0], this.borderColor[1], this.borderColor[2]);
+      this.doc.setLineWidth(0.1);
+      this.doc.rect(this.marginLeft, this.yPosition - 2, this.contentWidth, 12, 'S');
+      
+      // Document name
+      this.doc.setFontSize(9);
+      this.doc.setFont('helvetica', 'bold');
+      this.doc.setTextColor(this.secondaryColor[0], this.secondaryColor[1], this.secondaryColor[2]);
+      this.doc.text(doc.name, this.marginLeft + 2, this.yPosition + 3);
+      
+      // Status
+      this.doc.setFont('helvetica', 'normal');
+      if (doc.status.includes('✅')) {
+        this.doc.setTextColor(0, 128, 0);
+      } else {
+        this.doc.setTextColor(255, 0, 0);
+      }
+      this.doc.text(doc.status, this.marginLeft + 80, this.yPosition + 3);
+      
+      // Type
+      this.doc.setTextColor(this.secondaryColor[0], this.secondaryColor[1], this.secondaryColor[2]);
+      this.doc.text(doc.type, this.marginLeft + 120, this.yPosition + 3);
+      
+      // Details (if available)
+      if (doc.details) {
+        this.doc.setFontSize(7);
+        this.doc.setTextColor(128, 128, 128);
+        this.doc.text(doc.details, this.marginLeft + 2, this.yPosition + 8);
+      }
+      
+      this.yPosition += 15;
+    });
+    
+    this.yPosition += 5; // Space between categories
+  }
+
+  private addFileSummary(categories: any[]): void {
+    this.checkPageBreak();
+    
+    // Summary header
+    this.doc.setFontSize(12);
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.setTextColor(this.accentColor[0], this.accentColor[1], this.accentColor[2]);
+    this.doc.text("📊 DOCUMENT SUMMARY", this.marginLeft, this.yPosition);
+    this.yPosition += 10;
+
+    // Calculate totals
+    const totalDocuments = categories.reduce((sum, cat) => sum + cat.documents.length, 0);
+    const providedDocuments = categories.reduce((sum, cat) => sum + cat.documents.filter((d: any) => d.status.includes('✅')).length, 0);
+    const missingDocuments = totalDocuments - providedDocuments;
+
+    // Summary table
+    this.doc.setFillColor(this.lightGray[0], this.lightGray[1], this.lightGray[2]);
+    this.doc.rect(this.marginLeft, this.yPosition, this.contentWidth, 25, 'F');
+    
+    this.doc.setFontSize(10);
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.setTextColor(this.secondaryColor[0], this.secondaryColor[1], this.secondaryColor[2]);
+    
+    this.doc.text("Total Documents:", this.marginLeft + 5, this.yPosition + 8);
+    this.doc.text("Provided:", this.marginLeft + 5, this.yPosition + 16);
+    this.doc.text("Missing:", this.marginLeft + 5, this.yPosition + 24);
+    
+    this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
+    this.doc.text(totalDocuments.toString(), this.marginLeft + 80, this.yPosition + 8);
+    this.doc.text(providedDocuments.toString(), this.marginLeft + 80, this.yPosition + 16);
+    this.doc.text(missingDocuments.toString(), this.marginLeft + 80, this.yPosition + 24);
+    
+    this.yPosition += 30;
+  }
+
   public generatePDF(formData: FormData): string {
     // Add header
     this.addHeader();
@@ -615,6 +830,9 @@ export class EnhancedPDFGenerator {
     // Add occupants section
     this.addOccupants(formData.occupants || []);
     
+    // Add comprehensive file mapping and document index
+    this.addComprehensiveFileMapping(formData);
+    
     // Add JSON payload
     this.addJSONPayload(formData);
     
@@ -627,21 +845,13 @@ export class EnhancedPDFGenerator {
     }
     
     // Add co-applicant signatures
-    if (formData.signatures.coApplicants) {
-      Object.entries(formData.signatures.coApplicants).forEach(([index, signature]) => {
-        if (signature) {
-          this.addSignature(`Co-Applicant ${parseInt(index) + 1}`, signature);
-        }
-      });
+    if (formData.signatures.coApplicant) {
+      this.addSignature("Co-Applicant", formData.signatures.coApplicant);
     }
     
     // Add guarantor signatures
-    if (formData.signatures.guarantors) {
-      Object.entries(formData.signatures.guarantors).forEach(([index, signature]) => {
-        if (signature) {
-          this.addSignature(`Guarantor ${parseInt(index) + 1}`, signature);
-        }
-      });
+    if (formData.signatures.guarantor) {
+      this.addSignature("Guarantor", formData.signatures.guarantor);
     }
 
     // Add footer
