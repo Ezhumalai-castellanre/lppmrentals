@@ -19,8 +19,19 @@ export default defineConfig({
     react(),
   ],
   build: {
-    outDir: "dist/public",
+    outDir: "dist",
     emptyOutDir: true,
+    sourcemap: false,
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          aws: ['aws-amplify', '@aws-sdk/client-s3', '@aws-sdk/client-dynamodb'],
+          ui: ['@radix-ui/react-accordion', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu']
+        }
+      }
+    }
   },
   server: {
     port: 3000,
