@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { getTemporaryAwsCredentials, testAwsConfiguration, getAwsCredentialsForS3 } from '../lib/aws-config';
+import { getTemporaryAwsCredentials, getAwsCredentialsForS3 } from '../lib/aws-config';
 import { dynamoDBService } from '../lib/dynamodb-service';
 
 export function DebugAwsCredentials() {
@@ -26,7 +26,15 @@ export function DebugAwsCredentials() {
   const testAwsConfig = async () => {
     setLoading(true);
     try {
-      const result = await testAwsConfiguration();
+      // Test AWS configuration by checking if we can get credentials
+      const credentials = await getTemporaryAwsCredentials();
+      const result = {
+        success: !!credentials,
+        message: credentials ? 'AWS configuration working' : 'AWS configuration failed',
+        hasAccessKey: !!credentials?.accessKeyId,
+        hasSecretKey: !!credentials?.secretAccessKey,
+        hasSessionToken: !!credentials?.sessionToken,
+      };
       setTestResults(result);
     } catch (error: any) {
       setTestResults({ success: false, message: error.message });

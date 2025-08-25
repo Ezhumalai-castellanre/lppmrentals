@@ -265,60 +265,6 @@ export const getCurrentUserWithDebug = async () => {
   }
 };
 
-export default awsConfig;
-
-// Test AWS configuration
-export const testAwsConfiguration = async () => {
-  console.log('🧪 Starting AWS Configuration Test...');
-  
-  try {
-    console.log('📋 Test 1: Amplify Configuration');
-    console.log('AWS Config:', awsConfig);
-    
-    console.log('📋 Test 2: Current User');
-    const { getCurrentUser } = await import('aws-amplify/auth');
-    const currentUser = await getCurrentUser();
-    console.log('Current User:', currentUser);
-    
-    console.log('📋 Test 3: User Attributes');
-    const { fetchUserAttributes } = await import('aws-amplify/auth');
-    const attributes = await fetchUserAttributes();
-    console.log('All User Attributes:', attributes);
-    
-    const zoneinfo = attributes.zoneinfo || attributes['custom:zoneinfo'];
-    if (zoneinfo) {
-      console.log('✅ Zoneinfo found:', zoneinfo);
-    } else {
-      console.log('❌ No zoneinfo attribute found');
-    }
-    
-    return {
-      success: true,
-      currentUser,
-      attributes,
-      zoneinfo,
-    };
-  } catch (error) {
-    console.error('❌ AWS Configuration Test Failed:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
-};
-
-// Function to manually trigger AWS debug
-export const triggerAwsDebug = async () => {
-  console.log('🚀 Triggering AWS Debug...');
-  
-  try {
-    await testAwsConfiguration();
-    await getUserAttributesWithDebug();
-    await getCurrentUserWithDebug();
-    console.log('✅ AWS Debug Complete');
-  } catch (error) {
-    console.error('❌ AWS Debug failed:', error);
-  }
-}; 
+export default awsConfig; 
 
  

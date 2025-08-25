@@ -18,7 +18,7 @@ import { DocumentSection } from "./document-section";
 import { SupportingDocuments } from "./supporting-documents";
 import { PDFGenerator } from "../lib/pdf-generator";
 import { EnhancedPDFGenerator } from "../lib/pdf-generator-enhanced";
-import { ResetPDFGenerator } from "../lib/pdf-generator-reset";
+import { RentalApplicationPDF } from "../lib/rental-application-pdf";
 import { Download, FileText, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search, Save, X } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { useAuth } from "../hooks/use-auth";
@@ -1491,17 +1491,11 @@ export function ApplicationForm() {
             if (parsedFormData.applicant?.landlordCity !== undefined) {
               form.setValue('applicantLandlordCity', parsedFormData.applicant.landlordCity || '');
               console.log('🏠 Re-syncing applicantLandlordCity after form reset:', parsedFormData.applicant.landlordCity || '');
-    }
-    if (parsedFormData.applicant?.landlordAddressLine2 !== undefined) {
-      form.setValue('applicantLandlordAddressLine2', parsedFormData.applicant.landlordAddressLine2 || '');
-      console.log('🏠 Re-syncing applicantLandlordAddressLine2 after form reset:', parsedFormData.applicant.landlordAddressLine2 || '');
-    }
-    if (parsedFormData.applicant?.landlordCity !== undefined) {
-      form.setValue('applicantLandlordCity', parsedFormData.applicant.landlordCity || '');
-      console.log('🏠 Re-syncing applicantLandlordCity after form reset:', parsedFormData.applicant.landlordCity || '');
-      console.log('🏠 parsedFormData.applicant.landlordCity value:', parsedFormData.applicant.landlordCity);
-      console.log('🏠 parsedFormData.applicant.landlordCity type:', typeof parsedFormData.applicant.landlordCity);
-    }
+            }
+            if (parsedFormData.applicant?.landlordAddressLine2 !== undefined) {
+              form.setValue('applicantLandlordAddressLine2', parsedFormData.applicant.landlordAddressLine2 || '');
+              console.log('🏠 Re-syncing applicantLandlordAddressLine2 after form reset:', parsedFormData.applicant.landlordAddressLine2 || '');
+            }
     if (parsedFormData.applicant?.landlordState !== undefined) {
       form.setValue('applicantLandlordState', parsedFormData.applicant.landlordState || '');
       console.log('🏠 Re-syncing applicantLandlordState after form reset:', parsedFormData.applicant.landlordState || '');
@@ -2739,42 +2733,43 @@ export function ApplicationForm() {
     handleWebhookResponse('occupants', documentType, response);
   };
 
-  const generatePDF = async () => {
+  const generatePDF = async (submissionData?: any) => {
     try {
-    // Use the reset PDF generator for clean, professional alignment
-    const pdfGenerator = new ResetPDFGenerator();
+      // Use the rental application PDF generator for clean, professional alignment
+      const pdfGenerator = new RentalApplicationPDF();
 
-    // Get current form values to ensure we have the latest data
-    const currentFormData = form.getValues();
+      // Use submission data if provided, otherwise get current form values
+      const dataToUse = submissionData || form.getValues();
+      
+      // Combine application data with any additional data
+      const combinedApplicationData = {
+        ...dataToUse.application,
+        ...dataToUse,
+        submittedAt: new Date().toISOString(),
+      };
+
+      // Debug logging to verify data
+      console.log('PDF Generation Debug:');
+      console.log('Data being used for PDF:', dataToUse);
+      console.log('Combined application data:', combinedApplicationData);
+      console.log('Applicant data:', dataToUse.applicant);
+      console.log('Co-applicants data:', dataToUse.coApplicants);
+      console.log('Guarantors data:', dataToUse.guarantors);
+      console.log('Occupants data:', dataToUse.occupants);
+      console.log('Applicant bank records:', dataToUse.applicant?.bankRecords);
+      console.log('Co-applicants bank records:', dataToUse.coApplicants?.[0]?.bankRecords);
+      console.log('Guarantors bank records:', dataToUse.guarantors?.[0]?.bankRecords);
+
+      const pdfDoc = pdfGenerator.generate({
+        application: combinedApplicationData,
+        applicant: dataToUse.applicant,
+        coApplicants: dataToUse.coApplicants || [],
+        guarantors: dataToUse.guarantors || [],
+        occupants: dataToUse.occupants || [],
+      });
     
-    // Combine form data from both sources to ensure all fields are included
-    const combinedApplicationData = {
-      ...formData.application,
-      buildingAddress: currentFormData.buildingAddress || formData.application?.buildingAddress,
-      apartmentNumber: currentFormData.apartmentNumber || formData.application?.apartmentNumber,
-      moveInDate: currentFormData.moveInDate || formData.application?.moveInDate,
-      monthlyRent: currentFormData.monthlyRent || formData.application?.monthlyRent,
-      apartmentType: currentFormData.apartmentType || formData.application?.apartmentType,
-      howDidYouHear: currentFormData.howDidYouHear || formData.application?.howDidYouHear,
-    };
-
-    // Debug logging to verify data
-    console.log('PDF Generation Debug:');
-    console.log('Current form data:', currentFormData);
-    console.log('FormData state:', formData.application);
-    console.log('Combined application data:', combinedApplicationData);
-    console.log('Applicant bank records:', formData.applicant?.bankRecords);
-    console.log('Co-applicant bank records:', formData.coApplicant?.bankRecords);
-    console.log('Guarantor bank records:', formData.guarantor?.bankRecords);
-
-    const pdfData = pdfGenerator.generatePDF({
-      application: combinedApplicationData,
-      applicant: formData.applicant,
-      coApplicant: hasCoApplicant ? formData.coApplicant : undefined,
-      guarantor: hasGuarantor ? formData.guarantor : undefined,
-      signatures,
-      occupants: formData.occupants || [],
-    });
+    // Convert PDF document to data URL for download
+    const pdfData = pdfDoc.output('dataurlstring');
 
       // Extract base64 from data URL
       const base64 = pdfData.split(',')[1];
@@ -4124,7 +4119,7 @@ export function ApplicationForm() {
           setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
         }
 
-        generatePDF();
+        generatePDF(completeServerData);
       } catch (error) {
         console.error('Failed to submit application:', error);
         

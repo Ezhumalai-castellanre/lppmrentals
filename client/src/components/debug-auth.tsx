@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { testAwsConfiguration, getTemporaryAwsCredentials } from '../lib/aws-config';
+import { getTemporaryAwsCredentials } from '../lib/aws-config';
 import { DynamoDBService } from '../lib/dynamodb-service';
 import { DebugAwsCredentials } from './debug-aws-credentials';
 
@@ -17,7 +17,15 @@ export const DebugAuth: React.FC = () => {
 
     try {
       console.log('🧪 Starting AWS Configuration Test...');
-      const results = await testAwsConfiguration();
+      // Test AWS configuration by checking if we can get credentials
+      const credentials = await getTemporaryAwsCredentials();
+      const results = {
+        success: !!credentials,
+        message: credentials ? 'AWS configuration working' : 'AWS configuration failed',
+        hasAccessKey: !!credentials?.accessKeyId,
+        hasSecretKey: !!credentials?.secretAccessKey,
+        hasSessionToken: !!credentials?.sessionToken,
+      };
       setTestResults(results);
       console.log('✅ Test completed:', results);
     } catch (err) {
