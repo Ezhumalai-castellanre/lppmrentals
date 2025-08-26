@@ -21,6 +21,7 @@ import LandingPage from "./pages/landing";
 import NotFound from "./pages/not-found";
 import AvailableRentalsPage from "./pages/available-rentals";
 import PropertyDetailsPage from "./pages/property-details";
+import RentalDashboard from "./components/rental-dashboard";
 import { Button } from "./components/ui/button";
 import { Save } from "lucide-react";
 import { DebugAuth } from "./components/debug-auth";
@@ -111,6 +112,14 @@ function Router() {
         <ProtectedRoute>
           <AppLayout>
             <ApplicationsPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/dashboard">
+        <ProtectedRoute>
+          <AppLayout>
+            <RentalDashboard />
           </AppLayout>
         </ProtectedRoute>
       </Route>

@@ -18,13 +18,14 @@ import { DocumentSection } from "./document-section";
 import { SupportingDocuments } from "./supporting-documents";
 import { PDFGenerator } from "../lib/pdf-generator";
 import { EnhancedPDFGenerator } from "../lib/pdf-generator-enhanced";
-import { RentalApplicationPDF } from "../lib/rental-application-pdf";
+import { RentalApplicationPDF } from "../lib/rental-application-pdf.js";
 import { Download, FileText, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search, Save, X } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { useAuth } from "../hooks/use-auth";
 
 
 import ApplicationInstructions from "./application-instructions";
+import RentalDashboard from "./rental-dashboard";
 import { useRef } from "react";
 import { useLocation } from "wouter";
 import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "../lib/file-encryption";
@@ -2733,7 +2734,76 @@ export function ApplicationForm() {
     handleWebhookResponse('occupants', documentType, response);
   };
 
-  const generatePDF = async (submissionData?: any) => {
+  // Process signatures to extract meaningful information for PDF
+  const processSignaturesForPDF = (rawSignatures: any) => {
+    if (!rawSignatures) return {};
+    
+    const processedSignatures: any = {};
+    
+    // Process applicant signature
+    if (rawSignatures.applicant) {
+      if (typeof rawSignatures.applicant === 'string') {
+        if (rawSignatures.applicant.startsWith('data:image/')) {
+          // For image signatures, show "SIGNATURE" instead of placeholder
+          processedSignatures.applicant = 'SIGNATURE';
+        } else if (rawSignatures.applicant.length > 100) {
+          // For long base64 strings, show "SIGNATURE"
+          processedSignatures.applicant = 'SIGNATURE';
+        } else {
+          processedSignatures.applicant = rawSignatures.applicant;
+        }
+      } else {
+        processedSignatures.applicant = 'SIGNATURE';
+      }
+    }
+    
+    // Process co-applicant signatures
+    if (rawSignatures.coApplicants) {
+      processedSignatures.coApplicants = {};
+      Object.keys(rawSignatures.coApplicants).forEach((index: string) => {
+        const signature = rawSignatures.coApplicants[index];
+        if (typeof signature === 'string') {
+          if (signature.startsWith('data:image/')) {
+            // For image signatures, show "SIGNATURE" instead of placeholder
+            processedSignatures.coApplicants[index] = 'SIGNATURE';
+          } else if (signature.length > 100) {
+            // For long base64 strings, show "SIGNATURE"
+            processedSignatures.coApplicants[index] = 'SIGNATURE';
+          } else {
+            processedSignatures.coApplicants[index] = signature;
+          }
+        } else {
+          processedSignatures.coApplicants[index] = 'SIGNATURE';
+        }
+      });
+    }
+    
+    // Process guarantor signatures
+    if (rawSignatures.guarantors) {
+      processedSignatures.guarantors = {};
+      Object.keys(rawSignatures.guarantors).forEach((index: string) => {
+        const signature = rawSignatures.guarantors[index];
+        if (typeof signature === 'string') {
+          if (signature.startsWith('data:image/')) {
+            // For image signatures, show "SIGNATURE" instead of placeholder
+            processedSignatures.guarantors[index] = 'SIGNATURE';
+          } else if (signature.length > 100) {
+            // For long base64 strings, show "SIGNATURE"
+            processedSignatures.guarantors[index] = 'SIGNATURE';
+          } else {
+            processedSignatures.guarantors[index] = signature;
+          }
+        } else {
+          processedSignatures.guarantors[index] = 'SIGNATURE';
+        }
+      });
+    }
+    
+    console.log('Processed signatures for PDF:', processedSignatures);
+    return processedSignatures;
+  };
+
+    const generatePDF = async (submissionData?: any) => {
     try {
       // Use the rental application PDF generator for clean, professional alignment
       const pdfGenerator = new RentalApplicationPDF();
@@ -2760,16 +2830,20 @@ export function ApplicationForm() {
       console.log('Co-applicants bank records:', dataToUse.coApplicants?.[0]?.bankRecords);
       console.log('Guarantors bank records:', dataToUse.guarantors?.[0]?.bankRecords);
 
+      // Process signatures for PDF generation
+      const processedSignatures = processSignaturesForPDF(signatures);
+      
       const pdfDoc = pdfGenerator.generate({
         application: combinedApplicationData,
         applicant: dataToUse.applicant,
         coApplicants: dataToUse.coApplicants || [],
         guarantors: dataToUse.guarantors || [],
         occupants: dataToUse.occupants || [],
+        signatures: processedSignatures, // Use processed signatures
       });
     
-    // Convert PDF document to data URL for download
-    const pdfData = pdfDoc.output('dataurlstring');
+      // Convert PDF document to data URL for download
+      const pdfData = pdfDoc.output('dataurlstring');
 
       // Extract base64 from data URL
       const base64 = pdfData.split(',')[1];
@@ -2808,18 +2882,18 @@ export function ApplicationForm() {
       }
 
       // Trigger browser download
-    const link = document.createElement('a');
-    link.href = pdfData;
+      const link = document.createElement('a');
+      link.href = pdfData;
       link.download = filename;
-    link.click();
+      link.click();
 
     } catch (error) {
       console.error('Error generating PDF:', error);
-    toast({
+      toast({
         title: "PDF Generation Failed",
         description: "There was an error generating your PDF.",
         variant: "destructive",
-    });
+      });
     }
   };
 
@@ -3011,6 +3085,7 @@ export function ApplicationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
   const [submissionReferenceId, setSubmissionReferenceId] = useState<string | null>(null);
 
   // Enhanced occupants handling with document uploads
@@ -4119,7 +4194,16 @@ export function ApplicationForm() {
           setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
         }
 
-        generatePDF(completeServerData);
+        try {
+          await generatePDF(completeServerData);
+        } catch (pdfError) {
+          console.error('PDF generation failed:', pdfError);
+          toast({
+            title: "PDF Generation Failed",
+            description: "Application submitted successfully, but PDF generation failed. Please try generating the PDF again.",
+            variant: "destructive",
+          });
+        }
       } catch (error) {
         console.error('Failed to submit application:', error);
         
@@ -7314,16 +7398,37 @@ export function ApplicationForm() {
                   variant="outline"
                   onClick={() => {
                     setShowSuccessPopup(false);
-                    // Reset form or redirect to drafts page
-                    window.location.href = '/drafts';
+                    setShowDashboard(true);
                   }}
                   className="flex-1"
                 >
-                  View Application
+                  View Dashboard
                 </Button>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Dashboard */}
+        {showDashboard && (
+          <RentalDashboard 
+            onBackToForm={() => setShowDashboard(false)}
+            currentApplication={{
+              id: submissionReferenceId || "APP-" + Date.now(),
+              applicantName: formData.applicantName || "Current Applicant",
+              propertyAddress: `${formData.buildingAddress || ""} ${formData.apartmentNumber || ""}`.trim() || "Property Address",
+              status: "pending_documents",
+              submittedDate: new Date().toISOString().split('T')[0],
+              progress: 25,
+              // Add default values for missing fields to prevent errors
+              creditScore: undefined,
+              monthlyIncome: undefined,
+              creditCardType: undefined,
+              creditCardLast4: undefined,
+              creditCardValid: undefined,
+              missingDocuments: [],
+            }}
+          />
         )}
       </div>
     );

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
-import { FileText, Clock, Edit, Trash2, Building, User, Calendar, DollarSign, CheckCircle, File, Eye, Users, Shield } from "lucide-react";
+import { FileText, Clock, Edit, Trash2, Building, User, Calendar, DollarSign, CheckCircle, File, Eye, Users, Shield, LayoutDashboard } from "lucide-react";
 import { useAuth } from "../hooks/use-auth";
 import { dynamoDBService } from "../lib/dynamodb-service";
 import { format } from "date-fns";
@@ -905,14 +905,24 @@ export const DraftCards = () => {
       <div className="max-w-full mx-auto px-3 sm:px-4 lg:px-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-                  <div className="text-center">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            My Applications
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600 mb-4">
-            Continue working on your saved applications
-          </p>
-        </div>
+          <div className="text-center">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+              My Applications
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600 mb-4">
+              Continue working on your saved applications
+            </p>
+            <div className="flex justify-center mt-4">
+              <Button 
+                onClick={() => setLocation('/dashboard')}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                View Dashboard
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Drafts Grid */}

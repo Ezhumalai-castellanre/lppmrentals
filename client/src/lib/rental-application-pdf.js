@@ -447,35 +447,123 @@ export class RentalApplicationPDF {
         // Now add the signatures section
         this.addSectionTitle("Signatures");
         const rows = [];
-        // Add primary applicant (first co-applicant or applicant)
-        if (data.coApplicants?.length > 0) {
-            rows.push([
-                `Primary Applicant: ${data.coApplicants[0]?.name || 'N/A'} - Signature: ______________________________`
-            ]);
-        }
-        else if (data.applicant?.name) {
-            rows.push([
-                `Primary Applicant: ${data.applicant.name} - Signature: ______________________________`
-            ]);
-        }
-        else {
-            rows.push([
-                `Primary Applicant: N/A - Signature: ______________________________`
-            ]);
-        }
-        // Add additional co-applicants (skip first one as it's the primary)
-        if (data.coApplicants?.length > 1) {
-            for (let i = 1; i < data.coApplicants.length; i++) {
-                const co = data.coApplicants[i];
+        
+        // Check if we have actual signatures data
+        const hasSignatures = data.signatures && Object.keys(data.signatures).length > 0;
+        
+        if (hasSignatures) {
+            console.log('Processing actual signatures:', data.signatures);
+            console.log('Available signature keys:', Object.keys(data.signatures));
+            
+            // Add primary applicant signature
+            if (data.signatures.applicant && data.signatures.applicant !== null) {
+                const applicantName = data.applicant?.name || data.coApplicants?.[0]?.name || 'Primary Applicant';
+                const signatureData = data.signatures.applicant;
+                // Format signature data for display
+                const signatureDisplay = this.formatSignatureForDisplay(signatureData);
                 rows.push([
-                    `Co-Applicant ${i + 1}: ${co.name || 'N/A'} - Signature: ______________________________`,
+                    `Primary Applicant: ${applicantName} - Signature: ${signatureDisplay}`
+                ]);
+            } else if (data.applicant?.name || data.coApplicants?.[0]?.name) {
+                const applicantName = data.applicant?.name || data.coApplicants?.[0]?.name;
+                rows.push([
+                    `Primary Applicant: ${applicantName} - Signature: [NOT SIGNED]`
                 ]);
             }
-        }
-        if (data.guarantors?.length) {
-            data.guarantors.forEach((g, i) => rows.push([
-                `Guarantor ${i + 1}: ${g.name || 'N/A'} - Signature: ______________________________`,
-            ]));
+            
+            // Add co-applicant signatures with correct key detection
+            if (data.coApplicants && data.coApplicants.length > 0) {
+                data.coApplicants.forEach((co, i) => {
+                    // Check the actual signature structure: data.signatures.coApplicants[i]
+                    let isSigned = false;
+                    let usedKey = '';
+                    
+                    // Check if signatures.coApplicants[i] exists and has a value
+                    if (data.signatures.coApplicants && data.signatures.coApplicants[i] !== undefined && data.signatures.coApplicants[i] !== null) {
+                        isSigned = true;
+                        usedKey = `coApplicants[${i}]`;
+                    }
+                    
+                    console.log(`Co-Applicant ${i + 1} (${co.name}): checking signatures.coApplicants[${i}], found: ${usedKey}, signed: ${isSigned}`);
+                    
+                    if (isSigned) {
+                        const signatureData = data.signatures.coApplicants[i];
+                        // Format signature data for display
+                        const signatureDisplay = this.formatSignatureForDisplay(signatureData);
+                        rows.push([
+                            `Co-Applicant ${i + 1}: ${co.name || 'N/A'} - Signature: ${signatureDisplay}`
+                        ]);
+                    } else {
+                        rows.push([
+                            `Co-Applicant ${i + 1}: ${co.name || 'N/A'} - Signature: [NOT SIGNED]`
+                        ]);
+                    }
+                });
+            }
+            
+            // Add guarantor signatures with correct key detection
+            if (data.guarantors && data.guarantors.length > 0) {
+                data.guarantors.forEach((g, i) => {
+                    // Check the actual signature structure: data.signatures.guarantors[i]
+                    let isSigned = false;
+                    let usedKey = '';
+                    
+                    // Check if signatures.guarantors[i] exists and has a value
+                    if (data.signatures.guarantors && data.signatures.guarantors[i] !== undefined && data.signatures.guarantors[i] !== null) {
+                        isSigned = true;
+                        usedKey = `guarantors[${i}]`;
+                    }
+                    
+                    console.log(`Guarantor ${i + 1} (${g.name}): checking signatures.guarantors[${i}], found: ${usedKey}, signed: ${isSigned}`);
+                    
+                    if (isSigned) {
+                        const signatureData = data.signatures.guarantors[i];
+                        // Format signature data for display
+                        const signatureDisplay = this.formatSignatureForDisplay(signatureData);
+                        rows.push([
+                            `Guarantor ${i + 1}: ${g.name || 'N/A'} - Signature: ${signatureDisplay}`
+                        ]);
+                    } else {
+                        rows.push([
+                            `Guarantor ${i + 1}: ${g.name || 'N/A'} - Signature: [NOT SIGNED]`
+                        ]);
+                    }
+                });
+            }
+        } else {
+            console.log('No signatures data found, using placeholder signatures');
+            
+            // Fallback to placeholder signatures if no actual signatures data
+            // Add primary applicant (first co-applicant or applicant)
+            if (data.coApplicants?.length > 0) {
+                rows.push([
+                    `Primary Applicant: ${data.coApplicants[0]?.name || 'N/A'} - Signature: ______________________________`
+                ]);
+            }
+            else if (data.applicant?.name) {
+                rows.push([
+                    `Primary Applicant: ${data.applicant.name} - Signature: ______________________________`
+                ]);
+            }
+            else {
+                rows.push([
+                    `Primary Applicant: N/A - Signature: ______________________________`
+                ]);
+            }
+            // Add additional co-applicants (skip first one as it's the primary)
+            if (data.coApplicants?.length > 1) {
+                for (let i = 1; i < data.coApplicants.length; i++) {
+                    const co = data.coApplicants[i];
+                    rows.push([
+                        `Co-Applicant ${i + 1}: ${co.name || 'N/A'} - Signature: ______________________________`,
+                    ]);
+                }
+            }
+            if (data.guarantors?.length) {
+                data.guarantors.forEach((g, i) => rows.push([
+                    `Guarantor ${i + 1}: ${g.name || 'N/A'} - Signature: ______________________________`,
+                ]));
+            }
         }
         autoTable(this.doc, {
             startY: this.currentY,
@@ -506,6 +594,143 @@ export class RentalApplicationPDF {
             .replace(/_/g, " ")
             .replace(/^./, (s) => s.toUpperCase());
     }
+    
+    // Format signature data for readable display
+    formatSignatureForDisplay(signatureData) {
+        if (!signatureData) return '[NO SIGNATURE]';
+        
+        // If it's a string, check for data URLs and base64
+        if (typeof signatureData === 'string') {
+            // Check if it's a data URL (image/png;base64,...)
+            if (signatureData.startsWith('data:image/')) {
+                // Extract the actual signature data from the data URL
+                try {
+                    // Remove the data URL prefix to get just the base64 data
+                    const base64Data = signatureData.split(',')[1];
+                    if (base64Data) {
+                        // Try to decode the base64 data
+                        const decoded = atob(base64Data);
+                        
+                        // Look for signature metadata in the decoded data
+                        if (decoded.includes('name') || decoded.includes('text') || decoded.includes('signature')) {
+                            // Try to parse as JSON
+                            try {
+                                const parsed = JSON.parse(decoded);
+                                if (parsed.name) return parsed.name;
+                                if (parsed.text) return parsed.text;
+                                if (parsed.signature) return parsed.signature;
+                            } catch (e) {
+                                // Not JSON, continue
+                            }
+                        }
+                        
+                        // If no metadata found, check if it's a reasonable length text
+                        if (decoded.length <= 100 && /^[\x20-\x7E]+$/.test(decoded)) {
+                            return decoded;
+                        }
+                        
+                        // If it's still encoded data, show a meaningful message
+                        return '[SIGNATURE COLLECTED]';
+                    }
+                } catch (error) {
+                    console.log('Error processing data URL signature:', error);
+                }
+                
+                return '[SIGNATURE COLLECTED]';
+            }
+            
+            // Check if it's a very long base64 string (likely image data)
+            if (signatureData.length > 200 && /^[A-Za-z0-9+/=]+$/.test(signatureData)) {
+                try {
+                    // Try to decode as base64
+                    const decoded = atob(signatureData);
+                    
+                    // Look for signature metadata
+                    if (decoded.includes('name') || decoded.includes('text') || decoded.includes('signature')) {
+                        try {
+                            const parsed = JSON.parse(decoded);
+                            if (parsed.name) return parsed.name;
+                            if (parsed.text) return parsed.text;
+                            if (parsed.signature) return parsed.signature;
+                        } catch (e) {
+                            // Not JSON, continue
+                        }
+                    }
+                    
+                    // If no metadata, show collected status
+                    return '[SIGNATURE COLLECTED]';
+                } catch (error) {
+                    console.log('Error decoding long base64 signature:', error);
+                    return '[SIGNATURE COLLECTED]';
+                }
+            }
+            
+            // Check if it's a reasonable length base64 string
+            if (signatureData.length > 50 && signatureData.length <= 200 && /^[A-Za-z0-9+/=]+$/.test(signatureData)) {
+                try {
+                    // Try to decode as base64
+                    const decoded = atob(signatureData);
+                    
+                    // If decoded data looks like text, return it
+                    if (decoded.length <= 100 && /^[\x20-\x7E]+$/.test(decoded)) {
+                        return decoded;
+                    }
+                    
+                    // If it's still encoded, try to extract meaningful parts
+                    if (decoded.includes('name') || decoded.includes('text') || decoded.includes('signature')) {
+                        // Try to parse as JSON
+                        try {
+                            const parsed = JSON.parse(decoded);
+                            if (parsed.name) return parsed.name;
+                            if (parsed.text) return parsed.text;
+                            if (parsed.signature) return parsed.signature;
+                        } catch (e) {
+                            // Not JSON, continue
+                        }
+                    }
+                    
+                    // Return decoded data if it's reasonable length
+                    if (decoded.length <= 100) {
+                        return decoded;
+                    }
+                } catch (error) {
+                    console.log('Error decoding signature:', error);
+                }
+                
+                return '[SIGNATURE COLLECTED]';
+            }
+            
+            // If it's a reasonable length string, it might be a typed name
+            if (signatureData.length <= 100) {
+                return signatureData;
+            }
+            
+            // For very long strings, try to extract the first meaningful part
+            const firstPart = signatureData.substring(0, 100);
+            if (firstPart.includes('name') || firstPart.includes('text')) {
+                return firstPart + '...';
+            }
+            
+            return signatureData.substring(0, 50) + '...';
+        }
+        
+        // If it's an object, try to extract meaningful information
+        if (typeof signatureData === 'object' && signatureData !== null) {
+            if (signatureData.name) return signatureData.name;
+            if (signatureData.text) return signatureData.text;
+            if (signatureData.signature) return signatureData.signature;
+            
+            // Try to stringify the object and extract useful info
+            const objStr = JSON.stringify(signatureData);
+            if (objStr.length <= 100) {
+                return objStr;
+            }
+            return objStr.substring(0, 100) + '...';
+        }
+        
+        // Default fallback - return the data as is
+        return String(signatureData);
+    }
     // Updated to work with actual data structure
     generate(data) {
         console.log('Generating PDF with data:', data);
@@ -528,6 +753,8 @@ export class RentalApplicationPDF {
         console.log('Guarantors count:', formData.guarantors?.length || 0);
         console.log('Co-applicants data:', formData.coApplicants);
         console.log('Guarantors data:', formData.guarantors);
+        console.log('Signatures data:', formData.signatures);
+        
         // 1. Header
         this.addHeader();
         // 2. Instructions
@@ -535,6 +762,7 @@ export class RentalApplicationPDF {
         // 3. Application Info
         this.addSectionTitle("Application Information");
         this.addKeyValueTable(formData.application);
+        
         // 4. Primary Applicant (use applicant data if available)
         if (formData.applicant) {
             console.log('Processing primary applicant from applicant data...');
@@ -562,6 +790,7 @@ export class RentalApplicationPDF {
                 this.addCoApplicantInfo(co, i);
             });
         }
+        
         // 6. Guarantors
         if (formData.guarantors && formData.guarantors.length > 0) {
             console.log('Processing guarantors...');
@@ -579,14 +808,18 @@ export class RentalApplicationPDF {
             this.doc.text("No guarantors provided", 20, this.currentY);
             this.currentY += 20;
         }
+        
         // 7. Occupants
         if (formData.occupants && formData.occupants.length > 0) {
             this.addOccupants(formData.occupants);
         }
+        
         // 8. Signatures (includes legal disclaimer)
         this.addSignatures(formData);
+        
         // 9. Footer
         this.addFooter();
+        
         return this.doc;
     }
     save(filename) {

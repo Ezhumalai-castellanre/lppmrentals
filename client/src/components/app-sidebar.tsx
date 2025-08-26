@@ -5,7 +5,8 @@ import {
   FileText, 
   Wrench,
   Lock, 
-  Clock
+  Clock,
+  LayoutDashboard
 } from 'lucide-react';
 import { dynamoDBService } from '../lib/dynamodb-service';
 
@@ -89,6 +90,11 @@ export function AppSidebar() {
 
 
   const navigationItems = [
+    {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: LayoutDashboard,
+    },
     {
       title: "My Applications",
       url: "/drafts",
