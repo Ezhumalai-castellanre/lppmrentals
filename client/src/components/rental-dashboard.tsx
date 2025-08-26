@@ -113,6 +113,10 @@ const statusConfig = {
   income_verification: { label: "Income Verification", color: "bg-purple-500", icon: DollarSign },
   approved: { label: "Approved", color: "bg-green-500", icon: CheckCircle },
   rejected: { label: "Rejected", color: "bg-red-500", icon: AlertCircle },
+  draft: { label: "Draft", color: "bg-gray-500", icon: FileText },
+  submitted: { label: "Submitted", color: "bg-blue-600", icon: CheckCircle },
+  error: { label: "Error", color: "bg-red-600", icon: AlertCircle },
+  unknown: { label: "Unknown", color: "bg-gray-400", icon: AlertCircle }
 }
 
 interface RentalDashboardProps {
@@ -291,8 +295,16 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
             </div>
             <div className="flex items-center gap-4">
               <Badge variant="outline" className="text-sm">
-                {allApplications.length} Active Applications
+                {allApplications.length} {allApplications.length === 1 ? 'Application' : 'Applications'}
               </Badge>
+              <Button
+                variant="outline"
+                onClick={() => window.location.reload()}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </Button>
               {onBackToForm && (
                 <Button
                   onClick={() => {
@@ -376,7 +388,7 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
               </Card>
             )}
             
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
@@ -408,13 +420,28 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {Math.round(
-                      (allApplications.filter((app) => app.status === "approved").length / allApplications.length) *
-                        100,
-                    )}
-                    %
+                    {allApplications.length > 0 
+                      ? Math.round(
+                          (allApplications.filter((app) => app.status === "approved").length / allApplications.length) *
+                            100,
+                        )
+                      : 0
+                    }%
                   </div>
                   <p className="text-xs text-muted-foreground">This month</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Documents Processed</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {allApplications.filter((app) => app.webhookResponses).length}
+                  </div>
+                  <p className="text-xs text-muted-foreground">With document processing</p>
                 </CardContent>
               </Card>
             </div>
@@ -426,49 +453,50 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
                 <CardDescription>Track the status of all rental applications</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {allApplications.map((app) => {
-                    const appData = getApplicationData(app);
-                    const StatusIcon = statusConfig[appData.status as keyof typeof statusConfig]?.icon || AlertCircle
-                    return (
-                      <div key={appData.id} className={`flex items-center justify-between p-4 border rounded-lg ${
-                        currentApplication && appData.id === currentApplication.id 
-                          ? 'bg-blue-50 border-blue-200 shadow-sm' 
-                          : ''
-                      }`}>
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <StatusIcon className="h-4 w-4" />
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <p className="font-medium">{appData.applicantName}</p>
-                                {currentApplication && appData.id === currentApplication.id && (
-                                  <Badge variant="default" className="text-xs">
-                                    Current
-                                  </Badge>
-                                )}
+                {allApplications && allApplications.length > 0 ? (
+                  <div className="space-y-4">
+                    {allApplications.map((app) => {
+                      const appData = getApplicationData(app);
+                      const StatusIcon = statusConfig[appData.status as keyof typeof statusConfig]?.icon || AlertCircle
+                      return (
+                        <div key={appData.id} className={`flex items-center justify-between p-4 border rounded-lg ${
+                          currentApplication && appData.id === currentApplication.id 
+                            ? 'bg-blue-50 border-blue-200 shadow-sm' 
+                            : ''
+                        }`}>
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <StatusIcon className="h-4 w-4" />
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{appData.applicantName}</p>
+                                  {currentApplication && appData.id === currentApplication.id && (
+                                    <Badge variant="default" className="text-xs">
+                                      Current
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground">{appData.id}</p>
                               </div>
-                              <p className="text-sm text-muted-foreground">{appData.id}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm">{appData.propertyAddress}</p>
+                              <p className="text-xs text-muted-foreground">Submitted: {appData.submittedDate}</p>
                             </div>
                           </div>
-                          <div>
-                            <p className="text-sm">{appData.propertyAddress}</p>
-                            <p className="text-xs text-muted-foreground">Submitted: {appData.submittedDate}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <p className="text-sm font-medium">Credit: {appData.creditScore || 'N/A'}</p>
-                            <p className="text-sm text-muted-foreground">
-                              Income: ${appData.monthlyIncome ? appData.monthlyIncome.toLocaleString() : 'N/A'}
-                            </p>
-                          </div>
-                          <div className="w-24">
-                            <Progress value={appData.progress} className="h-2" />
-                            <p className="text-xs text-muted-foreground mt-1">{appData.progress}%</p>
-                          </div>
-                          <Badge
-                            variant="secondary"
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <p className="text-sm font-medium">Credit: {appData.creditScore || 'N/A'}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Income: ${appData.monthlyIncome ? appData.monthlyIncome.toLocaleString() : 'N/A'}
+                              </p>
+                            </div>
+                            <div className="w-24">
+                              <Progress value={appData.progress} className="h-2" />
+                              <p className="text-xs text-muted-foreground mt-1">{appData.progress}%</p>
+                            </div>
+                            <Badge
+                              variant="secondary"
                             className={`${statusConfig[appData.status as keyof typeof statusConfig]?.color || 'bg-gray-500'} text-white`}
                           >
                             {statusConfig[appData.status as keyof typeof statusConfig]?.label || 'Unknown'}
@@ -478,6 +506,18 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
                     )
                   })}
                 </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">No Applications Found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    You haven't submitted any applications yet.
+                  </p>
+                  <Button asChild>
+                    <a href="/application">Start New Application</a>
+                  </Button>
+                </div>
+              )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -491,45 +531,55 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
                   <CardDescription>Review credit scores and card validation</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {allApplications.map((app) => {
-                      const appData = getApplicationData(app);
-                      return (
-                        <div key={appData.id} className="p-4 border rounded-lg space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium">{appData.applicantName}</p>
-                              <p className="text-sm text-muted-foreground">{appData.id}</p>
+                  {allApplications && allApplications.length > 0 ? (
+                    <div className="space-y-4">
+                      {allApplications.map((app) => {
+                        const appData = getApplicationData(app);
+                        return (
+                          <div key={appData.id} className="p-4 border rounded-lg space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium">{appData.applicantName}</p>
+                                <p className="text-sm text-muted-foreground">{appData.id}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-bold">{appData.creditScore || 'N/A'}</p>
+                                <Badge
+                                  variant={
+                                    appData.creditScore && appData.creditScore >= 700
+                                      ? "default"
+                                      : appData.creditScore && appData.creditScore >= 650
+                                        ? "secondary"
+                                        : "destructive"
+                                  }
+                                >
+                                  {appData.creditScore && appData.creditScore >= 700 ? "Excellent" : appData.creditScore && appData.creditScore >= 650 ? "Good" : "Fair"}
+                                </Badge>
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <p className="text-lg font-bold">{appData.creditScore || 'N/A'}</p>
-                              <Badge
-                                variant={
-                                  appData.creditScore && appData.creditScore >= 700
-                                    ? "default"
-                                    : appData.creditScore && appData.creditScore >= 650
-                                      ? "secondary"
-                                      : "destructive"
-                                }
-                              >
-                                {appData.creditScore && appData.creditScore >= 700 ? "Excellent" : appData.creditScore && appData.creditScore >= 650 ? "Good" : "Fair"}
+                            <div className="flex items-center justify-between pt-2 border-t">
+                              <div className="flex items-center gap-2">
+                                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm font-medium">{appData.creditCardType || 'N/A'}</span>
+                                <span className="text-sm text-muted-foreground">****{appData.creditCardLast4 || '****'}</span>
+                              </div>
+                              <Badge variant={appData.creditCardValid === true ? "default" : "destructive"}>
+                                {appData.creditCardValid === true ? "Valid Card" : "Invalid Card"}
                               </Badge>
                             </div>
                           </div>
-                          <div className="flex items-center justify-between pt-2 border-t">
-                            <div className="flex items-center gap-2">
-                              <CreditCard className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-medium">{appData.creditCardType || 'N/A'}</span>
-                              <span className="text-sm text-muted-foreground">****{appData.creditCardLast4 || '****'}</span>
-                            </div>
-                            <Badge variant={appData.creditCardValid === true ? "default" : "destructive"}>
-                              {appData.creditCardValid === true ? "Valid Card" : "Invalid Card"}
-                            </Badge>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-foreground mb-2">No Applications to Verify</h3>
+                      <p className="text-muted-foreground">
+                        Submit an application to see credit verification details.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -539,25 +589,35 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
                   <CardDescription>Review monthly income and employment</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {allApplications.map((app) => {
-                      const appData = getApplicationData(app);
-                      return (
-                        <div key={appData.id} className="flex items-center justify-between p-3 border rounded">
-                          <div>
-                            <p className="font-medium">{appData.applicantName}</p>
-                            <p className="text-sm text-muted-foreground">{appData.id}</p>
+                  {allApplications && allApplications.length > 0 ? (
+                    <div className="space-y-4">
+                      {allApplications.map((app) => {
+                        const appData = getApplicationData(app);
+                        return (
+                          <div key={appData.id} className="flex items-center justify-between p-3 border rounded">
+                            <div>
+                              <p className="font-medium">{appData.applicantName}</p>
+                              <p className="text-sm text-muted-foreground">{appData.id}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold">${appData.monthlyIncome ? appData.monthlyIncome.toLocaleString() : 'N/A'}</p>
+                              <Badge variant={appData.monthlyIncome && appData.monthlyIncome >= 5000 ? "default" : "secondary"}>
+                                {appData.monthlyIncome && appData.monthlyIncome >= 5000 ? "Strong" : "Moderate"}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold">${appData.monthlyIncome ? appData.monthlyIncome.toLocaleString() : 'N/A'}</p>
-                            <Badge variant={appData.monthlyIncome && appData.monthlyIncome >= 5000 ? "default" : "secondary"}>
-                              {appData.monthlyIncome && appData.monthlyIncome >= 5000 ? "Strong" : "Moderate"}
-                            </Badge>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-foreground mb-2">No Applications to Verify</h3>
+                      <p className="text-muted-foreground">
+                        Submit an application to see income verification details.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
