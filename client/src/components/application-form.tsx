@@ -2749,38 +2749,53 @@ export function ApplicationForm() {
 
   // Process signatures to extract meaningful information for PDF
   const processSignaturesForPDF = (rawSignatures: any) => {
-    if (!rawSignatures) return {};
+    if (!rawSignatures) rawSignatures = {};
     
     const processedSignatures: any = {};
     
     // Process applicant signature - preserve actual signature data for image rendering
     if (rawSignatures.applicant) {
       processedSignatures.applicant = rawSignatures.applicant;
+    } else {
+      // If no applicant signature, add a placeholder
+      processedSignatures.applicant = null;
     }
     
     // Process co-applicant signatures - preserve actual signature data
-    if (rawSignatures.coApplicants) {
+    // Get the actual co-applicants from the form data to ensure we process all of them
+    const coApplicants = form.getValues().coApplicants || [];
+    if (coApplicants.length > 0) {
       processedSignatures.coApplicants = {};
-      Object.keys(rawSignatures.coApplicants).forEach((index: string) => {
-        const signature = rawSignatures.coApplicants[index];
+      coApplicants.forEach((_: any, index: number) => {
+        const signature = rawSignatures.coApplicants?.[index];
         if (signature) {
           processedSignatures.coApplicants[index] = signature;
+        } else {
+          // If no signature for this co-applicant, add a placeholder
+          processedSignatures.coApplicants[index] = null;
         }
       });
     }
     
     // Process guarantor signatures - preserve actual signature data
-    if (rawSignatures.guarantors) {
+    // Get the actual guarantors from the form data to ensure we process all of them
+    const guarantors = form.getValues().guarantors || [];
+    if (guarantors.length > 0) {
       processedSignatures.guarantors = {};
-      Object.keys(rawSignatures.guarantors).forEach((index: string) => {
-        const signature = rawSignatures.guarantors[index];
+      guarantors.forEach((_: any, index: number) => {
+        const signature = rawSignatures.guarantors?.[index];
         if (signature) {
           processedSignatures.guarantors[index] = signature;
+        } else {
+          // If no signature for this guarantor, add a placeholder
+          processedSignatures.guarantors[index] = null;
         }
       });
     }
     
     console.log('Processed signatures for PDF (preserving actual data):', processedSignatures);
+    console.log('Form co-applicants count:', form.getValues().coApplicants?.length || 0);
+    console.log('Form guarantors count:', form.getValues().guarantors?.length || 0);
     return processedSignatures;
   };
 

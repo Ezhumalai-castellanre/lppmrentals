@@ -11,60 +11,109 @@ import {
 export class RentalApplicationPDF {
     doc: jsPDF;
     currentY: number;
+    pageWidth: number;
+    marginLeft: number;
+    marginRight: number;
+    contentWidth: number;
 
     constructor() {
         this.currentY = 40;
         this.doc = new jsPDF({ unit: "px", format: "a4" });
+        this.pageWidth = 595.28; // A4 width in pixels
+        this.marginLeft = 20;
+        this.marginRight = 20;
+        this.contentWidth = this.pageWidth - this.marginLeft - this.marginRight;
     }
+
     addHeader() {
         // Company logo placeholder
         this.doc.setFillColor(0, 102, 204);
-        this.doc.rect(20, this.currentY, 25, 18, 'F');
+        this.doc.rect(this.marginLeft, this.currentY, 25, 18, 'F');
         this.doc.setTextColor(255, 255, 255);
         this.doc.setFontSize(7);
         this.doc.setFont("helvetica", "bold");
-        this.doc.text('LIBERTY', 23, this.currentY + 7);
-        this.doc.text('PLACE', 23, this.currentY + 12);
+        this.doc.text('LIBERTY', this.marginLeft + 3, this.currentY + 7);
+        this.doc.text('PLACE', this.marginLeft + 3, this.currentY + 12);
+        
         // Company name
         this.doc.setTextColor(0, 102, 204);
         this.doc.setFontSize(16);
         this.doc.setFont("helvetica", "bold");
-        this.doc.text("Liberty Place Property Management", 55, this.currentY + 10);
+        this.doc.text("Liberty Place Property Management", this.marginLeft + 55, this.currentY + 10);
+        
         // Address and contact info
         this.doc.setFontSize(8);
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(51, 51, 51);
-        this.doc.text("122 East 42nd Street, Suite 1903", 55, this.currentY + 16);
-        this.doc.text("New York, NY 10168", 55, this.currentY + 20);
-        this.doc.text("Tel: (646) 545-6700 | Fax: (646) 304-2255", 55, this.currentY + 24);
-        this.doc.text("Leasing Direct Line: (646) 545-6700", 55, this.currentY + 28);
-        this.currentY += 35;
+        this.doc.text("122 East 42nd Street, Suite 1903", this.marginLeft + 55, this.currentY + 16);
+        this.doc.text("New York, NY 10168", this.marginLeft + 55, this.currentY + 20);
+        this.doc.text("Tel: (646) 545-6700 | Fax: (646) 304-2255", this.marginLeft + 55, this.currentY + 24);
+        this.doc.text("Leasing Direct Line: (646) 545-6700", this.marginLeft + 55, this.currentY + 28);
+        this.currentY += 40; // Increased spacing after header
+        
         // Title with decorative elements
         this.doc.setFillColor(255, 193, 7);
-        this.doc.rect(20, this.currentY, 555, 12, 'F');
+        this.doc.rect(this.marginLeft, this.currentY, this.contentWidth, 12, 'F');
         this.doc.setTextColor(255, 255, 255);
         this.doc.setFontSize(14);
         this.doc.setFont("helvetica", "bold");
-        this.doc.text("RENTAL APPLICATION", 297.5, this.currentY + 8, { align: 'center' });
-        this.currentY += 16;
+        this.doc.text("RENTAL APPLICATION", this.pageWidth / 2, this.currentY + 8, { align: 'center' });
+        this.currentY += 20; // Increased spacing after title bar
+        
         // Application ID and date
         this.doc.setTextColor(51, 51, 51);
         this.doc.setFontSize(9);
         this.doc.setFont("helvetica", "normal");
-        this.doc.text(`Application Date: ${new Date().toLocaleDateString()}`, 20, this.currentY);
-        this.doc.text(`Generated: ${new Date().toLocaleString()}`, 400, this.currentY);
-        this.currentY += 20;
+        this.doc.text(`Application Date: ${new Date().toLocaleDateString()}`, this.marginLeft, this.currentY);
+        this.doc.text(`Generated: ${new Date().toLocaleString()}`, this.pageWidth - this.marginRight - 150, this.currentY);
+        this.currentY += 25; // Increased spacing after date info
     }
+
+    /**
+     * Check if we need to add a page break and add one if necessary
+     */
+    checkPageBreak(requiredHeight: number = 100) {
+        if (this.currentY + requiredHeight > 750) {
+            this.doc.addPage();
+            this.currentY = 40;
+            return true;
+        }
+        return false;
+    }
+
     addSectionTitle(title: string) {
+        // Check if we need a page break before adding a new section
+        this.checkPageBreak(50);
+        
+        // Add extra spacing before section titles for better readability
+        this.currentY += 10;
+        
+        // Add a subtle background rectangle for section titles
+        const titleWidth = this.contentWidth;
+        const titleHeight = 25;
+        
+        // Background rectangle
+        this.doc.setFillColor(240, 248, 255); // Light blue background
+        this.doc.rect(this.marginLeft, this.currentY - 5, titleWidth, titleHeight, 'F');
+        
+        // Border around the title area
+        this.doc.setDrawColor(0, 102, 204);
+        this.doc.setLineWidth(0.5);
+        this.doc.rect(this.marginLeft, this.currentY - 5, titleWidth, titleHeight, 'S');
+        
+        // Title text
         this.doc.setFontSize(14);
         this.doc.setFont("helvetica", "bold");
         this.doc.setTextColor(0, 102, 204);
-        this.doc.text(title, 20, this.currentY);
-        this.currentY += 20;
+        this.doc.text(title, this.marginLeft + 10, this.currentY + 8);
+        
+        this.currentY += titleHeight + 10; // Increased spacing after title
     }
+
     addKeyValueTable(data: any, exclude: string[] = [], title?: string) {
         if (!data)
             return;
+            
         // Create a mapping of field names to display names
         const fieldMappings: { [key: string]: string } = {
             name: "Full Name",
@@ -120,110 +169,175 @@ export class RentalApplicationPDF {
             coApplicantBankRecords: "Bank Records",
             coApplicantEmployer: "Employer"
         };
+
         const body = Object.entries(data)
             .filter(([key, val]) => {
-            // Don't exclude if it's a meaningful value
-            if (exclude.includes(key))
-                return false;
-            if (typeof val === "object" && val !== null)
-                return false;
-            if (val === null || val === undefined)
-                return false;
-            if (val === "")
-                return false;
-            if (val === "empty")
-                return false;
-            if (val === "undefined")
-                return false;
-            return true;
-        })
+                // Don't exclude if it's a meaningful value
+                if (exclude.includes(key))
+                    return false;
+                if (typeof val === "object" && val !== null)
+                    return false;
+                if (val === null || val === undefined)
+                    return false;
+                if (val === "")
+                    return false;
+                if (val === "empty")
+                    return false;
+                if (val === "undefined")
+                    return false;
+                return true;
+            })
             .map(([key, val]) => {
-            let displayValue = val;
-            // Format dates properly
-            if (key === 'dob' || key === 'employmentStart' || key === 'moveInDate' || key === 'coApplicantStartDate') {
-                try {
-                    const date = new Date(val);
-                    if (!isNaN(date.getTime())) {
-                        displayValue = date.toLocaleDateString();
-                    }
-                }
-                catch (e) {
-                    displayValue = val;
-                }
-            }
-            // Format income values
-            if (key === 'income' || key === 'otherIncome' || key === 'monthlyRent' || key === 'currentRent' || key === 'coApplicantSalary' || key === 'coApplicantOtherIncome') {
-                if (typeof val === 'number' || !isNaN(Number(val))) {
-                    displayValue = `$${Number(val).toLocaleString()}`;
-                }
-            }
-            // Calculate age from date of birth
-            if (key === 'age' && data.dob) {
-                try {
-                    const dob = new Date(data.dob);
-                    if (!isNaN(dob.getTime())) {
-                        const today = new Date();
-                        const age = today.getFullYear() - dob.getFullYear();
-                        const monthDiff = today.getMonth() - dob.getMonth();
-                        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-                            displayValue = age - 1;
-                        }
-                        else {
-                            displayValue = age;
+                let displayValue = val;
+                // Format dates properly
+                if (key === 'dob' || key === 'employmentStart' || key === 'moveInDate' || key === 'coApplicantStartDate') {
+                    try {
+                        const date = new Date(val as string | number | Date);
+                        if (!isNaN(date.getTime())) {
+                            displayValue = date.toLocaleDateString();
                         }
                     }
+                    catch (e) {
+                        displayValue = val;
+                    }
                 }
-                catch (e) {
-                    // Keep original value if calculation fails
+                // Format income values
+                if (key === 'income' || key === 'otherIncome' || key === 'monthlyRent' || key === 'currentRent' || key === 'coApplicantSalary' || key === 'coApplicantOtherIncome') {
+                    if (typeof val === 'number' || !isNaN(Number(val))) {
+                        displayValue = `$${Number(val).toLocaleString()}`;
+                    }
                 }
-            }
-            return [
-                fieldMappings[key] || this.toLabel(key),
-                displayValue ? String(displayValue) : "[Not Provided]",
-            ];
-        });
+                // Calculate age from date of birth
+                if (key === 'age' && data.dob) {
+                    try {
+                        const dob = new Date(data.dob);
+                        if (!isNaN(dob.getTime())) {
+                            const today = new Date();
+                            const age = today.getFullYear() - dob.getFullYear();
+                            const monthDiff = today.getMonth() - dob.getMonth();
+                            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                                displayValue = age - 1;
+                            }
+                            else {
+                                displayValue = age;
+                            }
+                        }
+                    }
+                    catch (e) {
+                        // Keep original value if calculation fails
+                    }
+                }
+                return [
+                    fieldMappings[key] || this.toLabel(key),
+                    displayValue ? String(displayValue) : "[Not Provided]",
+                ];
+            });
+
         if (!body.length)
             return;
+
         if (title) {
             this.doc.setFontSize(12);
             this.doc.setFont("helvetica", "bold");
             this.doc.setTextColor(51, 51, 51);
-            this.doc.text(title, 20, this.currentY);
-            this.currentY += 15;
+            this.doc.text(title, this.marginLeft, this.currentY);
+            this.currentY += 18; // Increased spacing after subtitle
         }
+
+        // Calculate fixed column widths for professional alignment
+        const fieldColumnWidth = 150; // Fixed width for field names
+        const valueColumnWidth = this.contentWidth - fieldColumnWidth - 20; // Remaining width for values
+
         autoTable(this.doc, {
             startY: this.currentY,
             head: [["Field", "Value"]],
             body,
-            margin: { left: 20, right: 20 },
-            styles: { fontSize: 10, cellPadding: 4 },
-            headStyles: { fillColor: [0, 102, 204], textColor: [255, 255, 255] },
-            alternateRowStyles: { fillColor: [245, 245, 245] },
+            margin: { left: this.marginLeft, right: this.marginRight },
+            styles: { 
+                fontSize: 10, 
+                cellPadding: 8, // Increased padding for better readability
+                lineWidth: 0.5,
+                lineColor: [200, 200, 200],
+                textColor: [51, 51, 51]
+            },
+            headStyles: { 
+                fillColor: [0, 102, 204], 
+                textColor: [255, 255, 255],
+                fontSize: 11,
+                fontStyle: 'bold',
+                cellPadding: 8
+            },
+            alternateRowStyles: { fillColor: [248, 249, 250] },
+            columnStyles: {
+                0: { 
+                    cellWidth: fieldColumnWidth, 
+                    fontStyle: 'bold',
+                    cellPadding: 8
+                },
+                1: { 
+                    cellWidth: valueColumnWidth,
+                    cellPadding: 8
+                }
+            }
         });
-        this.currentY = this.doc.lastAutoTable.finalY + 15;
+        
+        this.currentY = this.doc.lastAutoTable.finalY + 25; // Increased spacing after table
     }
+
     addBankTable(banks: any[] | undefined, title = "Bank Records") {
         if (!banks?.length)
             return;
+            
         this.doc.setFontSize(12);
         this.doc.setFont("helvetica", "bold");
         this.doc.setTextColor(51, 51, 51);
-        this.doc.text(title, 20, this.currentY);
-        this.currentY += 15;
+        this.doc.text(title, this.marginLeft, this.currentY);
+        this.currentY += 18; // Increased spacing after title
+        
         const body = banks.map((b) => [b.bankName || "", b.accountType || ""]);
+        
+        // Calculate fixed column widths for professional alignment
+        const fieldColumnWidth = 150; // Fixed width for field names
+        const valueColumnWidth = this.contentWidth - fieldColumnWidth - 20; // Remaining width for values
+        
         autoTable(this.doc, {
             startY: this.currentY,
             head: [["Bank Name", "Account Type"]],
             body,
-            margin: { left: 20, right: 20 },
-            styles: { fontSize: 10, cellPadding: 4 },
-            headStyles: { fillColor: [51, 51, 51], textColor: [255, 255, 255] },
-            alternateRowStyles: { fillColor: [245, 245, 245] },
+            margin: { left: this.marginLeft, right: this.marginRight },
+            styles: { 
+                fontSize: 10, 
+                cellPadding: 8, // Increased padding
+                lineWidth: 0.5,
+                lineColor: [200, 200, 200],
+                textColor: [51, 51, 51]
+            },
+            headStyles: { 
+                fillColor: [51, 51, 51], 
+                textColor: [255, 255, 255],
+                fontSize: 11,
+                fontStyle: 'bold',
+                cellPadding: 8
+            },
+            alternateRowStyles: { fillColor: [248, 249, 250] },
+            columnStyles: {
+                0: { 
+                    cellWidth: fieldColumnWidth,
+                    cellPadding: 8
+                },
+                1: { 
+                    cellWidth: valueColumnWidth,
+                    cellPadding: 8
+                }
+            }
         });
-        this.currentY = this.doc.lastAutoTable.finalY + 15;
+        
+        this.currentY = this.doc.lastAutoTable.finalY + 25; // Increased spacing after table
     }
+
     addInstructions() {
         this.addSectionTitle("Application Instructions");
+        
         const instructions = [
             "Thank you for choosing a Liberty Place Property Management apartment.",
             "",
@@ -263,34 +377,37 @@ export class RentalApplicationPDF {
             "• Certified Financial Statements",
             "• Corporate Tax Returns (two (2) most recent consecutive returns)"
         ];
+
         instructions.forEach(instruction => {
             if (instruction === "") {
-                this.currentY += 8;
+                this.currentY += 10; // Increased spacing for empty lines
             }
             else if (instruction.startsWith("•")) {
                 this.doc.setFontSize(9);
                 this.doc.setFont("helvetica", "normal");
                 this.doc.setTextColor(51, 51, 51);
-                this.doc.text(instruction, 25, this.currentY);
-                this.currentY += 12;
+                this.doc.text(instruction, this.marginLeft + 8, this.currentY); // Increased indent for bullet points
+                this.currentY += 14; // Increased spacing between bullet points
             }
             else if (instruction.includes(":")) {
                 this.doc.setFontSize(10);
                 this.doc.setFont("helvetica", "bold");
                 this.doc.setTextColor(0, 102, 204);
-                this.doc.text(instruction, 20, this.currentY);
-                this.currentY += 15;
+                this.doc.text(instruction, this.marginLeft, this.currentY);
+                this.currentY += 18; // Increased spacing after section headers
             }
             else {
                 this.doc.setFontSize(9);
                 this.doc.setFont("helvetica", "normal");
                 this.doc.setTextColor(51, 51, 51);
-                this.doc.text(instruction, 20, this.currentY);
-                this.currentY += 12;
+                this.doc.text(instruction, this.marginLeft, this.currentY);
+                this.currentY += 14; // Increased spacing for regular text
             }
         });
-        this.currentY += 20;
+        
+        this.currentY += 25; // Increased final spacing
     }
+
     addApplicantInfo(applicant: any) {
         this.addSectionTitle("Primary Applicant Information");
         // Personal Information
@@ -421,7 +538,7 @@ export class RentalApplicationPDF {
         this.doc.setFontSize(10);
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(51, 51, 51);
-        this.doc.text("Additional occupants who will be living in the apartment:", 20, this.currentY);
+        this.doc.text("Additional occupants who will be living in the apartment:", this.marginLeft, this.currentY);
         this.currentY += 15;
         occupants.forEach((o, idx) => {
             this.addKeyValueTable(o, [], `Occupant ${idx + 1} Information`);
@@ -459,14 +576,22 @@ export class RentalApplicationPDF {
 
                 if (imgData && imgType) {
                     // For jsPDF, we need to handle the image properly
-                    // Since we can't wait for async image loading, we'll use a standard signature size
+                    // Use consistent signature dimensions for better alignment
                     const width = Math.min(maxWidth, 120); // Standard signature width
                     const height = Math.min(maxHeight, 40); // Standard signature height
                     
                     console.log('🔍 Adding image to PDF:', { width, height, imgType: imgType.toUpperCase() });
-                        this.doc.addImage(imgData, imgType.toUpperCase(), x, y, width, height);
+                    
+                    // Add the image with proper positioning
+                    this.doc.addImage(imgData, imgType.toUpperCase(), x, y, width, height);
                     console.log('🔍 Image added successfully');
-                        return height + 5; // Return height of the image plus some padding
+                    
+                    // Add a subtle border around the signature for better visibility
+                    this.doc.setDrawColor(200, 200, 200);
+                    this.doc.setLineWidth(0.5);
+                    this.doc.rect(x - 1, y - 1, width + 2, height + 2, 'S');
+                    
+                    return height + 8; // Return height of the image plus padding and border
                 } else {
                     console.log('🔍 Image data or type missing:', { imgType, hasImgData: !!imgData });
                 }
@@ -478,34 +603,39 @@ export class RentalApplicationPDF {
             console.log('🔍 Not an image signature, type:', processedSignature.type);
         }
         
-        // If not an image data URL or image adding failed, display text
+        // If not an image data URL or image adding failed, display text with signature line
         console.log('🔍 Falling back to text display:', processedSignature.displayText);
-        this.doc.setFontSize(10);
-        this.doc.setFont("helvetica", "normal");
-        this.doc.setTextColor(51, 51, 51);
+        
+        // Add a signature line
+        this.doc.setDrawColor(51, 51, 51);
+        this.doc.setLineWidth(1);
+        this.doc.line(x, y + 5, x + maxWidth, y + 5);
+        
+        // Add the text above the line
+        this.doc.setFontSize(9);
+        this.doc.setFont("helvetica", "italic");
+        this.doc.setTextColor(128, 128, 128);
         this.doc.text(processedSignature.displayText, x, y);
-        return 15; // Height for a line of text
+        
+        return 20; // Height for signature line and text
     }
 
-
-
     addSignatures(data: any) {
-        // Add the legal disclaimer content above signatures
         this.addSectionTitle("PLEASE READ CAREFULLY BEFORE SIGNING");
         const disclaimerText = "The Landlord shall not be bound by any lease, nor will possession of the premises be delivered to the Tenant, until a written lease agreement is executed by the Landlord and delivered to the Tenant. Approval of this application remains at Landlord's discretion until a lease agreement is fully executed. Please be advised that the date on page one of the lease is your move-in date and also denotes the lease commencement date. No representations or agreements by agents, brokers or others shall be binding upon the Landlord or its Agent unless those representations or agreements are set forth in the written lease agreement executed by both Landlord and Tenant.";
         
         this.doc.setFontSize(8);
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(51, 51, 51);
-        const lines = this.doc.splitTextToSize(disclaimerText, 555);
-        this.doc.text(lines, 20, this.currentY);
+        const lines = this.doc.splitTextToSize(disclaimerText, this.contentWidth);
+        this.doc.text(lines, this.marginLeft, this.currentY);
         this.currentY += lines.length * 12 + 15;
 
         // Certification & Consents section
         this.doc.setFontSize(10);
         this.doc.setFont("helvetica", "bold");
         this.doc.setTextColor(0, 102, 204);
-        this.doc.text("Certification & Consents", 20, this.currentY);
+        this.doc.text("Certification & Consents", this.marginLeft, this.currentY);
         this.currentY += 15;
 
         const certificationText = "By signing this application electronically, I consent to the use of electronic records and digital signatures in connection with this application and any resulting lease agreement. I agree that my electronic signature is legally binding and has the same effect as a handwritten signature. I hereby warrant that all my representations and information provided in this application are true, accurate, and complete to the best of my knowledge. I recognize the truth of the information contained herein is essential and I acknowledge that any false or misleading information may result in the rejection of my application or rescission of the offer prior to possession or, if a lease has been executed and/or possession delivered, may constitute a material breach and provide grounds to commence appropriate legal proceedings to terminate the tenancy, as permitted by law. I further represent that I am not renting a room or an apartment under any other name, nor have I ever been dispossessed or evicted from any residence, nor am I now being dispossessed nor currently being evicted. I represent that I am over at least 18 years of age. I acknowledge and consent that my Social Security number and any other personal identifying information collected in this application may be used for tenant screening and will be maintained in confidence and protected against unauthorized disclosure in accordance with New York General Business Law and related privacy laws. I have been advised that I have the right, under the Fair Credit Reporting Act, to make a written request, directed to the appropriate credit reporting agency, within reasonable time, for a complete and accurate disclosure of the nature and scope of any credit investigation. I understand that upon submission, this application and all related documents become the property of the Landlord, and will not be returned to me under any circumstances regardless of whether my application is approved or denied. I consent to and authorize the Landlord, Agent and any designated screening or credit reporting agency to obtain a consumer credit report on me and to conduct any necessary background checks, to the extent permitted by law. I further authorize the Landlord and Agent to verify any and all information provided in this application with regard to my employment history, current and prior tenancies, bank accounts, and all other information that the Landlord deems pertinent to evaluating my leasing application. I authorize the designated screening company to contact my current and previous landlords, employers and references, if necessary. I understand that I shall not be permitted to receive or review my application file or my credit consumer report, and the Landlord and Agent are not obligated to provide me with copies of my application file or any consumer report obtained in the screening process, and that I may obtain my credit report from the credit reporting agency or as otherwise provided by law. I authorize banks, financial institutions, landlords, employers, business associates, credit bureaus, attorneys, accountants and other persons or institutions with whom I am acquainted and that may have information about me to furnish any and all information regarding myself. This authorization also applies to any updated reports which may be ordered as needed. A photocopy or fax of this authorization or an electronic copy (including any electronic signature) shall be accepted with the same authority as this original. I will provide any additional information required by the Landlord or Agent in connection with this application or any prospective lease contemplated herein. I understand that the application fee is non-refundable.";
@@ -513,13 +643,13 @@ export class RentalApplicationPDF {
         this.doc.setFontSize(8);
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(51, 51, 51);
-        const certLines = this.doc.splitTextToSize(certificationText, 555);
-        this.doc.text(certLines, 20, this.currentY);
+        const certLines = this.doc.splitTextToSize(certificationText, this.contentWidth);
+        this.doc.text(certLines, this.marginLeft, this.currentY);
         this.currentY += certLines.length * 12 + 15;
 
         const civilRightsText = "The Civil Rights Act of 1968, as amended by the Fair Housing Amendments Act of 1988, prohibits discrimination in the rental of housing based on race, color, religion, gender, disability, familial status, lawful source of income (including housing vouchers and public assistance) or national origin. The Federal Agency, which administers compliance with this law, is the U.S. Department of Housing and Urban Development.";
-        const civilRightsLines = this.doc.splitTextToSize(civilRightsText, 555);
-        this.doc.text(civilRightsLines, 20, this.currentY);
+        const civilRightsLines = this.doc.splitTextToSize(civilRightsText, this.contentWidth);
+        this.doc.text(civilRightsLines, this.marginLeft, this.currentY);
         this.currentY += civilRightsLines.length * 12 + 20;
 
         // Now add the signatures section
@@ -536,49 +666,25 @@ export class RentalApplicationPDF {
         // Extract signatures using the utility function
         const signatures = extractSignaturesForPDF(data);
         
-        console.log('🔍 PDF Generator - Processing signatures:', signatures);
-        console.log('🔍 PDF Generator - Raw data signatures:', data.signatures);
-        console.log('🔍 PDF Generator - Extracted signatures keys:', Object.keys(signatures));
-        
-        // Debug each signature individually
-        if (signatures.applicant) {
-            console.log('🔍 PDF Generator - Applicant signature type:', typeof signatures.applicant);
-            console.log('🔍 PDF Generator - Applicant signature preview:', signatures.applicant?.substring(0, 100) + '...');
-        }
-        
-        if (signatures.coApplicants) {
-            Object.entries(signatures.coApplicants).forEach(([index, signature]) => {
-                console.log(`🔍 PDF Generator - Co-applicant ${index} signature type:`, typeof signature);
-                console.log(`🔍 PDF Generator - Co-applicant ${index} signature preview:`, signature?.substring(0, 100) + '...');
-            });
-        }
-        
-        if (signatures.guarantors) {
-            Object.entries(signatures.guarantors).forEach(([index, signature]) => {
-                console.log(`🔍 PDF Generator - Guarantor ${index} signature type:`, typeof signature);
-                console.log(`🔍 PDF Generator - Guarantor ${index} signature preview:`, signature?.substring(0, 100) + '...');
-            });
-        }
-        
         const signatureY = this.currentY;
         let currentSignatureY = signatureY;
-        const signatureX = 20;
+        const signatureX = this.marginLeft;
         const signatureWidth = 200;
         const signatureHeight = 40;
-        const spacing = 60;
+        const spacing = 60; // Reduced spacing for better layout
+        const labelSpacing = 15; // Reduced space between label and signature
 
         // Primary Applicant Signature
         if (data.applicant?.name || (data.coApplicants && data.coApplicants.length > 0)) {
             const applicantName = data.applicant?.name || data.coApplicants[0]?.name || 'Primary Applicant';
-            this.doc.setFontSize(10);
+            this.doc.setFontSize(11);
             this.doc.setFont("helvetica", "bold");
             this.doc.setTextColor(51, 51, 51);
             this.doc.text(`Primary Applicant: ${applicantName}`, signatureX, currentSignatureY);
-            currentSignatureY += 15;
+            currentSignatureY += labelSpacing;
 
             // Check for signature
             if (signatures.applicant) {
-                console.log('🔍 PDF Generator - Adding applicant signature:', typeof signatures.applicant, signatures.applicant?.substring(0, 50) + '...');
                 // Add signature image
                 const height = this.addSignatureImageOrText(
                     signatures.applicant, 
@@ -589,7 +695,6 @@ export class RentalApplicationPDF {
                 );
                 currentSignatureY += height + 10;
             } else {
-                console.log('🔍 PDF Generator - No applicant signature found, adding line');
                 // Add signature line
                 this.doc.setDrawColor(51, 51, 51);
                 this.doc.setLineWidth(1);
@@ -599,91 +704,106 @@ export class RentalApplicationPDF {
             currentSignatureY += spacing;
         }
 
-        // Co-Applicant Signatures
-        if (signatures.coApplicants && Object.keys(signatures.coApplicants).length > 0) {
-            Object.entries(signatures.coApplicants).forEach(([index, signature]) => {
-                const coIndex = parseInt(index);
-                const co = data.coApplicants?.[coIndex];
-                
-                if (!co) return;
-
-                const title = data.applicant ? `Co-Applicant ${coIndex + 1}` : `Co-Applicant ${coIndex + 1}`;
-                this.doc.setFontSize(10);
+        // Co-Applicant Signatures - Process ALL co-applicants from form data
+        if (data.coApplicants && data.coApplicants.length > 0) {
+            data.coApplicants.forEach((co: any, coIndex: number) => {
+                const title = `Co-Applicant ${coIndex + 1}`;
+                this.doc.setFontSize(11);
                 this.doc.setFont("helvetica", "bold");
                 this.doc.setTextColor(51, 51, 51);
                 this.doc.text(`${title}: ${co.name || 'N/A'}`, signatureX, currentSignatureY);
-                currentSignatureY += 15;
+                currentSignatureY += labelSpacing;
 
-                console.log(`🔍 PDF Generator - Adding co-applicant ${coIndex + 1} signature:`, typeof signature, signature?.substring(0, 50) + '...');
-                // Add signature image
-                const height = this.addSignatureImageOrText(
-                    signature, 
-                    signatureX, 
-                    currentSignatureY, 
-                    signatureWidth, 
-                    signatureHeight
-                );
-                currentSignatureY += height + 10;
+                // Check if we have a signature for this co-applicant
+                const signature = signatures.coApplicants?.[coIndex];
+                if (signature) {
+                    // Add signature image
+                    const height = this.addSignatureImageOrText(
+                        signature, 
+                        signatureX, 
+                        currentSignatureY, 
+                        signatureWidth, 
+                        signatureHeight
+                    );
+                    currentSignatureY += height + 10;
+                } else {
+                    // Add signature line for missing signature
+                    this.doc.setDrawColor(51, 51, 51);
+                    this.doc.setLineWidth(1);
+                    this.doc.line(signatureX, currentSignatureY, signatureX + signatureWidth, currentSignatureY);
+                    currentSignatureY += 20;
+                }
                 currentSignatureY += spacing;
             });
         }
 
-        // Guarantor Signatures
-        if (signatures.guarantors && Object.keys(signatures.guarantors).length > 0) {
-            Object.entries(signatures.guarantors).forEach(([index, signature]) => {
-                const guarantorIndex = parseInt(index);
-                const g = data.guarantors?.[guarantorIndex];
-                
-                if (!g) return;
-
-                this.doc.setFontSize(10);
+        // Guarantor Signatures - Process ALL guarantors from form data
+        if (data.guarantors && data.guarantors.length > 0) {
+            data.guarantors.forEach((g: any, guarantorIndex: number) => {
+                this.doc.setFontSize(11);
                 this.doc.setFont("helvetica", "bold");
                 this.doc.setTextColor(51, 51, 51);
                 this.doc.text(`Guarantor ${guarantorIndex + 1}: ${g.name || 'N/A'}`, signatureX, currentSignatureY);
-                currentSignatureY += 15;
+                currentSignatureY += labelSpacing;
 
-                console.log(`🔍 PDF Generator - Adding guarantor ${guarantorIndex + 1} signature:`, typeof signature, signature?.substring(0, 50) + '...');
-                // Add signature image
-                const height = this.addSignatureImageOrText(
-                    signature, 
-                    signatureX, 
-                    currentSignatureY, 
-                    signatureWidth, 
-                    signatureHeight
-                );
-                currentSignatureY += height + 10;
+                // Check if we have a signature for this guarantor
+                const signature = signatures.guarantors?.[guarantorIndex];
+                if (signature) {
+                    // Add signature image
+                    const height = this.addSignatureImageOrText(
+                        signature, 
+                        signatureX, 
+                        currentSignatureY, 
+                        signatureWidth, 
+                        signatureHeight
+                    );
+                    currentSignatureY += height + 10;
+                } else {
+                    // Add signature line for missing signature
+                    this.doc.setDrawColor(51, 51, 51);
+                    this.doc.setLineWidth(1);
+                    this.doc.line(signatureX, currentSignatureY, signatureX + signatureWidth, currentSignatureY);
+                    currentSignatureY += 20;
+                }
                 currentSignatureY += spacing;
             });
         }
 
-        this.currentY = currentSignatureY + 20;
+        this.currentY = currentSignatureY + 20; // Reduced final spacing
     }
-
-
 
     addFooter() {
+        // Add a page break if we're too close to the bottom
+        if (this.currentY > 750) {
+            this.doc.addPage();
+            this.currentY = 40;
+        }
+        
         this.doc.setDrawColor(0, 102, 204);
         this.doc.setLineWidth(0.5);
-        this.doc.line(20, this.currentY, 575, this.currentY);
-        this.currentY += 10;
-        this.doc.setFontSize(7);
+        this.doc.line(this.marginLeft, this.currentY, this.pageWidth - this.marginRight, this.currentY);
+        this.currentY += 15;
+        this.doc.setFontSize(8);
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(128, 128, 128);
-        this.doc.text("This application was submitted electronically on " + new Date().toLocaleString(), 20, this.currentY);
-        this.currentY += 8;
-        this.doc.text("Liberty Place Property Management - Rental Application", 20, this.currentY);
-        this.currentY += 8;
-        this.doc.text("All information is encrypted and secure", 20, this.currentY);
+        this.doc.text("This application was submitted electronically on " + new Date().toLocaleString(), this.marginLeft, this.currentY);
+        this.currentY += 10;
+        this.doc.text("Liberty Place Property Management - Rental Application", this.marginLeft, this.currentY);
+        this.currentY += 10;
+        this.doc.text("All information is encrypted and secure", this.marginLeft, this.currentY);
     }
+
     toLabel(str: string): string {
         return str
             .replace(/([A-Z])/g, " $1")
             .replace(/_/g, " ")
             .replace(/^./, (s: string) => s.toUpperCase());
     }
+
     // Updated to work with actual data structure
     generate(data: any) {
         console.log('Generating PDF with data:', data);
+        
         // Handle the actual data structure: [{ form_data: {...} }]
         let formData;
         if (Array.isArray(data) && data.length > 0 && data[0].form_data) {
@@ -698,6 +818,7 @@ export class RentalApplicationPDF {
             formData = data;
             console.log('Using data directly');
         }
+        
         console.log('Final formData:', formData);
         console.log('Co-applicants count:', formData.coApplicants?.length || 0);
         console.log('Guarantors count:', formData.guarantors?.length || 0);
@@ -705,10 +826,15 @@ export class RentalApplicationPDF {
         console.log('Guarantors data:', formData.guarantors);
         console.log('Signatures data:', formData.signatures);
         
+        // Reset currentY for new document
+        this.currentY = 40;
+        
         // 1. Header
         this.addHeader();
+        
         // 2. Instructions
         this.addInstructions();
+        
         // 3. Application Info
         this.addSectionTitle("Application Information");
         this.addKeyValueTable(formData.application);
@@ -728,7 +854,7 @@ export class RentalApplicationPDF {
             this.doc.setFontSize(10);
             this.doc.setFont("helvetica", "normal");
             this.doc.setTextColor(128, 128, 128);
-            this.doc.text("No applicant information provided", 20, this.currentY);
+            this.doc.text("No applicant information provided", this.marginLeft, this.currentY);
             this.currentY += 20;
         }
         
@@ -755,7 +881,7 @@ export class RentalApplicationPDF {
             this.doc.setFontSize(10);
             this.doc.setFont("helvetica", "normal");
             this.doc.setTextColor(128, 128, 128);
-            this.doc.text("No guarantors provided", 20, this.currentY);
+            this.doc.text("No guarantors provided", this.marginLeft, this.currentY);
             this.currentY += 20;
         }
         
