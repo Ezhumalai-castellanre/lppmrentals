@@ -1,6 +1,13 @@
 // rental-application-pdf.ts
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { 
+  extractSignaturesForPDF, 
+  processSignatureData, 
+  getSignatureDisplayText,
+  type SignatureData 
+} from "./signature-utils";
+
 export class RentalApplicationPDF {
     doc: jsPDF;
     currentY: number;
@@ -309,7 +316,7 @@ export class RentalApplicationPDF {
                 }
             }
             else {
-                addressData.lengthAtAddress = "Less than 1 month";
+                addressData.lengthAtAddress = "Not provided";
             }
         }
         else {
@@ -432,294 +439,228 @@ export class RentalApplicationPDF {
      * @returns The height of the added content (image or text).
      */
     addSignatureImageOrText(signatureData: any, x: number, y: number, maxWidth: number, maxHeight: number): number {
-        if (typeof signatureData === 'string' && signatureData.startsWith('data:image/')) {
+        console.log('🔍 addSignatureImageOrText called with:', {
+            signatureData: typeof signatureData,
+            dataPreview: typeof signatureData === 'string' ? signatureData.substring(0, 100) + '...' : signatureData,
+            x, y, maxWidth, maxHeight
+        });
+        
+        const processedSignature = processSignatureData(signatureData);
+        console.log('🔍 Processed signature:', processedSignature);
+        
+        if (processedSignature.type === 'image' && processedSignature.data) {
             try {
+                console.log('🔍 Attempting to add image signature...');
                 // Determine image type from data URL
-                const imgType = signatureData.substring(signatureData.indexOf('/') + 1, signatureData.indexOf(';'));
-                const imgData = signatureData.split(',')[1];
+                const imgType = processedSignature.data.substring(processedSignature.data.indexOf('/') + 1, processedSignature.data.indexOf(';'));
+                const imgData = processedSignature.data.split(',')[1];
+
+                console.log('🔍 Image processing:', { imgType, imgDataLength: imgData?.length });
 
                 if (imgData && imgType) {
-                    const img = new Image();
-                    img.src = signatureData;
-
-                    // jsPDF.addImage needs image dimensions or it can be buggy.
-                    // A common approach is to wait for the image to load, but that's async.
-                    // For synchronous PDF generation, we often just provide a fixed size or calculate aspect ratio.
-                    // Here, we'll try to guess a reasonable size or use a placeholder.
+                    // For jsPDF, we need to handle the image properly
+                    // Since we can't wait for async image loading, we'll use a standard signature size
+                    const width = Math.min(maxWidth, 120); // Standard signature width
+                    const height = Math.min(maxHeight, 40); // Standard signature height
                     
-                    // Let's assume a standard signature aspect ratio or fixed size
-                    // We'll scale it to fit within maxWidth and maxHeight
-                    const aspectRatio = img.width / img.height; // This will be 0 if image not loaded, so handle carefully.
-                    
-                    let width = maxWidth;
-                    let height = maxWidth / aspectRatio; // Initial guess
-
-                    if (isNaN(height) || height === 0 || !isFinite(height)) {
-                        // Fallback if aspect ratio cannot be determined (e.g., image not loaded synchronously)
-                        width = 80; // Default signature width
-                        height = 30; // Default signature height
-                    } else if (height > maxHeight) {
-                        height = maxHeight;
-                        width = maxHeight * aspectRatio;
-                    }
-                    
-                    // Ensure width doesn't exceed maxWidth after height adjustment
-                    if (width > maxWidth) {
-                        width = maxWidth;
-                        height = maxWidth / aspectRatio;
-                    }
-
-                    if (width > 0 && height > 0) {
+                    console.log('🔍 Adding image to PDF:', { width, height, imgType: imgType.toUpperCase() });
                         this.doc.addImage(imgData, imgType.toUpperCase(), x, y, width, height);
+                    console.log('🔍 Image added successfully');
                         return height + 5; // Return height of the image plus some padding
-                    }
+                } else {
+                    console.log('🔍 Image data or type missing:', { imgType, hasImgData: !!imgData });
                 }
             } catch (error) {
-                console.error("Error adding signature image:", error);
+                console.error("🔍 Error adding signature image:", error);
                 // Fallback to text if image adding fails
             }
+        } else {
+            console.log('🔍 Not an image signature, type:', processedSignature.type);
         }
         
         // If not an image data URL or image adding failed, display text
+        console.log('🔍 Falling back to text display:', processedSignature.displayText);
         this.doc.setFontSize(10);
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(51, 51, 51);
-        const signatureText = this.formatSignatureForDisplay(signatureData);
-        this.doc.text(signatureText, x, y);
+        this.doc.text(processedSignature.displayText, x, y);
         return 15; // Height for a line of text
     }
 
-    /**
-     * Formats signature data for display in the PDF
-     * @param signatureData The signature data to format
-     * @returns Formatted signature text
-     */
-    formatSignatureForDisplay(signatureData: any): string {
-        if (typeof signatureData === 'string') {
-            if (signatureData.startsWith('data:image/')) {
-                return '[SIGNATURE IMAGE]';
-            }
-            return signatureData || '[NOT SIGNED]';
-        }
-        return '[NOT SIGNED]';
-    }
-    addSignatures(data) {
+
+
+    addSignatures(data: any) {
         // Add the legal disclaimer content above signatures
         this.addSectionTitle("PLEASE READ CAREFULLY BEFORE SIGNING");
         const disclaimerText = "The Landlord shall not be bound by any lease, nor will possession of the premises be delivered to the Tenant, until a written lease agreement is executed by the Landlord and delivered to the Tenant. Approval of this application remains at Landlord's discretion until a lease agreement is fully executed. Please be advised that the date on page one of the lease is your move-in date and also denotes the lease commencement date. No representations or agreements by agents, brokers or others shall be binding upon the Landlord or its Agent unless those representations or agreements are set forth in the written lease agreement executed by both Landlord and Tenant.";
+        
         this.doc.setFontSize(8);
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(51, 51, 51);
         const lines = this.doc.splitTextToSize(disclaimerText, 555);
         this.doc.text(lines, 20, this.currentY);
         this.currentY += lines.length * 12 + 15;
+
         // Certification & Consents section
         this.doc.setFontSize(10);
         this.doc.setFont("helvetica", "bold");
         this.doc.setTextColor(0, 102, 204);
         this.doc.text("Certification & Consents", 20, this.currentY);
         this.currentY += 15;
+
         const certificationText = "By signing this application electronically, I consent to the use of electronic records and digital signatures in connection with this application and any resulting lease agreement. I agree that my electronic signature is legally binding and has the same effect as a handwritten signature. I hereby warrant that all my representations and information provided in this application are true, accurate, and complete to the best of my knowledge. I recognize the truth of the information contained herein is essential and I acknowledge that any false or misleading information may result in the rejection of my application or rescission of the offer prior to possession or, if a lease has been executed and/or possession delivered, may constitute a material breach and provide grounds to commence appropriate legal proceedings to terminate the tenancy, as permitted by law. I further represent that I am not renting a room or an apartment under any other name, nor have I ever been dispossessed or evicted from any residence, nor am I now being dispossessed nor currently being evicted. I represent that I am over at least 18 years of age. I acknowledge and consent that my Social Security number and any other personal identifying information collected in this application may be used for tenant screening and will be maintained in confidence and protected against unauthorized disclosure in accordance with New York General Business Law and related privacy laws. I have been advised that I have the right, under the Fair Credit Reporting Act, to make a written request, directed to the appropriate credit reporting agency, within reasonable time, for a complete and accurate disclosure of the nature and scope of any credit investigation. I understand that upon submission, this application and all related documents become the property of the Landlord, and will not be returned to me under any circumstances regardless of whether my application is approved or denied. I consent to and authorize the Landlord, Agent and any designated screening or credit reporting agency to obtain a consumer credit report on me and to conduct any necessary background checks, to the extent permitted by law. I further authorize the Landlord and Agent to verify any and all information provided in this application with regard to my employment history, current and prior tenancies, bank accounts, and all other information that the Landlord deems pertinent to evaluating my leasing application. I authorize the designated screening company to contact my current and previous landlords, employers and references, if necessary. I understand that I shall not be permitted to receive or review my application file or my credit consumer report, and the Landlord and Agent are not obligated to provide me with copies of my application file or any consumer report obtained in the screening process, and that I may obtain my credit report from the credit reporting agency or as otherwise provided by law. I authorize banks, financial institutions, landlords, employers, business associates, credit bureaus, attorneys, accountants and other persons or institutions with whom I am acquainted and that may have information about me to furnish any and all information regarding myself. This authorization also applies to any updated reports which may be ordered as needed. A photocopy or fax of this authorization or an electronic copy (including any electronic signature) shall be accepted with the same authority as this original. I will provide any additional information required by the Landlord or Agent in connection with this application or any prospective lease contemplated herein. I understand that the application fee is non-refundable.";
+        
         this.doc.setFontSize(8);
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(51, 51, 51);
         const certLines = this.doc.splitTextToSize(certificationText, 555);
         this.doc.text(certLines, 20, this.currentY);
         this.currentY += certLines.length * 12 + 15;
+
         const civilRightsText = "The Civil Rights Act of 1968, as amended by the Fair Housing Amendments Act of 1988, prohibits discrimination in the rental of housing based on race, color, religion, gender, disability, familial status, lawful source of income (including housing vouchers and public assistance) or national origin. The Federal Agency, which administers compliance with this law, is the U.S. Department of Housing and Urban Development.";
         const civilRightsLines = this.doc.splitTextToSize(civilRightsText, 555);
         this.doc.text(civilRightsLines, 20, this.currentY);
         this.currentY += civilRightsLines.length * 12 + 20;
+
         // Now add the signatures section
         this.addSectionTitle("Signatures");
-        const rows = [];
         
-        // Check if we have actual signatures data
-        const hasSignatures = data.signatures && Object.keys(data.signatures).length > 0;
-        
-        if (hasSignatures) {
-            console.log('Processing actual signatures:', data.signatures);
-            console.log('Available signature keys:', Object.keys(data.signatures));
-            console.log('Full signatures object:', JSON.stringify(data.signatures, null, 2));
-            console.log('Signature values:', Object.entries(data.signatures).map(([k, v]) => `${k}: ${v}`).join(', '));
-            console.log('Signature types:', Object.entries(data.signatures).map(([k, v]) => `${k}: ${typeof v}`).join(', '));
-            
-            // Add primary applicant signature
-            if (data.signatures.applicant) {
-                const applicantName = data.applicant?.name || data.coApplicants?.[0]?.name || 'Primary Applicant';
-                rows.push([
-                    `Primary Applicant: ${applicantName} - Signature: [SIGNED]`
-                ]);
-            } else if (data.applicant?.name || data.coApplicants?.[0]?.name) {
-                const applicantName = data.applicant?.name || data.coApplicants?.[0]?.name;
-                rows.push([
-                    `Primary Applicant: ${applicantName} - Signature: [NOT SIGNED]`
-                ]);
-            }
-            
-            // Add co-applicant signatures with comprehensive key detection
-            if (data.coApplicants && data.coApplicants.length > 0) {
-                data.coApplicants.forEach((co, i) => {
-                    // Try ALL possible signature key formats including exact matches
-                    const possibleKeys = [
-                        // Standard formats
-                        `coApplicant${i + 1}`,
-                        `coApplicant_${i + 1}`,
-                        `coApplicant-${i + 1}`,
-                        `co_applicant_${i + 1}`,
-                        `co_applicant${i + 1}`,
-                        // 0-based indexing
-                        `coApplicant${i}`,
-                        `coApplicant_${i}`,
-                        `co_applicant_${i}`,
-                        `co_applicant${i}`,
-                        // Alternative formats
-                        `coapplicant${i + 1}`,
-                        `coapplicant${i}`,
-                        `co_applicant${i + 1}`,
-                        `co_applicant${i}`,
-                        // Check if the name itself is a key
-                        co.name,
-                        co.name?.toLowerCase(),
-                        co.name?.replace(/\s+/g, ''),
-                        co.name?.replace(/\s+/g, '_'),
-                        co.name?.replace(/\s+/g, '-')
-                    ];
-                    
-                    let isSigned = false;
-                    let usedKey = '';
-                    
-                    // First check exact key matches
-                    for (const key of possibleKeys) {
-                        if (key && data.signatures[key]) {
-                            isSigned = true;
-                            usedKey = key;
-                            break;
-                        }
-                    }
-                    
-                    // If no exact match, check if any key contains the name
-                    if (!isSigned) {
-                        for (const signatureKey of Object.keys(data.signatures)) {
-                            if (signatureKey.toLowerCase().includes(co.name?.toLowerCase()) || 
-                                co.name?.toLowerCase().includes(signatureKey.toLowerCase())) {
-                                isSigned = true;
-                                usedKey = signatureKey;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    console.log(`Co-Applicant ${i + 1} (${co.name}): checking keys ${possibleKeys.filter(k => k).join(', ')}, found: ${usedKey}, signed: ${isSigned}`);
-                    
-                    const status = isSigned ? '[SIGNED]' : '[NOT SIGNED]';
-                    rows.push([
-                        `Co-Applicant ${i + 1}: ${co.name || 'N/A'} - Signature: ${status}`
-                    ]);
-                });
-            }
-            
-            // Add guarantor signatures with comprehensive key detection
-            if (data.guarantors && data.guarantors.length > 0) {
-                data.guarantors.forEach((g, i) => {
-                    // Try ALL possible signature key formats
-                    const possibleKeys = [
-                        // Standard formats
-                        `guarantor${i + 1}`,
-                        `guarantor_${i + 1}`,
-                        `guarantor-${i + 1}`,
-                        `guarantor_${i}`,
-                        `guarantor${i}`,
-                        `guarantor-${i}`,
-                        // Alternative formats
-                        `guarantors${i + 1}`,
-                        `guarantors${i}`,
-                        `guarantors_${i + 1}`,
-                        `guarantors_${i}`,
-                        // Check if the name itself is a key
-                        g.name,
-                        g.name?.toLowerCase(),
-                        g.name?.replace(/\s+/g, ''),
-                        g.name?.replace(/\s+/g, '_'),
-                        g.name?.replace(/\s+/g, '-')
-                    ];
-                    
-                    let isSigned = false;
-                    let usedKey = '';
-                    
-                    // First check exact key matches
-                    for (const key of possibleKeys) {
-                        if (key && data.signatures[key]) {
-                            isSigned = true;
-                            usedKey = key;
-                            break;
-                        }
-                    }
-                    
-                    // If no exact match, check if any key contains the name
-                    if (!isSigned) {
-                        for (const signatureKey of Object.keys(data.signatures)) {
-                            if (signatureKey.toLowerCase().includes(g.name?.toLowerCase()) || 
-                                g.name?.toLowerCase().includes(signatureKey.toLowerCase())) {
-                                isSigned = true;
-                                usedKey = signatureKey;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    console.log(`Guarantor ${i + 1} (${g.name}): checking keys ${possibleKeys.filter(k => k).join(', ')}, found: ${usedKey}, signed: ${isSigned}`);
-                    
-                    const status = isSigned ? '[SIGNED]' : '[NOT SIGNED]';
-                    rows.push([
-                        `Guarantor ${i + 1}: ${g.name || 'N/A'} - Signature: ${status}`
-                    ]);
-                });
-            }
-        } else {
-            console.log('No signatures data found, using placeholder signatures');
-            
-            // Fallback to placeholder signatures if no actual signatures data
-            // Add primary applicant (first co-applicant or applicant)
-            if (data.coApplicants?.length > 0) {
-                rows.push([
-                    `Primary Applicant: ${data.coApplicants[0]?.name || 'N/A'} - Signature: ______________________________`
-                ]);
-            }
-            else if (data.applicant?.name) {
-                rows.push([
-                    `Primary Applicant: ${data.applicant.name} - Signature: ______________________________`
-                ]);
-            }
-            else {
-                rows.push([
-                    `Primary Applicant: N/A - Signature: ______________________________`
-                ]);
-            }
-            // Add additional co-applicants (skip first one as it's the primary)
-            if (data.coApplicants?.length > 1) {
-                for (let i = 1; i < data.coApplicants.length; i++) {
-                    const co = data.coApplicants[i];
-                    rows.push([
-                        `Co-Applicant ${i + 1}: ${co.name || 'N/A'} - Signature: ______________________________`,
-                    ]);
-                }
-            }
-            if (data.guarantors?.length) {
-                data.guarantors.forEach((g, i) => rows.push([
-                    `Guarantor ${i + 1}: ${g.name || 'N/A'} - Signature: ______________________________`,
-                ]));
-            }
-        }
-        autoTable(this.doc, {
-            startY: this.currentY,
-            body: rows,
-            theme: "plain",
-            styles: { fontSize: 12, cellPadding: 8 },
-            margin: { left: 20, right: 20 },
-        });
-        this.currentY = this.doc.lastAutoTable.finalY + 20;
+        // Process signatures with proper image handling
+        this.processSignatures(data);
     }
+
+    /**
+     * Process and display signatures with proper image handling
+     */
+    processSignatures(data: any) {
+        // Extract signatures using the utility function
+        const signatures = extractSignaturesForPDF(data);
+        
+        console.log('🔍 PDF Generator - Processing signatures:', signatures);
+        console.log('🔍 PDF Generator - Raw data signatures:', data.signatures);
+        console.log('🔍 PDF Generator - Extracted signatures keys:', Object.keys(signatures));
+        
+        // Debug each signature individually
+        if (signatures.applicant) {
+            console.log('🔍 PDF Generator - Applicant signature type:', typeof signatures.applicant);
+            console.log('🔍 PDF Generator - Applicant signature preview:', signatures.applicant?.substring(0, 100) + '...');
+        }
+        
+        if (signatures.coApplicants) {
+            Object.entries(signatures.coApplicants).forEach(([index, signature]) => {
+                console.log(`🔍 PDF Generator - Co-applicant ${index} signature type:`, typeof signature);
+                console.log(`🔍 PDF Generator - Co-applicant ${index} signature preview:`, signature?.substring(0, 100) + '...');
+            });
+        }
+        
+        if (signatures.guarantors) {
+            Object.entries(signatures.guarantors).forEach(([index, signature]) => {
+                console.log(`🔍 PDF Generator - Guarantor ${index} signature type:`, typeof signature);
+                console.log(`🔍 PDF Generator - Guarantor ${index} signature preview:`, signature?.substring(0, 100) + '...');
+            });
+        }
+        
+        const signatureY = this.currentY;
+        let currentSignatureY = signatureY;
+        const signatureX = 20;
+        const signatureWidth = 200;
+        const signatureHeight = 40;
+        const spacing = 60;
+
+        // Primary Applicant Signature
+        if (data.applicant?.name || (data.coApplicants && data.coApplicants.length > 0)) {
+            const applicantName = data.applicant?.name || data.coApplicants[0]?.name || 'Primary Applicant';
+            this.doc.setFontSize(10);
+            this.doc.setFont("helvetica", "bold");
+            this.doc.setTextColor(51, 51, 51);
+            this.doc.text(`Primary Applicant: ${applicantName}`, signatureX, currentSignatureY);
+            currentSignatureY += 15;
+
+            // Check for signature
+            if (signatures.applicant) {
+                console.log('🔍 PDF Generator - Adding applicant signature:', typeof signatures.applicant, signatures.applicant?.substring(0, 50) + '...');
+                // Add signature image
+                const height = this.addSignatureImageOrText(
+                    signatures.applicant, 
+                    signatureX, 
+                    currentSignatureY, 
+                    signatureWidth, 
+                    signatureHeight
+                );
+                currentSignatureY += height + 10;
+            } else {
+                console.log('🔍 PDF Generator - No applicant signature found, adding line');
+                // Add signature line
+                this.doc.setDrawColor(51, 51, 51);
+                this.doc.setLineWidth(1);
+                this.doc.line(signatureX, currentSignatureY, signatureX + signatureWidth, currentSignatureY);
+                currentSignatureY += 20;
+            }
+            currentSignatureY += spacing;
+        }
+
+        // Co-Applicant Signatures
+        if (signatures.coApplicants && Object.keys(signatures.coApplicants).length > 0) {
+            Object.entries(signatures.coApplicants).forEach(([index, signature]) => {
+                const coIndex = parseInt(index);
+                const co = data.coApplicants?.[coIndex];
+                
+                if (!co) return;
+
+                const title = data.applicant ? `Co-Applicant ${coIndex + 1}` : `Co-Applicant ${coIndex + 1}`;
+                this.doc.setFontSize(10);
+                this.doc.setFont("helvetica", "bold");
+                this.doc.setTextColor(51, 51, 51);
+                this.doc.text(`${title}: ${co.name || 'N/A'}`, signatureX, currentSignatureY);
+                currentSignatureY += 15;
+
+                console.log(`🔍 PDF Generator - Adding co-applicant ${coIndex + 1} signature:`, typeof signature, signature?.substring(0, 50) + '...');
+                // Add signature image
+                const height = this.addSignatureImageOrText(
+                    signature, 
+                    signatureX, 
+                    currentSignatureY, 
+                    signatureWidth, 
+                    signatureHeight
+                );
+                currentSignatureY += height + 10;
+                currentSignatureY += spacing;
+            });
+        }
+
+        // Guarantor Signatures
+        if (signatures.guarantors && Object.keys(signatures.guarantors).length > 0) {
+            Object.entries(signatures.guarantors).forEach(([index, signature]) => {
+                const guarantorIndex = parseInt(index);
+                const g = data.guarantors?.[guarantorIndex];
+                
+                if (!g) return;
+
+                this.doc.setFontSize(10);
+                this.doc.setFont("helvetica", "bold");
+                this.doc.setTextColor(51, 51, 51);
+                this.doc.text(`Guarantor ${guarantorIndex + 1}: ${g.name || 'N/A'}`, signatureX, currentSignatureY);
+                currentSignatureY += 15;
+
+                console.log(`🔍 PDF Generator - Adding guarantor ${guarantorIndex + 1} signature:`, typeof signature, signature?.substring(0, 50) + '...');
+                // Add signature image
+                const height = this.addSignatureImageOrText(
+                    signature, 
+                    signatureX, 
+                    currentSignatureY, 
+                    signatureWidth, 
+                    signatureHeight
+                );
+                currentSignatureY += height + 10;
+                currentSignatureY += spacing;
+            });
+        }
+
+        this.currentY = currentSignatureY + 20;
+    }
+
+
+
     addFooter() {
         this.doc.setDrawColor(0, 102, 204);
         this.doc.setLineWidth(0.5);
@@ -734,14 +675,14 @@ export class RentalApplicationPDF {
         this.currentY += 8;
         this.doc.text("All information is encrypted and secure", 20, this.currentY);
     }
-    toLabel(str) {
+    toLabel(str: string): string {
         return str
             .replace(/([A-Z])/g, " $1")
             .replace(/_/g, " ")
-            .replace(/^./, (s) => s.toUpperCase());
+            .replace(/^./, (s: string) => s.toUpperCase());
     }
     // Updated to work with actual data structure
-    generate(data) {
+    generate(data: any) {
         console.log('Generating PDF with data:', data);
         // Handle the actual data structure: [{ form_data: {...} }]
         let formData;
@@ -794,7 +735,7 @@ export class RentalApplicationPDF {
         // 5. All Co-Applicants (process all, starting from index 0)
         if (formData.coApplicants && formData.coApplicants.length > 0) {
             console.log('Processing all co-applicants...');
-            formData.coApplicants.forEach((co, i) => {
+            formData.coApplicants.forEach((co: any, i: number) => {
                 console.log(`Processing co-applicant ${i + 1}:`, co);
                 this.addCoApplicantInfo(co, i);
             });
@@ -803,7 +744,7 @@ export class RentalApplicationPDF {
         // 6. Guarantors
         if (formData.guarantors && formData.guarantors.length > 0) {
             console.log('Processing guarantors...');
-            formData.guarantors.forEach((g, idx) => {
+            formData.guarantors.forEach((g: any, idx: number) => {
                 console.log(`Processing guarantor ${idx + 1}:`, g);
                 this.addGuarantorInfo(g, idx);
             });
@@ -830,89 +771,6 @@ export class RentalApplicationPDF {
         this.addFooter();
         
         return this.doc;
-    }
-
-    /**
-     * Attempts to add a base64 image signature to the PDF.
-     * If not a valid image, it falls back to displaying a text message.
-     * @param signatureData The base64 string (e.g., data:image/png;base64,...) or text signature.
-     * @param x The x-coordinate for the image.
-     * @param y The y-coordinate for the image.
-     * @param maxWidth The maximum width for the image.
-     * @param maxHeight The maximum height for the image.
-     * @returns The height of the added content (image or text).
-     */
-    addSignatureImageOrText(signatureData: any, x: number, y: number, maxWidth: number, maxHeight: number): number {
-        if (typeof signatureData === 'string' && signatureData.startsWith('data:image/')) {
-            try {
-                // Determine image type from data URL
-                const imgType = signatureData.substring(signatureData.indexOf('/') + 1, signatureData.indexOf(';'));
-                const imgData = signatureData.split(',')[1];
-
-                if (imgData && imgType) {
-                    const img = new Image();
-                    img.src = signatureData;
-
-                    // jsPDF.addImage needs image dimensions or it can be buggy.
-                    // A common approach is to wait for the image to load, but that's async.
-                    // For synchronous PDF generation, we often just provide a fixed size or calculate aspect ratio.
-                    // Here, we'll try to guess a reasonable size or use a placeholder.
-                    
-                    // Let's assume a standard signature aspect ratio or fixed size
-                    // We'll scale it to fit within maxWidth and maxHeight
-                    const aspectRatio = img.width / img.height; // This will be 0 if image not loaded, so handle carefully.
-                    
-                    let width = maxWidth;
-                    let height = maxWidth / aspectRatio; // Initial guess
-
-                    if (isNaN(height) || height === 0 || !isFinite(height)) {
-                        // Fallback if aspect ratio cannot be determined (e.g., image not loaded synchronously)
-                        width = 80; // Default signature width
-                        height = 30; // Default signature height
-                    } else if (height > maxHeight) {
-                        height = maxHeight;
-                        width = maxHeight * aspectRatio;
-                    }
-                    
-                    // Ensure width doesn't exceed maxWidth after height adjustment
-                    if (width > maxWidth) {
-                        width = maxWidth;
-                        height = maxWidth / aspectRatio;
-                    }
-
-                    if (width > 0 && height > 0) {
-                        this.doc.addImage(imgData, imgType.toUpperCase(), x, y, width, height);
-                        return height + 5; // Return height of the image plus some padding
-                    }
-                }
-            } catch (error) {
-                console.error("Error adding signature image:", error);
-                // Fallback to text if image adding fails
-            }
-        }
-        
-        // If not an image data URL or image adding failed, display text
-        this.doc.setFontSize(10);
-        this.doc.setFont("helvetica", "normal");
-        this.doc.setTextColor(51, 51, 51);
-        const signatureText = this.formatSignatureForDisplay(signatureData);
-        this.doc.text(signatureText, x, y);
-        return 15; // Height for a line of text
-    }
-
-    /**
-     * Formats signature data for display in the PDF
-     * @param signatureData The signature data to format
-     * @returns Formatted signature text
-     */
-    formatSignatureForDisplay(signatureData: any): string {
-        if (typeof signatureData === 'string') {
-            if (signatureData.startsWith('data:image/')) {
-                return '[SIGNATURE IMAGE]';
-            }
-            return signatureData || '[NOT SIGNED]';
-            }
-        return '[NOT SIGNED]';
     }
 
     save(filename: string) {

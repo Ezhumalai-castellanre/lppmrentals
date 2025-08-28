@@ -1,6 +1,6 @@
-import { DynamoDBClient, PutItemCommand, GetItemCommand, UpdateItemCommand, DeleteItemCommand, ScanCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, PutItemCommand, GetItemCommand, UpdateItemCommand, DeleteItemCommand, ScanCommand, DescribeTableCommand, CreateTableCommand } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
-import { fetchAuthSession } from 'aws-amplify/auth';
+import { fetchAuthSession, fetchUserAttributes } from 'aws-amplify/auth';
 import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
 import { CognitoIdentityClient } from '@aws-sdk/client-cognito-identity';
 import { environment } from '../config/environment';
@@ -110,9 +110,8 @@ export class DynamoDBService {
 
   // Check if user needs to re-authenticate
   private async checkAuthenticationStatus(): Promise<boolean> {
-    try {
-      const { fetchAuthSession } = await import('aws-amplify/auth');
-      const session = await fetchAuthSession();
+          try {
+        const session = await fetchAuthSession();
       
       if (!session.tokens?.idToken) {
         console.warn('⚠️ No ID token available');
@@ -166,7 +165,6 @@ export class DynamoDBService {
       
       // Try to refresh the auth session first
       try {
-        const { fetchAuthSession } = await import('aws-amplify/auth');
         const session = await fetchAuthSession();
         
         if (!session.tokens?.idToken) {
@@ -222,7 +220,6 @@ export class DynamoDBService {
       }
 
       // Get user attributes to check zoneinfo
-      const { fetchUserAttributes } = await import('aws-amplify/auth');
       const userAttributes = await fetchUserAttributes();
       
       const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
@@ -412,7 +409,6 @@ export class DynamoDBService {
   // Check DynamoDB table status and ensure proper schema
   private async checkTableStatus() {
     try {
-      const { DescribeTableCommand, CreateTableCommand } = await import('@aws-sdk/client-dynamodb');
       const client = await this.getClient();
       
       try {
@@ -487,7 +483,6 @@ export class DynamoDBService {
       }
 
       // Get user attributes to check zoneinfo
-      const { fetchUserAttributes } = await import('aws-amplify/auth');
       const userAttributes = await fetchUserAttributes();
       
       const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];

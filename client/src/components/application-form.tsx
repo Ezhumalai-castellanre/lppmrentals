@@ -18,7 +18,7 @@ import { DocumentSection } from "./document-section";
 import { SupportingDocuments } from "./supporting-documents";
 import { PDFGenerator } from "../lib/pdf-generator";
 import { EnhancedPDFGenerator } from "../lib/pdf-generator-enhanced";
-import { RentalApplicationPDF } from "../lib/rental-application-pdf.js";
+import { RentalApplicationPDF } from "../lib/rental-application-pdf";
 import { Download, FileText, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search, Save, X } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { useAuth } from "../hooks/use-auth";
@@ -2671,15 +2671,24 @@ export function ApplicationForm() {
     let actualSignature = signature || index;
     let actualIndex = signature ? index : undefined;
 
+    console.log('🔍 handleSignatureChange called with:', { person, index, signature });
+    console.log('🔍 Processed values:', { actualPerson, actualSignature, actualIndex });
+    console.log('🔍 Signature type:', typeof actualSignature);
+    console.log('🔍 Is base64 image:', typeof actualSignature === 'string' && actualSignature.startsWith('data:image/'));
+
     if (actualIndex !== undefined) {
       // New format: person is the type (e.g., 'coApplicants'), index is the position
-      setSignatures((prev: any) => ({
-        ...prev,
-        [actualPerson]: {
-          ...prev[actualPerson],
-          [actualIndex]: actualSignature,
-        },
-      }));
+      setSignatures((prev: any) => {
+        const newSignatures = {
+          ...prev,
+          [actualPerson]: {
+            ...prev[actualPerson],
+            [actualIndex]: actualSignature,
+          },
+        };
+        console.log('🔍 Updated signatures (new format):', newSignatures);
+        return newSignatures;
+      });
       setSignatureTimestamps((prev: any) => ({
         ...prev,
         [actualPerson]: {
@@ -2690,10 +2699,14 @@ export function ApplicationForm() {
       console.log(`✍️ Signature updated for: ${actualPerson}[${actualIndex}] - Draft will be saved when Save Draft button is clicked`);
     } else {
       // Old format: person is the identifier (e.g., 'applicant')
-      setSignatures((prev: any) => ({
-        ...prev,
-        [actualPerson]: actualSignature,
-      }));
+      setSignatures((prev: any) => {
+        const newSignatures = {
+          ...prev,
+          [actualPerson]: actualSignature,
+        };
+        console.log('🔍 Updated signatures (old format):', newSignatures);
+        return newSignatures;
+      });
       setSignatureTimestamps((prev: any) => ({
         ...prev,
         [actualPerson]: new Date().toISOString(),
@@ -2740,66 +2753,34 @@ export function ApplicationForm() {
     
     const processedSignatures: any = {};
     
-    // Process applicant signature
+    // Process applicant signature - preserve actual signature data for image rendering
     if (rawSignatures.applicant) {
-      if (typeof rawSignatures.applicant === 'string') {
-        if (rawSignatures.applicant.startsWith('data:image/')) {
-          // For image signatures, show "SIGNATURE" instead of placeholder
-          processedSignatures.applicant = 'SIGNATURE';
-        } else if (rawSignatures.applicant.length > 100) {
-          // For long base64 strings, show "SIGNATURE"
-          processedSignatures.applicant = 'SIGNATURE';
-        } else {
-          processedSignatures.applicant = rawSignatures.applicant;
-        }
-      } else {
-        processedSignatures.applicant = 'SIGNATURE';
-      }
+      processedSignatures.applicant = rawSignatures.applicant;
     }
     
-    // Process co-applicant signatures
+    // Process co-applicant signatures - preserve actual signature data
     if (rawSignatures.coApplicants) {
       processedSignatures.coApplicants = {};
       Object.keys(rawSignatures.coApplicants).forEach((index: string) => {
         const signature = rawSignatures.coApplicants[index];
-        if (typeof signature === 'string') {
-          if (signature.startsWith('data:image/')) {
-            // For image signatures, show "SIGNATURE" instead of placeholder
-            processedSignatures.coApplicants[index] = 'SIGNATURE';
-          } else if (signature.length > 100) {
-            // For long base64 strings, show "SIGNATURE"
-            processedSignatures.coApplicants[index] = 'SIGNATURE';
-          } else {
-            processedSignatures.coApplicants[index] = signature;
-          }
-        } else {
-          processedSignatures.coApplicants[index] = 'SIGNATURE';
+        if (signature) {
+          processedSignatures.coApplicants[index] = signature;
         }
       });
     }
     
-    // Process guarantor signatures
+    // Process guarantor signatures - preserve actual signature data
     if (rawSignatures.guarantors) {
       processedSignatures.guarantors = {};
       Object.keys(rawSignatures.guarantors).forEach((index: string) => {
         const signature = rawSignatures.guarantors[index];
-        if (typeof signature === 'string') {
-          if (signature.startsWith('data:image/')) {
-            // For image signatures, show "SIGNATURE" instead of placeholder
-            processedSignatures.guarantors[index] = 'SIGNATURE';
-          } else if (signature.length > 100) {
-            // For long base64 strings, show "SIGNATURE"
-            processedSignatures.guarantors[index] = 'SIGNATURE';
-          } else {
-            processedSignatures.guarantors[index] = signature;
-          }
-        } else {
-          processedSignatures.guarantors[index] = 'SIGNATURE';
+        if (signature) {
+          processedSignatures.guarantors[index] = signature;
         }
       });
     }
     
-    console.log('Processed signatures for PDF:', processedSignatures);
+    console.log('Processed signatures for PDF (preserving actual data):', processedSignatures);
     return processedSignatures;
   };
 
@@ -2832,6 +2813,38 @@ export function ApplicationForm() {
 
       // Process signatures for PDF generation
       const processedSignatures = processSignaturesForPDF(signatures);
+      
+      console.log('🔍 PDF Generation - Raw signatures:', signatures);
+      console.log('🔍 PDF Generation - Processed signatures:', processedSignatures);
+      console.log('🔍 PDF Generation - Signature types:', {
+        applicant: typeof processedSignatures.applicant,
+        coApplicants: processedSignatures.coApplicants ? Object.entries(processedSignatures.coApplicants).map(([k, v]) => ({ key: k, type: typeof v, isBase64: typeof v === 'string' && v.startsWith('data:image/') })) : [],
+        guarantors: processedSignatures.guarantors ? Object.entries(processedSignatures.guarantors).map(([k, v]) => ({ key: k, type: typeof v, isBase64: typeof v === 'string' && v.startsWith('data:image/') })) : []
+      });
+      
+      // Debug: Check if signatures are actually base64 images
+      if (processedSignatures.applicant) {
+        console.log('🔍 Applicant signature preview:', processedSignatures.applicant.substring(0, 100) + '...');
+        console.log('🔍 Applicant signature is base64:', processedSignatures.applicant.startsWith('data:image/'));
+      }
+      
+      if (processedSignatures.coApplicants) {
+        Object.entries(processedSignatures.coApplicants).forEach(([index, signature]) => {
+          const sig = signature as string;
+          console.log(`🔍 Co-applicant ${index} signature preview:`, sig.substring(0, 100) + '...');
+          console.log(`🔍 Co-applicant ${index} signature is base64:`, sig.startsWith('data:image/'));
+        });
+      }
+      
+      if (processedSignatures.guarantors) {
+        Object.entries(processedSignatures.guarantors).forEach(([index, signature]) => {
+          const sig = signature as string;
+          console.log(`🔍 Guarantor ${index} signature preview:`, sig.substring(0, 100) + '...');
+          console.log(`🔍 Guarantor ${index} signature is base64:`, sig.startsWith('data:image/'));
+        });
+      }
+      
+      console.log('🔍 About to call pdfGenerator.generate with signatures:', processedSignatures);
       
       const pdfDoc = pdfGenerator.generate({
         application: combinedApplicationData,
@@ -3159,7 +3172,21 @@ export function ApplicationForm() {
     setIsSubmitting(true);
     
     try {
-
+      // Import signature utilities
+      const { validateSignatures, prepareSignaturesForSubmission } = await import('../lib/signature-utils');
+      
+      // Validate signatures before submission
+      const signatureValidation = validateSignatures(signatures);
+      if (!signatureValidation.isValid) {
+        const errorMessage = signatureValidation.errors.join(', ');
+        toast({
+          title: "Signature Required",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
       
       // ENSURE FULL METADATA IS AVAILABLE FOR WEBHOOK
       
@@ -3750,8 +3777,14 @@ export function ApplicationForm() {
             throw new Error('Name and email are required for submission.');
           }
 
+          // Prepare signatures for submission
+          const submissionSignatures = prepareSignaturesForSubmission(signatures);
+          
           const requestBody = {
-            applicationData: serverOptimizedData,
+            applicationData: {
+              ...serverOptimizedData,
+              signatures: submissionSignatures
+            },
             userInfo: userInfo
           };
           
