@@ -187,45 +187,45 @@ export class RentalApplicationPDF {
 
         const body = Object.entries(data)
             .filter(([key, val]) => {
-                if (exclude.includes(key))
-                    return false;
-                if (typeof val === "object" && val !== null)
-                    return false;
+            if (exclude.includes(key))
+                return false;
+            if (typeof val === "object" && val !== null)
+                return false;
                 if (val === null || val === undefined || val === "" || val === "empty" || val === "undefined")
-                    return false;
-                return true;
-            })
+                return false;
+            return true;
+        })
             .map(([key, val]) => {
-                let displayValue = val;
-                // Format dates properly
+            let displayValue = val;
+            // Format dates properly
                 if (['dob', 'employmentStart', 'moveInDate', 'coApplicantStartDate'].includes(key)) {
-                    try {
+                try {
                         const date = new Date(val as string | number | Date);
-                        if (!isNaN(date.getTime())) {
-                            displayValue = date.toLocaleDateString();
-                        }
+                    if (!isNaN(date.getTime())) {
+                        displayValue = date.toLocaleDateString();
                     }
-                    catch (e) {
+                }
+                catch (e) {
                         // Keep original value if parsing fails
-                    }
                 }
-                // Format income values
+            }
+            // Format income values
                 if (['income', 'otherIncome', 'monthlyRent', 'currentRent', 'coApplicantSalary', 'coApplicantOtherIncome'].includes(key)) {
-                    if (typeof val === 'number' || !isNaN(Number(val))) {
-                        displayValue = `$${Number(val).toLocaleString()}`;
-                    }
+                if (typeof val === 'number' || !isNaN(Number(val))) {
+                    displayValue = `$${Number(val).toLocaleString()}`;
                 }
+            }
                 // Calculate age from date of birth (if dob exists)
-                if (key === 'age' && data.dob) {
-                    try {
-                        const dob = new Date(data.dob);
-                        if (!isNaN(dob.getTime())) {
-                            const today = new Date();
+            if (key === 'age' && data.dob) {
+                try {
+                    const dob = new Date(data.dob);
+                    if (!isNaN(dob.getTime())) {
+                        const today = new Date();
                             let age = today.getFullYear() - dob.getFullYear();
-                            const monthDiff = today.getMonth() - dob.getMonth();
-                            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                        const monthDiff = today.getMonth() - dob.getMonth();
+                        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
                                 age--;
-                            }
+                        }
                             displayValue = age > 0 ? `${age} years old` : 'Less than 1 year old';
                         } else {
                             displayValue = "[Invalid Date]";
@@ -235,11 +235,11 @@ export class RentalApplicationPDF {
                     }
                 }
                 
-                return [
-                    fieldMappings[key] || this.toLabel(key),
+            return [
+                fieldMappings[key] || this.toLabel(key),
                     String(displayValue),
-                ];
-            });
+            ];
+        });
 
         if (!body.length)
             return;
@@ -619,34 +619,40 @@ export class RentalApplicationPDF {
                 const imgData = processedSignature.data.split(',')[1];
 
                 if (imgData && imgType) {
-                    const width = Math.min(maxWidth, 140); // Slightly larger signature width
-                    const height = Math.min(maxHeight, 45); // Slightly larger signature height
+                    // Use the full dimensions provided for better signature quality
+                    const width = maxWidth;
+                    const height = maxHeight;
                     
+                    console.log('🔍 Adding signature image:', { width, height, imgType, x, y });
+                    
+                    // Add the image with proper positioning
                     this.doc.addImage(imgData, imgType.toUpperCase(), x, y, width, height);
                     
-                    // Better border around signature
-                    this.doc.setDrawColor(180, 180, 180);
-                    this.doc.setLineWidth(0.8);
-                    this.doc.rect(x - 2, y - 2, width + 4, height + 4, 'S');
+                    // Better border around signature for professional appearance
+                    this.doc.setDrawColor(80, 80, 80); // Darker border
+                    this.doc.setLineWidth(1.5); // Thicker border
+                    this.doc.rect(x - 2, y - 2, width + 4, height + 4, 'S'); // Border around signature
                     
-                    return height + 12; // Better spacing
+                    return height + 10; // Return height plus small padding
                 }
             } catch (error) {
+                console.error('🔍 Error adding signature image:', error);
                 // Fallback to text if image adding fails
             }
         }
         
         // Better signature line for missing signatures
-        this.doc.setDrawColor(51, 51, 51);
-        this.doc.setLineWidth(1.2); // Slightly thicker line
-        this.doc.line(x, y + 20, x + maxWidth, y + 20); // Better positioned line
+        this.doc.setDrawColor(80, 80, 80); // Darker line color
+        this.doc.setLineWidth(2); // Much thicker line for better visibility
+        this.doc.line(x, y + 25, x + maxWidth, y + 25); // Better positioned line
         
-        this.doc.setFontSize(10); // Larger font
+        // Better text display for missing signatures
+        this.doc.setFontSize(11); // Larger font
         this.doc.setFont("helvetica", "italic");
-        this.doc.setTextColor(128, 128, 128);
-        this.doc.text(processedSignature.displayText, x, y + 12); // Better positioned text
+        this.doc.setTextColor(100, 100, 100); // Darker text color
+        this.doc.text(processedSignature.displayText, x, y + 15); // Better positioned text
         
-        return 35; // Better height for signature line and text
+        return 40; // Better height for signature line and text
     }
 
     addSignatures(data: any) {
@@ -707,121 +713,132 @@ export class RentalApplicationPDF {
      * Process and display signatures with proper image handling
      */
     processSignatures(data: any) {
-        // Extract signatures using the utility function
-        const signatures = extractSignaturesForPDF(data);
+        console.log('🔍 processSignatures - Starting signature processing');
+        console.log('🔍 processSignatures - Raw data:', data);
+        console.log('🔍 processSignatures - Raw signatures:', data.signatures);
         
-        const signatureY = this.currentY;
-        let currentSignatureY = signatureY;
-        const signatureX = this.marginLeft;
-        const signatureWidth = 200;
-        const signatureHeight = 40;
-        const spacing = 60; // Reduced spacing for better layout
-        const labelSpacing = 15; // Reduced space between label and signature
+        let currentY = this.currentY;
+        const leftX = this.marginLeft; // All signatures on left side
+        const signatureWidth = 200; // Full width for left-aligned layout
+        const signatureHeight = 50; // Good height for signature display
+        const rowSpacing = 60; // Reduced spacing for single column
+        const labelSpacing = 18; // Space between label and signature
 
-        // Primary Applicant Signature
-        if (data.applicant?.name || (data.coApplicants && data.coApplicants.length > 0)) {
-            const applicantName = data.applicant?.name || data.coApplicants[0]?.name || 'Primary Applicant';
-            this.doc.setFontSize(11);
-            this.doc.setFont("helvetica", "bold");
-            this.doc.setTextColor(51, 51, 51);
-            this.doc.text(`Primary Applicant: ${applicantName}`, signatureX, currentSignatureY);
-            currentSignatureY += labelSpacing;
+        // Primary Applicant - Left aligned
+        console.log('🔍 Adding Primary Applicant signature');
+        const primaryName = data.applicant?.name || 'Primary Applicant';
+        
+        this.doc.setFontSize(12);
+        this.doc.setFont("helvetica", "bold");
+        this.doc.setTextColor(51, 51, 51);
+        this.doc.text(`Primary Applicant: ${primaryName}`, leftX, currentY);
+        currentY += labelSpacing;
 
-            // Check for signature
-            if (signatures.applicant) {
-                // Add signature image
-                const height = this.addSignatureImageOrText(
-                    signatures.applicant, 
-                    signatureX, 
-                    currentSignatureY, 
-                    signatureWidth, 
-                    signatureHeight
-                );
-                currentSignatureY += height + 10;
-            } else {
-                // Add signature line
-                this.doc.setDrawColor(51, 51, 51);
-                this.doc.setLineWidth(1);
-                this.doc.line(signatureX, currentSignatureY, signatureX + signatureWidth, currentSignatureY);
-                currentSignatureY += 20;
-            }
-            currentSignatureY += spacing;
-        }
-
-        // Co-Applicant Signatures - Process ALL co-applicants from form data
-        if (data.coApplicants && data.coApplicants.length > 0) {
-            console.log('🔍 Signatures - Processing co-applicants:', data.coApplicants.length);
-            console.log('🔍 Signatures - Co-applicants data:', JSON.stringify(data.coApplicants, null, 2));
-            console.log('🔍 Signatures - Available signatures:', Object.keys(signatures.coApplicants || {}));
-            
-            data.coApplicants.forEach((co: any, coIndex: number) => {
-                console.log(`🔍 Processing signature for co-applicant ${coIndex + 1}:`, co.name);
-                const title = `Co-Applicant ${coIndex + 1}`;
-                this.doc.setFontSize(11);
-                this.doc.setFont("helvetica", "bold");
-                this.doc.setTextColor(51, 51, 51);
-                this.doc.text(`${title}: ${co.name || 'N/A'}`, signatureX, currentSignatureY);
-                currentSignatureY += labelSpacing;
-
-                // Check if we have a signature for this co-applicant
-                const signature = signatures.coApplicants?.[coIndex];
-                console.log(`🔍 Co-applicant ${coIndex + 1} signature found:`, !!signature);
-                if (signature) {
-                    // Add signature image
-                    const height = this.addSignatureImageOrText(
-                        signature, 
-                        signatureX, 
-                        currentSignatureY, 
-                        signatureWidth, 
-                        signatureHeight
-                    );
-                    currentSignatureY += height + 10;
-                } else {
-                    // Add signature line for missing signature
-                    this.doc.setDrawColor(51, 51, 51);
-                    this.doc.setLineWidth(1);
-                    this.doc.line(signatureX, currentSignatureY, signatureX + signatureWidth, currentSignatureY);
-                    currentSignatureY += 20;
-                }
-                currentSignatureY += spacing;
-            });
+        // Direct access to applicant signature
+        const applicantSignature = data.signatures?.applicant;
+        console.log('🔍 Primary Applicant signature:', applicantSignature ? 'EXISTS' : 'MISSING');
+        
+        if (applicantSignature) {
+            console.log('🔍 Primary Applicant signature found, adding image');
+            const height = this.addSignatureImageOrText(applicantSignature, leftX, currentY, signatureWidth, signatureHeight);
+            currentY += height + 15;
         } else {
-            console.log('🔍 Signatures - No co-applicants found in data');
+            console.log('🔍 No Primary Applicant signature, adding line');
+            this.doc.setDrawColor(51, 51, 51);
+            this.doc.setLineWidth(1.5);
+            this.doc.line(leftX, currentY, leftX + signatureWidth, currentY);
+            currentY += 25;
         }
+        
+        currentY += rowSpacing;
 
-        // Guarantor Signatures - Process ALL guarantors from form data
-        if (data.guarantors && data.guarantors.length > 0) {
-            data.guarantors.forEach((g: any, guarantorIndex: number) => {
-                this.doc.setFontSize(11);
+        // Co-Applicants - All left aligned
+        if (data.coApplicants && data.coApplicants.length > 0) {
+            console.log(`🔍 Processing ${data.coApplicants.length} co-applicants`);
+            console.log('🔍 Raw co-applicant signatures:', data.signatures?.coApplicants);
+            
+            data.coApplicants.forEach((co: any, index: number) => {
+                // Check page break before adding each signature
+                if (currentY > 700) { // If we're getting close to bottom
+                    console.log('🔍 Page break needed, adding new page');
+                    this.doc.addPage();
+                    currentY = 40; // Reset to top of new page
+                }
+                
+                console.log(`🔍 Processing Co-Applicant ${index + 1}: ${co.name}`);
+                
+                // Add label - all left aligned
+                this.doc.setFontSize(12);
                 this.doc.setFont("helvetica", "bold");
                 this.doc.setTextColor(51, 51, 51);
-                this.doc.text(`Guarantor ${guarantorIndex + 1}: ${g.name || 'N/A'}`, signatureX, currentSignatureY);
-                currentSignatureY += labelSpacing;
+                this.doc.text(`Co-Applicant ${index + 1}: ${co.name || 'N/A'}`, leftX, currentY);
+                currentY += labelSpacing;
 
-                // Check if we have a signature for this guarantor
-                const signature = signatures.guarantors?.[guarantorIndex];
+                // Direct access to co-applicant signature
+                const signature = data.signatures?.coApplicants?.[index] || data.signatures?.coApplicants?.[index.toString()];
+                console.log(`🔍 Co-Applicant ${index + 1} signature:`, signature ? 'EXISTS' : 'MISSING', 'Index:', index, 'Raw access:', !!data.signatures?.coApplicants?.[index]);
+                
                 if (signature) {
-                    // Add signature image
-                    const height = this.addSignatureImageOrText(
-                        signature, 
-                        signatureX, 
-                        currentSignatureY, 
-                        signatureWidth, 
-                        signatureHeight
-                    );
-                    currentSignatureY += height + 10;
+                    console.log(`🔍 Adding signature image for Co-Applicant ${index + 1}`);
+                    const height = this.addSignatureImageOrText(signature, leftX, currentY, signatureWidth, signatureHeight);
+                    currentY += height + 15;
                 } else {
-                    // Add signature line for missing signature
+                    console.log(`🔍 Adding signature line for Co-Applicant ${index + 1}`);
                     this.doc.setDrawColor(51, 51, 51);
-                    this.doc.setLineWidth(1);
-                    this.doc.line(signatureX, currentSignatureY, signatureX + signatureWidth, currentSignatureY);
-                    currentSignatureY += 20;
+                    this.doc.setLineWidth(1.5);
+                    this.doc.line(leftX, currentY, leftX + signatureWidth, currentY);
+                    currentY += 25;
                 }
-                currentSignatureY += spacing;
+                
+                currentY += rowSpacing; // Always add spacing after each signature
             });
         }
 
-        this.currentY = currentSignatureY + 20; // Reduced final spacing
+        // Guarantors - All left aligned
+        if (data.guarantors && data.guarantors.length > 0) {
+            console.log(`🔍 Processing ${data.guarantors.length} guarantors`);
+            console.log('🔍 Raw guarantor signatures:', data.signatures?.guarantors);
+            
+            data.guarantors.forEach((g: any, index: number) => {
+                // Check page break before adding each signature
+                if (currentY > 700) { // If we're getting close to bottom
+                    console.log('🔍 Page break needed, adding new page');
+                    this.doc.addPage();
+                    currentY = 40; // Reset to top of new page
+                }
+                
+                console.log(`🔍 Processing Guarantor ${index + 1}: ${g.name}`);
+                
+                // Add label - all left aligned
+                this.doc.setFontSize(12);
+                this.doc.setFont("helvetica", "bold");
+                this.doc.setTextColor(51, 51, 51);
+                this.doc.text(`Guarantor ${index + 1}: ${g.name || 'N/A'}`, leftX, currentY);
+                currentY += labelSpacing;
+
+                // Direct access to guarantor signature
+                const signature = data.signatures?.guarantors?.[index] || data.signatures?.guarantors?.[index.toString()];
+                console.log(`🔍 Guarantor ${index + 1} signature:`, signature ? 'EXISTS' : 'MISSING', 'Index:', index, 'Raw access:', !!data.signatures?.guarantors?.[index]);
+                
+                if (signature) {
+                    console.log(`🔍 Adding signature image for Guarantor ${index + 1}`);
+                    const height = this.addSignatureImageOrText(signature, leftX, currentY, signatureWidth, signatureHeight);
+                    currentY += height + 15;
+                } else {
+                    console.log(`🔍 Adding signature line for Guarantor ${index + 1}`);
+                    this.doc.setDrawColor(51, 51, 51);
+                    this.doc.setLineWidth(1.5);
+                    this.doc.line(leftX, currentY, leftX + signatureWidth, currentY);
+                    currentY += 25;
+                }
+                
+                currentY += rowSpacing; // Always add spacing after each signature
+            });
+        }
+
+        console.log('🔍 processSignatures - Finished processing all signatures');
+        console.log('🔍 processSignatures - Final Y position:', currentY);
+        this.currentY = currentY + 30;
     }
 
     addFooter() {
@@ -951,6 +968,13 @@ export class RentalApplicationPDF {
         }
         
         // 8. Signatures (includes legal disclaimer)
+        console.log('🔍 generate - About to process signatures');
+        console.log('🔍 generate - Final data structure for signatures:', {
+            applicant: formData.applicant,
+            coApplicants: formData.coApplicants,
+            guarantors: formData.guarantors,
+            signatures: formData.signatures
+        });
         this.addSignatures(formData);
         
         // 9. Footer

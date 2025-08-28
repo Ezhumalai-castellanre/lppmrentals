@@ -4,8 +4,8 @@
 
 export interface SignatureData {
   applicant?: string;
-  coApplicants?: { [key: string]: string };
-  guarantors?: { [key: string]: string };
+  coApplicants?: { [key: string]: string | null };
+  guarantors?: { [key: string]: string | null };
 }
 
 export interface ProcessedSignature {
@@ -66,35 +66,59 @@ export function extractSignaturesForPDF(formData: any): SignatureData {
     
     console.log('🔍 Extracting signatures from form data:', formData);
     console.log('🔍 Raw signatures object:', formData.signatures);
+    console.log('🔍 Co-applicants in form data:', formData.coApplicants?.length || 0);
+    console.log('🔍 Guarantors in form data:', formData.guarantors?.length || 0);
 
     // Extract applicant signature
     if (formData.signatures?.applicant) {
         console.log('🔍 Applicant signature found:', typeof formData.signatures.applicant);
         signatures.applicant = formData.signatures.applicant;
+    } else {
+        console.log('🔍 No applicant signature found');
     }
 
-    // Extract co-applicant signatures
-    if (formData.signatures?.coApplicants && Object.keys(formData.signatures.coApplicants).length > 0) {
-        console.log('🔍 Co-applicant signatures found:', Object.keys(formData.signatures.coApplicants));
+    // Extract co-applicant signatures - ensure ALL co-applicants are represented
+    if (formData.coApplicants && formData.coApplicants.length > 0) {
+        console.log('🔍 Processing co-applicants for signatures:', formData.coApplicants.length);
         signatures.coApplicants = {};
-        Object.entries(formData.signatures.coApplicants).forEach(([index, signature]) => {
-            if (signature) {
-                console.log(`🔍 Co-applicant ${index} signature:`, typeof signature);
-                signatures.coApplicants![index] = signature as string;
+        
+        // Process ALL co-applicants, not just ones with signatures
+        formData.coApplicants.forEach((co: any, index: number) => {
+            const signatureKey = index.toString();
+            console.log(`🔍 Processing co-applicant ${index + 1} with key:`, signatureKey);
+            
+            if (formData.signatures?.coApplicants?.[signatureKey]) {
+                console.log(`🔍 Co-applicant ${index + 1} signature found:`, typeof formData.signatures.coApplicants[signatureKey]);
+                signatures.coApplicants![signatureKey] = formData.signatures.coApplicants[signatureKey];
+            } else {
+                console.log(`🔍 Co-applicant ${index + 1} no signature found, adding placeholder`);
+                signatures.coApplicants![signatureKey] = null; // This will show signature line in PDF
             }
         });
+        
+        console.log('🔍 Final co-applicant signatures object:', signatures.coApplicants);
     }
 
-    // Extract guarantor signatures
-    if (formData.signatures?.guarantors && Object.keys(formData.signatures.guarantors).length > 0) {
-        console.log('🔍 Guarantor signatures found:', Object.keys(formData.signatures.guarantors));
+    // Extract guarantor signatures - ensure ALL guarantors are represented
+    if (formData.guarantors && formData.guarantors.length > 0) {
+        console.log('🔍 Processing guarantors for signatures:', formData.guarantors.length);
         signatures.guarantors = {};
-        Object.entries(formData.signatures.guarantors).forEach(([index, signature]) => {
-            if (signature) {
-                console.log(`🔍 Guarantor ${index} signature:`, typeof signature);
-                signatures.guarantors![index] = signature as string;
+        
+        // Process ALL guarantors, not just ones with signatures
+        formData.guarantors.forEach((g: any, index: number) => {
+            const signatureKey = index.toString();
+            console.log(`🔍 Processing guarantor ${index + 1} with key:`, signatureKey);
+            
+            if (formData.signatures?.guarantors?.[signatureKey]) {
+                console.log(`🔍 Guarantor ${index + 1} signature found:`, typeof formData.signatures.guarantors[signatureKey]);
+                signatures.guarantors![signatureKey] = formData.signatures.guarantors[signatureKey];
+            } else {
+                console.log(`🔍 Guarantor ${index + 1} no signature found, adding placeholder`);
+                signatures.guarantors![signatureKey] = null; // This will show signature line in PDF
             }
         });
+        
+        console.log('🔍 Final guarantor signatures object:', signatures.guarantors);
     }
 
     console.log('🔍 Final extracted signatures:', signatures);
