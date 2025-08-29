@@ -31,57 +31,57 @@ export class RentalApplicationPDF {
         // Company logo placeholder - Perfectly positioned
         const logoRectX = this.marginLeft;
         const logoRectY = this.currentY;
-        const logoRectWidth = 32; // Slightly larger for better proportions
-        const logoRectHeight = 22; // Slightly taller for better proportions
+        const logoRectWidth = 28; // Reduced from 32 to 28
+        const logoRectHeight = 18; // Reduced from 22 to 18
 
         this.doc.setFillColor(0, 102, 204);
         this.doc.rect(logoRectX, logoRectY, logoRectWidth, logoRectHeight, 'F');
         this.doc.setTextColor(255, 255, 255);
-        this.doc.setFontSize(8); // Perfect font size for logo
+        this.doc.setFontSize(7); // Reduced from 8 to 7
         this.doc.setFont("helvetica", "bold");
-        this.doc.text('LIBERTY', logoRectX + 5, logoRectY + 9); // Perfectly centered in logo
-        this.doc.text('PLACE', logoRectX + 5, logoRectY + 16); // Perfectly centered in logo
+        this.doc.text('LIBERTY', logoRectX + 4, logoRectY + 8); // Adjusted positioning
+        this.doc.text('PLACE', logoRectX + 4, logoRectY + 14); // Adjusted positioning
         
         // Company name - Perfectly aligned with logo
-        const companyNameX = this.marginLeft + logoRectWidth + 18; // Perfect spacing after logo
+        const companyNameX = this.marginLeft + logoRectWidth + 15; // Reduced spacing from 18 to 15
         this.doc.setTextColor(0, 102, 204);
-        this.doc.setFontSize(18); // Perfect size for company name
+        this.doc.setFontSize(16); // Reduced from 18 to 16
         this.doc.setFont("helvetica", "bold");
-        this.doc.text("Liberty Place Property Management", companyNameX, this.currentY + 13); // Perfect vertical alignment
+        this.doc.text("Liberty Place Property Management", companyNameX, this.currentY + 12); // Adjusted positioning
         
         // Address and contact info - Perfectly aligned with company name
-        this.doc.setFontSize(9); // Perfect size for contact info
+        this.doc.setFontSize(8); // Reduced from 9 to 8
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(51, 51, 51);
         
         // Perfectly aligned address and contact lines
-        this.doc.text("122 East 42nd Street, Suite 1903", companyNameX, this.currentY + 22);
-        this.doc.text("New York, NY 10168", companyNameX, this.currentY + 30);
-        this.doc.text("Tel: (646) 545-6700 | Fax: (646) 304-2255", companyNameX, this.currentY + 38);
-        this.doc.text("Leasing Direct Line: (646) 545-6700", companyNameX, this.currentY + 46);
+        this.doc.text("122 East 42nd Street, Suite 1903", companyNameX, this.currentY + 20); // Reduced spacing
+        this.doc.text("New York, NY 10168", companyNameX, this.currentY + 27); // Reduced spacing
+        this.doc.text("Tel: (646) 545-6700 | Fax: (646) 304-2255", companyNameX, this.currentY + 34); // Reduced spacing
+        this.doc.text("Leasing Direct Line: (646) 545-6700", companyNameX, this.currentY + 41); // Reduced spacing
         
-        this.currentY += 52; // Perfect spacing after contact info
+        this.currentY += 45; // Reduced from 52 to 45
         
         // Title with decorative elements - Perfectly centered
         this.doc.setFillColor(255, 193, 7); // Vibrant yellow
-        const titleRectHeight = 20; // Perfect height for visual impact
+        const titleRectHeight = 18; // Reduced from 20 to 18
         this.doc.rect(this.marginLeft, this.currentY, this.contentWidth, titleRectHeight, 'F');
         this.doc.setTextColor(255, 255, 255);
-        this.doc.setFontSize(16); // Perfect title font size
+        this.doc.setFontSize(15); // Reduced from 16 to 15
         this.doc.setFont("helvetica", "bold");
         // Perfectly center the title both horizontally and vertically
-        this.doc.text("RENTAL APPLICATION", this.pageWidth / 2, this.currentY + titleRectHeight / 2 + 5, { align: 'center' });
-        this.currentY += titleRectHeight + 22; // Perfect spacing after title bar
+        this.doc.text("RENTAL APPLICATION", this.pageWidth / 2, this.currentY + titleRectHeight / 2 + 4, { align: 'center' });
+        this.currentY += titleRectHeight + 18; // Reduced from 22 to 18
         
         // Application ID and date - Perfectly aligned
         this.doc.setTextColor(51, 51, 51);
-        this.doc.setFontSize(10); // Perfect date font size
+        this.doc.setFontSize(9); // Reduced from 10 to 9
         this.doc.setFont("helvetica", "normal");
         // Left date - perfectly aligned with left margin
         this.doc.text(`Application Date: ${new Date().toLocaleDateString()}`, this.marginLeft, this.currentY);
         // Right date - perfectly aligned with right margin
         this.doc.text(`Generated: ${new Date().toLocaleString()}`, this.pageWidth - this.marginRight, this.currentY, { align: 'right' });
-        this.currentY += 28; // Perfect spacing after date info
+        this.currentY += 22; // Reduced from 28 to 22
     }
 
     /**
@@ -89,8 +89,8 @@ export class RentalApplicationPDF {
      */
     checkPageBreak(requiredHeight: number = 100) {
         const pageHeight = this.doc.internal.pageSize.getHeight();
-        // Use marginBottom for better control of last page spacing
-        if (this.currentY + requiredHeight > pageHeight - this.marginBottom) {
+        // Use a more conservative approach to prevent premature page breaks
+        if (this.currentY + requiredHeight > pageHeight - 40) { // Reduced from 50 to 40 for better space utilization
             this.doc.addPage();
             this.currentY = 40;
             return true;
@@ -100,29 +100,29 @@ export class RentalApplicationPDF {
 
     addSectionTitle(title: string) {
         // Check if we need a page break before adding a new section
-        this.checkPageBreak(60); // Increased required height
+        this.checkPageBreak(70); // Reduced from 80 to 70
         
-        this.currentY += 18; // Perfect spacing before section titles
+        this.currentY += 16; // Reduced from 20 to 16 for better spacing before section titles
         
         const titleWidth = this.contentWidth;
-        const titleHeight = 24; // Perfect height for visual impact
+        const titleHeight = 22; // Reduced from 26 to 22 for better visual impact
         
         // Background rectangle with perfect positioning
         this.doc.setFillColor(240, 248, 255); // Light blue background
-        this.doc.rect(this.marginLeft, this.currentY - 10, titleWidth, titleHeight, 'F');
+        this.doc.rect(this.marginLeft, this.currentY - 10, titleWidth, titleHeight, 'F'); // Adjusted positioning
         
         // Border with perfect positioning
         this.doc.setDrawColor(0, 102, 204);
         this.doc.setLineWidth(1); // Perfect border thickness
-        this.doc.rect(this.marginLeft, this.currentY - 10, titleWidth, titleHeight, 'S');
+        this.doc.rect(this.marginLeft, this.currentY - 10, titleWidth, titleHeight, 'S'); // Adjusted positioning
         
         // Title text with perfect positioning
-        this.doc.setFontSize(14); // Perfect section title font size
+        this.doc.setFontSize(13); // Reduced from 14 to 13
         this.doc.setFont("helvetica", "bold");
         this.doc.setTextColor(0, 102, 204);
-        this.doc.text(title, this.marginLeft + 15, this.currentY + 9); // Perfectly positioned text
+        this.doc.text(title, this.marginLeft + 15, this.currentY + 8); // Adjusted positioning
         
-        this.currentY += titleHeight + 18; // Perfect spacing after title
+        this.currentY += titleHeight + 18; // Reduced from 22 to 18 for better spacing after title
     }
 
     addKeyValueTable(data: any, exclude: string[] = [], title?: string) {
@@ -245,11 +245,11 @@ export class RentalApplicationPDF {
             return;
 
         if (title) {
-            this.doc.setFontSize(12); // Larger subtitle font
+            this.doc.setFontSize(11); // Reduced from 12 to 11
             this.doc.setFont("helvetica", "bold");
             this.doc.setTextColor(51, 51, 51);
             this.doc.text(title, this.marginLeft, this.currentY);
-            this.currentY += 18; // Increased spacing after subtitle
+            this.currentY += 15; // Reduced from 18 to 15 for better spacing after subtitle
         }
 
         // Calculate better column widths for professional alignment
@@ -262,8 +262,8 @@ export class RentalApplicationPDF {
             body,
             margin: { left: this.marginLeft, right: this.marginRight },
             styles: { 
-                fontSize: 10, // Larger table font
-                cellPadding: 8, // Increased padding
+                fontSize: 9, // Reduced from 10 to 9
+                cellPadding: 6, // Reduced from 8 to 6
                 lineWidth: 0.8, // Thicker lines for better visibility
                 lineColor: [180, 180, 180], // Better line color
                 textColor: [51, 51, 51]
@@ -271,20 +271,20 @@ export class RentalApplicationPDF {
             headStyles: { 
                 fillColor: [0, 102, 204], 
                 textColor: [255, 255, 255],
-                fontSize: 11, // Larger head font
+                fontSize: 10, // Reduced from 11 to 10
                 fontStyle: 'bold',
-                cellPadding: 9 // Increased head padding
+                cellPadding: 7 // Reduced from 9 to 7
             },
             alternateRowStyles: { fillColor: [248, 249, 250] },
             columnStyles: {
                 0: { 
                     cellWidth: fieldColumnWidth, 
                     fontStyle: 'bold',
-                    cellPadding: 8
+                    cellPadding: 6 // Reduced from 8 to 6
                 },
                 1: { 
                     cellWidth: valueColumnWidth,
-                    cellPadding: 8
+                    cellPadding: 6 // Reduced from 8 to 6
                 }
             },
             // Ensure grid lines are visible
@@ -294,18 +294,18 @@ export class RentalApplicationPDF {
         });
         
         // Fix the linter error by using proper table positioning
-        this.currentY = (this.doc as any).lastAutoTable?.finalY + 25 || this.currentY + 100;
+        this.currentY = (this.doc as any).lastAutoTable?.finalY + 25 || this.currentY + 100; // Reduced spacing from 35 to 25
     }
 
     addBankTable(banks: any[] | undefined, title = "Bank Records") {
         if (!banks?.length)
             return;
             
-        this.doc.setFontSize(12); // Larger title font
+        this.doc.setFontSize(11); // Reduced from 12 to 11
         this.doc.setFont("helvetica", "bold");
         this.doc.setTextColor(51, 51, 51);
         this.doc.text(title, this.marginLeft, this.currentY);
-        this.currentY += 18; // Increased spacing after title
+        this.currentY += 15; // Reduced from 18 to 15 for better spacing after title
         
         const body = banks.map((b) => [b.bankName || "N/A", b.accountType || "N/A"]);
         
@@ -318,8 +318,8 @@ export class RentalApplicationPDF {
             body,
             margin: { left: this.marginLeft, right: this.marginRight },
             styles: { 
-                fontSize: 10, 
-                cellPadding: 8,
+                fontSize: 9, // Reduced from 10 to 9
+                cellPadding: 6, // Reduced from 8 to 6
                 lineWidth: 0.8, // Consistent with main tables
                 lineColor: [180, 180, 180], // Consistent with main tables
                 textColor: [51, 51, 51]
@@ -327,19 +327,19 @@ export class RentalApplicationPDF {
             headStyles: { 
                 fillColor: [51, 51, 51], 
                 textColor: [255, 255, 255],
-                fontSize: 11,
+                fontSize: 10, // Reduced from 11 to 10
                 fontStyle: 'bold',
-                cellPadding: 9
+                cellPadding: 7 // Reduced from 9 to 7
             },
             alternateRowStyles: { fillColor: [248, 249, 250] },
             columnStyles: {
                 0: { 
                     cellWidth: fieldColumnWidth,
-                    cellPadding: 8
+                    cellPadding: 6 // Reduced from 8 to 6
                 },
                 1: { 
                     cellWidth: valueColumnWidth,
-                    cellPadding: 8
+                    cellPadding: 6 // Reduced from 8 to 6
                 }
             },
             // Ensure grid lines are visible
@@ -349,7 +349,7 @@ export class RentalApplicationPDF {
         });
         
         // Fix the linter error by using proper table positioning
-        this.currentY = (this.doc as any).lastAutoTable?.finalY + 25 || this.currentY + 100;
+        this.currentY = (this.doc as any).lastAutoTable?.finalY + 25 || this.currentY + 100; // Reduced spacing from 35 to 25
     }
 
     addInstructions() {
@@ -397,39 +397,39 @@ export class RentalApplicationPDF {
 
         instructions.forEach(instruction => {
             if (instruction === "") {
-                this.currentY += 10; // Better spacing for empty lines
+                this.currentY += 8; // Reduced from 12 to 8 for better spacing for empty lines
             }
             else if (instruction.startsWith("•")) {
-                this.doc.setFontSize(9); // Larger font for list items
+                this.doc.setFontSize(8); // Reduced from 9 to 8
                 this.doc.setFont("helvetica", "normal");
                 this.doc.setTextColor(51, 51, 51);
                 this.doc.text(instruction, this.marginLeft + 12, this.currentY); // Better indent alignment
-                this.currentY += 14; // Better spacing between bullet points
+                this.currentY += 12; // Reduced from 16 to 12 for better spacing between bullet points
             }
             else if (instruction.includes(":")) {
-                this.doc.setFontSize(11); // Larger font for sub-headers
+                this.doc.setFontSize(10); // Reduced from 11 to 10
                 this.doc.setFont("helvetica", "bold");
                 this.doc.setTextColor(0, 102, 204);
                 this.doc.text(instruction, this.marginLeft, this.currentY);
-                this.currentY += 18; // Better spacing after section headers
+                this.currentY += 16; // Reduced from 20 to 16 for better spacing after section headers
             }
             else {
-                this.doc.setFontSize(9); // Larger font for regular text
+                this.doc.setFontSize(8); // Reduced from 9 to 8
                 this.doc.setFont("helvetica", "normal");
                 this.doc.setTextColor(51, 51, 51);
                 this.doc.text(instruction, this.marginLeft, this.currentY);
-                this.currentY += 14; // Better spacing for regular text
+                this.currentY += 12; // Reduced from 16 to 12 for better spacing for regular text
             }
         });
         
-        this.currentY += 25; // Better final spacing
+        this.currentY += 20; // Reduced from 30 to 20 for better final spacing
     }
 
     addApplicantInfo(applicant: any) {
         this.addSectionTitle("Primary Applicant Information");
         
         // Define fields to exclude from Personal Information
-        const personalExclude = ["bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "employmentType", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource", "businessName", "businessType", "yearsInBusiness", "ssn", "license", "dob", "age"];
+        const personalExclude = ["bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource", "businessName", "businessType", "yearsInBusiness", "ssn", "license", "dob", "age"];
         
         // Personal Information
         this.addKeyValueTable(applicant, personalExclude, "Personal Information");
@@ -460,19 +460,15 @@ export class RentalApplicationPDF {
         else {
             addressData.lengthAtAddress = "Not provided";
         }
-        this.addKeyValueTable(addressData, ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "lengthAtAddressYears", "lengthAtAddressMonths", "age"], "Current Address");
+        this.addKeyValueTable(addressData, ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "lengthAtAddressYears", "lengthAtAddressMonths", "age", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource"], "Current Address");
         
         // Landlord Information
-        const landlordExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "age"];
+        const landlordExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "age", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource"];
         this.addKeyValueTable(applicant, landlordExclude, "Landlord Information");
         
         // Employment Information
         const employmentExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "age"];
         this.addKeyValueTable(applicant, employmentExclude, "Primary Applicant Financial Information");
-        
-        // Business Information
-        const businessExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "employmentType", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource", "age"];
-        this.addKeyValueTable(applicant, businessExclude, "Business Information");
         
         // Bank Records
         this.addBankTable(applicant?.bankRecords, "Bank Information");
@@ -482,7 +478,7 @@ export class RentalApplicationPDF {
         this.addSectionTitle(`Co-Applicant ${index + 1} Information`);
         
         // Define fields to exclude from Personal Information for co-applicants
-        const personalExclude = ["bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "employmentType", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource", "businessName", "businessType", "yearsInBusiness", "ssn", "license", "dob", "age"];
+        const personalExclude = ["bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource", "businessName", "businessType", "yearsInBusiness", "ssn", "license", "dob", "age"];
         
         // Personal Information
         this.addKeyValueTable(coApplicant, personalExclude, "Personal Information");
@@ -513,19 +509,15 @@ export class RentalApplicationPDF {
         else {
             addressData.lengthAtAddress = "Not provided";
         }
-        this.addKeyValueTable(addressData, ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "lengthAtAddressYears", "lengthAtAddressMonths", "age"], "Current Address");
+        this.addKeyValueTable(addressData, ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "lengthAtAddressYears", "lengthAtAddressMonths", "age", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource"], "Current Address");
         
         // Landlord Information
-        const landlordExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "age"];
+        const landlordExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "age", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource"];
         this.addKeyValueTable(coApplicant, landlordExclude, "Landlord Information");
         
         // Employment Information
         const employmentExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "age"];
         this.addKeyValueTable(coApplicant, employmentExclude, `Co-Applicant ${index + 1} Financial Information`);
-        
-        // Business Information
-        const businessExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "employmentType", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource", "age"];
-        this.addKeyValueTable(coApplicant, businessExclude, "Business Information");
         
         // Bank Records
         this.addBankTable(coApplicant.bankRecords, `Co-Applicant ${index + 1} Bank Information`);
@@ -535,7 +527,7 @@ export class RentalApplicationPDF {
         this.addSectionTitle(`Guarantor ${index + 1} Information`);
         
         // Define fields to exclude from Personal Information for guarantors
-        const personalExclude = ["bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "employmentType", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource", "businessName", "businessType", "yearsInBusiness", "ssn", "license", "dob", "age"];
+        const personalExclude = ["bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource", "businessName", "businessType", "yearsInBusiness", "ssn", "license", "dob", "age"];
         
         // Personal Information
         this.addKeyValueTable(guarantor, personalExclude, "Personal Information");
@@ -566,19 +558,15 @@ export class RentalApplicationPDF {
         else {
             addressData.lengthAtAddress = "Not provided";
         }
-        this.addKeyValueTable(addressData, ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "lengthAtAddressYears", "lengthAtAddressMonths", "age"], "Current Address");
+        this.addKeyValueTable(addressData, ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "lengthAtAddressYears", "lengthAtAddressMonths", "age", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource"], "Current Address");
         
         // Landlord Information
-        const landlordExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "age"];
+        const landlordExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "age", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource"];
         this.addKeyValueTable(guarantor, landlordExclude, "Landlord Information");
         
         // Employment Information
         const employmentExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "age"];
         this.addKeyValueTable(guarantor, employmentExclude, `Guarantor ${index + 1} Financial Information`);
-        
-        // Business Information
-        const businessExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "employmentType", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource", "age"];
-        this.addKeyValueTable(guarantor, businessExclude, "Business Information");
         
         // Bank Records
         this.addBankTable(guarantor.bankRecords, `Guarantor ${index + 1} Bank Information`);
@@ -657,50 +645,50 @@ export class RentalApplicationPDF {
 
     addSignatures(data: any) {
         // Check page break before starting signatures section
-        this.checkPageBreak(200); // Ensure enough space for signatures
+        this.checkPageBreak(180); // Reduced from 200 to 180 to better utilize page space
         
         this.addSectionTitle("PLEASE READ CAREFULLY BEFORE SIGNING");
         const disclaimerText = "The Landlord shall not be bound by any lease, nor will possession of the premises be delivered to the Tenant, until a written lease agreement is executed by the Landlord and delivered to the Tenant. Approval of this application remains at Landlord's discretion until a lease agreement is fully executed. Please be advised that the date on page one of the lease is your move-in date and also denotes the lease commencement date. No representations or agreements by agents, brokers or others shall be binding upon the Landlord or its Agent unless those representations or agreements are set forth in the written lease agreement executed by both Landlord and Tenant.";
         
-        this.doc.setFontSize(8);
+        this.doc.setFontSize(7); // Reduced from 8 to 7
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(51, 51, 51);
         const lines = this.doc.splitTextToSize(disclaimerText, this.contentWidth);
         this.doc.text(lines, this.marginLeft, this.currentY);
-        this.currentY += lines.length * 12 + 15;
+        this.currentY += lines.length * 11 + 15; // Reduced line height from 14 to 11 and spacing from 18 to 15
 
         // Certification & Consents section
-        this.doc.setFontSize(11); // Larger font for better readability
+        this.doc.setFontSize(10); // Reduced from 11 to 10
         this.doc.setFont("helvetica", "bold");
         this.doc.setTextColor(0, 102, 204);
         this.doc.text("Certification & Consents", this.marginLeft, this.currentY);
-        this.currentY += 10; // Better spacing after title
+        this.currentY += 10; // Reduced from 12 to 10 for better spacing after title
 
         const certificationText = "By signing this application electronically, I consent to the use of electronic records and digital signatures in connection with this application and any resulting lease agreement. I agree that my electronic signature is legally binding and has the same effect as a handwritten signature. I hereby warrant that all my representations and information provided in this application are true, accurate, and complete to the best of my knowledge. I recognize the truth of the information contained herein is essential and I acknowledge that any false or misleading information may result in the rejection of my application or rescission of the offer prior to possession or, if a lease has been executed and/or possession delivered, may constitute a material breach and provide grounds to commence appropriate legal proceedings to terminate the tenancy, as permitted by law. I further represent that I am not renting a room or an apartment under any other name, nor have I ever been dispossessed or evicted from any residence, nor am I now being dispossessed nor currently being evicted. I represent that I am over at least 18 years of age. I acknowledge and consent that my Social Security number and any other personal identifying information collected in this application may be used for tenant screening and will be maintained in confidence and protected against unauthorized disclosure in accordance with New York General Business Law and related privacy laws. I have been advised that I have the right, under the Fair Credit Reporting Act, to make a written request, directed to the appropriate credit reporting agency, within reasonable time, for a complete and accurate disclosure of the nature and scope of any credit investigation. I understand that upon submission, this application and all related documents become the property of the Landlord, and will not be returned to me under any circumstances regardless of whether my application is approved or denied. I consent to and authorize the Landlord, Agent and any designated screening or credit reporting agency to obtain a consumer credit report on me and to conduct any necessary background checks, to the extent permitted by law. I further authorize the Landlord and Agent to verify any and all information provided in this application with regard to my employment history, current and prior tenancies, bank accounts, and all other information that the Landlord deems pertinent to evaluating my leasing application. I authorize the designated screening company to contact my current and previous landlords, employers and references, if necessary. I understand that I shall not be permitted to receive or review my application file or my credit consumer report, and the Landlord and Agent are not obligated to provide me with copies of my application file or any consumer report obtained in the screening process, and that I may obtain my credit report from the credit reporting agency or as otherwise provided by law. I authorize banks, financial institutions, landlords, employers, business associates, credit bureaus, attorneys, accountants and other persons or institutions with whom I am acquainted and that may have information about me to furnish any and all information regarding myself. This authorization also applies to any updated reports which may be ordered as needed. A photocopy or fax of this authorization or an electronic copy (including any electronic signature) shall be accepted with the same authority as this original. I will provide any additional information required by the Landlord or Agent in connection with this application or any prospective lease contemplated herein. I understand that the application fee is non-refundable.";
         
         // Check page break before adding long certification text
-        this.checkPageBreak(300); // Ensure enough space for certification text
+        this.checkPageBreak(280); // Reduced from 300 to 280 to better utilize page space
         
-        this.doc.setFontSize(9); // Better font size for readability
+        this.doc.setFontSize(8); // Reduced from 9 to 8
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(51, 51, 51);
         
         // Split text into properly sized lines with better margins and ensure complete display
         const certLines = this.doc.splitTextToSize(certificationText, this.contentWidth - 30); // Increased margin for better readability
         this.doc.text(certLines, this.marginLeft + 15, this.currentY); // Increased left margin for better indentation
-        this.currentY += certLines.length * 12 + 20; // Better spacing after certification text
+        this.currentY += certLines.length * 11 + 20; // Reduced line height from 14 to 11 and spacing from 25 to 20
 
         const civilRightsText = "The Civil Rights Act of 1968, as amended by the Fair Housing Amendments Act of 1988, prohibits discrimination in the rental of housing based on race, color, religion, gender, disability, familial status, lawful source of income (including housing vouchers and public assistance) or national origin. The Federal Agency, which administers compliance with this law, is the U.S. Department of Housing and Urban Development.";
         
         // Check page break before civil rights text
-        this.checkPageBreak(100); // Ensure enough space for civil rights text
+        this.checkPageBreak(90); // Reduced from 100 to 90 to better utilize page space
         
         const civilRightsLines = this.doc.splitTextToSize(civilRightsText, this.contentWidth - 30); // Increased margin for consistency
         this.doc.text(civilRightsLines, this.marginLeft + 15, this.currentY); // Increased left margin for consistency
-        this.currentY += civilRightsLines.length * 12 + 25; // Better spacing after civil rights text
+        this.currentY += civilRightsLines.length * 11 + 25; // Reduced line height from 14 to 11 and spacing from 30 to 25
 
         // Check page break before signatures section
-        this.checkPageBreak(150); // Ensure enough space for signatures
+        this.checkPageBreak(140); // Reduced from 150 to 140 to better utilize page space
         
         // Now add the signatures section
         this.addSectionTitle("Signatures");
@@ -720,15 +708,15 @@ export class RentalApplicationPDF {
         let currentY = this.currentY;
         const leftX = this.marginLeft; // All signatures on left side
         const signatureWidth = 200; // Full width for left-aligned layout
-        const signatureHeight = 50; // Good height for signature display
-        const rowSpacing = 60; // Reduced spacing for single column
-        const labelSpacing = 18; // Space between label and signature
+        const signatureHeight = 45; // Reduced from 50 to 45 for better signature display
+        const rowSpacing = 50; // Reduced from 60 to 50 for better spacing and more signatures per page
+        const labelSpacing = 14; // Reduced from 16 to 14 for better spacing
 
         // Primary Applicant - Left aligned
         console.log('🔍 Adding Primary Applicant signature');
         const primaryName = data.applicant?.name || 'Primary Applicant';
         
-        this.doc.setFontSize(12);
+        this.doc.setFontSize(11); // Reduced from 12 to 11
         this.doc.setFont("helvetica", "bold");
         this.doc.setTextColor(51, 51, 51);
         this.doc.text(`Primary Applicant: ${primaryName}`, leftX, currentY);
@@ -741,13 +729,13 @@ export class RentalApplicationPDF {
         if (applicantSignature) {
             console.log('🔍 Primary Applicant signature found, adding image');
             const height = this.addSignatureImageOrText(applicantSignature, leftX, currentY, signatureWidth, signatureHeight);
-            currentY += height + 15;
+            currentY += height + 12; // Reduced from 15 to 12 for better spacing
         } else {
             console.log('🔍 No Primary Applicant signature, adding line');
             this.doc.setDrawColor(51, 51, 51);
             this.doc.setLineWidth(1.5);
             this.doc.line(leftX, currentY, leftX + signatureWidth, currentY);
-            currentY += 25;
+            currentY += 22; // Reduced from 25 to 22 for better spacing
         }
         
         currentY += rowSpacing;
@@ -758,8 +746,8 @@ export class RentalApplicationPDF {
             console.log('🔍 Raw co-applicant signatures:', data.signatures?.coApplicants);
             
             data.coApplicants.forEach((co: any, index: number) => {
-                // Check page break before adding each signature
-                if (currentY > 700) { // If we're getting close to bottom
+                // Check page break before adding each signature - more conservative approach
+                if (currentY > 600) { // Reduced from 650 to 600 for earlier page breaks
                     console.log('🔍 Page break needed, adding new page');
                     this.doc.addPage();
                     currentY = 40; // Reset to top of new page
@@ -768,7 +756,7 @@ export class RentalApplicationPDF {
                 console.log(`🔍 Processing Co-Applicant ${index + 1}: ${co.name}`);
                 
                 // Add label - all left aligned
-                this.doc.setFontSize(12);
+                this.doc.setFontSize(11); // Reduced from 12 to 11
                 this.doc.setFont("helvetica", "bold");
                 this.doc.setTextColor(51, 51, 51);
                 this.doc.text(`Co-Applicant ${index + 1}: ${co.name || 'N/A'}`, leftX, currentY);
@@ -781,13 +769,13 @@ export class RentalApplicationPDF {
                 if (signature) {
                     console.log(`🔍 Adding signature image for Co-Applicant ${index + 1}`);
                     const height = this.addSignatureImageOrText(signature, leftX, currentY, signatureWidth, signatureHeight);
-                    currentY += height + 15;
+                    currentY += height + 12; // Reduced from 15 to 12 for better spacing
                 } else {
                     console.log(`🔍 Adding signature line for Co-Applicant ${index + 1}`);
                     this.doc.setDrawColor(51, 51, 51);
                     this.doc.setLineWidth(1.5);
                     this.doc.line(leftX, currentY, leftX + signatureWidth, currentY);
-                    currentY += 25;
+                    currentY += 22; // Reduced from 25 to 22 for better spacing
                 }
                 
                 currentY += rowSpacing; // Always add spacing after each signature
@@ -800,8 +788,8 @@ export class RentalApplicationPDF {
             console.log('🔍 Raw guarantor signatures:', data.signatures?.guarantors);
             
             data.guarantors.forEach((g: any, index: number) => {
-                // Check page break before adding each signature
-                if (currentY > 700) { // If we're getting close to bottom
+                // Check page break before adding each signature - more conservative approach
+                if (currentY > 600) { // Reduced from 650 to 600 for earlier page breaks
                     console.log('🔍 Page break needed, adding new page');
                     this.doc.addPage();
                     currentY = 40; // Reset to top of new page
@@ -810,7 +798,7 @@ export class RentalApplicationPDF {
                 console.log(`🔍 Processing Guarantor ${index + 1}: ${g.name}`);
                 
                 // Add label - all left aligned
-                this.doc.setFontSize(12);
+                this.doc.setFontSize(11); // Reduced from 12 to 11
                 this.doc.setFont("helvetica", "bold");
                 this.doc.setTextColor(51, 51, 51);
                 this.doc.text(`Guarantor ${index + 1}: ${g.name || 'N/A'}`, leftX, currentY);
@@ -823,13 +811,13 @@ export class RentalApplicationPDF {
                 if (signature) {
                     console.log(`🔍 Adding signature image for Guarantor ${index + 1}`);
                     const height = this.addSignatureImageOrText(signature, leftX, currentY, signatureWidth, signatureHeight);
-                    currentY += height + 15;
+                    currentY += height + 12; // Reduced from 15 to 12 for better spacing
                 } else {
                     console.log(`🔍 Adding signature line for Guarantor ${index + 1}`);
                     this.doc.setDrawColor(51, 51, 51);
                     this.doc.setLineWidth(1.5);
                     this.doc.line(leftX, currentY, leftX + signatureWidth, currentY);
-                    currentY += 25;
+                    currentY += 22; // Reduced from 25 to 22 for better spacing
                 }
                 
                 currentY += rowSpacing; // Always add spacing after each signature
@@ -838,12 +826,12 @@ export class RentalApplicationPDF {
 
         console.log('🔍 processSignatures - Finished processing all signatures');
         console.log('🔍 processSignatures - Final Y position:', currentY);
-        this.currentY = currentY + 30;
+        this.currentY = currentY + 20; // Reduced from 25 to 20 for better final spacing
     }
 
     addFooter() {
         // Add a page break if we're too close to the bottom
-        if (this.currentY > 750) {
+        if (this.currentY > 700) { // Reduced from 750 to 700 for earlier page breaks
             this.doc.addPage();
             this.currentY = 40;
         }
@@ -851,14 +839,14 @@ export class RentalApplicationPDF {
         this.doc.setDrawColor(0, 102, 204);
         this.doc.setLineWidth(0.5);
         this.doc.line(this.marginLeft, this.currentY, this.pageWidth - this.marginRight, this.currentY);
-        this.currentY += 15;
-        this.doc.setFontSize(8);
+        this.currentY += 15; // Reduced from 18 to 15 for better spacing
+        this.doc.setFontSize(7); // Reduced from 8 to 7
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(128, 128, 128);
         this.doc.text("This application was submitted electronically on " + new Date().toLocaleString(), this.marginLeft, this.currentY);
-        this.currentY += 10;
+        this.currentY += 10; // Reduced from 12 to 10 for better spacing
         this.doc.text("Liberty Place Property Management - Rental Application", this.marginLeft, this.currentY);
-        this.currentY += 10;
+        this.currentY += 10; // Reduced from 12 to 10 for better spacing
         this.doc.text("All information is encrypted and secure", this.marginLeft, this.currentY);
     }
 
@@ -906,7 +894,25 @@ export class RentalApplicationPDF {
         
         // 3. Application Info
         this.addSectionTitle("Application Information");
-        this.addKeyValueTable(formData.application);
+        
+        // Filter application data to only show specific fields
+        if (formData.application) {
+            const filteredApplication = {
+                buildingAddress: formData.application.buildingAddress,
+                apartmentNumber: formData.application.apartmentNumber,
+                apartmentType: formData.application.apartmentType,
+                monthlyRent: formData.application.monthlyRent,
+                moveInDate: formData.application.moveInDate,
+                howDidYouHear: formData.application.howDidYouHear
+            };
+            this.addKeyValueTable(filteredApplication);
+        } else {
+            this.doc.setFontSize(10);
+            this.doc.setFont("helvetica", "normal");
+            this.doc.setTextColor(128, 128, 128);
+            this.doc.text("No application information provided", this.marginLeft, this.currentY);
+            this.currentY += 20;
+        }
         
         // 4. Primary Applicant (use applicant data if available)
         if (formData.applicant) {
