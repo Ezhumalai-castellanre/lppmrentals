@@ -200,10 +200,27 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Router />
+            <AuthenticatedChatbot />
           </TooltipProvider>
         </ChatbotProvider>
       </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+// Component that only shows chatbot for authenticated users
+function AuthenticatedChatbot() {
+  const { isAuthenticated } = useAuth();
+  
+  if (!isAuthenticated) {
+    return null;
+  }
+  
+  return (
+    <>
+      <ChatbotButton />
+      <ChatbotEnhanced />
+    </>
   );
 }
 

@@ -31,7 +31,11 @@ const interestFormSchema = z.object({
   annualIncome: z.string().optional(),
   creditScore: z.string().optional(),
   hasCoApplicant: z.enum(["yes", "no"]).optional(),
+  coApplicantAnnualIncome: z.string().optional(),
+  coApplicantCreditScore: z.string().optional(),
   hasGuarantor: z.enum(["yes", "no"]).optional(),
+  guarantorAnnualIncome: z.string().optional(),
+  guarantorCreditScore: z.string().optional(),
   message: z.string().optional(),
 })
 
@@ -88,7 +92,11 @@ export function InterestForm({ className }: InterestFormProps) {
       annualIncome: "",
       creditScore: "",
       hasCoApplicant: undefined,
+      coApplicantAnnualIncome: "",
+      coApplicantCreditScore: "",
       hasGuarantor: undefined,
+      guarantorAnnualIncome: "",
+      guarantorCreditScore: "",
       message: "",
     },
   })
@@ -319,15 +327,7 @@ export function InterestForm({ className }: InterestFormProps) {
                       </SelectContent>
                     </Select>
                   </FormControl>
-                  {useFallback ? (
-                    <p className="text-sm text-amber-600 mt-1">
-                      ℹ️ Showing sample properties. For real-time availability, please contact us.
-                    </p>
-                  ) : (
-                    <p className="text-sm text-green-600 mt-1">
-                      ✅ Showing real properties from our database.
-                    </p>
-                  )}
+
                   <FormMessage />
                 </FormItem>
               )}
@@ -502,6 +502,46 @@ export function InterestForm({ className }: InterestFormProps) {
               )}
             />
 
+            {/* Co-Applicant Annual Income - Only show if "Yes" is selected */}
+            {form.watch("hasCoApplicant") === "yes" && (
+              <FormField
+                control={form.control}
+                name="coApplicantAnnualIncome"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" />
+                      Annual Income [Co-Applicant] *
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="Please provide the total annual income of all co-applicants" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Co-Applicant Credit Score - Only show if "Yes" is selected */}
+            {form.watch("hasCoApplicant") === "yes" && (
+              <FormField
+                control={form.control}
+                name="coApplicantCreditScore"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4" />
+                      Credit Score [Co-Applicant] *
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="Please mention the highest credit score among all the co-applicants if multiple co-applicants exist" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             {/* Guarantor */}
             <FormField
               control={form.control}
@@ -527,6 +567,46 @@ export function InterestForm({ className }: InterestFormProps) {
                 </FormItem>
               )}
             />
+
+            {/* Guarantor Annual Income - Only show if "Yes" is selected */}
+            {form.watch("hasGuarantor") === "yes" && (
+              <FormField
+                control={form.control}
+                name="guarantorAnnualIncome"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" />
+                      Annual Income [Guarantor] *
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="Please provide the total annual income of all guarantors" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Guarantor Credit Score - Only show if "Yes" is selected */}
+            {form.watch("hasGuarantor") === "yes" && (
+              <FormField
+                control={form.control}
+                name="guarantorCreditScore"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4" />
+                      Credit Score [Guarantor] *
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="Please mention the highest credit score among all the guarantors if multiple guarantors exist" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Message */}
             <FormField
