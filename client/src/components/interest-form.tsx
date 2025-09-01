@@ -20,7 +20,7 @@ import { MondayApiService, type UnitItem } from '../lib/monday-api'
 const interestFormSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   propertyName: z.string().min(1, "Property name is required"),
-  unitNumber: z.string().optional(),
+  unitNumber: z.string().min(1, "Unit number is required"),
   phone: z.string().min(1, "Phone number is required"),
   email: z.string().email("Please enter a valid email address"),
   idealMoveInDate: z.date({
@@ -28,15 +28,19 @@ const interestFormSchema = z.object({
     invalid_type_error: "Please select a valid date",
   }),
   currentAddress: z.string().min(1, "Current address is required"),
-  annualIncome: z.string().optional(),
-  creditScore: z.string().optional(),
-  hasCoApplicant: z.enum(["yes", "no"]).optional(),
+  annualIncome: z.string().min(1, "Annual income is required"),
+  creditScore: z.string().min(1, "Credit score is required"),
+  hasCoApplicant: z.enum(["yes", "no"], {
+    required_error: "Please select whether you have a co-applicant",
+  }),
   coApplicantAnnualIncome: z.string().optional(),
   coApplicantCreditScore: z.string().optional(),
-  hasGuarantor: z.enum(["yes", "no"]).optional(),
+  hasGuarantor: z.enum(["yes", "no"], {
+    required_error: "Please select whether you have a guarantor",
+  }),
   guarantorAnnualIncome: z.string().optional(),
   guarantorCreditScore: z.string().optional(),
-  message: z.string().optional(),
+  message: z.string().min(1, "Message is required"),
 })
 
 type InterestFormData = z.infer<typeof interestFormSchema>
@@ -277,9 +281,9 @@ export function InterestForm({ className }: InterestFormProps) {
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-xl">
+        <CardTitle className="flex items-center justify-center gap-2 text-xl">
           <Home className="w-5 h-5" />
-          LPPM Interest Form
+          Interest Form
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -339,7 +343,7 @@ export function InterestForm({ className }: InterestFormProps) {
               name="unitNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Unit #</FormLabel>
+                  <FormLabel>Unit # *</FormLabel>
                   <FormControl>
                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!selectedProperty}>
                       <SelectTrigger>
@@ -448,10 +452,10 @@ export function InterestForm({ className }: InterestFormProps) {
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4" />
-                    Annual Income [Applicant]
+                    Annual Income [Applicant] *
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter annual income (optional)" {...field} />
+                    <Input placeholder="Enter annual income" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -466,10 +470,10 @@ export function InterestForm({ className }: InterestFormProps) {
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4" />
-                    Credit Score [Applicant]
+                    Credit Score [Applicant] *
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter credit score (optional)" {...field} />
+                    <Input placeholder="Enter credit score" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -516,6 +520,9 @@ export function InterestForm({ className }: InterestFormProps) {
                     <FormControl>
                       <Input placeholder="Please provide the total annual income of all co-applicants" {...field} />
                     </FormControl>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Please provide the total annual income of all co-applicants
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -536,6 +543,9 @@ export function InterestForm({ className }: InterestFormProps) {
                     <FormControl>
                       <Input placeholder="Please mention the highest credit score among all the co-applicants if multiple co-applicants exist" {...field} />
                     </FormControl>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Please mention the highest credit score among all the co-applicants if multiple co-applicants exist
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -582,6 +592,9 @@ export function InterestForm({ className }: InterestFormProps) {
                     <FormControl>
                       <Input placeholder="Please provide the total annual income of all guarantors" {...field} />
                     </FormControl>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Please provide the total annual income of all guarantors
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -602,6 +615,9 @@ export function InterestForm({ className }: InterestFormProps) {
                     <FormControl>
                       <Input placeholder="Please mention the highest credit score among all the guarantors if multiple guarantors exist" {...field} />
                     </FormControl>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Please mention the highest credit score among all the guarantors if multiple guarantors exist
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
