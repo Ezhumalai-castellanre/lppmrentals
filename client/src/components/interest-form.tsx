@@ -65,7 +65,7 @@ const interestFormSchema = z.object({
   return true;
 }, {
   message: "Please fill in all required fields for co-applicants and guarantors",
-  path: ["hasCoApplicant"] // This will show the error on the co-applicant field
+  path: ["hasCoApplicant"]
 })
 
 type InterestFormData = z.infer<typeof interestFormSchema>
@@ -542,12 +542,13 @@ export function InterestForm({ className }: InterestFormProps) {
                       <DollarSign className="w-4 h-4" />
                       Annual Income [Co-Applicant] *
                     </FormLabel>
-                    <FormControl>
-                      <Input placeholder="Please provide the total annual income of all co-applicants" {...field} />
-                    </FormControl>
                     <p className="text-sm text-gray-600 mt-1">
                       Please provide the total annual income of all co-applicants
                     </p>
+                    <FormControl>
+                      <Input placeholder="Enter Annual Income" {...field} />
+                    </FormControl>
+                  
                     <FormMessage />
                   </FormItem>
                 )}
@@ -565,12 +566,13 @@ export function InterestForm({ className }: InterestFormProps) {
                       <CreditCard className="w-4 h-4" />
                       Credit Score [Co-Applicant] *
                     </FormLabel>
-                    <FormControl>
-                      <Input placeholder="Please mention the highest credit score among all the co-applicants if multiple co-applicants exist" {...field} />
-                    </FormControl>
                     <p className="text-sm text-gray-600 mt-1">
                       Please mention the highest credit score among all the co-applicants if multiple co-applicants exist
                     </p>
+                    <FormControl>
+                      <Input placeholder="Enter Credit Score" {...field} />
+                    </FormControl>
+                    
                     <FormMessage />
                   </FormItem>
                 )}
@@ -614,12 +616,13 @@ export function InterestForm({ className }: InterestFormProps) {
                       <DollarSign className="w-4 h-4" />
                       Annual Income [Guarantor] *
                     </FormLabel>
-                    <FormControl>
-                      <Input placeholder="Please provide the total annual income of all guarantors" {...field} />
-                    </FormControl>
                     <p className="text-sm text-gray-600 mt-1">
                       Please provide the total annual income of all guarantors
                     </p>
+                    <FormControl>
+                      <Input placeholder="Enter Annual Income" {...field} />
+                    </FormControl>
+                   
                     <FormMessage />
                   </FormItem>
                 )}
@@ -637,12 +640,13 @@ export function InterestForm({ className }: InterestFormProps) {
                       <CreditCard className="w-4 h-4" />
                       Credit Score [Guarantor] *
                     </FormLabel>
-                    <FormControl>
-                      <Input placeholder="Please mention the highest credit score among all the guarantors if multiple guarantors exist" {...field} />
-                    </FormControl>
                     <p className="text-sm text-gray-600 mt-1">
                       Please mention the highest credit score among all the guarantors if multiple guarantors exist
                     </p>
+                    <FormControl>
+                      <Input placeholder="Enter Credit Score" {...field} />
+                    </FormControl>
+                   
                     <FormMessage />
                   </FormItem>
                 )}
