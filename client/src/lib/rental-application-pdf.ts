@@ -100,29 +100,29 @@ export class RentalApplicationPDF {
 
     addSectionTitle(title: string) {
         // Check if we need a page break before adding a new section
-        this.checkPageBreak(70); // Reduced from 80 to 70
+        this.checkPageBreak(70);
         
-        this.currentY += 16; // Reduced from 20 to 16 for better spacing before section titles
+        this.currentY += 8; // Reduced from 16 to 8 for minimal spacing before section titles
         
         const titleWidth = this.contentWidth;
-        const titleHeight = 22; // Reduced from 26 to 22 for better visual impact
+        const titleHeight = 20; // Reduced from 22 to 20 for more compact title
         
         // Background rectangle with perfect positioning
         this.doc.setFillColor(240, 248, 255); // Light blue background
-        this.doc.rect(this.marginLeft, this.currentY - 10, titleWidth, titleHeight, 'F'); // Adjusted positioning
+        this.doc.rect(this.marginLeft, this.currentY - 8, titleWidth, titleHeight, 'F'); // Adjusted positioning
         
         // Border with perfect positioning
         this.doc.setDrawColor(0, 102, 204);
         this.doc.setLineWidth(1); // Perfect border thickness
-        this.doc.rect(this.marginLeft, this.currentY - 10, titleWidth, titleHeight, 'S'); // Adjusted positioning
+        this.doc.rect(this.marginLeft, this.currentY - 8, titleWidth, titleHeight, 'S'); // Adjusted positioning
         
         // Title text with perfect positioning
-        this.doc.setFontSize(13); // Reduced from 14 to 13
+        this.doc.setFontSize(13);
         this.doc.setFont("helvetica", "bold");
         this.doc.setTextColor(0, 102, 204);
-        this.doc.text(title, this.marginLeft + 15, this.currentY + 8); // Adjusted positioning
+        this.doc.text(title, this.marginLeft + 15, this.currentY + 6); // Adjusted positioning
         
-        this.currentY += titleHeight + 18; // Reduced from 22 to 18 for better spacing after title
+        this.currentY += titleHeight + 8; // Reduced from 18 to 8 for minimal spacing after title
     }
 
     addKeyValueTable(data: any, exclude: string[] = [], title?: string) {
@@ -650,42 +650,43 @@ export class RentalApplicationPDF {
         this.addSectionTitle("PLEASE READ CAREFULLY BEFORE SIGNING");
         const disclaimerText = "The Landlord shall not be bound by any lease, nor will possession of the premises be delivered to the Tenant, until a written lease agreement is executed by the Landlord and delivered to the Tenant. Approval of this application remains at Landlord's discretion until a lease agreement is fully executed. Please be advised that the date on page one of the lease is your move-in date and also denotes the lease commencement date. No representations or agreements by agents, brokers or others shall be binding upon the Landlord or its Agent unless those representations or agreements are set forth in the written lease agreement executed by both Landlord and Tenant.";
         
-        this.doc.setFontSize(7); // Reduced from 8 to 7
+        this.doc.setFontSize(9); // Increased from 7 to 9 for better readability
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(51, 51, 51);
         const lines = this.doc.splitTextToSize(disclaimerText, this.contentWidth);
         this.doc.text(lines, this.marginLeft, this.currentY);
-        this.currentY += lines.length * 11 + 15; // Reduced line height from 14 to 11 and spacing from 18 to 15
+        this.currentY += lines.length * 11 + 5;
 
         // Certification & Consents section
-        this.doc.setFontSize(10); // Reduced from 11 to 10
+        this.doc.setFontSize(11); // Increased from 10 to 11 for better prominence
         this.doc.setFont("helvetica", "bold");
         this.doc.setTextColor(0, 102, 204);
-        this.doc.text("Certification & Consents", this.marginLeft, this.currentY);
-        this.currentY += 10; // Reduced from 12 to 10 for better spacing after title
+        // Center the title
+        this.doc.text("Certification & Consents", this.pageWidth / 2, this.currentY, { align: 'center' });
+        this.currentY += 12;
 
         const certificationText = "By signing this application electronically, I consent to the use of electronic records and digital signatures in connection with this application and any resulting lease agreement. I agree that my electronic signature is legally binding and has the same effect as a handwritten signature. I hereby warrant that all my representations and information provided in this application are true, accurate, and complete to the best of my knowledge. I recognize the truth of the information contained herein is essential and I acknowledge that any false or misleading information may result in the rejection of my application or rescission of the offer prior to possession or, if a lease has been executed and/or possession delivered, may constitute a material breach and provide grounds to commence appropriate legal proceedings to terminate the tenancy, as permitted by law. I further represent that I am not renting a room or an apartment under any other name, nor have I ever been dispossessed or evicted from any residence, nor am I now being dispossessed nor currently being evicted. I represent that I am over at least 18 years of age. I acknowledge and consent that my Social Security number and any other personal identifying information collected in this application may be used for tenant screening and will be maintained in confidence and protected against unauthorized disclosure in accordance with New York General Business Law and related privacy laws. I have been advised that I have the right, under the Fair Credit Reporting Act, to make a written request, directed to the appropriate credit reporting agency, within reasonable time, for a complete and accurate disclosure of the nature and scope of any credit investigation. I understand that upon submission, this application and all related documents become the property of the Landlord, and will not be returned to me under any circumstances regardless of whether my application is approved or denied. I consent to and authorize the Landlord, Agent and any designated screening or credit reporting agency to obtain a consumer credit report on me and to conduct any necessary background checks, to the extent permitted by law. I further authorize the Landlord and Agent to verify any and all information provided in this application with regard to my employment history, current and prior tenancies, bank accounts, and all other information that the Landlord deems pertinent to evaluating my leasing application. I authorize the designated screening company to contact my current and previous landlords, employers and references, if necessary. I understand that I shall not be permitted to receive or review my application file or my credit consumer report, and the Landlord and Agent are not obligated to provide me with copies of my application file or any consumer report obtained in the screening process, and that I may obtain my credit report from the credit reporting agency or as otherwise provided by law. I authorize banks, financial institutions, landlords, employers, business associates, credit bureaus, attorneys, accountants and other persons or institutions with whom I am acquainted and that may have information about me to furnish any and all information regarding myself. This authorization also applies to any updated reports which may be ordered as needed. A photocopy or fax of this authorization or an electronic copy (including any electronic signature) shall be accepted with the same authority as this original. I will provide any additional information required by the Landlord or Agent in connection with this application or any prospective lease contemplated herein. I understand that the application fee is non-refundable.";
         
-        // Check page break before adding long certification text
-        this.checkPageBreak(280); // Reduced from 300 to 280 to better utilize page space
+        // Check page break before adding long certification text - reduced threshold to keep heading and text together
+        this.checkPageBreak(120); // Reduced from 280 to 120 to keep heading and text on same page
         
-        this.doc.setFontSize(8); // Reduced from 9 to 8
+        this.doc.setFontSize(10); // Increased from 8 to 10 for better readability
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(51, 51, 51);
         
-        // Split text into properly sized lines with better margins and ensure complete display
-        const certLines = this.doc.splitTextToSize(certificationText, this.contentWidth - 30); // Increased margin for better readability
-        this.doc.text(certLines, this.marginLeft + 15, this.currentY); // Increased left margin for better indentation
-        this.currentY += certLines.length * 11 + 20; // Reduced line height from 14 to 11 and spacing from 25 to 20
+        // Split text into properly sized lines with consistent margins and better alignment
+        const certLines = this.doc.splitTextToSize(certificationText, this.contentWidth - 20); // Reduced margin for better text flow
+        this.doc.text(certLines, this.marginLeft + 10, this.currentY); // Reduced left margin for better alignment
+        this.currentY += certLines.length * 12 + 8; // Increased line height from 11 to 12 for better readability
 
         const civilRightsText = "The Civil Rights Act of 1968, as amended by the Fair Housing Amendments Act of 1988, prohibits discrimination in the rental of housing based on race, color, religion, gender, disability, familial status, lawful source of income (including housing vouchers and public assistance) or national origin. The Federal Agency, which administers compliance with this law, is the U.S. Department of Housing and Urban Development.";
         
         // Check page break before civil rights text
-        this.checkPageBreak(90); // Reduced from 100 to 90 to better utilize page space
+        this.checkPageBreak(90);
         
-        const civilRightsLines = this.doc.splitTextToSize(civilRightsText, this.contentWidth - 30); // Increased margin for consistency
-        this.doc.text(civilRightsLines, this.marginLeft + 15, this.currentY); // Increased left margin for consistency
-        this.currentY += civilRightsLines.length * 11 + 25; // Reduced line height from 14 to 11 and spacing from 30 to 25
+        const civilRightsLines = this.doc.splitTextToSize(civilRightsText, this.contentWidth - 20);
+        this.doc.text(civilRightsLines, this.marginLeft + 10, this.currentY);
+        this.currentY += civilRightsLines.length * 12 + 10; // Increased line height from 11 to 12 for consistency
 
         // Check page break before signatures section
         this.checkPageBreak(140); // Reduced from 150 to 140 to better utilize page space
