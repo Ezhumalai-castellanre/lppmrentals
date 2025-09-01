@@ -91,7 +91,7 @@ export function AppSidebar() {
 
   const navigationItems = [
     {
-      title: "Dashboard",
+      title: "Verification",
       url: "/dashboard",
       icon: LayoutDashboard,
     },

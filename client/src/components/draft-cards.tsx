@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
-import { FileText, Clock, Edit, Trash2, Building, User, Calendar, DollarSign, CheckCircle, File, Eye, Users, Shield, LayoutDashboard } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { FileText, Clock, Edit, Trash2, Building, User, Calendar, DollarSign, CheckCircle, File, Eye, Users, Shield, LayoutDashboard, CreditCard, Home, Briefcase, FileCheck } from "lucide-react";
 import { useAuth } from "../hooks/use-auth";
 import { dynamoDBService } from "../lib/dynamodb-service";
 import { format } from "date-fns";
@@ -31,6 +32,7 @@ interface DraftCardProps {
 
 const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const formatDate = (dateInput: string | Date) => {
     try {
@@ -312,8 +314,9 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
 
   return (
     <Card className="hover:shadow-lg transition-shadow duration-200">
-      <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
+      <CardHeader className="pb-3 relative">
+        <div className="absolute inset-0" style={{backgroundImage: 'radial-gradient(circle at 20px 20px, rgba(255, 255, 255, 0.1) 1px, transparent 1px)', backgroundSize: '40px 40px'}}></div>
+        <div className="flex justify-between items-start relative z-10">
           <div className="flex-1">
             <CardTitle className="text-base sm:text-lg font-semibold text-gray-900">
               {draft.status === 'submitted' ? 'Submitted Application' : 'Draft Application'}
@@ -341,401 +344,337 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
           </p>
         </div>
 
-        {/* Enhanced Form Data Summary */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-700">Application Details</h4>
-          
-          {/* Vertical Layout - One Section at a Time */}
-          <div className="space-y-4">
-            
-            {/* Application Section - Enhanced with all fields */}
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
-              <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                <Building className="w-4 h-4 mr-2 text-blue-600" />
-                Application Details
-              </h5>
-              <div className="space-y-3 text-sm">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-          <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Address:</span>
-            <span className="text-gray-700 text-xs sm:text-sm">{formSummary.buildingAddress}</span>
-          </div>
-          <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Apt:</span>
-                    <span className="text-gray-700 text-xs sm:text-sm">{formSummary.apartmentNumber}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Type:</span>
-                    <span className="text-gray-700 text-xs sm:text-sm">{formSummary.apartmentType}</span>
-          </div>
-          <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Rent:</span>
-            <span className="text-gray-700 text-xs sm:text-sm">
-              {typeof formSummary.monthlyRent === 'number' 
-                ? `$${formSummary.monthlyRent}/month` 
-                : formSummary.monthlyRent}
-            </span>
-          </div>
-                  <div className="flex items-center space-x-2 col-span-1 sm:col-span-2">
-                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Move-in:</span>
-            <span className="text-gray-700 text-xs sm:text-sm">
-              {formSummary.moveInDate !== 'Not specified' 
-                ? formatDate(formSummary.moveInDate) 
-                : 'Not specified'}
-            </span>
-          </div>
-                  <div className="flex items-center space-x-2 col-span-1 sm:col-span-2">
-                    <span className="text-gray-600 font-medium text-xs sm:text-sm">How did you hear:</span>
-                    <span className="text-gray-700 text-xs sm:text-sm">{formSummary.howDidYouHear || 'Not specified'}</span>
-                  </div>
+        {/* Tabbed Interface */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-5 mb-4">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <LayoutDashboard className="w-4 h-4" />
+              <span className="hidden sm:inline">Overview</span>
+            </TabsTrigger>
+            <TabsTrigger value="main" className="flex items-center gap-2">
+              <Building className="w-4 h-4" />
+              <span className="hidden sm:inline">Main App</span>
+            </TabsTrigger>
+            <TabsTrigger value="coapplicants" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Co-Apps</span>
+            </TabsTrigger>
+            <TabsTrigger value="guarantors" className="flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              <span className="hidden sm:inline">Guarantors</span>
+            </TabsTrigger>
+            <TabsTrigger value="occupants" className="flex items-center gap-2">
+              <Home className="w-4 h-4" />
+              <span className="hidden sm:inline">Occupants</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Application Summary Card */}
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Building className="w-5 h-5 text-blue-600" />
+                  <h6 className="font-semibold text-blue-900">Property</h6>
                 </div>
-                
-                {/* Additional application fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-2 border-t border-gray-200">
-                  {Object.entries(formSummary).filter(([key, value]) => 
-                    key.startsWith('application') && 
-                    !['buildingAddress', 'apartmentNumber', 'apartmentType', 'monthlyRent', 'moveInDate', 'howDidYouHear'].includes(key) &&
-                    value !== 'Not specified' && value !== null && value !== undefined
-                  ).map(([key, value]) => (
-                    <div key={key} className="flex items-center space-x-2">
-                      <span className="text-gray-600 font-medium capitalize text-xs sm:text-sm">{key.replace('application', '').replace(/_/g, ' ')}:</span>
-                      <span className="text-gray-700 text-xs sm:text-sm">{String(value)}</span>
-                    </div>
-                  ))}
+                <div className="space-y-2 text-sm">
+                  <div><span className="font-medium">Address:</span> {formSummary.buildingAddress}</div>
+                  <div><span className="font-medium">Apt:</span> {formSummary.apartmentNumber}</div>
+                  <div><span className="font-medium">Rent:</span> ${formSummary.monthlyRent}/month</div>
+                </div>
+              </div>
+
+              {/* Applicant Summary Card */}
+              <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <User className="w-5 h-5 text-green-600" />
+                  <h6 className="font-semibold text-green-900">Primary Applicant</h6>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div><span className="font-medium">Name:</span> {formSummary.applicantName}</div>
+                  <div><span className="font-medium">Email:</span> {formSummary.applicantEmail}</div>
+                  <div><span className="font-medium">Status:</span> {draft.status}</div>
+                </div>
+              </div>
+
+              {/* Co-Applicants Summary Card */}
+              <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-5 h-5 text-purple-600" />
+                  <h6 className="font-semibold text-purple-900">Co-Applicants</h6>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div><span className="font-medium">Count:</span> {formSummary.coApplicants?.length || 0}</div>
+                  <div><span className="font-medium">Status:</span> {formSummary.coApplicants?.length > 0 ? 'Added' : 'None'}</div>
+                </div>
+              </div>
+
+              {/* Guarantors Summary Card */}
+              <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Shield className="w-5 h-5 text-orange-600" />
+                  <h6 className="font-semibold text-orange-900">Guarantors</h6>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div><span className="font-medium">Count:</span> {formSummary.guarantors?.length || 0}</div>
+                  <div><span className="font-medium">Status:</span> {formSummary.guarantors?.length > 0 ? 'Added' : 'None'}</div>
+                </div>
+              </div>
+
+              {/* Occupants Summary Card */}
+              <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Home className="w-5 h-5 text-indigo-600" />
+                  <h6 className="font-semibold text-indigo-900">Occupants</h6>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div><span className="font-medium">Count:</span> {formSummary.occupants?.length || 0}</div>
+                  <div><span className="font-medium">Status:</span> {formSummary.occupants?.length > 0 ? 'Added' : 'None'}</div>
+                </div>
+              </div>
+
+              {/* Documents Summary Card */}
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <FileCheck className="w-5 h-5 text-gray-600" />
+                  <h6 className="font-semibold text-gray-900">Documents</h6>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div><span className="font-medium">Uploaded:</span> {documentCount}</div>
+                  <div><span className="font-medium">Status:</span> {documentCount > 0 ? 'In Progress' : 'Pending'}</div>
                 </div>
               </div>
             </div>
+          </TabsContent>
 
-            {/* Applicant Section */}
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
-              <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                <User className="w-4 h-4 mr-2 text-green-600" />
-                Applicant Information
+          {/* Main Application Tab */}
+          <TabsContent value="main" className="space-y-4">
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <h5 className="text-lg font-semibold text-blue-900 mb-4 flex items-center">
+                <Building className="w-5 h-5 mr-2" />
+                Main Application Details
               </h5>
-              <div className="space-y-3 text-sm">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Name:</span>
-                    <span className="text-gray-700 text-xs sm:text-sm">{formSummary.applicantName || 'Not specified'}</span>
-          </div>
-          <div className="flex items-center space-x-2">
-                    <span className="text-gray-600 font-medium text-xs sm:text-sm">Email:</span>
-                    <span className="text-gray-700 text-xs sm:text-sm">{formSummary.applicantEmail || 'Not specified'}</span>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-3">
+                  <h6 className="font-medium text-blue-800 border-b border-blue-300 pb-1">Property Information</h6>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Building Address:</span> {formSummary.buildingAddress}</div>
+                    <div><span className="font-medium">Apartment Number:</span> {formSummary.apartmentNumber}</div>
+                    <div><span className="font-medium">Apartment Type:</span> {formSummary.apartmentType}</div>
+                    <div><span className="font-medium">Monthly Rent:</span> ${formSummary.monthlyRent}/month</div>
                   </div>
                 </div>
-                
-                {/* Additional applicant fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pt-2 border-t border-gray-200">
-                  {Object.entries(formSummary).filter(([key, value]) => 
-                    key.startsWith('applicant') && 
-                    !['applicantName', 'applicantEmail', 'applicant_bankRecords', 'Id', 'BankRecords'].includes(key) &&
-                    value !== 'Not specified' && value !== null && value !== undefined
-                  ).map(([key, value]) => (
-                    <div key={key} className="flex items-center space-x-2">
-                      <span className="text-gray-600 font-medium capitalize text-xs sm:text-sm">{key.replace('applicant', '').replace(/_/g, ' ')}:</span>
-                      <span className="text-gray-700 text-xs sm:text-sm">{String(value)}</span>
-                    </div>
-                  ))}
+
+                <div className="space-y-3">
+                  <h6 className="font-medium text-blue-800 border-b border-blue-300 pb-1">Move-in Details</h6>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Move-in Date:</span> {formSummary.moveInDate !== 'Not specified' ? formatDate(formSummary.moveInDate) : 'Not specified'}</div>
+                    <div><span className="font-medium">How Did You Hear:</span> {formSummary.howDidYouHear || 'Not specified'}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h6 className="font-medium text-blue-800 border-b border-blue-300 pb-1">Primary Applicant</h6>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Name:</span> {formSummary.applicantName}</div>
+                    <div><span className="font-medium">Email:</span> {formSummary.applicantEmail}</div>
+                    <div><span className="font-medium">Phone:</span> {formSummary.applicant_phone || 'Not specified'}</div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Co-Applicants Section */}
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
-              <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                <Users className="w-4 h-4 mr-2 text-purple-600" />
+              {/* Additional Application Fields */}
+              {Object.entries(formSummary).filter(([key, value]) => 
+                key.startsWith('application') && 
+                !['buildingAddress', 'apartmentNumber', 'apartmentType', 'monthlyRent', 'moveInDate', 'howDidYouHear'].includes(key) &&
+                value !== 'Not specified' && value !== null && value !== undefined
+              ).length > 0 && (
+                <div className="mt-6 pt-4 border-t border-blue-300">
+                  <h6 className="font-medium text-blue-800 mb-3">Additional Application Information</h6>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Object.entries(formSummary).filter(([key, value]) => 
+                      key.startsWith('application') && 
+                      !['buildingAddress', 'apartmentNumber', 'apartmentType', 'monthlyRent', 'moveInDate', 'howDidYouHear'].includes(key) &&
+                      value !== 'Not specified' && value !== null && value !== undefined
+                    ).map(([key, value]) => (
+                      <div key={key} className="text-sm">
+                        <span className="font-medium capitalize">{key.replace('application', '').replace(/_/g, ' ')}:</span>
+                        <span className="ml-2 text-gray-700">{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Co-Applicants Tab */}
+          <TabsContent value="coapplicants" className="space-y-4">
+            <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+              <h5 className="text-lg font-semibold text-purple-900 mb-4 flex items-center">
+                <Users className="w-5 h-5 mr-2" />
                 Co-Applicants Information
               </h5>
-              <div className="space-y-3 text-sm">
-                {formSummary.coApplicants && Array.isArray(formSummary.coApplicants) && formSummary.coApplicants.length > 0 ? (
-                  <div className="space-y-3">
-                    {formSummary.coApplicants.map((coApp: any, index: number) => (
-                      <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200 border-l-4 border-l-purple-500">
-                        <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Co-Applicant {index + 1}</div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
-                          {Object.entries(coApp).filter(([key, value]) => 
-                            value !== null && value !== undefined && value !== '' && 
-                            !['documents', 'bankRecords'].includes(key)
-                          ).map(([key, value]) => (
-                            <div key={key} className="flex items-center space-x-2">
-                              <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
-                              <span className="text-gray-700">{String(value) || 'Not specified'}</span>
-                            </div>
-                          ))}
-                        </div>
+              
+              {formSummary.coApplicants && Array.isArray(formSummary.coApplicants) && formSummary.coApplicants.length > 0 ? (
+                <div className="space-y-4">
+                  {formSummary.coApplicants.map((coApp: any, index: number) => (
+                    <div key={index} className="bg-white rounded-lg p-4 border border-purple-300 border-l-4 border-l-purple-500">
+                      <div className="flex items-center justify-between mb-3">
+                        <h6 className="font-semibold text-purple-900">Co-Applicant {index + 1}</h6>
+                        <Badge variant="outline" className="border-purple-300 text-purple-700">Co-Applicant</Badge>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-xs sm:text-sm italic">No co-applicants information</p>
-                )}
-              </div>
-            </div>
-
-            {/* Guarantors Section */}
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
-              <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                <Shield className="w-4 h-4 mr-2 text-orange-600" />
-                Guarantors Information
-              </h5>
-              <div className="space-y-3 text-sm">
-                {formSummary.guarantors && Array.isArray(formSummary.guarantors) && formSummary.guarantors.length > 0 ? (
-                  <div className="space-y-3">
-                    {formSummary.guarantors.map((guar: any, index: number) => (
-                      <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200 border-l-4 border-l-orange-500">
-                        <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Guarantor {index + 1}</div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
-                          {Object.entries(guar).filter(([key, value]) => 
-                            value !== null && value !== undefined && value !== '' && 
-                            !['documents', 'bankRecords'].includes(key)
-                          ).map(([key, value]) => (
-                            <div key={key} className="flex items-center space-x-2">
-                              <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
-                              <span className="text-gray-700">{String(value) || 'Not specified'}</span>
-                            </div>
-                          ))}
-                        </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Object.entries(coApp).filter(([key, value]) => 
+                          value !== null && value !== undefined && value !== '' && 
+                          !['documents', 'bankRecords'].includes(key)
+                        ).map(([key, value]) => (
+                          <div key={key} className="text-sm">
+                            <span className="font-medium capitalize text-purple-700">{key.replace(/_/g, ' ')}:</span>
+                            <span className="ml-2 text-gray-700">{String(value) || 'Not specified'}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-xs sm:text-sm italic">No guarantors information</p>
-                )}
-              </div>
-            </div>
 
-            {/* Occupants Section */}
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
-              <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                <Users className="w-4 h-4 mr-2 text-indigo-600" />
-                Occupants Information
-              </h5>
-              <div className="space-y-3 text-sm">
-                {(formSummary.occupants && Array.isArray(formSummary.occupants) && formSummary.occupants.length > 0) || 
-                 (formSummary.occupantsList && Array.isArray(formSummary.occupantsList) && formSummary.occupantsList.length > 0) ? (
-                  <div className="space-y-3">
-                    {(formSummary.occupants || formSummary.occupantsList || []).map((occupant: any, index: number) => (
-                      <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200 border-l-4 border-l-blue-500">
-                        <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Occupant {index + 1}</div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
-                          {Object.entries(occupant).map(([key, value]) => (
-                            <div key={key} className="flex items-center space-x-2">
-                              <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
-                              <span className="text-gray-700">{String(value) || 'Not specified'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-xs sm:text-sm italic">No occupants information</p>
-                )}
-              </div>
-            </div>
-
-            {/* Additional Information Section */}
-            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
-              <h5 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                <FileText className="w-4 h-4 mr-2 text-purple-600" />
-                Additional Information
-              </h5>
-              <div className="space-y-3 text-sm">
-                
-                {/* Special handling for bank records */}
-                {(formSummary.applicantBankRecords || formSummary.applicant_bankRecords) && Array.isArray(formSummary.applicantBankRecords || formSummary.applicant_bankRecords) && (
-                  <div className="space-y-2">
-                    <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
-                      Applicant Bank Records ({(formSummary.applicantBankRecords || formSummary.applicant_bankRecords).length} accounts):
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
-                      {(formSummary.applicantBankRecords || formSummary.applicant_bankRecords).map((bank: any, index: number) => (
-                        <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200">
-                          <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Bank Account {index + 1}</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-                            {Object.entries(bank).map(([key, value]) => (
-                              <div key={key} className="flex items-center space-x-2">
-                                <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
-                                <span className="text-gray-700">{String(value) || 'Not specified'}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Co-Applicants Bank Records */}
-                {formSummary.coApplicantsBankRecords && Array.isArray(formSummary.coApplicantsBankRecords) && formSummary.coApplicantsBankRecords.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
-                      Co-Applicants Bank Records ({formSummary.coApplicantsBankRecords.length} accounts):
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
-                      {formSummary.coApplicantsBankRecords.map((bank: any, index: number) => (
-                        <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200">
-                          <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Bank Account {index + 1}</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-                            {Object.entries(bank).map(([key, value]) => (
-                              <div key={key} className="flex items-center space-x-2">
-                                <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
-                                <span className="text-gray-700">{String(value) || 'Not specified'}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-
-                
-                {/* Guarantors Bank Records */}
-                {formSummary.guarantorsBankRecords && Array.isArray(formSummary.guarantorsBankRecords) && formSummary.guarantorsBankRecords.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
-                      Guarantors Bank Records ({formSummary.guarantorsBankRecords.length} accounts):
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
-                      {formSummary.guarantorsBankRecords.map((bank: any, index: number) => (
-                        <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200">
-                          <div className="font-medium text-gray-700 mb-2 text-xs sm:text-sm">Bank Account {index + 1}</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-                            {Object.entries(bank).map(([key, value]) => (
-                              <div key={key} className="flex items-center space-x-2">
-                                <span className="text-gray-600 font-medium capitalize">{key.replace(/_/g, ' ')}:</span>
-                                <span className="text-gray-700">{String(value) || 'Not specified'}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-
-                
-
-                
-                {/* Other fields */}
-                {Object.entries(formSummary).filter(([key, value]) => 
-                  !['buildingAddress', 'apartmentNumber', 'apartmentType', 'monthlyRent', 'moveInDate', 'howDidYouHear', 'applicantName', 'applicantEmail', 'occupants', 'occupantsList', 'bankRecords', 'applicantBankRecords', 'coApplicantsBankRecords', 'guarantorsBankRecords', 'webhookSummary', 'coApplicants', 'guarantors', 'hasCoApplicant', 'hasGuarantor', 'coApplicantCount', 'guarantorCount', 'landlordTenantLegalAction', 'brokenLease', 'application_id', 'applicantId', 'zoneinfo'].includes(key) &&
-                  !key.startsWith('applicant') &&
-                  !key.startsWith('application') &&
-                  !key.startsWith('coApplicant') &&
-                  !key.startsWith('guarantor') &&
-                  value !== 'Not specified' && value !== null && value !== undefined
-                ).map(([key, value]) => {
-                  // Handle list/array fields like bankRecords
-                  if (Array.isArray(value)) {
-                    return (
-                      <div key={key} className="space-y-2">
-                        <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
-                          {key.replace(/_/g, ' ')}:
-                        </div>
-                        <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
-                          {value.map((item: any, index: number) => (
-                            <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200">
-                              {typeof item === 'object' && item !== null ? (
-                                <div className="grid grid-cols-1 gap-2 text-xs sm:text-sm">
-                                  {Object.entries(item).map(([itemKey, itemValue]) => (
-                                    <div key={itemKey} className="flex items-center space-x-2">
-                                      <span className="text-gray-600 font-medium capitalize">{itemKey.replace(/_/g, ' ')}:</span>
-                                      <span className="text-gray-700">{String(itemValue)}</span>
+                      {/* Bank Records for this Co-Applicant */}
+                      {coApp.bankRecords && Array.isArray(coApp.bankRecords) && coApp.bankRecords.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-purple-200">
+                          <h6 className="font-medium text-purple-800 mb-2">Bank Records ({coApp.bankRecords.length} accounts)</h6>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {coApp.bankRecords.map((bank: any, bankIndex: number) => (
+                              <div key={bankIndex} className="bg-purple-50 rounded p-3 border border-purple-200">
+                                <div className="font-medium text-purple-800 mb-2 text-sm">Bank Account {bankIndex + 1}</div>
+                                <div className="space-y-1 text-xs">
+                                  {Object.entries(bank).map(([bankKey, bankValue]) => (
+                                    <div key={bankKey} className="flex justify-between">
+                                      <span className="font-medium capitalize">{bankKey.replace(/_/g, ' ')}:</span>
+                                      <span className="text-gray-700">{String(bankValue)}</span>
                                     </div>
                                   ))}
                                 </div>
-                              ) : (
-                                <span className="text-gray-700">{String(item)}</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  }
-                  
-                  // Handle stringified arrays/objects (like "[object Object],[object Object]")
-                  if (typeof value === 'string' && (value.includes('[object Object]') || value.includes('[') && value.includes(']'))) {
-                    try {
-                      // Try to parse as JSON if it looks like a stringified array/object
-                      const parsedValue = JSON.parse(value);
-                      if (Array.isArray(parsedValue)) {
-                        return (
-                          <div key={key} className="space-y-2">
-                            <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
-                              {key.replace(/_/g, ' ')}:
-                            </div>
-                            <div className="grid grid-cols-1 gap-2 pl-2 sm:pl-4">
-                              {parsedValue.map((item: any, index: number) => (
-                                <div key={index} className="bg-white rounded p-2 sm:p-3 border border-gray-200">
-                                  {typeof item === 'object' && item !== null ? (
-                                    <div className="grid grid-cols-1 gap-2 text-xs sm:text-sm">
-                                      {Object.entries(item).map(([itemKey, itemValue]) => (
-                                        <div key={itemKey} className="flex items-center space-x-2">
-                                          <span className="text-gray-600 font-medium capitalize">{itemKey.replace(/_/g, ' ')}:</span>
-                                          <span className="text-gray-700">{String(itemValue)}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <span className="text-gray-700">{String(item)}</span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
+                              </div>
+                            ))}
                           </div>
-                        );
-                      }
-                    } catch (e) {
-                      // If parsing fails, show as regular string
-                      console.warn(`Failed to parse ${key} as JSON:`, e);
-                    }
-                  }
-                  
-                  // Handle object fields
-                  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                    return (
-                      <div key={key} className="space-y-2">
-                        <div className="font-medium text-gray-700 capitalize border-b border-gray-200 pb-1 text-xs sm:text-sm">
-                          {key.replace(/_/g, ' ')}:
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-2 sm:pl-4">
-                          {Object.entries(value).map(([itemKey, itemValue]) => (
-                            <div key={itemKey} className="flex items-center space-x-2">
-                              <span className="text-gray-600 font-medium capitalize text-xs sm:text-sm">{itemKey.replace(/_/g, ' ')}:</span>
-                              <span className="text-gray-700 text-xs sm:text-sm">{String(itemValue)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  }
-                  
-                  // Handle regular string/number fields
-                  return (
-                    <div key={key} className="flex items-center space-x-2">
-                      <span className="text-gray-600 font-medium capitalize text-xs sm:text-sm">{key.replace(/_/g, ' ')}:</span>
-                      <span className="text-gray-700 text-xs sm:text-sm">{String(value)}</span>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Users className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+                  <h6 className="text-lg font-medium text-purple-700 mb-2">No Co-Applicants</h6>
+                  <p className="text-purple-600">This application doesn't have any co-applicants yet.</p>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
+          </TabsContent>
 
-        {/* Preview All Button - Replaces Uploaded Documents section */}
-        {draft.status === 'draft' && (
-          <div className="pt-4 border-t border-gray-100">
-            <div className="text-center">
-           
+          {/* Guarantors Tab */}
+          <TabsContent value="guarantors" className="space-y-4">
+            <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+              <h5 className="text-lg font-semibold text-orange-900 mb-4 flex items-center">
+                <Shield className="w-5 h-5 mr-2" />
+                Guarantors Information
+              </h5>
+              
+              {formSummary.guarantors && Array.isArray(formSummary.guarantors) && formSummary.guarantors.length > 0 ? (
+                <div className="space-y-4">
+                  {formSummary.guarantors.map((guar: any, index: number) => (
+                    <div key={index} className="bg-white rounded-lg p-4 border border-orange-300 border-l-4 border-l-orange-500">
+                      <div className="flex items-center justify-between mb-3">
+                        <h6 className="font-semibold text-orange-900">Guarantor {index + 1}</h6>
+                        <Badge variant="outline" className="border-orange-300 text-orange-700">Guarantor</Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Object.entries(guar).filter(([key, value]) => 
+                          value !== null && value !== undefined && value !== '' && 
+                          !['documents', 'bankRecords'].includes(key)
+                        ).map(([key, value]) => (
+                          <div key={key} className="text-sm">
+                            <span className="font-medium capitalize text-orange-700">{key.replace(/_/g, ' ')}:</span>
+                            <span className="ml-2 text-gray-700">{String(value) || 'Not specified'}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Bank Records for this Guarantor */}
+                      {guar.bankRecords && Array.isArray(guar.bankRecords) && guar.bankRecords.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-orange-200">
+                          <h6 className="font-medium text-orange-800 mb-2">Bank Records ({guar.bankRecords.length} accounts)</h6>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {guar.bankRecords.map((bank: any, bankIndex: number) => (
+                              <div key={bankIndex} className="bg-orange-50 rounded p-3 border border-orange-200">
+                                <div className="font-medium text-orange-800 mb-2 text-sm">Bank Account {bankIndex + 1}</div>
+                                <div className="space-y-1 text-xs">
+                                  {Object.entries(bank).map(([bankKey, bankValue]) => (
+                                    <div key={bankKey} className="flex justify-between">
+                                      <span className="font-medium capitalize">{bankKey.replace(/_/g, ' ')}:</span>
+                                      <span className="text-gray-700">{String(bankValue)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Shield className="w-16 h-16 text-orange-300 mx-auto mb-4" />
+                  <h6 className="text-lg font-medium text-orange-700 mb-2">No Guarantors</h6>
+                  <p className="text-orange-600">This application doesn't have any guarantors yet.</p>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          </TabsContent>
+
+          {/* Occupants Tab */}
+          <TabsContent value="occupants" className="space-y-4">
+            <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+              <h5 className="text-lg font-semibold text-indigo-900 mb-4 flex items-center">
+                <Home className="w-5 h-5 mr-2" />
+                Occupants Information
+              </h5>
+              
+              {(formSummary.occupants && Array.isArray(formSummary.occupants) && formSummary.occupants.length > 0) || 
+               (formSummary.occupantsList && Array.isArray(formSummary.occupantsList) && formSummary.occupantsList.length > 0) ? (
+                <div className="space-y-4">
+                  {(formSummary.occupants || formSummary.occupantsList || []).map((occupant: any, index: number) => (
+                    <div key={index} className="bg-white rounded-lg p-4 border border-indigo-300 border-l-4 border-l-indigo-500">
+                      <div className="flex items-center justify-between mb-3">
+                        <h6 className="font-semibold text-indigo-900">Occupant {index + 1}</h6>
+                        <Badge variant="outline" className="border-indigo-300 text-indigo-700">Occupant</Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Object.entries(occupant).map(([key, value]) => (
+                          <div key={key} className="text-sm">
+                            <span className="font-medium capitalize text-indigo-700">{key.replace(/_/g, ' ')}:</span>
+                            <span className="ml-2 text-gray-700">{String(value) || 'Not specified'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Home className="w-16 h-16 text-indigo-300 mx-auto mb-4" />
+                  <h6 className="text-lg font-medium text-indigo-700 mb-2">No Occupants</h6>
+                  <p className="text-indigo-600">This application doesn't have any occupants yet.</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Last Updated */}
         <div className="pt-3 border-t border-gray-100">
@@ -903,27 +842,38 @@ export const DraftCards = () => {
   return (
     <div className="min-h-screen bg-white py-4 sm:py-8">
       <div className="max-w-full mx-auto px-3 sm:px-4 lg:px-8">
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="text-center">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-              My Applications
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600 mb-4">
-              Continue working on your saved applications
-            </p>
-            <div className="flex justify-center mt-4">
-              <Button 
-                onClick={() => setLocation('/dashboard')}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                View Dashboard
-              </Button>
+        {/* Page Header */}
+        <div className="mb-8">
+          <div className="relative overflow-hidden rounded-2xl shadow-2xl border border-blue-300/50 p-8" style={{ background: 'linear-gradient(to right, #3b82f6, #2563eb, #1d4ed8)' }}>
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-20">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+              <div className="absolute inset-0" style={{
+                backgroundImage: `radial-gradient(circle at 20px 20px, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+                backgroundSize: '40px 40px'
+              }}></div>
+            </div>
+            
+            {/* Content */}
+            <div className="relative flex items-center justify-between">
+              <div className="space-y-4">
+                <h1 className="text-4xl font-bold text-white tracking-tight">
+                  My Applications
+                </h1>
+                <p className="text-xl text-blue-100 max-w-2xl leading-relaxed">
+                  Manage and track all your rental applications in one place
+                </p>
+              </div>
+              
+              {/* Applications Icon */}
+              <div className="hidden lg:block">
+                <FileText className="w-48 h-32 text-white/20" />
+              </div>
             </div>
           </div>
         </div>
+
+
 
         {/* Drafts Grid */}
         {drafts && drafts.length > 0 ? (

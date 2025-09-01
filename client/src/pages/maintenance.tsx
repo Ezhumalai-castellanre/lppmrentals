@@ -205,15 +205,34 @@ export default function MaintenancePage() {
   return (
     <div className="min-h-screen bg-white py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+        {/* Page Header */}
         <div className="mb-8">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Maintenance Requests
-            </h1>
-            <p className="text-gray-600 mb-4">
-              Submit and track maintenance requests for your rental unit
-            </p>
+          <div className="relative overflow-hidden rounded-2xl shadow-2xl border border-purple-300/50 p-8" style={{ background: 'linear-gradient(to right, #8b5cf6, #7c3aed, #6d28d9)' }}>
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-20">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+              <div className="absolute inset-0" style={{
+                backgroundImage: `radial-gradient(circle at 20px 20px, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+                backgroundSize: '40px 40px'
+              }}></div>
+            </div>
+            
+            {/* Content */}
+            <div className="relative flex items-center justify-between">
+              <div className="space-y-4">
+                <h1 className="text-4xl font-bold text-white tracking-tight">
+                  Maintenance Requests
+                </h1>
+                <p className="text-xl text-purple-100 max-w-2xl leading-relaxed">
+                  Submit and track maintenance requests for your rental unit
+                </p>
+              </div>
+              
+              {/* Maintenance Icon */}
+              <div className="hidden lg:block">
+                <Wrench className="w-48 h-32 text-white/20" />
+              </div>
+            </div>
           </div>
         </div>
 

@@ -152,14 +152,26 @@ export default function ApplicationsPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              My Applications
-            </h1>
-            <p className="text-gray-600 mb-4">
-              View and manage your rental applications
-            </p>
-
+          <div className="relative overflow-hidden rounded-2xl shadow-2xl border border-blue-300/50 p-8" style={{background: 'rgb(49,156,55)'}}>
+            <div className="absolute inset-0 opacity-20">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+              <div className="absolute inset-0" style={{backgroundImage: 'url(https://rentobjectsphotos.s3.us-east-1.amazonaws.com/mobile-app-illustration-svg-png-download-7758932.webp)', backgroundSize: 'cover', backgroundPosition: 'center'}}></div>
+            </div>
+            <div className="relative flex items-center justify-between">
+              <div className="space-y-4">
+                <h1 className="text-4xl font-bold text-white tracking-tight">My Applications</h1>
+                <p className="text-xl text-blue-100 max-w-2xl leading-relaxed">Manage and track all your rental applications in one place</p>
+              </div>
+              <div className="hidden lg:block">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-file-text w-48 h-32 text-white/20">
+                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+                  <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+                  <path d="M10 9H8"></path>
+                  <path d="M16 13H8"></path>
+                  <path d="M16 17H8"></path>
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -7,7 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Loader2, Search, ArrowLeft, AlertTriangle, CheckCircle, Clock, Share2, Link, X, Upload, ArrowDownToLine } from 'lucide-react';
+import { Loader2, Search, ArrowLeft, AlertTriangle, CheckCircle, Clock, Share2, Link, X, Upload, ArrowDownToLine, FileText } from 'lucide-react';
 import { FileUpload } from '../components/ui/file-upload';
 import { encryptFiles, validateFileForEncryption, type EncryptedFile } from '../lib/file-encryption';
 import { WebhookService } from '../lib/webhook-service';
@@ -547,16 +547,34 @@ export default function MissingDocumentsPage() {
   return (
     <div className="min-h-screen bg-white py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+        {/* Page Header */}
         <div className="mb-8">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Missing Documents Tracker
-            </h1>
-            <p className="text-gray-600 mb-4">
-              Track and manage missing documents for rental applications
-            </p>
-
+          <div className="relative overflow-hidden rounded-2xl shadow-2xl border border-orange-300/50 p-8" style={{ background: 'linear-gradient(to right, #f97316, #ea580c, #dc2626)' }}>
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-20">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+              <div className="absolute inset-0" style={{
+                backgroundImage: `radial-gradient(circle at 20px 20px, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+                backgroundSize: '40px 40px'
+              }}></div>
+            </div>
+            
+            {/* Content */}
+            <div className="relative flex items-center justify-between">
+              <div className="space-y-4">
+                <h1 className="text-4xl font-bold text-white tracking-tight">
+                  Missing Documents
+                </h1>
+                <p className="text-xl text-orange-100 max-w-2xl leading-relaxed">
+                  Track and manage missing documents for rental applications
+                </p>
+              </div>
+              
+              {/* Documents Icon */}
+              <div className="hidden lg:block">
+                <FileText className="w-48 h-32 text-white/20" />
+              </div>
+            </div>
           </div>
         </div>
 
