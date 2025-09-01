@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "./components/ui/toaster";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
+import { ChatbotProvider } from "./contexts/chatbot-context";
 import ProtectedRoute from "./components/protected-route";
 import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar";
 import { AppSidebar } from "./components/app-sidebar";
@@ -21,10 +22,14 @@ import LandingPage from "./pages/landing";
 import NotFound from "./pages/not-found";
 import AvailableRentalsPage from "./pages/available-rentals";
 import PropertyDetailsPage from "./pages/property-details";
+import InterestFormDemo from "./pages/interest-form-demo";
+import InterestFormSuccess from "./pages/interest-form-success";
 import RentalDashboard from "./components/rental-dashboard";
 import { Button } from "./components/ui/button";
 import { Save } from "lucide-react";
 import { DebugAuth } from "./components/debug-auth";
+import { ChatbotButton } from "./components/ui/chatbot-button";
+import { ChatbotEnhanced } from "./components/ui/chatbot-enhanced";
 import "./lib/aws-config";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
@@ -81,6 +86,16 @@ function Router() {
         ) : (
           <LandingPage />
         )}
+      </Route>
+      
+      {/* Interest Form route - Available for all users */}
+      <Route path="/interest-form">
+        <InterestFormDemo />
+      </Route>
+      
+      {/* Interest Form Success route - Available for all users */}
+      <Route path="/interest-form-success">
+        <InterestFormSuccess />
       </Route>
       
       {/* Protected Routes - Only for authenticated users */}
@@ -181,10 +196,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <ChatbotProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </ChatbotProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
