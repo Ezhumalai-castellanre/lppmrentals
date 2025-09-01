@@ -41,6 +41,31 @@ const interestFormSchema = z.object({
   guarantorAnnualIncome: z.string().optional(),
   guarantorCreditScore: z.string().optional(),
   message: z.string().min(1, "Message is required"),
+}).refine((data) => {
+  // If co-applicant is "yes", then co-applicant fields are required
+  if (data.hasCoApplicant === "yes") {
+    if (!data.coApplicantAnnualIncome || data.coApplicantAnnualIncome.trim() === "") {
+      return false;
+    }
+    if (!data.coApplicantCreditScore || data.coApplicantCreditScore.trim() === "") {
+      return false;
+    }
+  }
+  
+  // If guarantor is "yes", then guarantor fields are required
+  if (data.hasGuarantor === "yes") {
+    if (!data.guarantorAnnualIncome || data.guarantorAnnualIncome.trim() === "") {
+      return false;
+    }
+    if (!data.guarantorCreditScore || data.guarantorCreditScore.trim() === "") {
+      return false;
+    }
+  }
+  
+  return true;
+}, {
+  message: "Please fill in all required fields for co-applicants and guarantors",
+  path: ["hasCoApplicant"] // This will show the error on the co-applicant field
 })
 
 type InterestFormData = z.infer<typeof interestFormSchema>
