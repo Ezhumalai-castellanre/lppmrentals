@@ -97,6 +97,14 @@ export default function MissingDocumentsPage() {
   const [modalUrl, setModalUrl] = useState<string | null>(null);
   const [modalTitle, setModalTitle] = useState<string | null>(null);
   const [iframeError, setIframeError] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterApplicantType, setFilterApplicantType] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'status' | 'applicantType' | 'priority'>('priority');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [documentHistory, setDocumentHistory] = useState<{[key: string]: any[]}>({});
+  const [exportLoading, setExportLoading] = useState(false);
 
   // Split items by status
   const uploadedItems = missingItems.filter(item => item.status === 'Received');
@@ -508,6 +516,106 @@ export default function MissingDocumentsPage() {
     }
   };
 
+  // Enhanced filtering and sorting functions
+  const getFilteredAndSortedItems = (items: MissingSubitem[]) => {
+    let filtered = items.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           item.parentItemName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           item.coApplicantName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           item.guarantorName?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
+      const matchesApplicantType = filterApplicantType === 'all' || item.applicantType === filterApplicantType;
+      
+      return matchesSearch && matchesStatus && matchesApplicantType;
+    });
+
+    // Sort items
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any;
+      
+      switch (sortBy) {
+        case 'name':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'status':
+          aValue = a.status.toLowerCase();
+          bValue = b.status.toLowerCase();
+          break;
+        case 'applicantType':
+          aValue = a.applicantType.toLowerCase();
+          bValue = b.applicantType.toLowerCase();
+          break;
+        case 'priority':
+        default:
+          // Priority: Missing > Rejected > Received
+          const priorityMap = { 'Missing': 3, 'Rejected': 2, 'Received': 1 };
+          aValue = priorityMap[a.status as keyof typeof priorityMap] || 0;
+          bValue = priorityMap[b.status as keyof typeof priorityMap] || 0;
+          break;
+      }
+      
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    return filtered;
+  };
+
+  // Get document priority level
+  const getDocumentPriority = (documentName: string, status: string) => {
+    if (status === 'Missing') {
+      const highPriorityDocs = ['Pay Stubs', 'Tax Returns', 'Bank Statements', 'ID', 'Proof of Income'];
+      const isHighPriority = highPriorityDocs.some(doc => 
+        documentName.toLowerCase().includes(doc.toLowerCase())
+      );
+      return isHighPriority ? 'High' : 'Medium';
+    }
+    return 'Low';
+  };
+
+  // Export documents data
+  const exportDocumentsData = async () => {
+    setExportLoading(true);
+    try {
+      const data = {
+        applicantId,
+        exportDate: new Date().toISOString(),
+        totalDocuments: missingItems.length,
+        pendingDocuments: pendingItems.length,
+        uploadedDocuments: uploadedItems.length,
+        documents: missingItems.map(item => ({
+          name: item.name,
+          status: item.status,
+          applicantType: item.applicantType,
+          parentItem: item.parentItemName,
+          priority: getDocumentPriority(item.name, item.status),
+          lastUpdated: new Date().toISOString()
+        }))
+      };
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `missing-documents-${applicantId}-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      setSuccessMessage('Documents data exported successfully!');
+    } catch (error) {
+      setError('Failed to export documents data');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const getApplicantIdInfo = (id: string) => {
     const formats = getAllApplicantIdFormats(id);
     const isNewFormat = isValidLppmNumber(id);
@@ -662,11 +770,139 @@ export default function MissingDocumentsPage() {
           </Alert>
         )}
 
-        {/* Success Message - Removed */}
+        {/* Success Message */}
+        {successMessage && (
+          <Alert className="mb-6 border-green-200 bg-green-50 text-green-800">
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>{successMessage}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Results */}
         {searched && !loading && (
           <div className="space-y-6">
+            {/* Summary Statistics */}
+            <Card className="mb-6">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">{missingItems.length}</div>
+                    <div className="text-sm text-gray-600">Total Documents</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-600">{pendingItems.length}</div>
+                    <div className="text-sm text-gray-600">Pending</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{uploadedItems.length}</div>
+                    <div className="text-sm text-gray-600">Uploaded</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-600">
+                      {pendingItems.filter(item => getDocumentPriority(item.name, item.status) === 'High').length}
+                    </div>
+                    <div className="text-sm text-gray-600">High Priority</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Enhanced Controls */}
+            <Card className="mb-6">
+              <CardContent className="p-4">
+                <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                  {/* Search and Basic Filters */}
+                  <div className="flex flex-col sm:flex-row gap-3 flex-1">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        placeholder="Search documents..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="Missing">Missing</option>
+                      <option value="Rejected">Rejected</option>
+                      <option value="Received">Received</option>
+                    </select>
+                    <select
+                      value={filterApplicantType}
+                      onChange={(e) => setFilterApplicantType(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    >
+                      <option value="all">All Types</option>
+                      <option value="Applicant">Applicant</option>
+                      <option value="Co-Applicant">Co-Applicant</option>
+                      <option value="Guarantor">Guarantor</option>
+                    </select>
+                  </div>
+                  
+                  {/* Advanced Controls */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                    >
+                      {showAdvancedFilters ? 'Hide' : 'Show'} Advanced
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={exportDocumentsData}
+                      disabled={exportLoading}
+                    >
+                      {exportLoading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <ArrowDownToLine className="w-4 h-4 mr-2" />
+                      )}
+                      Export
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Advanced Filters */}
+                {showAdvancedFilters && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm font-medium">Sort by:</Label>
+                        <select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value as any)}
+                          className="px-3 py-1 border border-gray-300 rounded text-sm"
+                        >
+                          <option value="priority">Priority</option>
+                          <option value="name">Name</option>
+                          <option value="status">Status</option>
+                          <option value="applicantType">Applicant Type</option>
+                        </select>
+                        <select
+                          value={sortOrder}
+                          onChange={(e) => setSortOrder(e.target.value as any)}
+                          className="px-3 py-1 border border-gray-300 rounded text-sm"
+                        >
+                          <option value="desc">Descending</option>
+                          <option value="asc">Ascending</option>
+                        </select>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Showing {getFilteredAndSortedItems(activeTab === 'pending' ? pendingItems : uploadedItems).length} of {activeTab === 'pending' ? pendingItems.length : uploadedItems.length} documents
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Tabs */}
             <div className="flex gap-2 mb-4">
               <button
@@ -703,7 +939,7 @@ export default function MissingDocumentsPage() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {pendingItems.map((item) => (
+                      {getFilteredAndSortedItems(pendingItems).map((item) => (
                         <div
                           key={item.id}
                           className="border rounded-lg bg-white overflow-hidden"
@@ -732,6 +968,18 @@ export default function MissingDocumentsPage() {
                               <Badge variant="outline" className="text-xs" style={{ fontSize: '10px' }}>
                                 {item.applicantType}
                               </Badge>
+                              {item.status === 'Missing' && (
+                                <Badge 
+                                  variant="destructive" 
+                                  className={`text-xs ${
+                                    getDocumentPriority(item.name, item.status) === 'High' 
+                                      ? 'bg-red-500' 
+                                      : 'bg-orange-500'
+                                  }`}
+                                >
+                                  {getDocumentPriority(item.name, item.status)} Priority
+                                </Badge>
+                              )}
                               {uploadedDocuments[item.id] ? (
                                 <Badge variant="default" className="bg-green-500">
                                   <CheckCircle className="w-3 h-3 mr-1" />
@@ -914,7 +1162,7 @@ export default function MissingDocumentsPage() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {uploadedItems.map((item) => (
+                      {getFilteredAndSortedItems(uploadedItems).map((item) => (
                         <div
                           key={item.id}
                           className="border rounded-lg bg-white overflow-hidden"

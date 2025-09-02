@@ -591,15 +591,56 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                       </div>
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {Object.entries(guar).filter(([key, value]) => 
-                          value !== null && value !== undefined && value !== '' && 
-                          !['documents', 'bankRecords'].includes(key)
-                        ).map(([key, value]) => (
-                          <div key={key} className="text-sm">
-                            <span className="font-medium capitalize text-orange-700">{key.replace(/_/g, ' ')}:</span>
-                            <span className="ml-2 text-gray-700">{String(value) || 'Not specified'}</span>
-                          </div>
-                        ))}
+                        {(() => {
+                          const orderedFields: Array<{ key: string; label: string }> = [
+                            { key: 'name', label: 'name' },
+                            { key: 'relationship', label: 'relationship' },
+                            { key: 'dob', label: 'dob' },
+                            { key: 'ssn', label: 'ssn' },
+                            { key: 'phone', label: 'phone' },
+                            { key: 'email', label: 'email' },
+                            { key: 'license', label: 'license' },
+                            { key: 'licenseState', label: 'licenseState' },
+                            { key: 'address', label: 'address' },
+                            { key: 'city', label: 'city' },
+                            { key: 'state', label: 'state' },
+                            { key: 'zip', label: 'zip' },
+                            { key: 'lengthAtAddressYears', label: 'lengthAtAddressYears' },
+                            { key: 'lengthAtAddressMonths', label: 'lengthAtAddressMonths' },
+                            { key: 'landlordName', label: 'landlordName' },
+                            { key: 'landlordAddressLine1', label: 'landlordAddressLine1' },
+                            { key: 'landlordAddressLine2', label: 'landlordAddressLine2' },
+                            { key: 'landlordCity', label: 'landlordCity' },
+                            { key: 'landlordState', label: 'landlordState' },
+                            { key: 'landlordZipCode', label: 'landlordZipCode' },
+                            { key: 'landlordPhone', label: 'landlordPhone' },
+                            { key: 'landlordEmail', label: 'landlordEmail' },
+                            { key: 'currentRent', label: 'currentRent' },
+                            { key: 'reasonForMoving', label: 'reasonForMoving' },
+                            { key: 'employmentType', label: 'employmentType' },
+                            { key: 'income', label: 'income' },
+                            { key: 'incomeFrequency', label: 'incomeFrequency' },
+                            { key: 'businessName', label: 'businessName' },
+                            { key: 'businessType', label: 'businessType' },
+                            { key: 'yearsInBusiness', label: 'yearsInBusiness' },
+                            { key: 'otherIncome', label: 'otherIncome' },
+                            { key: 'otherIncomeFrequency', label: 'otherIncomeFrequency' },
+                            { key: 'otherIncomeSource', label: 'otherIncomeSource' },
+                            { key: 'age', label: 'age' },
+                          ];
+
+                          return orderedFields
+                            .filter(({ key }) => {
+                              const value = (guar as any)[key];
+                              return value !== null && value !== undefined && value !== '';
+                            })
+                            .map(({ key, label }) => (
+                              <div key={key} className="text-sm">
+                                <span className="font-medium capitalize text-orange-700">{label}:</span>
+                                <span className="ml-2 text-gray-700">{String((guar as any)[key])}</span>
+                              </div>
+                            ));
+                        })()}
                       </div>
 
                       {/* Bank Records for this Guarantor */}

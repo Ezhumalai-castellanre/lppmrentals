@@ -28,7 +28,7 @@ import LogoutButton from './logout-button';
 
 export function AppSidebar() {
   const { user } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [hasApplications, setHasApplications] = useState(false);
   const [hasSubmittedApplications, setHasSubmittedApplications] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -135,6 +135,8 @@ export function AppSidebar() {
                   <SidebarMenuButton 
                     tooltip={item.title}
                     onClick={() => setLocation(item.url)}
+                    data-active={location === item.url}
+                    className={location === item.url ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : ""}
                   >
                     <item.icon />
                     <span>{item.title}</span>
