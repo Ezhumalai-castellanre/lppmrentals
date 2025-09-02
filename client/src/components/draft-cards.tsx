@@ -346,7 +346,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
 
         {/* Tabbed Interface */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-4">
+          <TabsList className="grid w-full grid-cols-6 mb-4">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="w-4 h-4" />
               <span className="hidden sm:inline">Overview</span>
@@ -354,6 +354,10 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
             <TabsTrigger value="main" className="flex items-center gap-2">
               <Building className="w-4 h-4" />
               <span className="hidden sm:inline">Main App</span>
+            </TabsTrigger>
+            <TabsTrigger value="applicant" className="flex items-center gap-2">
+              <User className="w-4 h-4" />
+              <span className="hidden sm:inline">Applicant</span>
             </TabsTrigger>
             <TabsTrigger value="coapplicants" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
@@ -475,14 +479,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <h6 className="font-medium text-blue-800 border-b border-blue-300 pb-1">Primary Applicant</h6>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">Name:</span> {formSummary.applicantName}</div>
-                    <div><span className="font-medium">Email:</span> {formSummary.applicantEmail}</div>
-                    <div><span className="font-medium">Phone:</span> {formSummary.applicant_phone || 'Not specified'}</div>
-                  </div>
-                </div>
+                {/* Primary Applicant moved to Applicant tab */}
               </div>
 
               {/* Additional Application Fields */}
@@ -635,10 +632,10 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                               return value !== null && value !== undefined && value !== '';
                             })
                             .map(({ key, label }) => (
-                              <div key={key} className="text-sm">
+                          <div key={key} className="text-sm">
                                 <span className="font-medium capitalize text-orange-700">{label}:</span>
                                 <span className="ml-2 text-gray-700">{String((guar as any)[key])}</span>
-                              </div>
+                          </div>
                             ));
                         })()}
                       </div>
