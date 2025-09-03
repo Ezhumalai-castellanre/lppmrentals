@@ -19,7 +19,7 @@ Updated the rental application system to support only 3 employment types with sp
 - **Default Income Frequency**: Monthly
 - **Document Requirements**:
   - Identity Documents: Driver's License (Photo ID), Social Security Card, W9 Form
-  - Employment Documents: Pay Stubs only (Employment Letter NOT required)
+  - Employment Documents: No Pay Stubs or Employment Letter required
   - Financial Documents: Tax Returns (Previous Year), Bank Statements, Accountant Letter
   - Additional Documents: Credit Report
 
@@ -74,7 +74,7 @@ The system maintains the same document categories but dynamically shows/hides do
 
 ## Employment Types Summary
 - **Student**: Monthly frequency, Employment Letter + Pay Stubs required
-- **Self-Employed**: Monthly frequency, Pay Stubs only (no Employment Letter), Accountant Letter required
+- **Self-Employed**: Monthly frequency, No Pay Stubs or Employment Letter required, Accountant Letter required
 - **Salaried**: Yearly frequency, Employment Letter + Pay Stubs required (no Accountant Letter)
 
 ## Backward Compatibility

@@ -1497,8 +1497,8 @@ export const SupportingDocuments = ({
         let filteredDocuments = [...category.documents];
         
         if (employmentType === 'self-employed') {
-          // Self-Employed: Remove Employment Letter, keep only Pay Stubs
-          filteredDocuments = filteredDocuments.filter(doc => doc.id !== 'employment_letter');
+          // Self-Employed: Remove Employment Letter and Pay Stubs
+          filteredDocuments = filteredDocuments.filter(doc => doc.id !== 'employment_letter' && doc.id !== 'pay_stubs');
         } else if (employmentType === 'student' || employmentType === 'salaried') {
           // Student and Salaried: Make Employment Letter required
           filteredDocuments = filteredDocuments.map(doc => {
@@ -1605,7 +1605,7 @@ export const SupportingDocuments = ({
                 <span className="font-medium">Employment Type Requirements:</span> 
                 {(() => {
                   if (relevantEmploymentType === 'self-employed') {
-                    return ' Self-Employed: Pay Stubs only (no Employment Letter), Accountant Letter required.';
+                    return ' Self-Employed: No Pay Stubs or Employment Letter required, Accountant Letter required.';
                   } else if (relevantEmploymentType === 'student') {
                     return ' Student: Employment Letter + Pay Stubs (no Accountant Letter).';
                   } else if (relevantEmploymentType === 'salaried') {
