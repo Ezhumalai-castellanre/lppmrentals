@@ -21,8 +21,23 @@ const interestFormSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   propertyName: z.string().min(1, "Property name is required"),
   unitNumber: z.string().min(1, "Unit number is required"),
-  phone: z.string().min(1, "Phone number is required"),
-  email: z.string().email("Please enter a valid email address"),
+  phone: z.string()
+    .min(1, "Phone number is required")
+    .regex(/^\d{10}$/, "Phone number must be exactly 10 digits")
+    .refine((phone) => {
+      // Remove all non-digit characters for validation
+      const digitsOnly = phone.replace(/\D/g, '');
+      // Check if it's exactly 10 digits
+      return digitsOnly.length === 10;
+    }, "Phone number must be exactly 10 digits"),
+  email: z.string()
+    .min(1, "Email is required")
+    .email("Please enter a valid email address")
+    .refine((email) => {
+      // Additional email validation for common patterns
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      return emailRegex.test(email);
+    }, "Please enter a valid email address"),
   idealMoveInDate: z.date({
     required_error: "Ideal move-in date is required",
     invalid_type_error: "Please select a valid date",
@@ -184,9 +199,9 @@ export function InterestForm({ className }: InterestFormProps) {
             
             if (bodyData.items && Array.isArray(bodyData.items)) {
               items = bodyData.items
-              // Extract unique property names from items
+              // Extract unique property names from status column to avoid duplication
               const propertyNames = items
-                .map((item: any) => item.address || item.propertyName || item.buildingAddress)
+                .map((item: any) => item.status || item.Stage || item.propertyName || item.address || item.buildingAddress)
                 .filter((name: string) => name && name.trim() !== '')
               
               properties = Array.from(new Set(propertyNames))
@@ -203,7 +218,7 @@ export function InterestForm({ className }: InterestFormProps) {
           } else if (result.items && Array.isArray(result.items)) {
             items = result.items
             const propertyNames = items
-              .map((item: any) => item.address || item.propertyName || item.buildingAddress)
+              .map((item: any) => item.status || item.Stage || item.propertyName || item.address || item.buildingAddress)
               .filter((name: string) => name && name.trim() !== '')
             properties = Array.from(new Set(propertyNames))
           }
@@ -246,9 +261,9 @@ export function InterestForm({ className }: InterestFormProps) {
       console.log(`Selected property (fallback): ${propertyName}`)
       console.log(`Available units (fallback): ${fallbackUnitOptions}`)
     } else {
-      // Extract units from API data for the selected property
+      // Extract units from API data for the selected property using status column
       const propertyItems = apiData.filter((item: any) => {
-        const itemProperty = item.address || item.propertyName || item.buildingAddress
+        const itemProperty = item.status || item.Stage || item.propertyName || item.address || item.buildingAddress
         return itemProperty === propertyName
       })
       
@@ -422,7 +437,16 @@ export function InterestForm({ className }: InterestFormProps) {
                     Phone *
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter your phone number" {...field} />
+                    <Input 
+                      placeholder="Enter 10-digit phone number" 
+                      maxLength={10}
+                      {...field}
+                      onChange={(e) => {
+                        // Only allow digits and limit to 10 characters
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        field.onChange(value);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
