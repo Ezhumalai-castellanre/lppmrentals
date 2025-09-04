@@ -1175,7 +1175,10 @@ export class WebhookService {
         totalResponses,
         responsesByPerson,
         webhookResponses
-      }
+      },
+      
+      // PDF URL from generated application PDF
+      pdfUrl: formData.pdfUrl
     };
 
     // Remove undefined sections
@@ -1226,7 +1229,7 @@ export class WebhookService {
     applicationId: string,
     applicantId?: string,
     fileName: string = 'rental-application.pdf'
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; s3Url?: string }> {
     try {
       // First, upload PDF to S3
       console.log(`📤 Uploading PDF to S3 first: ${fileName}`);
@@ -1241,7 +1244,8 @@ export class WebhookService {
         console.error('❌ Failed to upload PDF to S3:', s3Result.error);
         return {
           success: false,
-          error: `Failed to upload PDF to S3: ${s3Result.error}`
+          error: `Failed to upload PDF to S3: ${s3Result.error}`,
+          s3Url: undefined
         };
       }
 
@@ -1277,18 +1281,20 @@ export class WebhookService {
         console.error('PDF webhook failed:', response.status, errorText);
         return {
           success: false,
-          error: `PDF webhook failed: ${response.status} - ${errorText}`
+          error: `PDF webhook failed: ${response.status} - ${errorText}`,
+          s3Url: s3Result.url
         };
       }
 
       console.log('✅ PDF uploaded to S3 and webhook sent successfully');
-      return { success: true };
+      return { success: true, s3Url: s3Result.url };
 
     } catch (error) {
       console.error('Error sending PDF to webhook:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
+        s3Url: undefined
       };
     }
   }

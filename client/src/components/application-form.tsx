@@ -2818,7 +2818,7 @@ export function ApplicationForm() {
     return processedSignatures;
   };
 
-    const generatePDF = async (submissionData?: any) => {
+    const generatePDF = async (submissionData?: any): Promise<string | null> => {
     try {
       // Use the rental application PDF generator for clean, professional alignment
       const pdfGenerator = new RentalApplicationPDF();
@@ -2926,12 +2926,16 @@ export function ApplicationForm() {
           title: "PDF Generated & Downloaded",
           description: "Your rental application PDF has been generated, downloaded, and sent to the webhook.",
         });
+        
+        // Return the S3 URL from the webhook result
+        return webhookResult.s3Url || null;
       } else {
         toast({
           title: "PDF Generated & Downloaded",
           description: "Your rental application PDF has been generated and downloaded, but webhook delivery failed.",
           variant: "destructive",
         });
+        return null;
       }
 
     } catch (error) {
@@ -2941,6 +2945,7 @@ export function ApplicationForm() {
         description: "There was an error generating your PDF.",
         variant: "destructive",
       });
+      return null;
     }
   };
 
@@ -3920,6 +3925,21 @@ export function ApplicationForm() {
           console.log('🔄 This is expected behavior when server endpoint is not available.');
         }
 
+        // Generate PDF first to get the S3 URL, then include it in form data
+        let pdfUrl: string | null = null;
+        try {
+          console.log('🚀 Starting PDF generation to get S3 URL...');
+          pdfUrl = await generatePDF(completeServerData);
+          console.log('✅ PDF generated successfully, S3 URL:', pdfUrl);
+        } catch (pdfError) {
+          console.error('PDF generation failed:', pdfError);
+          toast({
+            title: "PDF Generation Failed",
+            description: "Application submitted successfully, but PDF generation failed. Please try generating the PDF again.",
+            variant: "destructive",
+          });
+        }
+
         // On form submit, send complete form data, application_id, and uploadedDocuments to the webhook
         try {
           // Create complete webhook payload with ALL data
@@ -4175,6 +4195,9 @@ export function ApplicationForm() {
             
             // Webhook responses for uploaded documents
             webhookResponses: webhookResponses,
+            
+            // PDF URL from generated application PDF
+            pdfUrl: pdfUrl,
 
           };
 
@@ -4273,19 +4296,6 @@ export function ApplicationForm() {
           setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
         }
 
-        // Generate and auto-download PDF after successful submission
-        try {
-          console.log('🚀 Starting PDF generation and auto-download...');
-          await generatePDF(completeServerData);
-          console.log('✅ PDF generated and downloaded successfully');
-        } catch (pdfError) {
-          console.error('PDF generation failed:', pdfError);
-          toast({
-            title: "PDF Generation Failed",
-            description: "Application submitted successfully, but PDF generation failed. Please try generating the PDF again.",
-            variant: "destructive",
-          });
-        }
 
         // Save to DynamoDB with submitted status
         try {
@@ -6333,15 +6343,28 @@ export function ApplicationForm() {
 
                     <div>
                       <Label>Relationship</Label>
-                      <Input
-                        placeholder="Relationship"
+                      <Select
                         value={occupant.relationship || ''}
-                        onChange={e => {
+                        onValueChange={value => {
                           const updated = [...formData.occupants];
-                          updated[idx] = { ...updated[idx], relationship: e.target.value };
+                          updated[idx] = { ...updated[idx], relationship: value };
                           setFormData((prev: any) => ({ ...prev, occupants: updated }));
                         }}
-                      />
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select relationship" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="spouse">Spouse</SelectItem>
+                          <SelectItem value="child">Child</SelectItem>
+                          <SelectItem value="parent">Parent</SelectItem>
+                          <SelectItem value="sibling">Sibling</SelectItem>
+                          <SelectItem value="roommate">Roommate</SelectItem>
+                          <SelectItem value="friend">Friend</SelectItem>
+                          <SelectItem value="relative">Relative</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div>
