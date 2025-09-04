@@ -574,23 +574,44 @@ export class EnhancedPDFGenerator {
   }
 
   private addFooter(): void {
-    this.checkPageBreak();
+    // Ensure we have enough space for the footer (at least 60px from bottom)
+    const footerHeight = 60;
+    const pageHeight = this.doc.internal.pageSize.getHeight();
+    const minFooterY = pageHeight - footerHeight;
+    
+    // Add a page break if we're too close to the bottom
+    if (this.yPosition > minFooterY) {
+      this.doc.addPage();
+      this.yPosition = 40;
+    }
+    
+    // Position footer at the bottom with proper margins
+    this.yPosition = Math.max(this.yPosition, minFooterY);
     
     // Footer line
     this.doc.setDrawColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
     this.doc.setLineWidth(0.5);
     this.doc.line(this.marginLeft, this.yPosition, this.pageWidth - this.marginRight, this.yPosition);
-    this.yPosition += 4; // Reduced spacing
+    this.yPosition += 8;
     
-    // Footer text with top and bottom margins
-    this.doc.setFontSize(7); // Reduced font size
+    // Footer text
+    this.doc.setFontSize(8);
     this.doc.setFont('helvetica', 'normal');
     this.doc.setTextColor(128, 128, 128);
     this.doc.text("This application was submitted electronically on " + new Date().toLocaleString(), this.marginLeft, this.yPosition);
-    this.yPosition += 3; // Reduced spacing
+    this.yPosition += 6;
     this.doc.text("Liberty Place Property Management - Rental Application", this.marginLeft, this.yPosition);
-    this.yPosition += 3; // Reduced spacing
+    this.yPosition += 6;
     this.doc.text("All information is encrypted and secure", this.marginLeft, this.yPosition);
+    
+    // Add page number if there are multiple pages
+    const totalPages = this.doc.getNumberOfPages();
+    if (totalPages > 1) {
+      const currentPage = this.doc.getCurrentPageInfo().pageNumber;
+      this.doc.setFontSize(7);
+      this.doc.setTextColor(100, 100, 100);
+      this.doc.text(`Page ${currentPage} of ${totalPages}`, this.pageWidth - this.marginRight - 30, this.yPosition);
+    }
   }
 
   private addComprehensiveFileMapping(formData: FormData): void {

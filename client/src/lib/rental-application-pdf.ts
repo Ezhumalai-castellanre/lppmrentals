@@ -942,24 +942,44 @@ export class RentalApplicationPDF {
     }
 
     addFooter() {
+        // Ensure we have enough space for the footer (at least 60px from bottom)
+        const footerHeight = 60;
+        const pageHeight = this.doc.internal.pageSize.getHeight();
+        const minFooterY = pageHeight - footerHeight;
+        
         // Add a page break if we're too close to the bottom
-        if (this.currentY > 700) { // Reduced from 750 to 700 for earlier page breaks
+        if (this.currentY > minFooterY) {
             this.doc.addPage();
             this.currentY = 40;
         }
         
+        // Position footer at the bottom with proper margins
+        this.currentY = Math.max(this.currentY, minFooterY);
+        
+        // Footer line
         this.doc.setDrawColor(0, 102, 204);
         this.doc.setLineWidth(0.5);
         this.doc.line(this.marginLeft, this.currentY, this.pageWidth - this.marginRight, this.currentY);
-        this.currentY += 15; // Reduced from 18 to 15 for better spacing
-        this.doc.setFontSize(7); // Reduced from 8 to 7
+        this.currentY += 8;
+        
+        // Footer text
+        this.doc.setFontSize(8);
         this.doc.setFont("helvetica", "normal");
         this.doc.setTextColor(128, 128, 128);
         this.doc.text("This application was submitted electronically on " + new Date().toLocaleString(), this.marginLeft, this.currentY);
-        this.currentY += 10; // Reduced from 12 to 10 for better spacing
+        this.currentY += 6;
         this.doc.text("Liberty Place Property Management - Rental Application", this.marginLeft, this.currentY);
-        this.currentY += 10; // Reduced from 12 to 10 for better spacing
+        this.currentY += 6;
         this.doc.text("All information is encrypted and secure", this.marginLeft, this.currentY);
+        
+        // Add page number if there are multiple pages
+        const totalPages = this.doc.getNumberOfPages();
+        if (totalPages > 1) {
+            const currentPage = this.doc.getCurrentPageInfo().pageNumber;
+            this.doc.setFontSize(7);
+            this.doc.setTextColor(100, 100, 100);
+            this.doc.text(`Page ${currentPage} of ${totalPages}`, this.pageWidth - this.marginRight - 30, this.currentY);
+        }
     }
 
     toLabel(str: string): string {

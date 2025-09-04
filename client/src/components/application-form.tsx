@@ -7527,18 +7527,13 @@ export function ApplicationForm() {
                     Your application PDF has been automatically generated and downloaded to your device.
                   </p>
                 </div>
-                {submissionReferenceId && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
-                    <span className="font-semibold text-gray-700">Reference ID:</span>
-                    <span className="block mt-1 font-mono font-semibold text-gray-900">
-                      {submissionReferenceId}
-                    </span>
-                  </div>
-                )}
               </div>
               <div className="flex space-x-3">
                 <Button
-                  onClick={() => setShowSuccessPopup(false)}
+                  onClick={() => {
+                    setShowSuccessPopup(false);
+                    setLocation('/drafts');
+                  }}
                   className="flex-1"
                 >
                   Close

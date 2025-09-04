@@ -262,6 +262,47 @@ export class PDFGenerator {
     );
   }
 
+  private addFooter(): void {
+    // Ensure we have enough space for the footer (at least 60px from bottom)
+    const footerHeight = 60;
+    const pageHeight = this.doc.internal.pageSize.getHeight();
+    const minFooterY = pageHeight - footerHeight;
+    
+    // Add a page break if we're too close to the bottom
+    if (this.yPosition > minFooterY) {
+      this.doc.addPage();
+      this.yPosition = 40;
+    }
+    
+    // Position footer at the bottom with proper margins
+    this.yPosition = Math.max(this.yPosition, minFooterY);
+    
+    // Footer line
+    this.doc.setDrawColor(0, 102, 204);
+    this.doc.setLineWidth(0.5);
+    this.doc.line(this.marginLeft, this.yPosition, this.pageWidth - this.marginRight, this.yPosition);
+    this.yPosition += 8;
+    
+    // Footer text
+    this.doc.setFontSize(8);
+    this.doc.setFont('helvetica', 'normal');
+    this.doc.setTextColor(128, 128, 128);
+    this.doc.text("This application was submitted electronically on " + new Date().toLocaleString(), this.marginLeft, this.yPosition);
+    this.yPosition += 6;
+    this.doc.text("Liberty Place Property Management - Rental Application", this.marginLeft, this.yPosition);
+    this.yPosition += 6;
+    this.doc.text("All information is encrypted and secure", this.marginLeft, this.yPosition);
+    
+    // Add page number if there are multiple pages
+    const totalPages = this.doc.getNumberOfPages();
+    if (totalPages > 1) {
+      const currentPage = this.doc.getCurrentPageInfo().pageNumber;
+      this.doc.setFontSize(7);
+      this.doc.setTextColor(100, 100, 100);
+      this.doc.text(`Page ${currentPage} of ${totalPages}`, this.pageWidth - this.marginRight - 30, this.yPosition);
+    }
+  }
+
   private addInstructionsAndRequirements(): void {
     this.checkPageBreak();
     this.addSection("LIBERTY PLACE");
@@ -370,11 +411,8 @@ export class PDFGenerator {
     // Add terms & conditions at the end
     this.addTermsAndConditions();
     
-    // Add footer with 10px margin
-    this.checkPageBreak();
-    this.yPosition += 10;
-    this.addText("This application was submitted electronically on " + new Date().toLocaleString(), 8);
-    this.addText("Liberty Place Property Management - Rental Application", 8);
+    // Add footer with proper positioning
+    this.addFooter();
     
     return this.doc.output('datauristring');
   }

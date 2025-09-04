@@ -12,7 +12,7 @@ import { CheckCircle, Clock, AlertCircle, FileText, DollarSign, CreditCard, Chev
 import { cn } from "@/lib/utils"
 import { useAuth } from "../hooks/use-auth"
 import { dynamoDBService } from "../lib/dynamodb-service"
-import { VerificationCard } from "./ui/verification-card"
+// import { VerificationCard } from "./ui/verification-card" // Hidden
 
 type ApplicationCardProps = {
   appId: string
@@ -439,14 +439,14 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
     );
   }
 
-  // Helper function to determine verification status
-  const getVerificationStatus = (status: string, hasData: boolean) => {
-    if (status === 'completed' || status === 'approved') return 'verified'
-    if (status === 'in_progress' || status === 'pending') return 'pending'
-    if (status === 'failed' || status === 'rejected') return 'failed'
-    if (hasData) return 'pending'
-    return 'not_started'
-  }
+  // Helper function to determine verification status - Hidden
+  // const getVerificationStatus = (status: string, hasData: boolean) => {
+  //   if (status === 'completed' || status === 'approved') return 'verified'
+  //   if (status === 'in_progress' || status === 'pending') return 'pending'
+  //   if (status === 'failed' || status === 'rejected') return 'failed'
+  //   if (hasData) return 'pending'
+  //   return 'not_started'
+  // }
 
   // Helper function to safely get application data with defaults
   const getApplicationData = (app: any) => ({
@@ -528,10 +528,10 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
             <div className="relative flex items-center justify-between">
               <div className="space-y-4">
                 <h1 className="text-4xl font-bold text-white tracking-tight">
-                  Verification – Credit & Income
+                  Rental Applications
                 </h1>
                 <p className="text-xl text-purple-100 max-w-2xl leading-relaxed">
-                  Easily verify applicant's credit history, income, and supporting documents with accuracy and speed
+                  View and manage your rental applications
                 </p>
                     </div>
               
@@ -561,9 +561,8 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
                         status="not_started"
                       />
 
-                    {/* Verification Grid */}
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      {/* Primary Applicant */}
+                    {/* Verification Grid - Hidden */}
+                    {/* <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                       <VerificationCard
                         role="Applicant"
                         personName={appData.applicantName}
@@ -573,35 +572,7 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
                         monthlyIncome={appData.monthlyIncome}
                         updatedAt={appData.submittedDate}
                       />
-
-                      {/* Co-Applicants */}
-                      {appData.hasCoApplicants && appData.coApplicants && appData.coApplicants.map((coApp: any, index: number) => (
-                        <VerificationCard
-                          key={index}
-                          role="Co-Applicant"
-                          personName={coApp.name || `Co-Applicant ${index + 1}`}
-                          creditStatus={getVerificationStatus(coApp.screeningStatus || 'not_started', !!coApp.creditScore)}
-                          incomeStatus={getVerificationStatus(coApp.screeningStatus || 'not_started', !!coApp.monthlyIncome)}
-                                                     creditScore={coApp.creditScore}
-                           monthlyIncome={coApp.monthlyIncome}
-                           updatedAt={appData.submittedDate}
-                        />
-                      ))}
-
-                      {/* Guarantors */}
-                      {appData.hasGuarantors && appData.guarantors && appData.guarantors.map((guarantor: any, index: number) => (
-                        <VerificationCard
-                          key={index}
-                          role="Guarantor"
-                          personName={guarantor.name || `Guarantor ${index + 1}`}
-                          creditStatus={getVerificationStatus(guarantor.screeningStatus || 'not_started', !!guarantor.creditScore)}
-                          incomeStatus={getVerificationStatus(guarantor.screeningStatus || 'not_started', !!guarantor.monthlyIncome)}
-                                                     creditScore={guarantor.creditScore}
-                           monthlyIncome={guarantor.monthlyIncome}
-                           updatedAt={appData.submittedDate}
-                        />
-                      ))}
-                    </div>
+                    </div> */}
 
 
                           </div>
@@ -610,9 +581,9 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
                   ) : (
                     <div className="text-center py-8">
                 <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-foreground mb-2">No Applications to Verify</h3>
+                      <h3 className="text-lg font-medium text-foreground mb-2">No Applications Found</h3>
                       <p className="text-muted-foreground">
-                  Submit an application to see verification details.
+                  Submit an application to see your application details.
                       </p>
                     </div>
                   )}

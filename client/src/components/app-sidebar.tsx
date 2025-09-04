@@ -5,8 +5,8 @@ import {
   FileText, 
   Wrench,
   Lock, 
-  Clock,
-  LayoutDashboard
+  Clock
+  // LayoutDashboard - removed (verification hidden)
 } from 'lucide-react';
 import { dynamoDBService } from '../lib/dynamodb-service';
 
@@ -90,11 +90,12 @@ export function AppSidebar() {
 
 
   const navigationItems = [
-    {
-      title: "Verification",
-      url: "/dashboard",
-      icon: LayoutDashboard,
-    },
+    // Verification item hidden
+    // {
+    //   title: "Verification",
+    //   url: "/dashboard",
+    //   icon: LayoutDashboard,
+    // },
     {
       title: "My Applications",
       url: "/drafts",
