@@ -4014,6 +4014,7 @@ export function ApplicationForm() {
                 income: coApplicant.income,
                 incomeFrequency: coApplicant.incomeFrequency,
                 otherIncome: coApplicant.otherIncome,
+                otherIncomeFrequency: coApplicant.otherIncomeFrequency,
                 otherIncomeSource: coApplicant.otherIncomeSource,
                 bankRecords: (coApplicant.bankRecords || []).map((record: any) => ({
                 bankName: record.bankName,
@@ -4067,6 +4068,7 @@ export function ApplicationForm() {
                 income: guarantor.income,
                 incomeFrequency: guarantor.incomeFrequency,
                 otherIncome: guarantor.otherIncome,
+                otherIncomeFrequency: guarantor.otherIncomeFrequency,
                 otherIncomeSource: guarantor.otherIncomeSource,
                 bankRecords: (guarantor.bankRecords || []).map((record: any) => ({
                 bankName: record.bankName,

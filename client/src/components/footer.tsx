@@ -8,7 +8,7 @@ export function Footer() {
     <footer className="bg-cyan-900 text-white">
       {/* Main Footer Content */}
       <div className="max-w-7xl mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
             <img
@@ -42,77 +42,13 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Quick Links */}
-          <div className="space-y-4">
-            <h4 className="font-serif text-lg font-semibold text-cyan-400">Quick Links</h4>
-            <ul className="space-y-2">
-              <li>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors">
-                  Browse Rentals
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors">
-                  List Your Property
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors">
-                  Rental Calculator
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors">
-                  Neighborhood Guide
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors">
-                  Moving Services
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Support */}
-          <div className="space-y-4">
-            <h4 className="font-serif text-lg font-semibold text-cyan-400">Support</h4>
-            <ul className="space-y-2">
-              <li>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors">
-                  Help Center
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors">
-                  Contact Us
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors">
-                  Terms of Service
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors">
-                  Privacy Policy
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-cyan-400 transition-colors">
-                  Cookie Policy
-                </a>
-              </li>
-            </ul>
-          </div>
-
           {/* Contact & Newsletter */}
           <div className="space-y-4">
             <h4 className="font-serif text-lg font-semibold text-cyan-400">Stay Connected</h4>
             <div className="space-y-3">
               <div className="flex items-center space-x-3 text-gray-300">
                 <Phone className="h-4 w-4 text-cyan-400" />
-                <span>(212) 221-1111</span>
+                <span>(646) 545-673</span>
               </div>
               <div className="flex items-center space-x-3 text-gray-300">
                 <Mail className="h-4 w-4 text-cyan-400" />
@@ -121,25 +57,12 @@ export function Footer() {
               <div className="flex items-start space-x-3 text-gray-300">
                 <MapPin className="h-4 w-4 text-cyan-400 mt-1" />
                 <span>
-                  123 Main Street
+                  122 East 42nd Street
                   <br />
-                  Suite 100
+                  Suite 1903
                   <br />
-                  City, State 12345
+                  New York, NY, 10168
                 </span>
-              </div>
-            </div>
-
-            {/* Newsletter Signup */}
-            <div className="pt-4">
-              <p className="text-sm text-gray-300 mb-3">Subscribe for rental updates and tips</p>
-              <div className="flex gap-2">
-                <Input
-                  type="email"
-                  placeholder="Enter your email"
-                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-cyan-400"
-                />
-                <Button className="bg-cyan-600 hover:bg-cyan-700 px-4">Subscribe</Button>
               </div>
             </div>
           </div>
