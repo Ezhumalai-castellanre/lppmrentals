@@ -66,7 +66,12 @@ const applicationSchema = z.object({
   applicantSsn: z.string().optional().refine((val) => !val || validateSSN(val), {
     message: "Please enter a valid 9-digit Social Security Number"
   }),
-  applicantPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+  applicantPhone: z.string().optional().refine((val) => {
+    // If no value or empty string, it's valid (optional field)
+    if (!val || val.trim() === '') return true;
+    // Validate the phone number
+    return validatePhoneNumber(val);
+  }, {
     message: "Please enter a valid US phone number"
   }),
   applicantEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
@@ -121,7 +126,12 @@ const applicationSchema = z.object({
     ssn: z.string().optional().refine((val) => !val || validateSSN(val), {
       message: "Please enter a valid 9-digit Social Security Number"
     }),
-    phone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+    phone: z.string().optional().refine((val) => {
+      // If no value or empty string, it's valid (optional field)
+      if (!val || val.trim() === '') return true;
+      // Validate the phone number
+      return validatePhoneNumber(val);
+    }, {
       message: "Please enter a valid US phone number"
     }),
     email: z.string().optional().refine((val) => !val || validateEmail(val), {
@@ -188,7 +198,12 @@ const applicationSchema = z.object({
     ssn: z.string().optional().refine((val) => !val || validateSSN(val), {
       message: "Please enter a valid 9-digit Social Security Number"
     }),
-    phone: z.string().optional().refine((val) => !val || val.trim() === '' || validatePhoneNumber(val), {
+    phone: z.string().optional().refine((val) => {
+      // If no value or empty string, it's valid (optional field)
+      if (!val || val.trim() === '') return true;
+      // Validate the phone number
+      return validatePhoneNumber(val);
+    }, {
       message: "Please enter a valid US phone number"
     }),
     email: z.string().optional().refine((val) => !val || validateEmail(val), {
@@ -2899,25 +2914,25 @@ export function ApplicationForm() {
         filename
       );
 
-      // Notify user of result
-      if (webhookResult.success) {
-        toast({
-          title: "PDF Generated & Sent",
-          description: "Your rental application PDF has been generated and sent to the webhook.",
-        });
-      } else {
-        toast({
-          title: "PDF Generated",
-          description: "Your rental application PDF has been generated, but webhook delivery failed.",
-          variant: "destructive",
-        });
-      }
-
-      // Trigger browser download
+      // Trigger browser download first
       const link = document.createElement('a');
       link.href = pdfData;
       link.download = filename;
       link.click();
+
+      // Notify user of result
+      if (webhookResult.success) {
+        toast({
+          title: "PDF Generated & Downloaded",
+          description: "Your rental application PDF has been generated, downloaded, and sent to the webhook.",
+        });
+      } else {
+        toast({
+          title: "PDF Generated & Downloaded",
+          description: "Your rental application PDF has been generated and downloaded, but webhook delivery failed.",
+          variant: "destructive",
+        });
+      }
 
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -4256,8 +4271,11 @@ export function ApplicationForm() {
           setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
         }
 
+        // Generate and auto-download PDF after successful submission
         try {
+          console.log('🚀 Starting PDF generation and auto-download...');
           await generatePDF(completeServerData);
+          console.log('✅ PDF generated and downloaded successfully');
         } catch (pdfError) {
           console.error('PDF generation failed:', pdfError);
           toast({
@@ -4265,6 +4283,36 @@ export function ApplicationForm() {
             description: "Application submitted successfully, but PDF generation failed. Please try generating the PDF again.",
             variant: "destructive",
           });
+        }
+
+        // Save to DynamoDB with submitted status
+        try {
+          console.log('💾 Saving submitted application to DynamoDB...');
+          const { dynamoDBUtils } = await import('../lib/dynamodb-service');
+          
+          const submittedDraftData = {
+            zoneinfo: user?.zoneinfo || user?.applicantId || 'unknown',
+            applicantId: user?.applicantId || 'unknown',
+            reference_id: submissionResult?.reference_id || referenceId,
+            form_data: completeServerData,
+            current_step: 12, // Mark as completed
+            last_updated: new Date().toISOString(),
+            status: 'submitted' as const,
+            uploaded_files_metadata: (completeServerData as any).uploaded_files_metadata || {},
+            webhook_responses: (completeServerData as any).webhook_responses || {},
+            signatures: (completeServerData as any).signatures || {},
+            encrypted_documents: (completeServerData as any).encrypted_documents || {}
+          };
+
+          const saveResult = await dynamoDBUtils.saveDraftForCurrentUser(submittedDraftData);
+          if (saveResult) {
+            console.log('✅ Application saved to DynamoDB with submitted status');
+          } else {
+            console.warn('⚠️ Failed to save application to DynamoDB');
+          }
+        } catch (dbError) {
+          console.error('❌ Error saving to DynamoDB:', dbError);
+          // Don't show error to user as submission was successful
         }
       } catch (error) {
         console.error('Failed to submit application:', error);
@@ -4325,15 +4373,52 @@ export function ApplicationForm() {
     console.log('Form errors:', form.formState.errors);
     
     // Debug guarantor phone validation
-    if (form.formState.errors.guarantors) {
+    if (form.formState.errors.guarantors && Array.isArray(form.formState.errors.guarantors)) {
       form.formState.errors.guarantors.forEach((guarantorError: any, index: number) => {
         if (guarantorError.phone) {
           console.log(`Guarantor ${index} phone error:`, guarantorError.phone);
           console.log(`Guarantor ${index} phone value:`, formData.guarantors?.[index]?.phone);
+          console.log(`Guarantor ${index} phone type:`, typeof formData.guarantors?.[index]?.phone);
+          console.log(`Guarantor ${index} phone length:`, formData.guarantors?.[index]?.phone?.length);
+          console.log(`Guarantor ${index} phone validation result:`, validatePhoneNumber(formData.guarantors?.[index]?.phone));
+          console.log(`Guarantor ${index} phone digits:`, formData.guarantors?.[index]?.phone?.replace(/\D/g, ''));
+          console.log(`Guarantor ${index} phone digits length:`, formData.guarantors?.[index]?.phone?.replace(/\D/g, '').length);
         }
       });
     }
   }, [form.watch('applicantDob'), formData.applicant?.dob, form.formState.errors, formData.guarantors]);
+
+  // Clear phone validation errors for empty or valid phone numbers
+  useEffect(() => {
+    if (formData.guarantors) {
+      formData.guarantors.forEach((guarantor: any, index: number) => {
+        const phoneValue = guarantor?.phone;
+        const phoneError = form.formState.errors.guarantors?.[index]?.phone;
+        
+        // If there's a phone error but the phone is empty or valid, clear the error
+        if (phoneError && (!phoneValue || phoneValue.trim() === '' || validatePhoneNumber(phoneValue))) {
+          console.log(`Clearing phone error for guarantor ${index} - phone value:`, phoneValue);
+          form.clearErrors(`guarantors.${index}.phone`);
+        }
+      });
+    }
+  }, [formData.guarantors, form.formState.errors.guarantors, form]);
+
+  // Clear phone validation errors for co-applicants
+  useEffect(() => {
+    if (formData.coApplicants) {
+      formData.coApplicants.forEach((coApplicant: any, index: number) => {
+        const phoneValue = coApplicant?.phone;
+        const phoneError = form.formState.errors.coApplicants?.[index]?.phone;
+        
+        // If there's a phone error but the phone is empty or valid, clear the error
+        if (phoneError && (!phoneValue || phoneValue.trim() === '' || validatePhoneNumber(phoneValue))) {
+          console.log(`Clearing phone error for co-applicant ${index} - phone value:`, phoneValue);
+          form.clearErrors(`coApplicants.${index}.phone`);
+        }
+      });
+    }
+  }, [formData.coApplicants, form.formState.errors.coApplicants, form]);
 
   // Sync formData.applicant.dob with form.applicantDob (preserving local date)
   useEffect(() => {
@@ -7422,21 +7507,35 @@ export function ApplicationForm() {
         {/* Success Popup */}
         {showSuccessPopup && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center">
+            <div className="bg-white rounded-lg p-8 max-w-lg mx-4 text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Check className="w-8 h-8 text-green-600" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 Application Submitted Successfully!
               </h3>
-              <p className="text-gray-600 mb-6">
-                Your rental application has been submitted and sent to the webhook successfully.
+              <div className="text-gray-600 mb-6 space-y-3">
+                <p>
+                  Your rental application has been submitted and is being processed.
+                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                  <div className="flex items-center justify-center mb-2">
+                    <FileText className="w-4 h-4 text-blue-600 mr-2" />
+                    <span className="font-semibold text-blue-800">PDF Generated & Downloaded</span>
+                  </div>
+                  <p className="text-blue-700">
+                    Your application PDF has been automatically generated and downloaded to your device.
+                  </p>
+                </div>
                 {submissionReferenceId && (
-                  <span className="block mt-2 text-sm font-medium text-gray-700">
-                    Reference ID: {submissionReferenceId}
-                  </span>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                    <span className="font-semibold text-gray-700">Reference ID:</span>
+                    <span className="block mt-1 font-mono font-semibold text-gray-900">
+                      {submissionReferenceId}
+                    </span>
+                  </div>
                 )}
-              </p>
+              </div>
               <div className="flex space-x-3">
                 <Button
                   onClick={() => setShowSuccessPopup(false)}
@@ -7444,16 +7543,7 @@ export function ApplicationForm() {
                 >
                   Close
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowSuccessPopup(false);
-                    setShowDashboard(true);
-                  }}
-                  className="flex-1"
-                >
-                  View Dashboard
-                </Button>
+                
               </div>
             </div>
           </div>

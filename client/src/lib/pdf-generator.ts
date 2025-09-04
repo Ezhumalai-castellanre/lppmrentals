@@ -114,25 +114,23 @@ export class PDFGenerator {
     this.addSection(title);
     
     this.addField("Full Name", person.name);
-    this.addField("Date of Birth", person.dob);
-    this.addField("Social Security Number", person.ssn);
-    this.addField("Phone Number", person.phone);
     this.addField("Email Address", person.email);
-    this.addField("Driver's License", person.license);
+    this.addField("Phone Number", person.phone);
+    const ssnDigits = person?.ssn ? String(person.ssn).replace(/\D/g, '') : '';
+    const maskedSSN = ssnDigits ? `***-**-${ssnDigits.slice(-4)}` : undefined;
+    this.addField("Social Security Number", maskedSSN);
     this.addField("License State", person.licenseState);
     
     if (person.address) {
-      this.addText("Address:", 10, true);
-      this.addField("Street", person.address);
+      this.addText("Current Address:", 10, true);
+      this.addField("Street Address", person.address);
       this.addField("City", person.city);
       this.addField("State", person.state);
       this.addField("ZIP Code", person.zip);
+      this.addField("Current Monthly Rent", person.currentRent ? `$${person.currentRent}` : undefined);
+      this.addField("Reason for Moving", person.reasonForMoving);
       this.addField("Length at Address", person.lengthAtAddress);
     }
-    
-    this.addField("Current Landlord", person.landlordName);
-    this.addField("Current Monthly Rent", person.currentRent ? `$${person.currentRent}` : undefined);
-    this.addField("Reason for Moving", person.reasonForMoving);
     
     // Landlord Information as separate section with better alignment
     if (person.landlordName || person.landlordAddressLine1 || person.landlordAddressLine2 || person.landlordCity || person.landlordZipCode || person.landlordPhone || person.landlordEmail) {
@@ -141,10 +139,11 @@ export class PDFGenerator {
       // Create a separate section for Landlord Information
       this.addSection("Landlord Information");
       
-      this.addField("Landlord Name", person.landlordName);
+      this.addField("Current Landlord", person.landlordName);
       this.addField("Landlord Address Line 1", person.landlordAddressLine1);
       this.addField("Landlord Address Line 2", person.landlordAddressLine2);
       this.addField("Landlord City", person.landlordCity);
+      this.addField("Landlord State", person.landlordState);
       this.addField("Landlord ZIP Code", person.landlordZipCode);
       this.addField("Landlord Phone", person.landlordPhone);
       this.addField("Landlord Email", person.landlordEmail);
@@ -155,11 +154,14 @@ export class PDFGenerator {
     this.checkPageBreak();
     this.addSection(`${title} - Employment & Financial Information`);
     
-    this.addField("Current Employer", person.employer);
-    this.addField("Position/Title", person.position);
+    this.addField("Employment Type", person.employmentType);
+    this.addField("Employer", person.employer);
+    this.addField("Position", person.position);
     this.addField("Employment Start Date", person.employmentStart);
-    this.addField("Annual Income", person.income ? `$${person.income}` : undefined);
+    this.addField("Monthly Income", person.income ? `$${person.income}` : undefined);
+    this.addField("Income Frequency", person.incomeFrequency);
     this.addField("Other Income", person.otherIncome ? `$${person.otherIncome}` : undefined);
+    this.addField("Other Income Frequency", person.otherIncomeFrequency);
     this.addField("Other Income Source", person.otherIncomeSource);
     
     // Bank Information (simplified)
@@ -238,6 +240,10 @@ export class PDFGenerator {
       this.addField("Name", occupant.name);
       this.addField("Relationship", occupant.relationship);
       this.addField("Date of Birth", occupant.dob);
+      const ssnDigits = occupant?.ssn ? String(occupant.ssn).replace(/\D/g, '') : '';
+      const maskedSSN = ssnDigits ? `***-**-${ssnDigits.slice(-4)}` : undefined;
+      this.addField("Social Security Number", maskedSSN);
+      this.addField("Driver's License", occupant.license);
       
       if (index < occupants.length - 1) {
         this.yPosition += 4; // Add spacing between occupants
@@ -314,19 +320,19 @@ export class PDFGenerator {
     this.addJSONPayload(formData);
     
     // Add primary applicant information
-    this.addPersonalInfo("Primary Applicant Information", formData.applicant);
+    this.addPersonalInfo("Primary Applicant", formData.applicant);
     this.addFinancialInfo("Primary Applicant", formData.applicant);
     
     // Add co-applicant information if present
     if (formData.coApplicant && formData.coApplicant.name) {
-      this.addPersonalInfo("Co-Applicant Information", formData.coApplicant);
-      this.addFinancialInfo("Co-Applicant", formData.coApplicant);
+      this.addPersonalInfo("Co-Applicant 1", formData.coApplicant);
+      this.addFinancialInfo("Co-Applicant 1", formData.coApplicant);
     }
     
     // Add guarantor information if present
     if (formData.guarantor && formData.guarantor.name) {
-      this.addPersonalInfo("Guarantor Information", formData.guarantor);
-      this.addFinancialInfo("Guarantor", formData.guarantor);
+      this.addPersonalInfo("Guarantor 1", formData.guarantor);
+      this.addFinancialInfo("Guarantor 1", formData.guarantor);
     }
     
     // Add legal questions

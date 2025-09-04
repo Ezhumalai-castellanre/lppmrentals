@@ -1,6 +1,6 @@
 // USA Format Validation Utilities
 
-// Phone number validation (USA format) - Lenient: accepts any 10-digit number
+// Phone number validation (USA format) - Accepts 10-digit numbers or 11-digit numbers starting with 1
 export const validatePhoneNumber = (phone: string | undefined | null): boolean => {
   // Handle null/undefined cases
   if (!phone || typeof phone !== 'string') {
@@ -16,8 +16,14 @@ export const validatePhoneNumber = (phone: string | undefined | null): boolean =
     console.log('Phone validation - Original:', phone, 'Clean:', cleanPhone, 'Digits:', digits, 'Length:', digits.length);
   }
   
-  // Accept any 10-digit number (lenient validation)
-  return digits.length === 10;
+  // Accept 10-digit numbers or 11-digit numbers starting with 1 (US country code)
+  if (digits.length === 10) {
+    return true;
+  } else if (digits.length === 11 && digits.startsWith('1')) {
+    return true;
+  }
+  
+  return false;
 };
 
 // Format phone number for display

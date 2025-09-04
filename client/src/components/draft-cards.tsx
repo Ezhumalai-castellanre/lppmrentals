@@ -123,7 +123,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
         applicantName: formData.applicant?.name || formData.applicantName || 'Not specified',
         applicantEmail: formData.applicant?.email || formData.applicantEmail || 'Not specified',
         
-        // Applicant details
+        // Applicant details (flattened for backward compatibility)
         applicant_phone: formData.applicant?.phone,
         applicant_address: formData.applicant?.address,
         applicant_city: formData.applicant?.city,
@@ -152,6 +152,9 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
         applicant_employmentStart: formData.applicant?.employmentStart,
         applicant_income: formData.applicant?.income,
         applicant_incomeFrequency: formData.applicant?.incomeFrequency,
+        
+        // Nested applicant object for the applicant tab
+        applicant: formData.applicant || {},
         applicant_businessName: formData.applicant?.businessName,
         applicant_businessType: formData.applicant?.businessType,
         applicant_yearsInBusiness: formData.applicant?.yearsInBusiness,
@@ -260,6 +263,47 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
         howDidYouHear: formData.howDidYouHear ?? formData.application?.howDidYouHear ?? 'Not specified',
         applicantName,
         applicantEmail,
+        
+        // Nested applicant object for the applicant tab (reconstruct from flat fields)
+        applicant: formData.applicant || {
+          name: applicantName,
+          email: applicantEmail,
+          phone: allFields.applicant_phone || allFields.applicantPhone,
+          address: allFields.applicant_address || allFields.applicantAddress,
+          city: allFields.applicant_city || allFields.applicantCity,
+          state: allFields.applicant_state || allFields.applicantState,
+          zip: allFields.applicant_zip || allFields.applicantZip,
+          dob: allFields.applicant_dob || allFields.applicantDob,
+          ssn: allFields.applicant_ssn || allFields.applicantSsn,
+          license: allFields.applicant_license || allFields.applicantLicense,
+          licenseState: allFields.applicant_licenseState || allFields.applicantLicenseState,
+          lengthAtAddressYears: allFields.applicant_lengthAtAddressYears || allFields.applicantLengthAtAddressYears,
+          lengthAtAddressMonths: allFields.applicant_lengthAtAddressMonths || allFields.applicantLengthAtAddressMonths,
+          landlordName: allFields.applicant_landlordName || allFields.applicantLandlordName,
+          landlordAddressLine1: allFields.applicant_landlordAddressLine1 || allFields.applicantLandlordAddressLine1,
+          landlordAddressLine2: allFields.applicant_landlordAddressLine2 || allFields.applicantLandlordAddressLine2,
+          landlordCity: allFields.applicant_landlordCity || allFields.applicantLandlordCity,
+          landlordState: allFields.applicant_landlordState || allFields.applicantLandlordState,
+          landlordZipCode: allFields.applicant_landlordZipCode || allFields.applicantLandlordZipCode,
+          landlordPhone: allFields.applicant_landlordPhone || allFields.applicantLandlordPhone,
+          landlordEmail: allFields.applicant_landlordEmail || allFields.applicantLandlordEmail,
+          currentRent: allFields.applicant_currentRent || allFields.applicantCurrentRent,
+          reasonForMoving: allFields.applicant_reasonForMoving || allFields.applicantReasonForMoving,
+          age: allFields.applicant_age || allFields.applicantAge,
+          employmentType: allFields.applicant_employmentType || allFields.applicantEmploymentType,
+          employer: allFields.applicant_employer || allFields.applicantEmployer,
+          position: allFields.applicant_position || allFields.applicantPosition,
+          employmentStart: allFields.applicant_employmentStart || allFields.applicantEmploymentStart,
+          income: allFields.applicant_income || allFields.applicantIncome,
+          incomeFrequency: allFields.applicant_incomeFrequency || allFields.applicantIncomeFrequency,
+          businessName: allFields.applicant_businessName || allFields.applicantBusinessName,
+          businessType: allFields.applicant_businessType || allFields.applicantBusinessType,
+          yearsInBusiness: allFields.applicant_yearsInBusiness || allFields.applicantYearsInBusiness,
+          otherIncome: allFields.applicant_otherIncome || allFields.applicantOtherIncome,
+          otherIncomeSource: allFields.applicant_otherIncomeSource || allFields.applicantOtherIncomeSource,
+          bankRecords: allFields.applicantBankRecords || [],
+          documents: allFields.applicant_documents || allFields.applicantDocuments || {}
+        },
         
         // All other fields
         ...allFields
@@ -502,6 +546,133 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Applicant Tab */}
+          <TabsContent value="applicant" className="space-y-4">
+            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+              <h5 className="text-lg font-semibold text-green-900 mb-4 flex items-center">
+                <User className="w-5 h-5 mr-2" />
+                Primary Applicant Information
+              </h5>
+              
+              {formSummary.applicant && Object.keys(formSummary.applicant).length > 0 ? (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-lg p-4 border border-green-300 border-l-4 border-l-green-500">
+                    <div className="flex items-center justify-between mb-3">
+                      <h6 className="font-semibold text-green-900">Primary Applicant</h6>
+                      <Badge variant="outline" className="border-green-300 text-green-700">Applicant</Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {[
+                        ['name', 'Name'],
+                        ['relationship', 'Relationship'],
+                        ['dob', 'Date of Birth'],
+                        ['ssn', 'SSN'],
+                        ['phone', 'Phone'],
+                        ['email', 'Email'],
+                        ['license', 'License'],
+                        ['licenseState', 'License State'],
+                        ['address', 'Address'],
+                        ['city', 'City'],
+                        ['state', 'State'],
+                        ['zip', 'ZIP Code'],
+                        ['lengthAtAddressYears', 'Years at Address'],
+                        ['lengthAtAddressMonths', 'Months at Address'],
+                        ['landlordName', 'Landlord Name'],
+                        ['landlordAddressLine1', 'Landlord Address Line 1'],
+                        ['landlordAddressLine2', 'Landlord Address Line 2'],
+                        ['landlordCity', 'Landlord City'],
+                        ['landlordState', 'Landlord State'],
+                        ['landlordZipCode', 'Landlord ZIP Code'],
+                        ['landlordPhone', 'Landlord Phone'],
+                        ['landlordEmail', 'Landlord Email'],
+                        ['currentRent', 'Current Rent'],
+                        ['reasonForMoving', 'Reason for Moving'],
+                        ['employmentType', 'Employment Type'],
+                        ['employer', 'Employer'],
+                        ['position', 'Position'],
+                        ['employmentStart', 'Employment Start'],
+                        ['income', 'Income'],
+                        ['incomeFrequency', 'Income Frequency'],
+                        ['otherIncome', 'Other Income'],
+                        ['otherIncomeFrequency', 'Other Income Frequency'],
+                        ['otherIncomeSource', 'Other Income Source'],
+                        ['age', 'Age'],
+                      ].map(([key, label]) => {
+                        const value: any = (formSummary as any).applicant?.[key as keyof typeof formSummary.applicant];
+                        if (value === undefined || value === null || value === '') return null;
+                        let display: string = String(value);
+                        if (key === 'dob' || key === 'employmentStart') {
+                          const d = new Date(value);
+                          display = isNaN(d.getTime()) ? String(value) : d.toLocaleDateString();
+                        } else if (key === 'ssn') {
+                          const v = String(value);
+                          display = v.length >= 4 ? `***-**-${v.slice(-4)}` : v;
+                        } else if (key === 'currentRent' || key === 'income' || key === 'otherIncome') {
+                          const n = Number(value);
+                          display = isNaN(n) ? String(value) : `$${n.toLocaleString()}`;
+                        }
+                        return (
+                          <div key={String(key)} className="text-sm">
+                            <span className="font-medium text-green-700">{label}:</span>
+                            <span className="ml-2 text-gray-700">{display}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Bank Records for Primary Applicant */}
+                    {formSummary.applicant.bankRecords && Array.isArray(formSummary.applicant.bankRecords) && formSummary.applicant.bankRecords.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-green-200">
+                        <h6 className="font-medium text-green-800 mb-2">Bank Records ({formSummary.applicant.bankRecords.length} accounts)</h6>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {formSummary.applicant.bankRecords.map((bank: any, bankIndex: number) => (
+                            <div key={bankIndex} className="bg-green-50 rounded p-3 border border-green-200">
+                              <div className="font-medium text-green-800 mb-2 text-sm">Bank Account {bankIndex + 1}</div>
+                              <div className="space-y-1 text-xs">
+                                {Object.entries(bank).map(([bankKey, bankValue]) => (
+                                  <div key={bankKey} className="flex justify-between">
+                                    <span className="font-medium text-green-700 capitalize">{bankKey.replace(/_/g, ' ')}:</span>
+                                    <span className="text-gray-600">{String(bankValue) || 'Not specified'}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Documents for Primary Applicant */}
+                    {formSummary.applicant.documents && Object.keys(formSummary.applicant.documents).length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-green-200">
+                        <h6 className="font-medium text-green-800 mb-2">Documents</h6>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {Object.entries(formSummary.applicant.documents).map(([docType, docData]: [string, any]) => (
+                            <div key={docType} className="bg-green-50 rounded p-2 border border-green-200">
+                              <div className="font-medium text-green-800 text-xs capitalize">{docType.replace(/_/g, ' ')}</div>
+                              <div className="text-xs text-gray-600">
+                                {Array.isArray(docData) ? `${docData.length} file(s)` : '1 file'}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <User className="w-12 h-12 text-green-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-green-900 mb-2">No Applicant Data</h3>
+                  <p className="text-green-700">
+                    Primary applicant information has not been filled out yet.
+                  </p>
                 </div>
               )}
             </div>

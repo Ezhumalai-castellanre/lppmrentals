@@ -327,11 +327,11 @@ export class EnhancedPDFGenerator {
     this.yPosition += 8;
     
     this.addTableRow("Full Name", person.name, true);
-    this.addTableRow("Date of Birth", person.dob);
-    this.addTableRow("Social Security Number", person.ssn);
-    this.addTableRow("Phone Number", person.phone);
     this.addTableRow("Email Address", person.email);
-    this.addTableRow("Driver's License", person.license);
+    this.addTableRow("Phone Number", person.phone);
+    const ssnDigits = person?.ssn ? String(person.ssn).replace(/\D/g, '') : '';
+    const maskedSSN = ssnDigits ? `***-**-${ssnDigits.slice(-4)}` : undefined;
+    this.addTableRow("Social Security Number", maskedSSN);
     this.addTableRow("License State", person.licenseState);
     
     if (person.address || person.city || person.state || person.zip) {
@@ -346,10 +346,9 @@ export class EnhancedPDFGenerator {
       this.addTableRow("City", person.city);
       this.addTableRow("State", person.state);
       this.addTableRow("ZIP Code", person.zip);
-      this.addTableRow("Length at Address", person.lengthAtAddress);
-      this.addTableRow("Current Landlord's Name", person.landlordName);
       this.addTableRow("Current Monthly Rent", person.currentRent ? `$${person.currentRent}` : undefined);
       this.addTableRow("Reason for Moving", person.reasonForMoving);
+      this.addTableRow("Length at Address", person.lengthAtAddress);
     }
     
     // Landlord Information as separate section with better alignment
@@ -370,10 +369,11 @@ export class EnhancedPDFGenerator {
       
       // Add landlord information in a table format with better alignment
       const landlordFields = [
-        { label: "Landlord Name", value: person.landlordName },
+        { label: "Current Landlord", value: person.landlordName },
         { label: "Landlord Address Line 1", value: person.landlordAddressLine1 },
         { label: "Landlord Address Line 2", value: person.landlordAddressLine2 },
         { label: "Landlord City", value: person.landlordCity },
+        { label: "Landlord State", value: person.landlordState },
         { label: "Landlord ZIP Code", value: person.landlordZipCode },
         { label: "Landlord Phone", value: person.landlordPhone },
         { label: "Landlord Email", value: person.landlordEmail }
@@ -406,11 +406,14 @@ export class EnhancedPDFGenerator {
     this.doc.text("Employment Information", this.marginLeft, this.yPosition);
     this.yPosition += 8;
     
-    this.addTableRow("Current Employer", person.employer, true);
-    this.addTableRow("Position/Title", person.position);
+    this.addTableRow("Employment Type", person.employmentType, true);
+    this.addTableRow("Employer", person.employer);
+    this.addTableRow("Position", person.position);
     this.addTableRow("Employment Start Date", person.employmentStart);
-    this.addTableRow("Annual Income", person.income ? `$${person.income.toLocaleString()}` : undefined, true);
+    this.addTableRow("Monthly Income", person.income ? `$${person.income.toLocaleString()}` : undefined, true);
+    this.addTableRow("Income Frequency", person.incomeFrequency);
     this.addTableRow("Other Income", person.otherIncome ? `$${person.otherIncome.toLocaleString()}` : undefined);
+    this.addTableRow("Other Income Frequency", person.otherIncomeFrequency);
     this.addTableRow("Other Income Source", person.otherIncomeSource);
     
     // Bank Information subsection (simplified)
@@ -532,6 +535,10 @@ export class EnhancedPDFGenerator {
       this.addTableRow("Name", occupant.name);
       this.addTableRow("Relationship", occupant.relationship);
       this.addTableRow("Date of Birth", occupant.dob);
+      const ssnDigits = occupant?.ssn ? String(occupant.ssn).replace(/\D/g, '') : '';
+      const maskedSSN = ssnDigits ? `***-**-${ssnDigits.slice(-4)}` : undefined;
+      this.addTableRow("Social Security Number", maskedSSN);
+      this.addTableRow("Driver's License", occupant.license);
       
       if (index < occupants.length - 1) {
         this.yPosition += 4; // Add spacing between occupants
@@ -810,19 +817,19 @@ export class EnhancedPDFGenerator {
     this.addApplicationInfo(formData);
     
     // Add primary applicant information
-    this.addPersonalInfo("Primary Applicant Information", formData.applicant);
+    this.addPersonalInfo("Primary Applicant", formData.applicant);
     this.addFinancialInfo("Primary Applicant", formData.applicant);
     
     // Add co-applicant information if present
     if (formData.coApplicant && formData.coApplicant.name) {
-      this.addPersonalInfo("Co-Applicant Information", formData.coApplicant);
-      this.addFinancialInfo("Co-Applicant", formData.coApplicant);
+      this.addPersonalInfo("Co-Applicant 1", formData.coApplicant);
+      this.addFinancialInfo("Co-Applicant 1", formData.coApplicant);
     }
     
     // Add guarantor information if present
     if (formData.guarantor && formData.guarantor.name) {
-      this.addPersonalInfo("Guarantor Information", formData.guarantor);
-      this.addFinancialInfo("Guarantor", formData.guarantor);
+      this.addPersonalInfo("Guarantor 1", formData.guarantor);
+      this.addFinancialInfo("Guarantor 1", formData.guarantor);
     }
     
     // Supporting Documents section removed as requested

@@ -197,6 +197,12 @@ export class RentalApplicationPDF {
         })
             .map(([key, val]) => {
             let displayValue = val;
+            // Mask SSN for display
+            if (key === 'ssn' && typeof val === 'string') {
+                const digits = val.replace(/\D/g, '');
+                const last4 = digits.slice(-4);
+                displayValue = last4 ? `***-**-${last4}` : '';
+            }
             // Format dates properly
                 if (['dob', 'employmentStart', 'moveInDate', 'coApplicantStartDate'].includes(key)) {
                 try {
@@ -426,15 +432,19 @@ export class RentalApplicationPDF {
     }
 
     addApplicantInfo(applicant: any) {
-        this.addSectionTitle("Primary Applicant Information");
-        
-        // Define fields to exclude from Personal Information
-        const personalExclude = ["bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource", "businessName", "businessType", "yearsInBusiness", "ssn", "license", "dob", "age"];
+        this.addSectionTitle("Primary Applicant");
         
         // Personal Information
-        this.addKeyValueTable(applicant, personalExclude, "Personal Information");
+        const personalInfo = {
+            name: applicant.name,
+            email: applicant.email,
+            phone: applicant.phone,
+            ssn: applicant.ssn,
+            licenseState: applicant.licenseState
+        };
+        this.addKeyValueTable(personalInfo, [], "Personal Information");
         
-        // Address Information
+        // Current Address
         const addressData = { ...applicant };
         if (applicant.lengthAtAddressYears !== undefined || applicant.lengthAtAddressMonths !== undefined) {
             const years = applicant.lengthAtAddressYears || 0;
@@ -460,30 +470,63 @@ export class RentalApplicationPDF {
         else {
             addressData.lengthAtAddress = "Not provided";
         }
-        this.addKeyValueTable(addressData, ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "lengthAtAddressYears", "lengthAtAddressMonths", "age", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource"], "Current Address");
+        
+        const currentAddress = {
+            address: addressData.address,
+            city: addressData.city,
+            state: addressData.state,
+            zip: addressData.zip,
+            currentRent: addressData.currentRent,
+            reasonForMoving: addressData.reasonForMoving,
+            lengthAtAddress: addressData.lengthAtAddress
+        };
+        this.addKeyValueTable(currentAddress, [], "Current Address");
         
         // Landlord Information
-        const landlordExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "age", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource"];
-        this.addKeyValueTable(applicant, landlordExclude, "Landlord Information");
+        const landlordInfo = {
+            landlordName: applicant.landlordName,
+            landlordAddressLine1: applicant.landlordAddressLine1,
+            landlordAddressLine2: applicant.landlordAddressLine2,
+            landlordCity: applicant.landlordCity,
+            landlordState: applicant.landlordState,
+            landlordZipCode: applicant.landlordZipCode,
+            landlordPhone: applicant.landlordPhone,
+            landlordEmail: applicant.landlordEmail
+        };
+        this.addKeyValueTable(landlordInfo, [], "Landlord Information");
         
-        // Employment Information
-        const employmentExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "age"];
-        this.addKeyValueTable(applicant, employmentExclude, "Primary Applicant Financial Information");
+        // Financial Information
+        const financialInfo = {
+            employmentType: applicant.employmentType,
+            employer: applicant.employer,
+            position: applicant.position,
+            employmentStart: applicant.employmentStart,
+            income: applicant.income,
+            incomeFrequency: applicant.incomeFrequency,
+            otherIncome: applicant.otherIncome,
+            otherIncomeFrequency: applicant.otherIncomeFrequency,
+            otherIncomeSource: applicant.otherIncomeSource
+        };
+        this.addKeyValueTable(financialInfo, [], "Financial Information");
         
-        // Bank Records
+        // Bank Information
         this.addBankTable(applicant?.bankRecords, "Bank Information");
     }
     
     addCoApplicantInfo(coApplicant: any, index: number) {
-        this.addSectionTitle(`Co-Applicant ${index + 1} Information`);
-        
-        // Define fields to exclude from Personal Information for co-applicants
-        const personalExclude = ["bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource", "businessName", "businessType", "yearsInBusiness", "ssn", "license", "dob", "age"];
+        this.addSectionTitle(`Co-Applicant ${index + 1}`);
         
         // Personal Information
-        this.addKeyValueTable(coApplicant, personalExclude, "Personal Information");
+        const personalInfo = {
+            name: coApplicant.name,
+            email: coApplicant.email,
+            phone: coApplicant.phone,
+            ssn: coApplicant.ssn,
+            licenseState: coApplicant.licenseState
+        };
+        this.addKeyValueTable(personalInfo, [], "Personal Information");
         
-        // Address Information
+        // Current Address
         const addressData = { ...coApplicant };
         if (coApplicant.lengthAtAddressYears !== undefined || coApplicant.lengthAtAddressMonths !== undefined) {
             const years = coApplicant.lengthAtAddressYears || 0;
@@ -509,30 +552,63 @@ export class RentalApplicationPDF {
         else {
             addressData.lengthAtAddress = "Not provided";
         }
-        this.addKeyValueTable(addressData, ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "lengthAtAddressYears", "lengthAtAddressMonths", "age", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource"], "Current Address");
+        
+        const currentAddress = {
+            address: addressData.address,
+            city: addressData.city,
+            state: addressData.state,
+            zip: addressData.zip,
+            currentRent: addressData.currentRent,
+            reasonForMoving: addressData.reasonForMoving,
+            lengthAtAddress: addressData.lengthAtAddress
+        };
+        this.addKeyValueTable(currentAddress, [], "Current Address");
         
         // Landlord Information
-        const landlordExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "age", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource"];
-        this.addKeyValueTable(coApplicant, landlordExclude, "Landlord Information");
+        const landlordInfo = {
+            landlordName: coApplicant.landlordName,
+            landlordAddressLine1: coApplicant.landlordAddressLine1,
+            landlordAddressLine2: coApplicant.landlordAddressLine2,
+            landlordCity: coApplicant.landlordCity,
+            landlordState: coApplicant.landlordState,
+            landlordZipCode: coApplicant.landlordZipCode,
+            landlordPhone: coApplicant.landlordPhone,
+            landlordEmail: coApplicant.landlordEmail
+        };
+        this.addKeyValueTable(landlordInfo, [], "Landlord Information");
         
-        // Employment Information
-        const employmentExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "age"];
-        this.addKeyValueTable(coApplicant, employmentExclude, `Co-Applicant ${index + 1} Financial Information`);
+        // Financial Information
+        const financialInfo = {
+            employmentType: coApplicant.employmentType,
+            employer: coApplicant.employer,
+            position: coApplicant.position,
+            employmentStart: coApplicant.employmentStart,
+            income: coApplicant.income,
+            incomeFrequency: coApplicant.incomeFrequency,
+            otherIncome: coApplicant.otherIncome,
+            otherIncomeFrequency: coApplicant.otherIncomeFrequency,
+            otherIncomeSource: coApplicant.otherIncomeSource
+        };
+        this.addKeyValueTable(financialInfo, [], "Financial Information");
         
-        // Bank Records
-        this.addBankTable(coApplicant.bankRecords, `Co-Applicant ${index + 1} Bank Information`);
+        // Bank Information
+        this.addBankTable(coApplicant.bankRecords, "Bank Information");
     }
     
     addGuarantorInfo(guarantor: any, index: number) {
-        this.addSectionTitle(`Guarantor ${index + 1} Information`);
-        
-        // Define fields to exclude from Personal Information for guarantors
-        const personalExclude = ["bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource", "businessName", "businessType", "yearsInBusiness", "ssn", "license", "dob", "age"];
+        this.addSectionTitle(`Guarantor ${index + 1}`);
         
         // Personal Information
-        this.addKeyValueTable(guarantor, personalExclude, "Personal Information");
+        const personalInfo = {
+            name: guarantor.name,
+            email: guarantor.email,
+            phone: guarantor.phone,
+            ssn: guarantor.ssn,
+            licenseState: guarantor.licenseState
+        };
+        this.addKeyValueTable(personalInfo, [], "Personal Information");
         
-        // Address Information
+        // Current Address
         const addressData = { ...guarantor };
         if (guarantor.lengthAtAddressYears !== undefined || guarantor.lengthAtAddressMonths !== undefined) {
             const years = guarantor.lengthAtAddressYears || 0;
@@ -558,18 +634,47 @@ export class RentalApplicationPDF {
         else {
             addressData.lengthAtAddress = "Not provided";
         }
-        this.addKeyValueTable(addressData, ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "lengthAtAddressYears", "lengthAtAddressMonths", "age", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource"], "Current Address");
+        
+        const currentAddress = {
+            address: addressData.address,
+            city: addressData.city,
+            state: addressData.state,
+            zip: addressData.zip,
+            currentRent: addressData.currentRent,
+            reasonForMoving: addressData.reasonForMoving,
+            lengthAtAddress: addressData.lengthAtAddress
+        };
+        this.addKeyValueTable(currentAddress, [], "Current Address");
         
         // Landlord Information
-        const landlordExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "age", "employmentType", "employer", "position", "employmentStart", "income", "incomeFrequency", "otherIncome", "otherIncomeFrequency", "otherIncomeSource"];
-        this.addKeyValueTable(guarantor, landlordExclude, "Landlord Information");
+        const landlordInfo = {
+            landlordName: guarantor.landlordName,
+            landlordAddressLine1: guarantor.landlordAddressLine1,
+            landlordAddressLine2: guarantor.landlordAddressLine2,
+            landlordCity: guarantor.landlordCity,
+            landlordState: guarantor.landlordState,
+            landlordZipCode: guarantor.landlordZipCode,
+            landlordPhone: guarantor.landlordPhone,
+            landlordEmail: guarantor.landlordEmail
+        };
+        this.addKeyValueTable(landlordInfo, [], "Landlord Information");
         
-        // Employment Information
-        const employmentExclude = ["name", "email", "phone", "dob", "ssn", "license", "licenseState", "bankRecords", "address", "city", "state", "zip", "lengthAtAddressYears", "lengthAtAddressMonths", "currentRent", "reasonForMoving", "landlordName", "landlordAddressLine1", "landlordAddressLine2", "landlordCity", "landlordState", "landlordZipCode", "landlordPhone", "landlordEmail", "age"];
-        this.addKeyValueTable(guarantor, employmentExclude, `Guarantor ${index + 1} Financial Information`);
+        // Financial Information
+        const financialInfo = {
+            employmentType: guarantor.employmentType,
+            employer: guarantor.employer,
+            position: guarantor.position,
+            employmentStart: guarantor.employmentStart,
+            income: guarantor.income,
+            incomeFrequency: guarantor.incomeFrequency,
+            otherIncome: guarantor.otherIncome,
+            otherIncomeFrequency: guarantor.otherIncomeFrequency,
+            otherIncomeSource: guarantor.otherIncomeSource
+        };
+        this.addKeyValueTable(financialInfo, [], "Financial Information");
         
-        // Bank Records
-        this.addBankTable(guarantor.bankRecords, `Guarantor ${index + 1} Bank Information`);
+        // Bank Information
+        this.addBankTable(guarantor.bankRecords, "Bank Information");
     }
     
     addOccupants(occupants: any[]) {
@@ -582,9 +687,15 @@ export class RentalApplicationPDF {
         this.doc.text("Additional occupants who will be living in the apartment:", this.marginLeft, this.currentY);
         this.currentY += 18; // Better spacing
         occupants.forEach((o, idx) => {
-            // For occupants, you might want to hide SSN, License, DOB, Age as well
-            const occupantExclude = ["ssn", "license", "dob", "age"];
-            this.addKeyValueTable(o, occupantExclude, `Occupant ${idx + 1} Information`);
+            // Create occupant info with all required fields
+            const occupantInfo = {
+                name: o.name,
+                relationship: o.relationship,
+                dob: o.dob,
+                ssn: o.ssn,
+                license: o.license
+            };
+            this.addKeyValueTable(occupantInfo, [], `Occupant ${idx + 1} Information`);
         });
     }
 
