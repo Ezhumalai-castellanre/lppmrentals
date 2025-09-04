@@ -7,8 +7,14 @@ export const validatePhoneNumber = (phone: string | undefined | null): boolean =
     return false;
   }
   
-  // Remove all non-digit characters
-  const digits = phone.replace(/\D/g, '');
+  // Trim whitespace and remove all non-digit characters
+  const cleanPhone = phone.trim();
+  const digits = cleanPhone.replace(/\D/g, '');
+  
+  // Debug logging for troubleshooting
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Phone validation - Original:', phone, 'Clean:', cleanPhone, 'Digits:', digits, 'Length:', digits.length);
+  }
   
   // Check if it's a valid US phone number (10 or 11 digits)
   if (digits.length === 10) {

@@ -188,7 +188,7 @@ const applicationSchema = z.object({
     ssn: z.string().optional().refine((val) => !val || validateSSN(val), {
       message: "Please enter a valid 9-digit Social Security Number"
     }),
-    phone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+    phone: z.string().optional().refine((val) => !val || val.trim() === '' || validatePhoneNumber(val), {
       message: "Please enter a valid US phone number"
     }),
     email: z.string().optional().refine((val) => !val || validateEmail(val), {
@@ -342,18 +342,29 @@ const applicationSchema = z.object({
         path: ["guarantors"]
       });
     } else {
-      data.guarantors.forEach((guarantor: any, index: number) => {
-        if (!guarantor || typeof guarantor !== "object") {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid guarantor", path: ["guarantors", index] });
-          return;
-        }
-        if (!guarantor.name) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Full name is required", path: ["guarantors", index, "name"] });
-        }
-        if (!guarantor.dob) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date of birth is required", path: ["guarantors", index, "dob"] });
-        }
+      // Filter out completely empty guarantors
+      const nonEmptyGuarantors = data.guarantors.filter((guarantor: any) => {
+        if (!guarantor || typeof guarantor !== "object") return false;
+        return guarantor.name || guarantor.dob || guarantor.ssn || guarantor.phone || guarantor.email;
       });
+      
+      if (nonEmptyGuarantors.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Add at least one guarantor with information",
+          path: ["guarantors"]
+        });
+      } else {
+        nonEmptyGuarantors.forEach((guarantor: any, index: number) => {
+          const originalIndex = data.guarantors.indexOf(guarantor);
+          if (!guarantor.name || guarantor.name.trim() === '') {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Full name is required", path: ["guarantors", originalIndex, "name"] });
+          }
+          if (!guarantor.dob) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date of birth is required", path: ["guarantors", originalIndex, "dob"] });
+          }
+        });
+      }
     }
   }
 });
@@ -3184,6 +3195,11 @@ export function ApplicationForm() {
 
   const onSubmit = async (data: ApplicationFormData) => {
     console.log('🚀 Form submission started');
+    console.log('Form data (data):', data);
+    console.log('Form state (formData):', formData);
+    console.log('Has guarantor:', data.hasGuarantor);
+    console.log('Guarantors in data:', data.guarantors);
+    console.log('Guarantors in formData:', formData.guarantors);
     setIsSubmitting(true);
     
     try {
@@ -3464,7 +3480,7 @@ export function ApplicationForm() {
         console.log("Submitting application:", { ...data, formData, signatures });
         console.log("Uploaded files metadata:", uploadedFilesMetadata);
 
-        // Helper function to safely convert date to ISO string
+        // Helper function to safely convert date to ISO string (preserving local date)
         const safeDateToISO = (dateValue: any): string | null => {
           if (!dateValue) return null;
           try {
@@ -3473,7 +3489,12 @@ export function ApplicationForm() {
               console.warn('Invalid date value:', dateValue);
               return null;
             }
-            return date.toISOString();
+            // For date-only fields, preserve the local date without timezone conversion
+            // This prevents dates from shifting due to timezone offsets
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}T00:00:00.000Z`;
           } catch (error) {
             console.warn('Error converting date to ISO:', dateValue, error);
             return null;
@@ -4304,22 +4325,29 @@ export function ApplicationForm() {
     }
   }; // end onSubmit
 
-  // Debug effect for Date of Birth
+  // Debug effect for Date of Birth and Form Errors
   useEffect(() => {
     console.log('Form applicantDob value:', form.watch('applicantDob'));
     console.log('FormData applicant dob:', formData.applicant?.dob);
     console.log('Form errors:', form.formState.errors);
-  }, [form.watch('applicantDob'), formData.applicant?.dob, form.formState.errors]);
+    
+    // Debug guarantor phone validation
+    if (form.formState.errors.guarantors) {
+      form.formState.errors.guarantors.forEach((guarantorError: any, index: number) => {
+        if (guarantorError.phone) {
+          console.log(`Guarantor ${index} phone error:`, guarantorError.phone);
+          console.log(`Guarantor ${index} phone value:`, formData.guarantors?.[index]?.phone);
+        }
+      });
+    }
+  }, [form.watch('applicantDob'), formData.applicant?.dob, form.formState.errors, formData.guarantors]);
 
-  // Sync formData.applicant.dob with form.applicantDob
+  // Sync formData.applicant.dob with form.applicantDob (preserving local date)
   useEffect(() => {
     const formValue = form.watch('applicantDob');
     const stateValue = formData.applicant?.dob;
-    let dateObj = stateValue;
-    if (stateValue && !(stateValue instanceof Date)) {
-      dateObj = new Date(stateValue);
-    }
-    if (dateObj && dateObj instanceof Date && !isNaN(dateObj.getTime())) {
+    let dateObj = toValidDate(stateValue);
+    if (dateObj) {
       if (!formValue || !(formValue instanceof Date) || formValue.getTime() !== dateObj.getTime()) {
         form.setValue('applicantDob', dateObj);
       }
@@ -4348,20 +4376,13 @@ export function ApplicationForm() {
 
 
 
-  // Ensure applicantDob in formData and react-hook-form stay in sync for DatePicker display
+  // Ensure applicantDob in formData and react-hook-form stay in sync for DatePicker display (preserving local date)
   useEffect(() => {
     const formValue = form.watch('applicantDob');
     const stateValue = formData.applicant?.dob;
-    if (stateValue && (!formValue || (formValue instanceof Date && stateValue instanceof Date && formValue.getTime() !== stateValue.getTime()))) {
-      // Only set if different and stateValue is a valid Date
-      if (stateValue instanceof Date && !isNaN(stateValue.getTime())) {
-        form.setValue('applicantDob', stateValue);
-      } else if (typeof stateValue === 'string' || typeof stateValue === 'number') {
-        const parsed = new Date(stateValue);
-        if (!isNaN(parsed.getTime())) {
-          form.setValue('applicantDob', parsed);
-        }
-      }
+    const dateObj = toValidDate(stateValue);
+    if (dateObj && (!formValue || (formValue instanceof Date && dateObj instanceof Date && formValue.getTime() !== dateObj.getTime()))) {
+      form.setValue('applicantDob', dateObj);
     }
   }, [formData.applicant?.dob, form]);
 
@@ -4888,7 +4909,9 @@ export function ApplicationForm() {
                             value={safeDate as Date | undefined}
                             onChange={(date) => {
                               field.onChange(date);
-                              updateFormData('applicant', 'dob', date);
+                              // Store the date as a local date to prevent timezone conversion
+                              const localDate = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate()) : undefined;
+                              updateFormData('applicant', 'dob', localDate);
                               // Auto-calculate age
                               if (date) {
                                 const today = new Date();
@@ -5683,7 +5706,9 @@ export function ApplicationForm() {
                             <DatePicker
                               value={toValidDate(formData.coApplicants?.[index]?.dob)}
                               onChange={(date) => {
-                        updateArrayItem('coApplicants', index, 'dob', date);
+                        // Store the date as a local date to prevent timezone conversion
+                        const localDate = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate()) : undefined;
+                        updateArrayItem('coApplicants', index, 'dob', localDate);
                                 // Auto-calculate age
                                 if (date) {
                                   const today = new Date();
@@ -6644,7 +6669,9 @@ export function ApplicationForm() {
                           <DatePicker
                                   value={toValidDate(formData.guarantors?.[index]?.dob)}
                             onChange={(date) => {
-                                    updateFormData('guarantors', index.toString(), 'dob', date);
+                                    // Store the date as a local date to prevent timezone conversion
+                                    const localDate = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate()) : undefined;
+                                    updateFormData('guarantors', index.toString(), 'dob', localDate);
                               // Auto-calculate age
                               if (date) {
                                 const today = new Date();
@@ -7206,13 +7233,17 @@ export function ApplicationForm() {
     }
   }, [formData.applicant?.dob, form]);
 
-  // Helper to robustly convert to Date or undefined
+  // Helper to robustly convert to Date or undefined (preserving local date)
   const toValidDate = (val: any): Date | undefined => {
     if (!val) return undefined;
     if (val instanceof Date && !isNaN(val.getTime())) return val;
     if (typeof val === 'string' || typeof val === 'number') {
       const d = new Date(val);
-      if (d instanceof Date && !isNaN(d.getTime())) return d;
+      if (d instanceof Date && !isNaN(d.getTime())) {
+        // For date-only fields, create a new date with local date components
+        // This prevents timezone-related date shifts
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      }
     }
     return undefined;
   };
