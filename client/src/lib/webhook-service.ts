@@ -95,6 +95,7 @@ export interface FormDataWebhookData {
       income?: string;
       incomeFrequency?: string;
       otherIncome?: string;
+      otherIncomeFrequency?: string;
       otherIncomeSource?: string;
       bankRecords?: Array<{
         bankName?: string;
@@ -1071,7 +1072,43 @@ export class WebhookService {
       },
 
       // Co-Applicants section - use new nested structure if available
-      coApplicants: formData.coApplicants || (formData.hasCoApplicant ? [{
+      coApplicants: formData.coApplicants ? formData.coApplicants.map((coApplicant: any) => ({
+        email: coApplicant.email,
+        phone: coApplicant.phone,
+        address: coApplicant.address || "",
+        zip: coApplicant.zip,
+        landlordZipCode: coApplicant.landlordZipCode,
+        landlordPhone: coApplicant.landlordPhone,
+        landlordEmail: coApplicant.landlordEmail,
+        city: coApplicant.city,
+        landlordCity: coApplicant.landlordCity,
+        name: coApplicant.name,
+        licenseState: coApplicant.licenseState,
+        state: coApplicant.state,
+        relationship: coApplicant.relationship,
+        dob: coApplicant.dob,
+        age: coApplicant.age || 0,
+        ssn: coApplicant.ssn,
+        license: coApplicant.license,
+        lengthAtAddressYears: coApplicant.lengthAtAddressYears,
+        lengthAtAddressMonths: coApplicant.lengthAtAddressMonths,
+        landlordName: coApplicant.landlordName,
+        landlordAddressLine1: coApplicant.landlordAddressLine1,
+        landlordAddressLine2: coApplicant.landlordAddressLine2,
+        landlordState: coApplicant.landlordState,
+        currentRent: coApplicant.currentRent,
+        reasonForMoving: coApplicant.reasonForMoving,
+        employmentType: coApplicant.employmentType,
+        employer: coApplicant.employer,
+        position: coApplicant.position,
+        employmentStart: coApplicant.employmentStart,
+        income: coApplicant.income || "",
+        incomeFrequency: coApplicant.incomeFrequency || "monthly",
+        otherIncome: coApplicant.otherIncome || "",
+        otherIncomeSource: coApplicant.otherIncomeSource || "",
+        otherIncomeFrequency: coApplicant.otherIncomeFrequency || "monthly",
+        bankRecords: coApplicant.bankRecords || []
+      })) : (formData.hasCoApplicant ? [{
         email: formData.coApplicantEmail,
         phone: formData.coApplicantPhone,
         address: formData.coApplicantAddress || formData.coApplicant?.address || "",
@@ -1105,7 +1142,7 @@ export class WebhookService {
         incomeFrequency: formData.coApplicantIncomeFrequency || formData.coApplicant?.incomeFrequency || "monthly",
         otherIncome: formData.coApplicantOtherIncome || formData.coApplicant?.otherIncome || "",
         otherIncomeSource: formData.coApplicantOtherIncomeSource || formData.coApplicant?.otherIncomeSource || "",
-        otherIncomeFrequency: formData.coApplicant?.otherIncomeFrequency || "monthly",
+        otherIncomeFrequency: formData.coApplicantOtherIncomeFrequency || formData.coApplicant?.otherIncomeFrequency || "monthly",
         bankRecords: formData.coApplicantBankRecords || formData.coApplicant?.bankRecords || []
       }] : []),
 
