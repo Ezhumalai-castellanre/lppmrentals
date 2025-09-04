@@ -26,7 +26,7 @@ interface ChatbotProviderProps {
 
 export function ChatbotProvider({ children }: ChatbotProviderProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [isMinimized, setIsMinimized] = useState(false)
+  const [isMinimized, setIsMinimized] = useState(true)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false)
 

@@ -50,11 +50,7 @@ export function ChatbotButton({
               : "bg-blue-600 hover:bg-blue-700"
           )}
         >
-          {isMinimized ? (
-            <MessageCircle className="h-6 w-6" />
-          ) : (
-            <X className="h-6 w-6" />
-          )}
+          <MessageCircle className="h-6 w-6" />
         </Button>
         
         {showNotification && hasUnreadMessages && (

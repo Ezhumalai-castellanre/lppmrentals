@@ -1774,9 +1774,6 @@ export function ApplicationForm() {
           coApplicantCount: 1,
           guarantorCount: 1,
 
-          // Initialize co-applicants array
-          coApplicants: [],
-
           // Legal Questions
           landlordTenantLegalAction: '',
           brokenLease: '',
