@@ -59,7 +59,7 @@ export function FileUpload({
   const [files, setFiles] = useState<File[]>([]);
   const [encryptedFiles, setEncryptedFiles] = useState<EncryptedFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
-  const [webhookResponse, setWebhookResponse] = useState<any>(null);
+  const [webhookResponse, setWebhookResponse] = useState<any>(initialWebhookResponse || null);
   const [error, setError] = useState<string>("");
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ [key: string]: 'uploading' | 'success' | 'error' }>({});
@@ -334,6 +334,43 @@ export function FileUpload({
       
       {error && (
         <p className="text-sm text-destructive">{error}</p>
+      )}
+      
+      {/* Show existing uploaded files from initial webhook response */}
+      {hasInitialResponse && (
+        <div className="space-y-2">
+          <Card className="p-3 flex items-center justify-between bg-green-50 border-green-200">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="text-sm text-green-700 font-medium">Previously Uploaded</span>
+              <span className="text-xs text-green-600">
+                {typeof initialWebhookResponse === 'string' ? 'Document' : 'File'}
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const url = typeof initialWebhookResponse === 'string' 
+                    ? initialWebhookResponse 
+                    : initialWebhookResponse.body || initialWebhookResponse.url;
+                  if (url) {
+                    window.open(url, '_blank');
+                  }
+                }}
+                className="h-7 px-2 text-xs border-green-200 text-green-700 hover:bg-green-100"
+              >
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Preview
+              </Button>
+            </div>
+          </Card>
+        </div>
       )}
       
       {files.length > 0 && (

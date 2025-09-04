@@ -976,6 +976,27 @@ export function ApplicationForm() {
     });
   }, []);
 
+  // Handle webhook responses from formData when it changes
+  useEffect(() => {
+    if (formData.webhookSummary?.webhookResponses) {
+      // Merge webhookSummary.webhookResponses into the main formData.webhookResponses
+      const mergedWebhookResponses = {
+        ...formData.webhookResponses,
+        ...formData.webhookSummary.webhookResponses
+      };
+      
+      // Update formData with merged webhook responses
+      setFormData((prevData: any) => ({
+        ...prevData,
+        webhookResponses: mergedWebhookResponses
+      }));
+      
+      // Update webhook responses state
+      setWebhookResponses(mergedWebhookResponses);
+      console.log('🔗 Merged webhook responses from webhookSummary in useEffect:', mergedWebhookResponses);
+    }
+  }, [formData.webhookSummary?.webhookResponses]);
+
   // Load draft data from DynamoDB
   const loadDraftData = useCallback(async (applicationId: string) => {
     try {
@@ -1039,6 +1060,15 @@ export function ApplicationForm() {
             }
           }
           
+          // Merge webhookSummary.webhookResponses into the main formData.webhookResponses
+          if (parsedFormData.webhookSummary?.webhookResponses) {
+            parsedFormData.webhookResponses = {
+              ...parsedFormData.webhookResponses,
+              ...parsedFormData.webhookSummary.webhookResponses
+            };
+            console.log('🔗 Merged webhook responses from webhookSummary:', parsedFormData.webhookResponses);
+          }
+          
           setFormData(parsedFormData);
           
           // Draft data loaded successfully
@@ -1074,6 +1104,12 @@ export function ApplicationForm() {
               }
             }
             setWebhookResponses(parsedWebhookResponses);
+          }
+          
+          // Also set webhook responses from the merged formData
+          if (parsedFormData.webhookResponses) {
+            setWebhookResponses(parsedFormData.webhookResponses);
+            console.log('🔗 Set webhook responses state from formData:', parsedFormData.webhookResponses);
           }
           
           // Restore uploaded files metadata
@@ -6429,6 +6465,7 @@ export function ApplicationForm() {
                       maxFiles={1}
                       maxSize={50}
                       enableEncryption={true}
+                      initialWebhookResponse={formData.webhookResponses?.[`occupants_ssn${idx + 1}`]}
                       onFileChange={files => {
                         console.log('🚀 OCCUPANT SSN DOCUMENT UPLOAD:', {
                           occupantIndex: idx,
