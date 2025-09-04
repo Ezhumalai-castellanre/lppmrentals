@@ -58,7 +58,7 @@ const applicationSchema = z.object({
   howDidYouHearOther: z.string().optional(),
 
   // Primary Applicant
-  applicantName: z.string().min(1, "Full name is required"),
+  applicantName: z.string().optional(), // Lenient: any name entry is okay
   applicantDob: z.date({
     required_error: "Date of birth is required",
     invalid_type_error: "Please select a valid date of birth",
@@ -112,7 +112,7 @@ const applicationSchema = z.object({
 
   // Co-Applicants (Array of up to 4)
   coApplicants: z.array(z.object({
-    name: z.string().min(1, "Full name is required"),
+    name: z.string().optional(), // Lenient: any name entry is okay
     relationship: z.string().optional(),
     dob: z.date({
       required_error: "Date of birth is required",
@@ -323,11 +323,9 @@ const applicationSchema = z.object({
           ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid co-applicant", path: ["coApplicants", index] });
           return;
         }
-        if (!coApplicant.name) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Full name is required", path: ["coApplicants", index, "name"] });
-        }
-        if (!coApplicant.dob) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date of birth is required", path: ["coApplicants", index, "dob"] });
+        // Lenient validation: only check if dob is provided when name is provided
+        if (coApplicant.name && coApplicant.name.trim() !== '' && !coApplicant.dob) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date of birth is required when name is provided", path: ["coApplicants", index, "dob"] });
         }
       });
     }
@@ -357,11 +355,9 @@ const applicationSchema = z.object({
       } else {
         nonEmptyGuarantors.forEach((guarantor: any, index: number) => {
           const originalIndex = data.guarantors.indexOf(guarantor);
-          if (!guarantor.name || guarantor.name.trim() === '') {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Full name is required", path: ["guarantors", originalIndex, "name"] });
-          }
-          if (!guarantor.dob) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date of birth is required", path: ["guarantors", originalIndex, "dob"] });
+          // Lenient validation: only check if dob is provided when name is provided
+          if (guarantor.name && guarantor.name.trim() !== '' && !guarantor.dob) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date of birth is required when name is provided", path: ["guarantors", originalIndex, "dob"] });
           }
         });
       }

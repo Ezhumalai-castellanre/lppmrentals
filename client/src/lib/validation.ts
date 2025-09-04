@@ -1,6 +1,6 @@
 // USA Format Validation Utilities
 
-// Phone number validation (USA format)
+// Phone number validation (USA format) - Lenient: accepts any 10-digit number
 export const validatePhoneNumber = (phone: string | undefined | null): boolean => {
   // Handle null/undefined cases
   if (!phone || typeof phone !== 'string') {
@@ -16,14 +16,8 @@ export const validatePhoneNumber = (phone: string | undefined | null): boolean =
     console.log('Phone validation - Original:', phone, 'Clean:', cleanPhone, 'Digits:', digits, 'Length:', digits.length);
   }
   
-  // Check if it's a valid US phone number (10 or 11 digits)
-  if (digits.length === 10) {
-    return true; // Standard 10-digit number
-  } else if (digits.length === 11 && digits.startsWith('1')) {
-    return true; // 11-digit number starting with 1 (country code)
-  }
-  
-  return false;
+  // Accept any 10-digit number (lenient validation)
+  return digits.length === 10;
 };
 
 // Format phone number for display
@@ -128,15 +122,15 @@ export const formatZIPCode = (zip: string | undefined | null): string => {
   return digits.slice(0, 5);
 };
 
-// Email validation
+// Email validation - Lenient: accepts any email with .com
 export const validateEmail = (email: string | undefined | null): boolean => {
   // Handle null/undefined cases
   if (!email || typeof email !== 'string') {
     return false;
   }
   
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  // Simple validation: must contain @ and end with .com
+  return email.includes('@') && email.endsWith('.com');
 };
 
 // Driver's license validation (basic)
@@ -175,25 +169,24 @@ export const validateAdultAge = (age: number | undefined | null): boolean => {
   return age >= 18 && age <= 120;
 };
 
-// Date validation (not in future for birth dates)
+// Date validation - Lenient: accepts any valid date selection
 export const validateBirthDate = (date: Date | undefined | null): boolean => {
   // Handle null/undefined cases
   if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
     return false;
   }
   
-  const today = new Date();
-  return date <= today;
+  // Accept any valid date (lenient validation)
+  return true;
 };
 
-// Move-in date validation (not in past)
+// Move-in date validation - Lenient: accepts any valid date selection
 export const validateMoveInDate = (date: Date | undefined | null): boolean => {
   // Handle null/undefined cases
   if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
     return false;
   }
   
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // Reset time to start of day
-  return date >= today;
+  // Accept any valid date (lenient validation)
+  return true;
 }; 
