@@ -106,6 +106,8 @@ exports.handler = async (event, context) => {
         file_size: webhookData.file_size,
         file_type: webhookData.file_type,
         application_id: webhookData.application_id,
+        id: webhookData.id,  // ✅ Added missing ID field
+        document_subitem_id: webhookData.id,  // Alternative field name
         comment_id: webhookData.comment_id,
         uploaded_at: webhookData.uploaded_at,
       };
@@ -132,6 +134,9 @@ exports.handler = async (event, context) => {
 
     console.log(`📤 Sending ${webhookType} to webhook: ${webhookUrl}`);
     console.log(`📦 Payload size: ${JSON.stringify(webhookPayload).length} bytes`);
+    console.log(`🆔 Document ID in payload: ${webhookPayload.id}`);
+    console.log(`💬 Comment ID in payload: ${webhookPayload.comment_id}`);
+    console.log(`📋 Full webhook payload being sent to Make.com:`, JSON.stringify(webhookPayload, null, 2));
 
     try {
       const webhookResponse = await fetch(webhookUrl, {

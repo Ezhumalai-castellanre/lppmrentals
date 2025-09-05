@@ -122,7 +122,10 @@ export default function MaintenanceRequestPage() {
             user.zoneinfo || 'unknown',
             'maintenance_request',
             `maintenance_${formData.unit}_${Date.now()}`,
-            user.zoneinfo || 'unknown'
+            user.zoneinfo || 'unknown',
+            undefined, // zoneinfo
+            undefined, // commentId
+            undefined  // document subitem ID (not applicable for maintenance requests)
           );
           
           if (!result.success) {

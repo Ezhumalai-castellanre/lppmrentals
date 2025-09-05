@@ -101,9 +101,9 @@ export function AppSidebar() {
       url: "/drafts",
       icon: Clock,
     },
-    // Only show Missing Documents when there are submitted applications
+    // Only show Supporting Documents when there are submitted applications
     ...(hasSubmittedApplications ? [{
-      title: "Missing Documents",
+      title: "Supporting Documents",
       url: "/missing-documents",
       icon: FileText,
     }] : []),

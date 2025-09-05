@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "Lambda function for webhook proxy",
   "main": "handler.js",
-  "dependencies": {},
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.0",
     "typescript": "^5.0.0"

@@ -350,13 +350,13 @@ export default function MissingDocumentsPage() {
       
       // Provide feedback about the search
       if (missingSubitems.length === 0) {
-        setSuccessMessage(`No missing documents found for applicant ID: ${apiId}. The system searched for multiple formats including: ${searchApplicantIds.join(', ')}`);
+        setSuccessMessage(`No supporting documents found for applicant ID: ${apiId}. The system searched for multiple formats including: ${searchApplicantIds.join(', ')}`);
       } else {
         setSuccessMessage(`Found ${missingSubitems.length} document(s) for applicant ID: ${apiId}`);
       }
     } catch (err) {
       console.error('Error fetching missing subitems:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch missing documents');
+      setError(err instanceof Error ? err.message : 'Failed to fetch supporting documents');
       setMissingItems([]);
     } finally {
       setLoading(false);
@@ -459,7 +459,10 @@ export default function MissingDocumentsPage() {
           applicantId,
           `missing_${document.parentItemName}`,
           document.name,
-          applicantId
+          applicantId,
+          undefined, // zoneinfo
+          undefined, // commentId
+          document.id // document subitem ID
         );
         
         if (!result.success) {
@@ -633,13 +636,13 @@ export default function MissingDocumentsPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Missing Documents Tracker
+              Supporting Documents Tracker
             </h1>
             <p className="text-gray-600 mb-4">
-              Please log in to view your missing documents
+              Please log in to view your supporting documents
             </p>
             <Button onClick={() => setLocation('/login')}>
               Go to Login
@@ -654,7 +657,7 @@ export default function MissingDocumentsPage() {
 
   return (
     <div className="min-h-screen bg-white py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8">
         {/* Page Header */}
         <div className="mb-8">
           <div className="relative overflow-hidden rounded-2xl shadow-2xl border border-orange-300/50 p-8" style={{ background: 'linear-gradient(to right, #f97316, #ea580c, #dc2626)' }}>
@@ -671,10 +674,10 @@ export default function MissingDocumentsPage() {
             <div className="relative flex items-center justify-between">
               <div className="space-y-4">
                 <h1 className="text-4xl font-bold text-white tracking-tight">
-                  Missing Documents
+                  Supporting Documents
                 </h1>
                 <p className="text-xl text-orange-100 max-w-2xl leading-relaxed">
-                  Track and manage missing documents for rental applications
+                  Track and manage supporting documents for rental applications
                 </p>
               </div>
               
@@ -699,7 +702,7 @@ export default function MissingDocumentsPage() {
               <Alert className="mb-4">
                 <Link className="h-4 w-4" />
                 <AlertDescription>
-                  Applicant ID loaded from URL. You can share this link to directly access this applicant's missing documents.
+                  Applicant ID loaded from URL. You can share this link to directly access this applicant's supporting documents.
                 </AlertDescription>
               </Alert>
             )}
@@ -1075,6 +1078,7 @@ export default function MissingDocumentsPage() {
                                   enableWebhook={true}
                                   applicationId={applicantId}
                                   zoneinfo={user?.zoneinfo}
+                                  documentId={item.id}
                                 />
                                 {uploadingDocuments[item.id] && (
                                   <div className="flex items-center gap-2 text-sm text-blue-600">
@@ -1121,6 +1125,7 @@ export default function MissingDocumentsPage() {
                                   enableWebhook={true}
                                   applicationId={applicantId}
                                   zoneinfo={user?.zoneinfo}
+                                  documentId={item.id}
                                 />
                                 {uploadingDocuments[item.id] && (
                                   <div className="flex items-center gap-2 text-sm text-blue-600">
@@ -1285,6 +1290,7 @@ export default function MissingDocumentsPage() {
                                   enableWebhook={true}
                                   applicationId={applicantId}
                                   zoneinfo={user?.zoneinfo}
+                                  documentId={item.id}
                                 />
                                 {uploadingDocuments[item.id] && (
                                   <div className="flex items-center gap-2 text-sm text-blue-600">
@@ -1331,6 +1337,7 @@ export default function MissingDocumentsPage() {
                                   enableWebhook={true}
                                   applicationId={applicantId}
                                   zoneinfo={user?.zoneinfo}
+                                  documentId={item.id}
                                 />
                                 {uploadingDocuments[item.id] && (
                                   <div className="flex items-center gap-2 text-sm text-blue-600">

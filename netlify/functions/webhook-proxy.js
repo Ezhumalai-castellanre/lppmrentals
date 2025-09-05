@@ -69,6 +69,8 @@ export const handler = async (event, context) => {
     console.log(`📤 Forwarding to webhook: ${webhookUrl}`);
     console.log(`📋 Webhook type: ${webhookType}`);
     console.log(`📊 Payload size: ${(JSON.stringify(webhookData).length / 1024).toFixed(2)}KB`);
+    console.log(`🆔 Document ID in webhookData: ${webhookData.id}`);
+    console.log(`💬 Comment ID in webhookData: ${webhookData.comment_id}`);
 
     // Forward request to Make.com webhook
     const startTime = Date.now();

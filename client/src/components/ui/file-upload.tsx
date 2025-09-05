@@ -27,6 +27,7 @@ interface FileUploadProps {
   applicantId?: string;
   zoneinfo?: string;
   commentId?: string; // Added for document tracking
+  documentId?: string; // Document subitem ID
 }
 
 export function FileUpload({
@@ -49,7 +50,8 @@ export function FileUpload({
   applicationId,
   applicantId,
   zoneinfo,
-  commentId
+  commentId,
+  documentId
 }: FileUploadProps) {
   // Show previously uploaded files if we have an initial webhook response
   const hasInitialResponse = initialWebhookResponse && (
@@ -168,7 +170,7 @@ export function FileUpload({
           setUploadStatus(prev => ({ ...prev, [fileKey]: 'uploading' }));
           
           try {
-            const result = await WebhookService.uploadFileToS3AndSendToWebhook(file, referenceId, sectionName, documentName || 'Unknown Document', applicationId, zoneinfo);
+            const result = await WebhookService.uploadFileToS3AndSendToWebhook(file, referenceId, sectionName, documentName || 'Unknown Document', applicationId, zoneinfo, commentId, documentId);
             if (result.success) {
               setUploadStatus(prev => ({ ...prev, [fileKey]: 'success' }));
               console.log(`✅ Webhook upload successful for ${file.name}`);

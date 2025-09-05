@@ -153,7 +153,8 @@ export class S3Service {
         applicationId, // documentName - using applicationId as requested
         applicationId, // applicationId
         zoneinfo, // zoneinfo
-        undefined // commentId
+        undefined, // commentId
+        undefined // documentId (not applicable for PDFs)
       );
 
       if (result.success) {

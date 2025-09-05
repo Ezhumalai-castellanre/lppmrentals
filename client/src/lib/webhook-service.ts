@@ -7,7 +7,14 @@ export interface FileUploadWebhookData {
   document_name: string;
   file_base64: string;
   application_id: string;
+  id: string;                    // Document subitem ID
   comment_id?: string;
+  // Additional S3-specific fields (optional for backward compatibility)
+  s3_url?: string;
+  s3_key?: string;
+  file_size?: number;
+  file_type?: string;
+  uploaded_at?: string;
 }
 
 export interface FormDataWebhookData {
@@ -418,7 +425,8 @@ export class WebhookService {
     documentName: string,
     applicationId?: string,
     zoneinfo?: string,
-    commentId?: string
+    commentId?: string,
+    id?: string
   ): Promise<{ success: boolean; error?: string; url?: string; key?: string; webhookResponse?: string }> {
     const submissionId = `${referenceId}-${sectionName}-${documentName}-${file.name}`;
     
@@ -482,38 +490,55 @@ export class WebhookService {
       console.log(`✅ S3 upload successful: ${cleanUrl}`);
 
       // Send file URL to webhook instead of file data
-      const webhookData = {
+      const webhookData: FileUploadWebhookData = {
         reference_id: referenceId,
         file_name: file.name,
         section_name: sectionName,
         document_name: documentName,
+        file_base64: '', // Not used for S3 uploads, but required by interface
+        application_id: applicationId || '',
+        id: id || '',
+        comment_id: commentId,
+        // Additional S3-specific fields
         s3_url: cleanUrl,
         s3_key: key,
         file_size: file.size,
         file_type: file.type,
-        application_id: applicationId || '',
-        comment_id: commentId,
         uploaded_at: new Date().toISOString(),
       };
 
       console.log(`📤 Sending file URL to webhook: ${file.name}`);
       console.log(`🔗 S3 URL: ${cleanUrl}`);
+      console.log(`📋 Webhook data with ID:`, JSON.stringify(webhookData, null, 2));
+      console.log(`🆔 Document ID being sent:`, id);
+      console.log(`💬 Comment ID being sent:`, commentId);
+
+      // Send both structured and flat versions for compatibility
+      const webhookPayload = {
+        webhookType: 'file_upload',
+        webhookData: webhookData,
+        // Also include flat structure for webhook receivers that expect direct fields
+        ...webhookData
+      };
+
+      console.log(`📤 Full webhook payload:`, JSON.stringify(webhookPayload, null, 2));
 
       const webhookResponse = await fetch(this.WEBHOOK_PROXY_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          webhookType: 'file_upload',
-          webhookData: webhookData
-        }),
+        body: JSON.stringify(webhookPayload),
       });
 
       const responseBody = await webhookResponse.text();
 
+      console.log(`📥 Webhook response status: ${webhookResponse.status}`);
+      console.log(`📥 Webhook response body:`, responseBody);
+
       if (webhookResponse.ok) {
         console.log('✅ Webhook call successful');
+        console.log(`🔍 Verifying ID field was sent: ${webhookData.id}`);
         return {
           success: true,
           url: cleanUrl,
@@ -554,7 +579,8 @@ export class WebhookService {
     documentName: string,
     applicationId?: string,
     zoneinfo?: string,
-    commentId?: string
+    commentId?: string,
+    id?: string
   ): Promise<{ success: boolean; error?: string; body?: string }> {
     // Allow larger files (up to 50MB) since Make.com webhook has no payload limits
     // Base64 adds ~33% overhead, so 50MB file -> ~67MB JSON field plus metadata
@@ -616,6 +642,7 @@ export class WebhookService {
       document_name: documentName,
       file_base64: fileBase64,
       application_id: applicationId || '',
+      id: id || '',
       comment_id: commentId
     };
 
