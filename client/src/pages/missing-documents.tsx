@@ -955,13 +955,13 @@ export default function MissingDocumentsPage() {
                                   {item.name}
                                 </h4>
                                 <p className="text-sm text-gray-500">
-                                  {item.applicantType === "Applicant" && (
-                                    <span>Applicant: {item.parentItemName}</span>
+                                  {item.guarantorName === "Applicant" && (
+                                    <span>Applicant: {item.parentItemName || item.name}</span>
                                   )}
-                                  {item.applicantType === "Guarantor" && item.coApplicantName && (
+                                  {item.guarantorName === "Guarantor" && item.coApplicantName && (
                                     <span className="text-blue-600">Guarantor: {item.coApplicantName}</span>
                                   )}
-                                  {item.applicantType === "Guarantor" && item.guarantorName && (
+                                  {item.guarantorName === "Guarantor" && item.guarantorName && (
                                     <span className="text-green-600">Guarantor: {item.guarantorName}</span>
                                   )}
                                 </p>
@@ -997,13 +997,38 @@ export default function MissingDocumentsPage() {
                           <div className="p-4 bg-gray-50">
                             {item.status === 'Received' && (item.publicUrl || item.previewText) ? (
                               <div className="flex flex-col gap-2">
-                                {item.previewText && !isUrl(item.previewText) && (
-                                  <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
-                                    {item.previewText}
-                                  </div>
+                                {item.previewText && (
+                                  isUrl(item.previewText) ? (
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
+                                        onClick={() => {
+                                          setModalUrl(item.previewText!);
+                                          setModalTitle(item.name);
+                                          setIframeError(false);
+                                        }}
+                                      >
+                                        <Link className="w-4 h-4" />
+                                        Preview
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
+                                      {item.previewText}
+                                    </div>
+                                  )
                                 )}
                                 {item.publicUrl && (
                                   <div className="flex items-center gap-3">
+                                    <a
+                                      href={item.publicUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
+                                    >
+                                      <Link className="w-4 h-4" />
+                                      Preview
+                                    </a>
                                     <a
                                       href={item.publicUrl}
                                       download
@@ -1012,7 +1037,7 @@ export default function MissingDocumentsPage() {
                                       <ArrowDownToLine className="w-4 h-4" />
                                       Download
                                     </a>
-                                    <span className="text-xs text-green-700">Document received and available for download.</span>
+                                    <span className="text-xs text-green-700">Document received and available for preview or download.</span>
                                   </div>
                                 )}
                                 {/* Only show upload UI for documents that are not yet received and not uploaded */}
@@ -1180,13 +1205,38 @@ export default function MissingDocumentsPage() {
                           <div className="p-4 bg-gray-50">
                             {item.status === 'Received' && (item.publicUrl || item.previewText) ? (
                               <div className="flex flex-col gap-2">
-                                {item.previewText && !isUrl(item.previewText) && (
-                                  <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
-                                    {item.previewText}
-                                  </div>
+                                {item.previewText && (
+                                  isUrl(item.previewText) ? (
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
+                                        onClick={() => {
+                                          setModalUrl(item.previewText!);
+                                          setModalTitle(item.name);
+                                          setIframeError(false);
+                                        }}
+                                      >
+                                        <Link className="w-4 h-4" />
+                                        Preview
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
+                                      {item.previewText}
+                                    </div>
+                                  )
                                 )}
                                 {item.publicUrl && (
                                   <div className="flex items-center gap-3">
+                                    <a
+                                      href={item.publicUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
+                                    >
+                                      <Link className="w-4 h-4" />
+                                      Preview
+                                    </a>
                                     <a
                                       href={item.publicUrl}
                                       download
@@ -1195,7 +1245,7 @@ export default function MissingDocumentsPage() {
                                       <ArrowDownToLine className="w-4 h-4" />
                                       Download
                                     </a>
-                                    <span className="text-xs text-green-700">Document received and available for download.</span>
+                                    <span className="text-xs text-green-700">Document received and available for preview or download.</span>
                                   </div>
                                 )}
                                 {/* Only show upload UI for documents that are not yet received and not uploaded */}
