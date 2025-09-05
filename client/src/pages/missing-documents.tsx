@@ -997,47 +997,13 @@ export default function MissingDocumentsPage() {
                           <div className="p-4 bg-gray-50">
                             {item.status === 'Received' && (item.publicUrl || item.previewText) ? (
                               <div className="flex flex-col gap-2">
-                                {item.previewText && (
-                                  isUrl(item.previewText) ? (
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
-                                        onClick={() => {
-                                          setModalUrl(item.previewText!);
-                                          setModalTitle(item.name);
-                                          setIframeError(false);
-                                        }}
-                                      >
-                                        <Link className="w-4 h-4" />
-                                        Preview
-                                      </button>
-                                      <a
-                                        href={item.previewText}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
-                                      >
-                                        <Link className="w-4 h-4" />
-                                        Preview in New Tab
-                                      </a>
-                                    </div>
-                                  ) : (
-                                    <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
-                                      {item.previewText}
-                                    </div>
-                                  )
+                                {item.previewText && !isUrl(item.previewText) && (
+                                  <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
+                                    {item.previewText}
+                                  </div>
                                 )}
                                 {item.publicUrl && (
                                   <div className="flex items-center gap-3">
-                                    <a
-                                      href={item.publicUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
-                                    >
-                                      <Link className="w-4 h-4" />
-                                      Preview
-                                    </a>
                                     <a
                                       href={item.publicUrl}
                                       download
@@ -1046,40 +1012,44 @@ export default function MissingDocumentsPage() {
                                       <ArrowDownToLine className="w-4 h-4" />
                                       Download
                                     </a>
-                                    <span className="text-xs text-green-700">Document received and available for preview or download.</span>
+                                    <span className="text-xs text-green-700">Document received and available for download.</span>
                                   </div>
                                 )}
-                                {/* Always show upload UI for Received as well */}
-                                <div className="mb-3 mt-2">
-                                  <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                    Upload Replacement Document
-                                  </h5>
-                                  <p className="text-xs text-gray-500 mb-3">
-                                    You may upload a replacement document if needed. Files will be encrypted and securely transmitted.
-                                  </p>
-                                </div>
-                                <FileUpload
-                                  onFileChange={(files) => {
-                                    // Only handle file change for non-encrypted uploads
-                                    // Encrypted uploads are handled by onEncryptedFilesChange
-                                  }}
-                                  onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
-                                  accept=".pdf,.jpg,.jpeg,.png"
-                                  multiple={false}
-                                  maxFiles={1}
-                                  maxSize={50}
-                                  label={`Upload ${item.name}`}
-                                  description="Max 50MB. Accepted: PDF, JPG, PNG - Encrypted"
-                                  className="mb-3"
-                                  enableEncryption={true}
-                                  referenceId={applicantId}
-                                  sectionName={`${item.applicantType}`}
-                                  documentName={item.name}
-                                  enableWebhook={true}
-                                  applicationId={applicantId}
-                                  zoneinfo={user?.zoneinfo}
-                                  documentId={item.id}
-                                />
+                                {/* Only show upload UI for documents that are not yet received and not uploaded */}
+                                {item.status !== 'Received' && !uploadedDocuments[item.id] && (
+                                  <>
+                                    <div className="mb-3 mt-2">
+                                      <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                        Upload Document
+                                      </h5>
+                                      <p className="text-xs text-gray-500 mb-3">
+                                        Upload the required document to complete your application. Files will be encrypted and securely transmitted.
+                                      </p>
+                                    </div>
+                                    <FileUpload
+                                      onFileChange={(files) => {
+                                        // Only handle file change for non-encrypted uploads
+                                        // Encrypted uploads are handled by onEncryptedFilesChange
+                                      }}
+                                      onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
+                                      accept=".pdf,.jpg,.jpeg,.png"
+                                      multiple={false}
+                                      maxFiles={1}
+                                      maxSize={50}
+                                      label={`Upload ${item.name}`}
+                                      description="Max 50MB. Accepted: PDF, JPG, PNG - Encrypted"
+                                      className="mb-3"
+                                      enableEncryption={true}
+                                      referenceId={applicantId}
+                                      sectionName={`${item.applicantType}`}
+                                      documentName={item.name}
+                                      enableWebhook={true}
+                                      applicationId={applicantId}
+                                      zoneinfo={user?.zoneinfo}
+                                      documentId={item.id}
+                                    />
+                                  </>
+                                )}
                                 {uploadingDocuments[item.id] && (
                                   <div className="flex items-center gap-2 text-sm text-blue-600">
                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1210,47 +1180,13 @@ export default function MissingDocumentsPage() {
                           <div className="p-4 bg-gray-50">
                             {item.status === 'Received' && (item.publicUrl || item.previewText) ? (
                               <div className="flex flex-col gap-2">
-                                {item.previewText && (
-                                  isUrl(item.previewText) ? (
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
-                                        onClick={() => {
-                                          setModalUrl(item.previewText!);
-                                          setModalTitle(item.name);
-                                          setIframeError(false);
-                                        }}
-                                      >
-                                        <Link className="w-4 h-4" />
-                                        Preview
-                                      </button>
-                                      <a
-                                        href={item.previewText}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
-                                      >
-                                        <Link className="w-4 h-4" />
-                                        Preview in New Tab
-                                      </a>
-                                    </div>
-                                  ) : (
-                                    <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
-                                      {item.previewText}
-                                    </div>
-                                  )
+                                {item.previewText && !isUrl(item.previewText) && (
+                                  <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
+                                    {item.previewText}
+                                  </div>
                                 )}
                                 {item.publicUrl && (
                                   <div className="flex items-center gap-3">
-                                    <a
-                                      href={item.publicUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-600 underline text-sm font-medium flex items-center gap-1"
-                                    >
-                                      <Link className="w-4 h-4" />
-                                      Preview
-                                    </a>
                                     <a
                                       href={item.publicUrl}
                                       download
@@ -1259,39 +1195,43 @@ export default function MissingDocumentsPage() {
                                       <ArrowDownToLine className="w-4 h-4" />
                                       Download
                                     </a>
-                                    <span className="text-xs text-green-700">Document received and available for preview or download.</span>
+                                    <span className="text-xs text-green-700">Document received and available for download.</span>
                                   </div>
                                 )}
-                                {/* Always show upload UI for Received as well */}
-                                <div className="mb-3 mt-2">
-                                  <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                    Upload Replacement Document
-                                  </h5>
-                                  <p className="text-xs text-gray-500 mb-3">
-                                    You may upload a replacement document if needed. Files will be encrypted and securely transmitted.
-                                  </p>
-                                </div>
-                                <FileUpload
-                                  onFileChange={(files) => {
-                                    // Only handle file change for non-encrypted uploads
-                                  }}
-                                  onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
-                                  accept=".pdf,.jpg,.jpeg,.png"
-                                  multiple={isMultipleFileDocument(item.name)}
-                                  maxFiles={isMultipleFileDocument(item.name) ? 5 : 1}
-                                  maxSize={50}
-                                  label={`Upload ${item.name}`}
-                                  description={`Max 50MB. Accepted: PDF, JPG, PNG - Encrypted${isMultipleFileDocument(item.name) ? ' - Multiple files allowed' : ''}`}
-                                  className="mb-3"
-                                  enableEncryption={true}
-                                  referenceId={applicantId}
-                                  sectionName={`${item.applicantType}`}
-                                  documentName={item.name}
-                                  enableWebhook={true}
-                                  applicationId={applicantId}
-                                  zoneinfo={user?.zoneinfo}
-                                  documentId={item.id}
-                                />
+                                {/* Only show upload UI for documents that are not yet received and not uploaded */}
+                                {item.status !== 'Received' && !uploadedDocuments[item.id] && (
+                                  <>
+                                    <div className="mb-3 mt-2">
+                                      <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                        Upload Document
+                                      </h5>
+                                      <p className="text-xs text-gray-500 mb-3">
+                                        Upload the required document to complete your application. Files will be encrypted and securely transmitted.
+                                      </p>
+                                    </div>
+                                    <FileUpload
+                                      onFileChange={(files) => {
+                                        // Only handle file change for non-encrypted uploads
+                                      }}
+                                      onEncryptedFilesChange={(encryptedFiles) => handleEncryptedDocumentChange(item.id, encryptedFiles)}
+                                      accept=".pdf,.jpg,.jpeg,.png"
+                                      multiple={isMultipleFileDocument(item.name)}
+                                      maxFiles={isMultipleFileDocument(item.name) ? 5 : 1}
+                                      maxSize={50}
+                                      label={`Upload ${item.name}`}
+                                      description={`Max 50MB. Accepted: PDF, JPG, PNG - Encrypted${isMultipleFileDocument(item.name) ? ' - Multiple files allowed' : ''}`}
+                                      className="mb-3"
+                                      enableEncryption={true}
+                                      referenceId={applicantId}
+                                      sectionName={`${item.applicantType}`}
+                                      documentName={item.name}
+                                      enableWebhook={true}
+                                      applicationId={applicantId}
+                                      zoneinfo={user?.zoneinfo}
+                                      documentId={item.id}
+                                    />
+                                  </>
+                                )}
                                 {uploadingDocuments[item.id] && (
                                   <div className="flex items-center gap-2 text-sm text-blue-600">
                                     <Loader2 className="w-4 h-4 animate-spin" />
