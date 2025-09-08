@@ -63,6 +63,7 @@ export interface FormDataWebhookData {
       incomeFrequency?: string;
       otherIncome?: string;
       otherIncomeSource?: string;
+      creditScore?: string;
       bankRecords?: Array<{
         bankName?: string;
         accountType?: string;
@@ -104,6 +105,7 @@ export interface FormDataWebhookData {
       otherIncome?: string;
       otherIncomeFrequency?: string;
       otherIncomeSource?: string;
+      creditScore?: string;
       bankRecords?: Array<{
         bankName?: string;
         accountType?: string;
@@ -144,6 +146,7 @@ export interface FormDataWebhookData {
       incomeFrequency?: string;
       otherIncome?: string;
       otherIncomeSource?: string;
+      creditScore?: string;
       bankRecords?: Array<{
         bankName?: string;
         accountType?: string;

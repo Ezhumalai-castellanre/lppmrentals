@@ -505,7 +505,8 @@ export class RentalApplicationPDF {
             incomeFrequency: applicant.incomeFrequency,
             otherIncome: applicant.otherIncome,
             otherIncomeFrequency: applicant.otherIncomeFrequency,
-            otherIncomeSource: applicant.otherIncomeSource
+            otherIncomeSource: applicant.otherIncomeSource,
+            creditScore: applicant.creditScore
         };
         this.addKeyValueTable(financialInfo, [], "Financial Information");
         
@@ -587,7 +588,8 @@ export class RentalApplicationPDF {
             incomeFrequency: coApplicant.incomeFrequency,
             otherIncome: coApplicant.otherIncome,
             otherIncomeFrequency: coApplicant.otherIncomeFrequency,
-            otherIncomeSource: coApplicant.otherIncomeSource
+            otherIncomeSource: coApplicant.otherIncomeSource,
+            creditScore: coApplicant.creditScore
         };
         this.addKeyValueTable(financialInfo, [], "Financial Information");
         
@@ -669,7 +671,8 @@ export class RentalApplicationPDF {
             incomeFrequency: guarantor.incomeFrequency,
             otherIncome: guarantor.otherIncome,
             otherIncomeFrequency: guarantor.otherIncomeFrequency,
-            otherIncomeSource: guarantor.otherIncomeSource
+            otherIncomeSource: guarantor.otherIncomeSource,
+            creditScore: guarantor.creditScore
         };
         this.addKeyValueTable(financialInfo, [], "Financial Information");
         

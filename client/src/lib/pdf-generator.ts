@@ -163,6 +163,7 @@ export class PDFGenerator {
     this.addField("Other Income", person.otherIncome ? `$${person.otherIncome}` : undefined);
     this.addField("Other Income Frequency", person.otherIncomeFrequency);
     this.addField("Other Income Source", person.otherIncomeSource);
+    this.addField("Credit Score", person.creditScore);
     
     // Bank Information (simplified)
     if (person.bankRecords && person.bankRecords.length > 0) {

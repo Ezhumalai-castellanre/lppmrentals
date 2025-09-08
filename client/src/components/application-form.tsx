@@ -187,6 +187,7 @@ const applicationSchema = z.object({
     otherIncome: z.string().optional(),
     otherIncomeFrequency: z.string().optional(),
     otherIncomeSource: z.string().optional(),
+    creditScore: z.string().optional(),
     bankRecords: z.array(z.any()).optional(),
   })).max(4, "Maximum 4 co-applicants allowed"),
 
@@ -259,6 +260,7 @@ const applicationSchema = z.object({
     otherIncome: z.string().optional(),
     otherIncomeFrequency: z.string().optional(),
     otherIncomeSource: z.string().optional(),
+    creditScore: z.string().optional(),
     bankRecords: z.array(z.any()).optional(),
   })).max(4, "Maximum 4 guarantors allowed"),
 
@@ -472,6 +474,7 @@ export function ApplicationForm() {
       otherIncome: '',
       otherIncomeFrequency: 'monthly',
       otherIncomeSource: '',
+      creditScore: '',
       bankRecords: []
     },
     coApplicant: {
@@ -494,6 +497,7 @@ export function ApplicationForm() {
       otherIncome: '',
       otherIncomeFrequency: 'monthly',
       otherIncomeSource: '',
+      creditScore: '',
       bankRecords: []
     },
     guarantor: {
@@ -516,6 +520,7 @@ export function ApplicationForm() {
       otherIncome: '',
       otherIncomeFrequency: 'monthly',
       otherIncomeSource: '',
+      creditScore: '',
       bankRecords: []
     },
     occupants: [], // Each occupant: { name, relationship, dob, ssn, age, ssnDocument, ssnEncryptedDocument, documents }
@@ -4027,6 +4032,7 @@ export function ApplicationForm() {
             applicantIncomeFrequency: formData.applicant?.incomeFrequency,
             applicantOtherIncome: formData.applicant?.otherIncome,
             applicantOtherIncomeSource: formData.applicant?.otherIncomeSource,
+            applicantCreditScore: formData.applicant?.creditScore,
             applicantBankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
               bankName: record.bankName,
               accountType: record.accountType
@@ -4083,6 +4089,7 @@ export function ApplicationForm() {
                 coApplicantIncomeFrequency: coApplicant.incomeFrequency,
                 coApplicantOtherIncome: coApplicant.otherIncome,
                 coApplicantOtherIncomeSource: coApplicant.otherIncomeSource,
+                coApplicantCreditScore: coApplicant.creditScore,
                 coApplicantBankRecords: (coApplicant.bankRecords || []).map((record: any) => ({
                   bankName: record.bankName,
                   accountType: record.accountType
@@ -4138,6 +4145,7 @@ export function ApplicationForm() {
                 guarantorIncomeFrequency: guarantor.incomeFrequency,
                 guarantorOtherIncome: guarantor.otherIncome,
                 guarantorOtherIncomeSource: guarantor.otherIncomeSource,
+                guarantorCreditScore: guarantor.creditScore,
                 guarantorBankRecords: (guarantor.bankRecords || []).map((record: any) => ({
                   bankName: record.bankName,
                   accountType: record.accountType

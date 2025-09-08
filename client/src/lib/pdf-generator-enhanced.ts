@@ -415,6 +415,7 @@ export class EnhancedPDFGenerator {
     this.addTableRow("Other Income", person.otherIncome ? `$${person.otherIncome.toLocaleString()}` : undefined);
     this.addTableRow("Other Income Frequency", person.otherIncomeFrequency);
     this.addTableRow("Other Income Source", person.otherIncomeSource);
+    this.addTableRow("Credit Score", person.creditScore);
     
     // Bank Information subsection (simplified)
     if (person.bankRecords && person.bankRecords.length > 0) {

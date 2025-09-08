@@ -300,6 +300,24 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
           />
         </div>
 
+        {/* Credit Score Section */}
+        <div className="form-field">
+          <Label htmlFor={`${person}-creditScore`}>Credit Score</Label>
+          <Input
+            id={`${person}-creditScore`}
+            placeholder="Enter credit score (e.g., 750)"
+            type="number"
+            min={300}
+            max={850}
+            value={personData.creditScore || ""}
+            onChange={(e) => handleChange("creditScore", e.target.value)}
+            className="input-field"
+          />
+          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Credit score range: 300-850 (optional)
+          </div>
+        </div>
+
         {/* Bank Information */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
