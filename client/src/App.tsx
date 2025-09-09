@@ -5,7 +5,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "./components/ui/toaster";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
-import { ChatbotProvider } from "./contexts/chatbot-context";
 import ProtectedRoute from "./components/protected-route";
 import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar";
 import { AppSidebar } from "./components/app-sidebar";
@@ -28,14 +27,22 @@ import RentalDashboard from "./components/rental-dashboard";
 import { Button } from "./components/ui/button";
 import { Save } from "lucide-react";
 import { DebugAuth } from "./components/debug-auth";
-import { ChatbotButton } from "./components/ui/chatbot-button";
-import { ChatbotEnhanced } from "./components/ui/chatbot-enhanced";
 import "./lib/aws-config";
 
-function AppLayout({ children }: { children: React.ReactNode }) {
+function AppLayout({ children, hideSidebar = false }: { children: React.ReactNode; hideSidebar?: boolean }) {
   const { isAuthenticated } = useAuth();
   
   if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-white">
+        <main>
+          {children}
+        </main>
+      </div>
+    );
+  }
+
+  if (hideSidebar) {
     return (
       <div className="min-h-screen bg-white">
         <main>
@@ -196,31 +203,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ChatbotProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-            <AuthenticatedChatbot />
-          </TooltipProvider>
-        </ChatbotProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
-  );
-}
-
-// Component that only shows chatbot for authenticated users
-function AuthenticatedChatbot() {
-  const { isAuthenticated } = useAuth();
-  
-  if (!isAuthenticated) {
-    return null;
-  }
-  
-  return (
-    <>
-      <ChatbotButton />
-      <ChatbotEnhanced />
-    </>
   );
 }
 

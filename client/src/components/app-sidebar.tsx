@@ -3,7 +3,6 @@ import { useLocation } from 'wouter';
 import { useAuth } from '../hooks/use-auth';
 import { 
   FileText, 
-  Wrench,
   Lock, 
   Clock
   // LayoutDashboard - removed (verification hidden)
@@ -106,12 +105,6 @@ export function AppSidebar() {
       title: "Supporting Documents",
       url: "/missing-documents",
       icon: FileText,
-    }] : []),
-    // Only show Maintenance when there are submitted applications
-    ...(hasSubmittedApplications ? [{
-      title: "Maintenance",
-      url: "/maintenance",
-      icon: Wrench,
     }] : []),
   ];
 
