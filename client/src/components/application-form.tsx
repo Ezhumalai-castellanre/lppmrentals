@@ -116,10 +116,7 @@ const applicationSchema = z.object({
   coApplicants: z.array(z.object({
     name: z.string().optional(), // Lenient: any name entry is okay
     relationship: z.string().optional(),
-    dob: z.date({
-      required_error: "Date of birth is required",
-      invalid_type_error: "Please select a valid date of birth",
-    }),
+    dob: z.date().optional(),
     ssn: z.string().optional().refine((val) => !val || validateSSN(val), {
       message: "Please enter a valid 9-digit Social Security Number"
     }),
@@ -366,10 +363,7 @@ const applicationSchema = z.object({
       } else {
         nonEmptyGuarantors.forEach((guarantor: any, index: number) => {
           const originalIndex = data.guarantors.indexOf(guarantor);
-          // Lenient validation: only check if dob is provided when name is provided
-          if (guarantor.name && guarantor.name.trim() !== '' && !guarantor.dob) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date of birth is required when name is provided", path: ["guarantors", originalIndex, "dob"] });
-          }
+          // Date of birth validation removed - no validation required
         });
       }
     }
