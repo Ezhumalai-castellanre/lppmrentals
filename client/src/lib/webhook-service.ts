@@ -1102,7 +1102,8 @@ export class WebhookService {
       },
 
       // Co-Applicants section - use new nested structure if available
-      coApplicants: formData.coApplicants ? formData.coApplicants.map((coApplicant: any) => ({
+      coApplicants: formData.coApplicants ? formData.coApplicants.map((coApplicant: any, index: number) => ({
+        coApplicant: coApplicant.coApplicant || (index + 1).toString(), // Dynamic type field
         email: coApplicant.email,
         phone: coApplicant.phone,
         address: coApplicant.address || "",
@@ -1177,7 +1178,45 @@ export class WebhookService {
       }] : []),
 
       // Guarantors section - use new nested structure if available
-      guarantors: formData.guarantors || (formData.hasGuarantor ? [{
+      guarantors: formData.guarantors ? formData.guarantors.map((guarantor: any, index: number) => ({
+        guarantor: guarantor.guarantor || (index + 1).toString(), // Dynamic type field
+        email: guarantor.email,
+        phone: guarantor.phone,
+        address: guarantor.address || "",
+        zip: guarantor.zip,
+        landlordZipCode: guarantor.landlordZipCode,
+        landlordPhone: guarantor.landlordPhone,
+        landlordEmail: guarantor.landlordEmail,
+        city: guarantor.city,
+        landlordCity: guarantor.landlordCity,
+        name: guarantor.name,
+        licenseState: guarantor.licenseState,
+        state: guarantor.state,
+        relationship: guarantor.relationship,
+        dob: guarantor.dob,
+        age: guarantor.age || 0,
+        ssn: guarantor.ssn,
+        license: guarantor.license,
+        lengthAtAddressYears: guarantor.lengthAtAddressYears,
+        lengthAtAddressMonths: guarantor.lengthAtAddressMonths,
+        landlordName: guarantor.landlordName,
+        landlordAddressLine1: guarantor.landlordAddressLine1,
+        landlordState: guarantor.landlordState,
+        landlordAddressLine2: guarantor.landlordAddressLine2,
+        currentRent: guarantor.currentRent,
+        reasonForMoving: guarantor.reasonForMoving,
+        employmentType: guarantor.employmentType,
+        businessName: guarantor.businessName || "",
+        businessType: guarantor.businessType || "",
+        yearsInBusiness: guarantor.yearsInBusiness || "",
+        income: guarantor.income || guarantor.salary || "",
+        incomeFrequency: guarantor.incomeFrequency || "monthly",
+        otherIncome: guarantor.otherIncome || "",
+        otherIncomeSource: guarantor.otherIncomeSource || "",
+        otherIncomeFrequency: guarantor.otherIncomeFrequency || "monthly",
+        bankRecords: guarantor.bankRecords || []
+      })) : (formData.hasGuarantor ? [{
+        guarantor: "1", // Dynamic type field for single guarantor
         email: formData.guarantorEmail,
         phone: formData.guarantorPhone,
         address: formData.guarantorAddress || formData.guarantor?.address || "",
@@ -1249,11 +1288,11 @@ export class WebhookService {
     };
 
     // Remove undefined sections
-    if (!transformedData.coApplicant) {
-      delete transformedData.coApplicant;
+    if (!transformedData.coApplicants || transformedData.coApplicants.length === 0) {
+      delete transformedData.coApplicants;
     }
-    if (!transformedData.guarantor) {
-      delete transformedData.guarantor;
+    if (!transformedData.guarantors || transformedData.guarantors.length === 0) {
+      delete transformedData.guarantors;
     }
 
     // Debug logging for transformed income fields
@@ -1265,22 +1304,24 @@ export class WebhookService {
       otherIncomeSource: transformedData.applicant.otherIncomeSource
     });
     
-    if (transformedData.coApplicant) {
-      console.log('📊 Transformed Co-Applicant income:', {
-        income: transformedData.coApplicant.income,
-        incomeFrequency: transformedData.coApplicant.incomeFrequency,
-        otherIncome: transformedData.coApplicant.otherIncome,
-        otherIncomeSource: transformedData.coApplicant.otherIncomeSource
-      });
+    if (transformedData.coApplicants && transformedData.coApplicants.length > 0) {
+      console.log('📊 Transformed Co-Applicants income:', transformedData.coApplicants.map((co: any) => ({
+        coApplicant: co.coApplicant,
+        income: co.income,
+        incomeFrequency: co.incomeFrequency,
+        otherIncome: co.otherIncome,
+        otherIncomeSource: co.otherIncomeSource
+      })));
     }
     
-    if (transformedData.guarantor) {
-      console.log('📊 Transformed Guarantor income:', {
-        income: transformedData.guarantor.income,
-        incomeFrequency: transformedData.guarantor.incomeFrequency,
-        otherIncome: transformedData.guarantor.otherIncome,
-        otherIncomeSource: transformedData.guarantor.otherIncomeSource
-      });
+    if (transformedData.guarantors && transformedData.guarantors.length > 0) {
+      console.log('📊 Transformed Guarantors income:', transformedData.guarantors.map((guarantor: any) => ({
+        guarantor: guarantor.guarantor,
+        income: guarantor.income,
+        incomeFrequency: guarantor.incomeFrequency,
+        otherIncome: guarantor.otherIncome,
+        otherIncomeSource: guarantor.otherIncomeSource
+      })));
     }
     console.log('=== END TRANSFORMED INCOME FIELDS DEBUG ===');
 
@@ -1322,6 +1363,7 @@ export class WebhookService {
         application_id: applicationId,
         applicant_id: applicantId,
         file_name: fileName,
+        file_base64: pdfBase64, // Required by interface
         s3_url: s3Result.url,
         s3_key: s3Result.key,
         submission_type: 'pdf_generation',

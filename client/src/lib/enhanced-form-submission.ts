@@ -278,7 +278,8 @@ export class FormSubmissionHandler {
       },
       
       // Co-Applicants
-      coApplicants: formData.coApplicants?.map((coApplicant: any) => ({
+      coApplicants: formData.coApplicants?.map((coApplicant: any, index: number) => ({
+        coApplicant: (index + 1).toString(), // Dynamic type field
         name: coApplicant.name,
         dob: safeDateToISO(coApplicant.dob),
         ssn: coApplicant.ssn,
@@ -294,7 +295,8 @@ export class FormSubmissionHandler {
       })) || [],
       
       // Guarantors
-      guarantors: formData.guarantors?.map((guarantor: any) => ({
+      guarantors: formData.guarantors?.map((guarantor: any, index: number) => ({
+        guarantor: (index + 1).toString(), // Dynamic type field
         name: guarantor.name,
         dob: safeDateToISO(guarantor.dob),
         ssn: guarantor.ssn,

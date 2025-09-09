@@ -3630,7 +3630,8 @@ export function ApplicationForm() {
           },
           
           // Co-Applicants (nested objects)
-          coApplicants: (formData.coApplicants || []).map((coApplicant: any) => ({
+          coApplicants: (formData.coApplicants || []).map((coApplicant: any, index: number) => ({
+            coApplicant: (index + 1).toString(), // Dynamic type field
             email: coApplicant.email || formData.coApplicantEmail,
             phone: formatPhoneForPayload(coApplicant.phone || formData.coApplicantPhone),
             zip: coApplicant.zip || formData.coApplicantZip,
@@ -3671,7 +3672,8 @@ export function ApplicationForm() {
           })),
           
           // Guarantors (nested objects)
-          guarantors: (formData.guarantors || []).map((guarantor: any) => ({
+          guarantors: (formData.guarantors || []).map((guarantor: any, index: number) => ({
+            guarantor: (index + 1).toString(), // Dynamic type field
             email: guarantor.email || formData.guarantorEmail,
             phone: formatPhoneForPayload(guarantor.phone || formData.guarantorPhone),
             zip: guarantor.zip || formData.guarantorZip,
