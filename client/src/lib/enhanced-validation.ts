@@ -1,4 +1,4 @@
-import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail, validateDriverLicense, validateIncome, validateBirthDate, validateMoveInDate } from './validation';
+import { validatePhoneNumber, validateSSN, validateEmail, validateDriverLicense, validateIncome, validateBirthDate, validateMoveInDate } from './validation';
 
 // Validation result interface
 export interface ValidationResult {
@@ -124,21 +124,6 @@ export const validateEmailField = (email: string | undefined | null, fieldName: 
   return { isValid: true, message: '' };
 };
 
-export const validateZIP = (zip: string | undefined | null, fieldName: string = 'ZIP code'): ValidationResult => {
-  if (!zip || zip.trim() === '') {
-    return { isValid: true, message: '' }; // Optional field
-  }
-  
-  if (!validateZIPCode(zip)) {
-    return {
-      isValid: false,
-      message: `${fieldName} must be a valid 5 or 9-digit ZIP code (e.g., 12345 or 12345-6789)`,
-      code: ValidationErrorType.INVALID_FORMAT
-    };
-  }
-  
-  return { isValid: true, message: '' };
-};
 
 export const validateLicense = (license: string | undefined | null, fieldName: string = 'Driver\'s license'): ValidationResult => {
   if (!license || license.trim() === '') {

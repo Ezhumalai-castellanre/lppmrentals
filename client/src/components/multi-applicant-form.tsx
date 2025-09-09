@@ -381,7 +381,7 @@ export function MultiApplicantForm() {
                         </Select>
                       </div>
                       <div>
-                        <Label className="mb-0.5">Date of Birth *</Label>
+                        <Label className="mb-0.5">Date of Birth</Label>
                         <Input 
                           type="date"
                           value={coApplicants[index]?.dob || ''}
@@ -584,7 +584,7 @@ export function MultiApplicantForm() {
                         </Select>
                       </div>
                       <div>
-                        <Label className="mb-0.5">Date of Birth *</Label>
+                        <Label className="mb-0.5">Date of Birth</Label>
                         <Input 
                           type="date"
                           value={guarantors[index]?.dob || ''}

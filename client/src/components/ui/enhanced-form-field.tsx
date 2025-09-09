@@ -74,7 +74,7 @@ export function EnhancedFormField<T extends FieldValues>({
         case 'ssn':
           return formatSSN(value);
         case 'zip':
-          return formatZIPCode(value);
+          return value;
         case 'currency':
           return formatCurrency(value, format.options);
         case 'percentage':
@@ -289,13 +289,6 @@ function formatSSN(ssn: string): string {
   return digits;
 }
 
-function formatZIPCode(zip: string): string {
-  const digits = zip.replace(/\D/g, '');
-  if (digits.length >= 6) {
-    return `${digits.slice(0, 5)}-${digits.slice(5, 9)}`;
-  }
-  return digits.slice(0, 5);
-}
 
 function formatCurrency(value: number, options: any = {}): string {
   const { currency = 'USD', locale = 'en-US' } = options;

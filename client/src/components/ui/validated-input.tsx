@@ -7,8 +7,6 @@ import {
   formatPhoneNumber, 
   validateSSN, 
   formatSSN, 
-  validateZIPCode, 
-  formatZIPCode,
   validateEmail,
   validateDriverLicense,
   validateIncome
@@ -18,7 +16,7 @@ interface ValidatedInputProps {
   label: string;
   value: string | undefined | null;
   onChange: (value: string) => void;
-  type: 'phone' | 'ssn' | 'zip' | 'email' | 'license' | 'income' | 'text' | 'number';
+  type: 'phone' | 'ssn' | 'email' | 'license' | 'income' | 'text' | 'number';
   placeholder?: string;
   required?: boolean;
   error?: string;
@@ -63,11 +61,6 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
         }
         break;
       
-      case 'zip':
-        if (!validateZIPCode(inputValue)) {
-          return { isValid: false, message: 'Please enter a valid 5 or 9-digit ZIP code' };
-        }
-        break;
       
       case 'email':
         if (!validateEmail(inputValue)) {
@@ -111,10 +104,6 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
         inputValue = inputValue.replace(/\D/g, '').slice(0, 9);
         break;
       
-      case 'zip':
-        // Remove all non-digits and limit to 9
-        inputValue = inputValue.replace(/\D/g, '').slice(0, 9);
-        break;
       
       case 'income':
         // Allow only numbers and decimal point
@@ -142,8 +131,6 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
         return value ? formatPhoneNumber(value) : '';
       case 'ssn':
         return value ? formatSSN(value) : '';
-      case 'zip':
-        return value ? formatZIPCode(value) : '';
       default:
         return value || '';
     }
@@ -168,8 +155,6 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
         return '(555) 123-4567';
       case 'ssn':
         return 'XXX-XX-XXXX';
-      case 'zip':
-        return '12345 or 12345-6789';
       case 'email':
         return 'email@example.com';
       case 'license':
@@ -216,9 +201,6 @@ export const SSNInput: React.FC<Omit<ValidatedInputProps, 'type'> & { name: stri
   <ValidatedInput {...props} type="ssn" />
 );
 
-export const ZIPInput: React.FC<Omit<ValidatedInputProps, 'type'> & { name: string }> = (props) => (
-  <ValidatedInput {...props} type="zip" />
-);
 
 export const EmailInput: React.FC<Omit<ValidatedInputProps, 'type'> & { name: string }> = (props) => (
   <ValidatedInput {...props} type="email" />

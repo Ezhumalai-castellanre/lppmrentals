@@ -3019,6 +3019,19 @@ export function ApplicationForm() {
   // --- Add this helper to get the next allowed step index ---
   const getNextAllowedStep = (current: number, direction: 1 | -1) => {
     let next = current + direction;
+    
+    // Check if primary applicant is a student
+    const isStudent = formData?.applicant?.employmentType === 'student';
+    
+    // If moving forward and primary applicant is student, skip Documents step (step 4)
+    if (direction === 1 && next === 4 && isStudent) {
+      next = 5; // Skip to Co-Applicant step
+    }
+    // If moving backward and primary applicant is student, skip Documents step (step 4)
+    if (direction === -1 && next === 4 && isStudent) {
+      next = 3; // Go back to Financial Info step
+    }
+    
     // If moving forward and co-applicant is not checked, skip co-applicant financial and docs
     if (direction === 1 && (next === 6 || next === 7) && !hasCoApplicant) {
       next = 8;
@@ -3118,6 +3131,21 @@ export function ApplicationForm() {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
+    }
+    
+    // Check if primary applicant is a student
+    const isStudent = formData?.applicant?.employmentType === 'student';
+    
+    // Step 4 is Supporting Documents - skip for students
+    if (step === 4 && isStudent) {
+      toast({
+        title: 'Documents Step Skipped',
+        description: 'Document validation is not required for students. Moving to next step.',
+        variant: 'info',
+      });
+      // Automatically move to next step instead of blocking
+      setCurrentStep(5);
+      return;
     }
     
     // Step 6 is Co-Applicant Financial Information
@@ -7516,6 +7544,27 @@ export function ApplicationForm() {
 
           {/* Form Content */}
               {renderStep()}
+              
+              {/* Student Documents Skip Notice */}
+              {formData?.applicant?.employmentType === 'student' && currentStep === 3 && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-blue-800">
+                        Documents Step Skipped for Students
+                      </h3>
+                      <div className="mt-2 text-sm text-blue-700">
+                        <p>As a student, document validation is not required. You can proceed directly to the next step.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             {/* Navigation Buttons */}
           <div className="flex justify-between pt-6">

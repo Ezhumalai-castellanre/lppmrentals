@@ -1599,15 +1599,13 @@ export const SupportingDocuments = ({
           </div>
           
           {/* Employment Type Info Note */}
-          {category.category === 'Employment Documents' && (
+          {category.category === 'Employment Documents' && relevantEmploymentType !== 'student' && (
             <div className="mb-4 p-3 bg-green-50 rounded-lg">
               <div className="text-xs text-green-700">
                 <span className="font-medium">Employment Type Requirements:</span> 
                 {(() => {
                   if (relevantEmploymentType === 'self-employed') {
                     return ' Self-Employed: No Pay Stubs or Employment Letter required, Accountant Letter required.';
-                  } else if (relevantEmploymentType === 'student') {
-                    return ' Student: Employment Letter + Pay Stubs (no Accountant Letter).';
                   } else if (relevantEmploymentType === 'salaried') {
                     return ' Salaried: Employment Letter + Pay Stubs (no Accountant Letter).';
                   }
@@ -1618,7 +1616,7 @@ export const SupportingDocuments = ({
           )}
           
           {/* Pay Stubs Info Note */}
-          {category.category === 'Employment Documents' && (
+          {category.category === 'Employment Documents' && relevantEmploymentType !== 'student' && (
             <div className="mb-4 p-3 bg-blue-50 rounded-lg">
               <div className="text-xs text-blue-700">
                 <span className="font-medium">Pay Stubs Info:</span> Based on your income frequency selection in the Financial Information section, {payStubsFrequencyOptions.find(opt => opt.value === currentIncomeFrequency)?.count} Pay Stubs section{payStubsFrequencyOptions.find(opt => opt.value === currentIncomeFrequency)?.count !== 1 ? 's' : ''} will be created for you to upload.

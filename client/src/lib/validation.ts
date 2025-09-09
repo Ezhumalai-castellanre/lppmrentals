@@ -98,35 +98,6 @@ export const formatSSN = (ssn: string | undefined | null): string => {
   return digits;
 };
 
-// ZIP code validation (USA format)
-export const validateZIPCode = (zip: string | undefined | null): boolean => {
-  // Handle null/undefined cases
-  if (!zip || typeof zip !== 'string') {
-    return false;
-  }
-  
-  // Remove all non-digit characters
-  const digits = zip.replace(/\D/g, '');
-  
-  // Check if it's 5 digits (standard) or 9 digits (ZIP+4)
-  return digits.length === 5 || digits.length === 9;
-};
-
-// Format ZIP code for display
-export const formatZIPCode = (zip: string | undefined | null): string => {
-  // Handle null/undefined cases
-  if (!zip || typeof zip !== 'string') {
-    return '';
-  }
-  
-  const digits = zip.replace(/\D/g, '');
-  
-  if (digits.length >= 6) {
-    return `${digits.slice(0, 5)}-${digits.slice(5, 9)}`;
-  }
-  
-  return digits.slice(0, 5);
-};
 
 // Email validation - Lenient: accepts any email with .com
 export const validateEmail = (email: string | undefined | null): boolean => {
