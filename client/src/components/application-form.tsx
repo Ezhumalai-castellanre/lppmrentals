@@ -7800,8 +7800,8 @@ export function ApplicationForm() {
         </div> */}
 
           {/* Form Content */}
-              {/* Validation Error Display */}
-              {(() => {
+              {/* Validation Error Display - HIDDEN */}
+              {/* {(() => {
                 const validation = validateStep(currentStep);
                 if (!validation.isValid && currentStep > 0) {
                   return (
@@ -7827,7 +7827,7 @@ export function ApplicationForm() {
                   );
                 }
                 return null;
-              })()}
+              })()} */}
               
               {renderStep()}
               
