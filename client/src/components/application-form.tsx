@@ -3039,6 +3039,234 @@ export function ApplicationForm() {
     return Math.max(0, Math.min(STEPS.length - 1, next));
   };
 
+  // Step validation functions
+  const validateStep = (step: number): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    
+    switch (step) {
+      case 1: // Application Information - all fields required
+        if (!formData.application?.buildingAddress?.trim()) {
+          errors.push('Building Address is required');
+        }
+        if (!formData.application?.apartmentNumber?.trim()) {
+          errors.push('Apartment Number is required');
+        }
+        if (!formData.application?.moveInDate) {
+          errors.push('Move-in Date is required');
+        }
+        if (!formData.application?.monthlyRent || formData.application?.monthlyRent <= 0) {
+          errors.push('Monthly Rent is required');
+        }
+        if (!formData.application?.apartmentType?.trim()) {
+          errors.push('Apartment Type is required');
+        }
+        break;
+
+      case 2: // Primary Applicant Information - all fields required
+        if (!formData.applicant?.name?.trim()) {
+          errors.push('Full Name is required');
+        }
+        if (!formData.applicant?.ssn?.trim()) {
+          errors.push('Social Security Number is required');
+        }
+        if (!formData.applicant?.phone?.trim()) {
+          errors.push('Phone Number is required');
+        }
+        if (!formData.applicant?.email?.trim()) {
+          errors.push('Email Address is required');
+        }
+        if (!formData.applicant?.license?.trim()) {
+          errors.push('Driver\'s License is required');
+        }
+        if (!formData.applicant?.licenseState?.trim()) {
+          errors.push('Driver\'s License State is required');
+        }
+        if (!formData.applicant?.address?.trim()) {
+          errors.push('Address is required');
+        }
+        if (!formData.applicant?.city?.trim()) {
+          errors.push('City is required');
+        }
+        if (!formData.applicant?.state?.trim()) {
+          errors.push('State is required');
+        }
+        if (!formData.applicant?.zip?.trim()) {
+          errors.push('ZIP Code is required');
+        }
+        break;
+
+      case 3: // Financial Information - Primary Applicant - all fields required
+        if (!formData.applicant?.employmentType?.trim()) {
+          errors.push('Employment Type is required');
+        }
+        if (!formData.applicant?.employer?.trim()) {
+          errors.push('Current Employer is required');
+        }
+        if (!formData.applicant?.position?.trim()) {
+          errors.push('Position/Title is required');
+        }
+        if (!formData.applicant?.employmentStart) {
+          errors.push('Employment Start Date is required');
+        }
+        if (!formData.applicant?.income || formData.applicant?.income <= 0) {
+          errors.push('Annual Income is required');
+        }
+        break;
+
+      case 5: // Co-Applicant Information - conditional based on checkbox
+        if (formData.hasCoApplicant) {
+          const coApplicant = formData.coApplicants?.[0]; // Get first co-applicant
+          if (!coApplicant?.name?.trim()) {
+            errors.push('Co-Applicant Full Name is required');
+          }
+          if (!coApplicant?.ssn?.trim()) {
+            errors.push('Co-Applicant Social Security Number is required');
+          }
+          if (!coApplicant?.phone?.trim()) {
+            errors.push('Co-Applicant Phone Number is required');
+          }
+          if (!coApplicant?.email?.trim()) {
+            errors.push('Co-Applicant Email Address is required');
+          }
+          if (!coApplicant?.license?.trim()) {
+            errors.push('Co-Applicant Driver\'s License is required');
+          }
+          if (!coApplicant?.licenseState?.trim()) {
+            errors.push('Co-Applicant Driver\'s License State is required');
+          }
+          if (!coApplicant?.address?.trim()) {
+            errors.push('Co-Applicant Address is required');
+          }
+          if (!coApplicant?.city?.trim()) {
+            errors.push('Co-Applicant City is required');
+          }
+          if (!coApplicant?.state?.trim()) {
+            errors.push('Co-Applicant State is required');
+          }
+          if (!coApplicant?.zip?.trim()) {
+            errors.push('Co-Applicant ZIP Code is required');
+          }
+        }
+        break;
+
+      case 6: // Co-Applicant Financial Information - conditional based on employment type
+        if (formData.hasCoApplicant) {
+          const coApplicant = formData.coApplicants?.[0]; // Get first co-applicant
+          if (!coApplicant?.employmentType?.trim()) {
+            errors.push('Co-Applicant Employment Type is required');
+          }
+          // If not student, require financial fields
+          if (coApplicant?.employmentType !== 'student') {
+            if (!coApplicant?.employer?.trim()) {
+              errors.push('Co-Applicant Current Employer is required');
+            }
+            if (!coApplicant?.position?.trim()) {
+              errors.push('Co-Applicant Position/Title is required');
+            }
+            if (!coApplicant?.income || coApplicant?.income <= 0) {
+              errors.push('Co-Applicant Income is required');
+            }
+            if (!coApplicant?.incomeFrequency?.trim()) {
+              errors.push('Co-Applicant Income Frequency is required');
+            }
+          }
+        }
+        break;
+
+      case 8: // Other Occupants - conditional based on checkbox
+        if (formData.hasOtherOccupants) {
+          if (!formData.occupants || formData.occupants.length === 0) {
+            errors.push('At least one occupant must be added');
+          } else {
+            formData.occupants.forEach((occupant: any, index: number) => {
+              if (!occupant?.name?.trim()) {
+                errors.push(`Occupant ${index + 1} Name is required`);
+              }
+              if (!occupant?.relationship?.trim()) {
+                errors.push(`Occupant ${index + 1} Relationship is required`);
+              }
+              if (!occupant?.dob) {
+                errors.push(`Occupant ${index + 1} Date of Birth is required`);
+              }
+              if (!occupant?.ssn?.trim()) {
+                errors.push(`Occupant ${index + 1} Social Security Number is required`);
+              }
+            });
+          }
+        }
+        break;
+
+      case 9: // Guarantor Information - conditional based on checkbox
+        if (formData.hasGuarantor) {
+          const guarantor = formData.guarantors?.[0]; // Get first guarantor
+          if (!guarantor?.name?.trim()) {
+            errors.push('Guarantor Full Name is required');
+          }
+          if (!guarantor?.ssn?.trim()) {
+            errors.push('Guarantor Social Security Number is required');
+          }
+          if (!guarantor?.phone?.trim()) {
+            errors.push('Guarantor Phone Number is required');
+          }
+          if (!guarantor?.email?.trim()) {
+            errors.push('Guarantor Email Address is required');
+          }
+          if (!guarantor?.license?.trim()) {
+            errors.push('Guarantor Driver\'s License is required');
+          }
+          if (!guarantor?.licenseState?.trim()) {
+            errors.push('Guarantor Driver\'s License State is required');
+          }
+          if (!guarantor?.address?.trim()) {
+            errors.push('Guarantor Address is required');
+          }
+          if (!guarantor?.city?.trim()) {
+            errors.push('Guarantor City is required');
+          }
+          if (!guarantor?.state?.trim()) {
+            errors.push('Guarantor State is required');
+          }
+          if (!guarantor?.zip?.trim()) {
+            errors.push('Guarantor ZIP Code is required');
+          }
+        }
+        break;
+
+      case 10: // Guarantor Financial Information - conditional based on employment type
+        if (formData.hasGuarantor) {
+          const guarantor = formData.guarantors?.[0]; // Get first guarantor
+          if (!guarantor?.employmentType?.trim()) {
+            errors.push('Guarantor Employment Type is required');
+          }
+          // If not student, require financial fields
+          if (guarantor?.employmentType !== 'student') {
+            if (!guarantor?.employer?.trim()) {
+              errors.push('Guarantor Current Employer is required');
+            }
+            if (!guarantor?.position?.trim()) {
+              errors.push('Guarantor Position/Title is required');
+            }
+            if (!guarantor?.income || guarantor?.income <= 0) {
+              errors.push('Guarantor Income is required');
+            }
+            if (!guarantor?.incomeFrequency?.trim()) {
+              errors.push('Guarantor Income Frequency is required');
+            }
+          }
+        }
+        break;
+
+      default:
+        // Steps 0, 4, 7, 11, 12 don't require validation
+        break;
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+
   // --- Update nextStep and prevStep to use the helper ---
   const nextStep = async (e?: React.MouseEvent) => {
     console.log('🔄 Next step clicked - Current step:', currentStep);
@@ -3046,6 +3274,17 @@ export function ApplicationForm() {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
+    }
+
+    // Validate current step before proceeding
+    const validation = validateStep(currentStep);
+    if (!validation.isValid) {
+      toast({
+        title: 'Required fields missing',
+        description: validation.errors.join(', '),
+        variant: 'destructive',
+      });
+      return;
     }
 
     try {
@@ -3119,6 +3358,21 @@ export function ApplicationForm() {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
+    }
+    
+    // Validate all previous steps before allowing navigation to a step
+    if (step > currentStep) {
+      for (let i = 1; i < step; i++) {
+        const validation = validateStep(i);
+        if (!validation.isValid) {
+          toast({
+            title: 'Complete previous steps first',
+            description: `Please complete step ${i + 1} (${STEPS[i]?.title}) before proceeding. Missing: ${validation.errors.join(', ')}`,
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
     }
     
     // Check if primary applicant is a student
@@ -7428,6 +7682,17 @@ export function ApplicationForm() {
   };
 
   const handleNext = () => {
+    // Validate current step before proceeding
+    const validation = validateStep(currentStep);
+    if (!validation.isValid) {
+      toast({
+        title: 'Required fields missing',
+        description: validation.errors.join(', '),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setCurrentStep((prev: number) => {
       let nextStep = prev + 1;
       
@@ -7501,21 +7766,29 @@ export function ApplicationForm() {
           
             <div className="flex flex-wrap gap-2 mt-4">
             {STEPS.map((step, index) => {
+              const stepValidation = validateStep(index);
+              const isCompleted = index < currentStep && stepValidation.isValid;
+              const hasErrors = index < currentStep && !stepValidation.isValid;
+              
               return (
                 <div key={step.id} className="flex items-center">
                   <button
                     type="button"
-                      onClick={() => setCurrentStep(index)}
+                      onClick={() => goToStep(index)}
                       className={`flex items-center px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
                         index === currentStep
                           ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                          : index < currentStep
+                          : isCompleted
                           ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          : hasErrors
+                          ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-300'
                           : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                       }`}
                     >
                       {step.icon && <step.icon className="w-3 h-3 mr-1" />}
                       {step.title}
+                      {isCompleted && <Check className="w-3 h-3 ml-1" />}
+                      {hasErrors && <X className="w-3 h-3 ml-1" />}
                   </button>
                   {index < STEPS.length - 1 && (
                       <ChevronRight className="w-3 h-3 text-gray-400 mx-1" />
@@ -7527,6 +7800,35 @@ export function ApplicationForm() {
         </div> */}
 
           {/* Form Content */}
+              {/* Validation Error Display */}
+              {(() => {
+                const validation = validateStep(currentStep);
+                if (!validation.isValid && currentStep > 0) {
+                  return (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <X className="h-5 w-5 text-red-400" />
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-red-800">
+                            Required fields missing
+                          </h3>
+                          <div className="mt-2 text-sm text-red-700">
+                            <ul className="list-disc list-inside space-y-1">
+                              {validation.errors.map((error, index) => (
+                                <li key={index}>{error}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              
               {renderStep()}
               
               {/* Student Documents Skip Notice */}
