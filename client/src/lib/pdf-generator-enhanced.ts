@@ -170,28 +170,41 @@ export class EnhancedPDFGenerator {
   }
 
   private addHeader(): void {
-    // Company logo placeholder (you can add actual logo image)
-    this.doc.setFillColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
-    this.doc.rect(this.marginLeft, this.yPosition, 25, 18, 'F');
-    this.doc.setTextColor(255, 255, 255);
-    this.doc.setFontSize(7);
-    this.doc.setFont('helvetica', 'bold');
-    this.doc.text('LIBERTY', this.marginLeft + 3, this.yPosition + 7);
-    this.doc.text('PLACE', this.marginLeft + 3, this.yPosition + 12);
+    // Company logo from S3
+    try {
+      // Add the logo image from the provided URL
+      this.doc.addImage(
+        'https://supportingdocuments-storage-2025.s3.us-east-1.amazonaws.com/image+(1).png',
+        'PNG',
+        this.marginLeft,
+        this.yPosition,
+        30,
+        20
+      );
+    } catch (error) {
+      // Fallback to text-based logo if image fails to load
+      this.doc.setFillColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
+      this.doc.rect(this.marginLeft, this.yPosition, 25, 18, 'F');
+      this.doc.setTextColor(255, 255, 255);
+      this.doc.setFontSize(7);
+      this.doc.setFont('helvetica', 'bold');
+      this.doc.text('LIBERTY', this.marginLeft + 3, this.yPosition + 7);
+      this.doc.text('PLACE', this.marginLeft + 3, this.yPosition + 12);
+    }
     
     // Company name
     this.doc.setTextColor(this.primaryColor[0], this.primaryColor[1], this.primaryColor[2]);
     this.doc.setFontSize(16);
     this.doc.setFont('helvetica', 'bold');
-    this.doc.text("Liberty Place Property Management", this.marginLeft + 35, this.yPosition + 10);
+    this.doc.text("Liberty Place Property Management", this.marginLeft + 40, this.yPosition + 10);
     
     // Address and contact info
     this.doc.setFontSize(8);
     this.doc.setFont('helvetica', 'normal');
     this.doc.setTextColor(this.secondaryColor[0], this.secondaryColor[1], this.secondaryColor[2]);
-    this.doc.text("122 East 42nd Street, Suite 1903, New York, NY 10168", this.marginLeft + 35, this.yPosition + 16);
-    this.doc.text("Tel: (646) 545-6700 | Fax: (646) 304-2255", this.marginLeft + 35, this.yPosition + 20);
-    this.doc.text("Leasing Direct Line: (646) 545-6700", this.marginLeft + 35, this.yPosition + 24);
+    this.doc.text("122 East 42nd Street, Suite 1903, New York, NY 10168", this.marginLeft + 40, this.yPosition + 16);
+    this.doc.text("Tel: (646) 545-6700 | Fax: (646) 304-2255", this.marginLeft + 40, this.yPosition + 20);
+    this.doc.text("Leasing Direct Line: (646) 545-6700", this.marginLeft + 40, this.yPosition + 24);
     
     this.yPosition += 35; // Increased spacing for better 20px padding
     
