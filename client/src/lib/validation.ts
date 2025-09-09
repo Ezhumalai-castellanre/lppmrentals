@@ -146,14 +146,9 @@ export const validateAdultAge = (age: number | undefined | null): boolean => {
   return age >= 18 && age <= 120;
 };
 
-// Date validation - Lenient: accepts any valid date selection
+// Date validation - No validation required
 export const validateBirthDate = (date: Date | undefined | null): boolean => {
-  // Handle null/undefined cases
-  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-    return false;
-  }
-  
-  // Accept any valid date (lenient validation)
+  // Date of birth validation removed - always return true
   return true;
 };
 
@@ -166,4 +161,34 @@ export const validateMoveInDate = (date: Date | undefined | null): boolean => {
   
   // Accept any valid date (lenient validation)
   return true;
+};
+
+// ZIP code validation (USA format)
+export const validateZIPCode = (zip: string | undefined | null): boolean => {
+  // Handle null/undefined cases
+  if (!zip || typeof zip !== 'string') {
+    return false;
+  }
+  
+  // Remove all non-digit characters
+  const digits = zip.replace(/\D/g, '');
+  
+  // Check if it's exactly 5 digits (basic US ZIP) or 9 digits (ZIP+4)
+  return digits.length === 5 || digits.length === 9;
+};
+
+// Format ZIP code for display
+export const formatZIPCode = (zip: string | undefined | null): string => {
+  // Handle null/undefined cases
+  if (!zip || typeof zip !== 'string') {
+    return '';
+  }
+  
+  const digits = zip.replace(/\D/g, '');
+  
+  if (digits.length === 9) {
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  }
+  
+  return digits;
 }; 

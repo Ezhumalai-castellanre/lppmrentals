@@ -1,4 +1,4 @@
-import { validatePhoneNumber, validateSSN, validateEmail, validateDriverLicense, validateIncome, validateBirthDate, validateMoveInDate } from './validation';
+import { validatePhoneNumber, validateSSN, validateEmail, validateDriverLicense, validateIncome, validateMoveInDate, validateZIPCode } from './validation';
 
 // Validation result interface
 export interface ValidationResult {
@@ -158,40 +158,7 @@ export const validateIncomeField = (income: string | number | undefined | null, 
 };
 
 export const validateDateOfBirth = (date: Date | undefined | null, fieldName: string = 'Date of birth'): ValidationResult => {
-  const required = validateRequired(date, fieldName);
-  if (!required.isValid) return required;
-  
-  if (!validateBirthDate(date)) {
-    return {
-      isValid: false,
-      message: `${fieldName} must be a valid date in the past`,
-      code: ValidationErrorType.INVALID_FORMAT
-    };
-  }
-  
-  // Check if person is at least 18 years old
-  const today = new Date();
-  const birthDate = new Date(date!);
-  const age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
-  
-  if (actualAge < 18) {
-    return {
-      isValid: false,
-      message: `${fieldName} must be at least 18 years old`,
-      code: ValidationErrorType.INVALID_RANGE
-    };
-  }
-  
-  if (actualAge > 120) {
-    return {
-      isValid: false,
-      message: `${fieldName} must be a reasonable age (under 120 years)`,
-      code: ValidationErrorType.INVALID_RANGE
-    };
-  }
-  
+  // Date of birth validation removed - always return valid
   return { isValid: true, message: '' };
 };
 
@@ -204,6 +171,22 @@ export const validateMoveInDateField = (date: Date | undefined | null, fieldName
       isValid: false,
       message: `${fieldName} must be today or in the future`,
       code: ValidationErrorType.INVALID_RANGE
+    };
+  }
+  
+  return { isValid: true, message: '' };
+};
+
+export const validateZIPField = (zip: string | undefined | null, fieldName: string = 'ZIP code'): ValidationResult => {
+  if (!zip || zip.trim() === '') {
+    return { isValid: true, message: '' }; // Optional field
+  }
+  
+  if (!validateZIPCode(zip)) {
+    return {
+      isValid: false,
+      message: `${fieldName} must be a valid 5 or 9 digit ZIP code`,
+      code: ValidationErrorType.INVALID_FORMAT
     };
   }
   
@@ -306,7 +289,7 @@ export const validateFormSection = (section: string, data: any): ValidationResul
   switch (section) {
     case 'applicant':
       errors.push(validateName(data.name, 'Full name'));
-      errors.push(validateDateOfBirth(data.dob, 'Date of birth'));
+      // Date of birth validation removed
       errors.push(validatePhone(data.phone, 'Phone number'));
       errors.push(validateEmailField(data.email, 'Email address'));
       errors.push(validateSSNField(data.ssn, 'Social Security Number'));
@@ -314,12 +297,12 @@ export const validateFormSection = (section: string, data: any): ValidationResul
       errors.push(validateAddress(data.address, 'Address'));
       errors.push(validateCity(data.city, 'City'));
       errors.push(validateState(data.state, 'State'));
-      errors.push(validateZIP(data.zip, 'ZIP code'));
+      errors.push(validateZIPField(data.zip, 'ZIP code'));
       break;
       
     case 'coApplicant':
       errors.push(validateName(data.name, 'Full name'));
-      errors.push(validateDateOfBirth(data.dob, 'Date of birth'));
+      // Date of birth validation removed
       errors.push(validatePhone(data.phone, 'Phone number'));
       errors.push(validateEmailField(data.email, 'Email address'));
       errors.push(validateSSNField(data.ssn, 'Social Security Number'));
@@ -327,12 +310,12 @@ export const validateFormSection = (section: string, data: any): ValidationResul
       errors.push(validateAddress(data.address, 'Address'));
       errors.push(validateCity(data.city, 'City'));
       errors.push(validateState(data.state, 'State'));
-      errors.push(validateZIP(data.zip, 'ZIP code'));
+      errors.push(validateZIPField(data.zip, 'ZIP code'));
       break;
       
     case 'guarantor':
       errors.push(validateName(data.name, 'Full name'));
-      errors.push(validateDateOfBirth(data.dob, 'Date of birth'));
+      // Date of birth validation removed
       errors.push(validatePhone(data.phone, 'Phone number'));
       errors.push(validateEmailField(data.email, 'Email address'));
       errors.push(validateSSNField(data.ssn, 'Social Security Number'));
@@ -340,7 +323,7 @@ export const validateFormSection = (section: string, data: any): ValidationResul
       errors.push(validateAddress(data.address, 'Address'));
       errors.push(validateCity(data.city, 'City'));
       errors.push(validateState(data.state, 'State'));
-      errors.push(validateZIP(data.zip, 'ZIP code'));
+      errors.push(validateZIPField(data.zip, 'ZIP code'));
       break;
       
     case 'application':
@@ -374,7 +357,7 @@ export const getFieldValidation = (fieldName: string, value: any, section?: stri
       return validateName(value, 'Full name');
     case 'dob':
     case 'dateOfBirth':
-      return validateDateOfBirth(value, 'Date of birth');
+      return { isValid: true, message: '' }; // No validation required
     case 'phone':
       return validatePhone(value, 'Phone number');
     case 'email':
@@ -390,7 +373,7 @@ export const getFieldValidation = (fieldName: string, value: any, section?: stri
     case 'state':
       return validateState(value, 'State');
     case 'zip':
-      return validateZIP(value, 'ZIP code');
+      return validateZIPField(value, 'ZIP code');
     case 'income':
     case 'monthlyRent':
       return validateIncomeField(value, 'Monthly rent');

@@ -59,10 +59,7 @@ const applicationSchema = z.object({
 
   // Primary Applicant
   applicantName: z.string().optional(), // Lenient: any name entry is okay
-  applicantDob: z.date({
-    required_error: "Date of birth is required",
-    invalid_type_error: "Please select a valid date of birth",
-  }),
+  applicantDob: z.date().optional(),
   applicantSsn: z.string().optional().refine((val) => !val || validateSSN(val), {
     message: "Please enter a valid 9-digit Social Security Number"
   }),
@@ -340,10 +337,7 @@ const applicationSchema = z.object({
           ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid co-applicant", path: ["coApplicants", index] });
           return;
         }
-        // Lenient validation: only check if dob is provided when name is provided
-        if (coApplicant.name && coApplicant.name.trim() !== '' && !coApplicant.dob) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date of birth is required when name is provided", path: ["coApplicants", index, "dob"] });
-        }
+        // Date of birth validation removed - no validation required
       });
     }
   }
@@ -3141,7 +3135,7 @@ export function ApplicationForm() {
       toast({
         title: 'Documents Step Skipped',
         description: 'Document validation is not required for students. Moving to next step.',
-        variant: 'info',
+        variant: 'default',
       });
       // Automatically move to next step instead of blocking
       setCurrentStep(5);
@@ -5089,7 +5083,6 @@ export function ApplicationForm() {
                               }
                             }}
                             placeholder="Select date of birth"
-                            disabled={(date) => date > new Date()}
                             className="w-full mt-1"
                           />
                         </FormControl>
@@ -5239,7 +5232,7 @@ export function ApplicationForm() {
                                 label="ZIP Code*"
                                 placeholder="ZIP code"
                                 value={field.value || ''}
-                                onChange={(value) => {
+                                onChange={(value: string) => {
                                   field.onChange(value);
                                   updateFormData('applicant', 'zip', value);
                                 }}
@@ -5447,7 +5440,7 @@ export function ApplicationForm() {
                           label="Landlord ZIP Code"
                           placeholder="Enter landlord's ZIP code"
                           value={field.value || ''}
-                          onChange={(value) => {
+                          onChange={(value: string) => {
                             field.onChange(value);
                             updateFormData('applicant', 'landlordZipCode', value);
                           }}
@@ -5886,7 +5879,6 @@ export function ApplicationForm() {
                                 }
                               }}
                               placeholder="Select date of birth"
-                              disabled={(date) => date > new Date()}
                               className="w-full mt-1"
                             />
                           </FormControl>
@@ -5906,8 +5898,8 @@ export function ApplicationForm() {
                               className="w-full mt-1"
                             />
                           </FormControl>
-                  {form.formState.errors[`coApplicants.${index}.ssn`]?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors[`coApplicants.${index}.ssn`].message}</span>
+                  {form.formState.errors.coApplicants?.[index]?.ssn?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.coApplicants[index].ssn.message}</span>
                   )}
                         </FormItem>
                         <FormItem>
@@ -5924,8 +5916,8 @@ export function ApplicationForm() {
                               className="w-full mt-1"
                             />
                           </FormControl>
-                  {form.formState.errors[`coApplicants.${index}.phone`]?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors[`coApplicants.${index}.phone`].message}</span>
+                  {form.formState.errors.coApplicants?.[index]?.phone?.message && (
+                    <span className="text-red-500 text-xs">{form.formState.errors.coApplicants[index].phone.message}</span>
                   )}
                         </FormItem>
                         <FormItem>
@@ -6007,7 +5999,7 @@ export function ApplicationForm() {
                             label="ZIP Code*"
                             placeholder="ZIP code"
                               value={formData.coApplicants?.[index]?.zip || ''}
-                              onChange={(value) => {
+                              onChange={(value: string) => {
                               updateArrayItem('coApplicants', index, 'zip', value);
                               form.setValue(`coApplicants.${index}.zip`, value);
                             }}
@@ -6134,7 +6126,7 @@ export function ApplicationForm() {
                           label="Landlord ZIP Code"
                           placeholder="Enter landlord's ZIP code"
                           value={formData.coApplicants?.[index]?.landlordZipCode || ''}
-                          onChange={(value) => {
+                          onChange={(value: string) => {
                             updateFormData('coApplicants', index.toString(), 'landlordZipCode', value);
                           }}
                           className="w-full mt-1"
@@ -6237,7 +6229,6 @@ export function ApplicationForm() {
                     person={`coApplicants_${index}`}
                     formData={formData}
                     updateFormData={updateFormData}
-                    coApplicantIndex={index}
                   />
                 </CardContent>
               </Card>
@@ -6462,7 +6453,6 @@ export function ApplicationForm() {
                           setFormData((prev: any) => ({ ...prev, occupants: updated }));
                         }}
                         placeholder="dd-mm-yyyy"
-                        disabled={date => date > new Date()}
                       />
                     </div>
                   </div>
@@ -6863,7 +6853,6 @@ export function ApplicationForm() {
                               }
                             }}
                             placeholder="Select date of birth"
-                            disabled={(date) => date > new Date()}
                             className="w-full mt-1"
                           />
                         </FormControl>
@@ -6964,7 +6953,7 @@ export function ApplicationForm() {
                             label="ZIP Code*"
                             placeholder="ZIP code"
                             value={formData.guarantors[index]?.zip || ''}
-                            onChange={(value) => {
+                            onChange={(value: string) => {
                               updateFormData('guarantors', index.toString(), 'zip', value);
                             }}
                             required={true}
@@ -7101,7 +7090,7 @@ export function ApplicationForm() {
                               label="Landlord ZIP Code"
                               placeholder="Enter landlord's ZIP code"
                               value={formData.guarantors[index]?.landlordZipCode || ''}
-                              onChange={(value) => {
+                              onChange={(value: string) => {
                                 updateFormData('guarantors', index.toString(), 'landlordZipCode', value);
                               }}
                               className="w-full mt-1"
@@ -7206,12 +7195,11 @@ export function ApplicationForm() {
                       <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
                         Financial Information 3 - Guarantor {index + 1}
                       </h3>
-                      <FinancialSection 
+                      <FinancialSection
                         title={`Guarantor ${index + 1} Financial Information`}
                         person={`guarantors_${index}`}
                         formData={formData}
                         updateFormData={updateFormData}
-                        form={form}
                       />
                     </div>
                   ))}

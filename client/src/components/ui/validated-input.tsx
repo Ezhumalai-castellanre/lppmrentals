@@ -9,14 +9,16 @@ import {
   formatSSN, 
   validateEmail,
   validateDriverLicense,
-  validateIncome
+  validateIncome,
+  validateZIPCode,
+  formatZIPCode
 } from '../../lib/validation';
 
 interface ValidatedInputProps {
   label: string;
   value: string | undefined | null;
   onChange: (value: string) => void;
-  type: 'phone' | 'ssn' | 'email' | 'license' | 'income' | 'text' | 'number';
+  type: 'phone' | 'ssn' | 'email' | 'license' | 'income' | 'zip' | 'text' | 'number';
   placeholder?: string;
   required?: boolean;
   error?: string;
@@ -79,6 +81,12 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
           return { isValid: false, message: 'Please enter a valid positive number' };
         }
         break;
+      
+      case 'zip':
+        if (!validateZIPCode(inputValue)) {
+          return { isValid: false, message: 'Please enter a valid ZIP code (5 or 9 digits)' };
+        }
+        break;
     }
 
     return { isValid: true, message: '' };
@@ -114,6 +122,11 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
           inputValue = parts[0] + '.' + parts.slice(1).join('');
         }
         break;
+      
+      case 'zip':
+        // Allow only digits and limit to 9 characters
+        inputValue = inputValue.replace(/\D/g, '').slice(0, 9);
+        break;
     }
 
     onChange(inputValue);
@@ -131,6 +144,8 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
         return value ? formatPhoneNumber(value) : '';
       case 'ssn':
         return value ? formatSSN(value) : '';
+      case 'zip':
+        return value ? formatZIPCode(value) : '';
       default:
         return value || '';
     }
@@ -161,6 +176,8 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
         return 'License number';
       case 'income':
         return '0.00';
+      case 'zip':
+        return '12345';
       default:
         return '';
     }
@@ -212,6 +229,10 @@ export const LicenseInput: React.FC<Omit<ValidatedInputProps, 'type'> & { name: 
 
 export const IncomeInput: React.FC<Omit<ValidatedInputProps, 'type'> & { name: string }> = (props) => (
   <ValidatedInput {...props} type="income" />
+);
+
+export const ZIPInput: React.FC<Omit<ValidatedInputProps, 'type'> & { name: string }> = (props) => (
+  <ValidatedInput {...props} type="zip" />
 );
 
 // Enhanced Income Input with frequency selector
