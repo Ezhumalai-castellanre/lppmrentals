@@ -388,6 +388,42 @@ const STEPS = [
   { id: 12, title: "Digital Signatures", icon: Check },
 ];
 
+// Function to get filtered steps based on role
+const getFilteredSteps = (role: string) => {
+  if (role === 'applicant') {
+    // For applicant role, exclude Co-Applicant and Guarantor steps
+    return STEPS.filter(step => 
+      ![5, 6, 7, 9, 10, 11].includes(step.id) // Exclude Co-Applicant and Guarantor steps
+    );
+  }
+  if (role === 'coapplicant') {
+    // For coapplicant role, show only: Instructions, Co-Applicant, Co-Applicant Financial, Co-Applicant Documents, Digital Signatures
+    return STEPS.filter(step => 
+      [0, 5, 6, 7, 12].includes(step.id) // Only include specific steps for co-applicant
+    );
+  }
+  if (role.startsWith('coapplicant') && /coapplicant\d+/.test(role)) {
+    // For specific co-applicant role (coapplicant1, coapplicant2, etc.), show only: Instructions, Co-Applicant, Co-Applicant Financial, Co-Applicant Documents, Digital Signatures
+    return STEPS.filter(step => 
+      [0, 5, 6, 7, 12].includes(step.id) // Only include specific steps for co-applicant
+    );
+  }
+  if (role === 'guarantor') {
+    // For guarantor role, show only: Instructions, Guarantor, Guarantor Financial, Guarantor Documents, Digital Signatures
+    return STEPS.filter(step => 
+      [0, 9, 10, 11, 12].includes(step.id) // Only include specific steps for guarantor
+    );
+  }
+  if (role.startsWith('guarantor') && /guarantor\d+/.test(role)) {
+    // For specific guarantor role (guarantor1, guarantor2, etc.), show only: Instructions, Guarantor, Guarantor Financial, Guarantor Documents, Digital Signatures
+    return STEPS.filter(step => 
+      [0, 9, 10, 11, 12].includes(step.id) // Only include specific steps for guarantor
+    );
+  }
+  // For other roles or 'all', return all steps
+  return STEPS;
+};
+
 // 1. Add phone formatting helper
 function formatPhoneForPayload(phone: string) {
   const digits = (phone || '').replace(/\D/g, '');
@@ -404,6 +440,17 @@ export function ApplicationForm() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   
+  // Parse role from URL query parameters
+  const [userRole, setUserRole] = useState<string>('all');
+  const [specificIndex, setSpecificIndex] = useState<number | null>(null);
+  
+  // Get filtered steps based on role
+  const [filteredSteps, setFilteredSteps] = useState(getFilteredSteps('all'));
+  
+  // Helper function to get actual step ID from filtered step index
+  const getActualStepId = (filteredIndex: number) => {
+    return filteredSteps[filteredIndex]?.id ?? filteredIndex;
+  };
 
 
   // Read selected rental from sessionStorage
@@ -1667,6 +1714,114 @@ export function ApplicationForm() {
       const urlParams = new URLSearchParams(window.location.search);
       const shouldContinue = urlParams.get('continue') === 'true';
       const stepParam = urlParams.get('step');
+      const roleParam = urlParams.get('role');
+      
+      // Set role and update filtered steps
+      if (roleParam) {
+        setUserRole(roleParam);
+        setFilteredSteps(getFilteredSteps(roleParam));
+        
+        // Parse specific index for coapplicant1, coapplicant2, guarantor1, guarantor2, etc.
+        if (roleParam.startsWith('coapplicant') && /coapplicant\d+/.test(roleParam)) {
+          const match = roleParam.match(/coapplicant(\d+)/);
+          if (match) {
+            const index = parseInt(match[1], 10) - 1; // Convert to 0-based index
+            setSpecificIndex(index);
+            
+            // Ensure coApplicants array has enough elements for this specific index
+            setFormData((prev: any) => {
+              const currentCoApplicants = prev.coApplicants || [];
+              if (index >= currentCoApplicants.length) {
+                // Extend array to accommodate the specific index
+                const newCoApplicants = [...currentCoApplicants];
+                for (let i = currentCoApplicants.length; i <= index; i++) {
+                  newCoApplicants[i] = {
+                    name: '',
+                    email: '',
+                    phone: '',
+                    relationship: '',
+                    dob: undefined,
+                    age: '',
+                    ssn: '',
+                    license: '',
+                    licenseState: '',
+                    address: '',
+                    city: '',
+                    state: '',
+                    zip: '',
+                    lengthAtAddressYears: undefined,
+                    lengthAtAddressMonths: undefined,
+                    landlordName: '',
+                    landlordAddressLine1: '',
+                    landlordAddressLine2: '',
+                    landlordCity: '',
+                    landlordState: '',
+                    landlordZipCode: '',
+                    landlordPhone: '',
+                    landlordEmail: '',
+                    currentRent: undefined,
+                    reasonForMoving: '',
+                    employmentType: '',
+                    bankRecords: []
+                  };
+                }
+                return {
+                  ...prev,
+                  coApplicants: newCoApplicants,
+                  coApplicantCount: Math.max(prev.coApplicantCount || 0, index + 1),
+                  hasCoApplicant: true
+                };
+              }
+              return prev;
+            });
+          }
+        } else if (roleParam.startsWith('guarantor') && /guarantor\d+/.test(roleParam)) {
+          const match = roleParam.match(/guarantor(\d+)/);
+          if (match) {
+            const index = parseInt(match[1], 10) - 1; // Convert to 0-based index
+            setSpecificIndex(index);
+            
+            // Ensure guarantors array has enough elements for this specific index
+            setFormData((prev: any) => {
+              const currentGuarantors = prev.guarantors || [];
+              if (index >= currentGuarantors.length) {
+                // Extend array to accommodate the specific index
+                const newGuarantors = [...currentGuarantors];
+                for (let i = currentGuarantors.length; i <= index; i++) {
+                  newGuarantors[i] = {
+                    name: '',
+                    email: '',
+                    phone: '',
+                    relationship: '',
+                    dob: undefined,
+                    age: '',
+                    ssn: '',
+                    license: '',
+                    licenseState: '',
+                    address: '',
+                    city: '',
+                    state: '',
+                    zip: '',
+                    lengthAtAddressYears: undefined,
+                    lengthAtAddressMonths: undefined,
+                    employmentType: '',
+                    bankRecords: []
+                  };
+                }
+                return {
+                  ...prev,
+                  guarantors: newGuarantors,
+                  guarantorCount: Math.max(prev.guarantorCount || 0, index + 1),
+                  hasGuarantor: true
+                };
+              }
+              return prev;
+            });
+          }
+        } else {
+          setSpecificIndex(null);
+        }
+      }
       
       if (shouldContinue) {
         console.log('🔄 Continue parameter detected, loading existing draft...');
@@ -1678,7 +1833,7 @@ export function ApplicationForm() {
         // If a specific step is provided, navigate to it after draft is loaded
         if (stepParam) {
           const targetStep = parseInt(stepParam, 10);
-          if (!isNaN(targetStep) && targetStep >= 0 && targetStep < STEPS.length) {
+          if (!isNaN(targetStep) && targetStep >= 0 && targetStep < filteredSteps.length) {
             console.log('🎯 Step parameter detected, will navigate to step:', targetStep);
             // Set the target step - it will be applied after draft data is loaded
             setCurrentStep(targetStep);
@@ -1908,21 +2063,105 @@ export function ApplicationForm() {
       return newFormData;
     });
 
-    // Remove automatic draft saving - only save when Next button is clicked
-    // This prevents unnecessary saves on every field change
+  // Remove automatic draft saving - only save when Next button is clicked
+  // This prevents unnecessary saves on every field change
   };
+
+  // Auto-populate specific co-applicant/guarantor data when role parameter is set
+  useEffect(() => {
+    if (userRole.startsWith('coapplicant') && specificIndex !== null) {
+      const specificCoApplicant = (formData.coApplicants || [])[specificIndex];
+      if (specificCoApplicant) {
+        if (specificCoApplicant.name) {
+          form.setValue(`coApplicants.${specificIndex}.name`, specificCoApplicant.name);
+          updateFormData('coApplicants', specificIndex.toString(), 'name', specificCoApplicant.name);
+        }
+        if (specificCoApplicant.email) {
+          form.setValue(`coApplicants.${specificIndex}.email`, specificCoApplicant.email);
+          updateFormData('coApplicants', specificIndex.toString(), 'email', specificCoApplicant.email);
+        }
+        if (specificCoApplicant.phone) {
+          form.setValue(`coApplicants.${specificIndex}.phone`, specificCoApplicant.phone);
+          updateFormData('coApplicants', specificIndex.toString(), 'phone', specificCoApplicant.phone);
+        }
+        // Set hasCoApplicant to true for specific role
+        setHasCoApplicant(true);
+        form.setValue('hasCoApplicant', true);
+      }
+    }
+  }, [userRole, specificIndex, formData.coApplicants, form, updateFormData, setHasCoApplicant]);
+
+  useEffect(() => {
+    if (userRole.startsWith('guarantor') && specificIndex !== null) {
+      const specificGuarantor = (formData.guarantors || [])[specificIndex];
+      if (specificGuarantor) {
+        if (specificGuarantor.name) {
+          form.setValue(`guarantors.${specificIndex}.name`, specificGuarantor.name);
+          updateFormData('guarantors', specificIndex.toString(), 'name', specificGuarantor.name);
+        }
+        if (specificGuarantor.email) {
+          form.setValue(`guarantors.${specificIndex}.email`, specificGuarantor.email);
+          updateFormData('guarantors', specificIndex.toString(), 'email', specificGuarantor.email);
+        }
+        if (specificGuarantor.phone) {
+          form.setValue(`guarantors.${specificIndex}.phone`, specificGuarantor.phone);
+          updateFormData('guarantors', specificIndex.toString(), 'phone', specificGuarantor.phone);
+        }
+        // Set hasGuarantor to true for specific role
+        setHasGuarantor(true);
+        form.setValue('hasGuarantor', true);
+      }
+    }
+  }, [userRole, specificIndex, formData.guarantors, form, updateFormData, setHasGuarantor]);
 
   // Helper function to update array items (coApplicants, guarantors)
   const updateArrayItem = (arrayName: string, index: number, field: string, value: any) => {
-    console.log(`🔄 updateArrayItem: ${arrayName}[${index}].${field} = ${value}`);
     setFormData((prev: any) => {
+      const currentArray = prev[arrayName] || [];
+      
+      // Ensure array has enough elements to accommodate the index
+      let newArray = [...currentArray];
+      while (newArray.length <= index) {
+        // Create a new empty object with all required fields
+        const emptyItem = {
+          name: '',
+          email: '',
+          phone: '',
+          relationship: '',
+          dob: undefined,
+          age: '',
+          ssn: '',
+          license: '',
+          licenseState: '',
+          address: '',
+          city: '',
+          state: '',
+          zip: '',
+          lengthAtAddressYears: undefined,
+          lengthAtAddressMonths: undefined,
+          landlordName: '',
+          landlordAddressLine1: '',
+          landlordAddressLine2: '',
+          landlordCity: '',
+          landlordState: '',
+          landlordZipCode: '',
+          landlordPhone: '',
+          landlordEmail: '',
+          currentRent: undefined,
+          reasonForMoving: '',
+          employmentType: '',
+          bankRecords: []
+        };
+        newArray.push(emptyItem);
+      }
+      
+      // Update the specific field
+      newArray[index] = { ...newArray[index], [field]: value };
+      
       const updated = {
         ...prev,
-        [arrayName]: prev[arrayName]?.map((item: any, i: number) => 
-          i === index ? { ...item, [field]: value } : item
-        ) || []
+        [arrayName]: newArray
       };
-      console.log(`🔄 Updated ${arrayName}:`, updated[arrayName]);
       return updated;
     });
   };
@@ -3008,42 +3247,74 @@ export function ApplicationForm() {
   const getNextAllowedStep = (current: number, direction: 1 | -1) => {
     let next = current + direction;
     
+    // Get actual step IDs for current and next steps
+    const currentStepId = getActualStepId(current);
+    const nextStepId = getActualStepId(next);
+    
     // Check if primary applicant is a student
     const isStudent = formData?.applicant?.employmentType === 'student';
     
     // If moving forward and primary applicant is student, skip Documents step (step 4)
-    if (direction === 1 && next === 4 && isStudent) {
-      next = 5; // Skip to Co-Applicant step
+    if (direction === 1 && nextStepId === 4 && isStudent) {
+      // Find the next step that has ID 5 or higher
+      const nextStepIndex = filteredSteps.findIndex(step => step.id >= 5);
+      if (nextStepIndex !== -1) {
+        next = nextStepIndex;
+      }
     }
     // If moving backward and primary applicant is student, skip Documents step (step 4)
-    if (direction === -1 && next === 4 && isStudent) {
-      next = 3; // Go back to Financial Info step
+    if (direction === -1 && nextStepId === 4 && isStudent) {
+      // Find the previous step that has ID 3 or lower
+      const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 3);
+      if (prevStepIndex !== -1) {
+        next = prevStepIndex;
+      }
     }
     
     // If moving forward and co-applicant is not checked, skip co-applicant financial and docs
-    if (direction === 1 && (next === 6 || next === 7) && !hasCoApplicant) {
-      next = 8;
+    if (direction === 1 && (nextStepId === 6 || nextStepId === 7) && !hasCoApplicant) {
+      // Find the next step that has ID 8 or higher
+      const nextStepIndex = filteredSteps.findIndex(step => step.id >= 8);
+      if (nextStepIndex !== -1) {
+        next = nextStepIndex;
+      }
     }
     // If moving backward and co-applicant is not checked, skip co-applicant financial and docs
-    if (direction === -1 && (next === 6 || next === 7) && !hasCoApplicant) {
-      next = 5;
+    if (direction === -1 && (nextStepId === 6 || nextStepId === 7) && !hasCoApplicant) {
+      // Find the previous step that has ID 5 or lower
+      const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 5);
+      if (prevStepIndex !== -1) {
+        next = prevStepIndex;
+      }
     }
     // If moving forward and guarantor is not checked, skip guarantor financial and docs
-    if (direction === 1 && (next === 10 || next === 11) && !hasGuarantor) {
-      next = 12;
+    if (direction === 1 && (nextStepId === 10 || nextStepId === 11) && !hasGuarantor) {
+      // Find the next step that has ID 12 or higher
+      const nextStepIndex = filteredSteps.findIndex(step => step.id >= 12);
+      if (nextStepIndex !== -1) {
+        next = nextStepIndex;
+      }
     }
     // If moving backward and guarantor is not checked, skip guarantor financial and docs
-    if (direction === -1 && (next === 10 || next === 11) && !hasGuarantor) {
-      next = 9;
+    if (direction === -1 && (nextStepId === 10 || nextStepId === 11) && !hasGuarantor) {
+      // Find the previous step that has ID 9 or lower
+      const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 9);
+      if (prevStepIndex !== -1) {
+        next = prevStepIndex;
+      }
     }
-    return Math.max(0, Math.min(STEPS.length - 1, next));
+    
+    // For role-based filtering, ensure we stay within filtered steps
+    const maxStep = filteredSteps.length - 1;
+    return Math.max(0, Math.min(maxStep, next));
   };
 
   // Step validation functions
   const validateStep = (step: number): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
+    const actualStepId = getActualStepId(step);
     
-    switch (step) {
+    switch (actualStepId) {
       case 1: // Application Information - all fields required
         if (!formData.application?.buildingAddress?.trim()) {
           errors.push('Building Address is required');
@@ -3524,9 +3795,76 @@ export function ApplicationForm() {
     console.log('Has guarantor:', data.hasGuarantor);
     console.log('Guarantors in data:', data.guarantors);
     console.log('Guarantors in formData:', formData.guarantors);
+    console.log('User role:', userRole);
+    console.log('Specific index:', specificIndex);
     setIsSubmitting(true);
     
     try {
+      // === Generate individual applicantId for specific roles ===
+      let individualApplicantId = user?.applicantId || user?.zoneinfo || 'unknown';
+      
+      if (userRole.startsWith('coapplicant') && specificIndex !== null) {
+        // Generate individual applicantId for specific co-applicant
+        individualApplicantId = `${user?.applicantId || user?.zoneinfo || 'unknown'}-coapplicant${specificIndex + 1}`;
+        console.log('🆔 Generated co-applicant applicantId:', individualApplicantId);
+      } else if (userRole.startsWith('guarantor') && specificIndex !== null) {
+        // Generate individual applicantId for specific guarantor
+        individualApplicantId = `${user?.applicantId || user?.zoneinfo || 'unknown'}-guarantor${specificIndex + 1}`;
+        console.log('🆔 Generated guarantor applicantId:', individualApplicantId);
+      }
+
+      // === Additional People in Application: minimal JSON + email POST ===
+      try {
+        if (userRole === 'applicant') {
+          const zoneinfo = user?.zoneinfo || user?.applicantId || 'unknown';
+          const applicantName = data.applicantName || formData.applicant?.name || '';
+          const coCount = Math.max(0, Number(formData.coApplicantCount || 0));
+          const guaCount = Math.max(0, Number(formData.guarantorCount || 0));
+
+          const summaryPayload: any = {
+            zoneinfo,
+            role: 'applicant',
+            applicant: applicantName,
+          };
+
+          // Add coApplicantsN
+          const coList = (formData.coApplicants || []).slice(0, coCount);
+          coList.forEach((co: any, idx: number) => {
+            summaryPayload[`coApplicants${idx + 1}`] = {
+              name: co?.name || '',
+              email: co?.email || ''
+            };
+          });
+
+          // Add guarantorN
+          const guaList = (formData.guarantors || []).slice(0, guaCount);
+          guaList.forEach((g: any, idx: number) => {
+            summaryPayload[`guarantor${idx + 1}`] = {
+              name: g?.name || '',
+              email: g?.email || ''
+            };
+          });
+
+          // Jest-style log (pretty JSON)
+          console.log('📨 Additional People in Application (email payload):');
+          console.log(JSON.stringify(summaryPayload, null, 2));
+
+          // Send to email API endpoint (ONLY this minimal payload)
+          try {
+            await fetch('https://5sdpaqwf0f.execute-api.us-east-1.amazonaws.com/dev/sendmail', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(summaryPayload)
+              
+            });
+          } catch (emailErr) {
+            console.warn('✉️ Email API call failed (non-blocking):', emailErr);
+          }
+        }
+      } catch (summaryErr) {
+        console.warn('⚠️ Failed to prepare/send Additional People summary (non-blocking):', summaryErr);
+      }
+
       // Import signature utilities
       const { validateSignatures, prepareSignaturesForSubmission } = await import('../lib/signature-utils');
       
@@ -3722,7 +4060,7 @@ export function ApplicationForm() {
       console.log("=== END COMPLETE FORM DATA ===");
       
       // Check if user is authenticated and has applicantId
-      if (!user?.applicantId) {
+      if (!user?.applicantId && !user?.zoneinfo) {
         console.log("❌ User not authenticated or missing applicantId");
         console.log("🔍 User object:", user);
         console.log("🔍 User applicantId:", user?.applicantId);
@@ -3734,8 +4072,8 @@ export function ApplicationForm() {
         return;
       }
 
-             // Use the applicantId (could be temporary for development)
-       console.log("✅ Using applicantId:", user.applicantId);
+      // Use the individual applicantId (could be temporary for development)
+      console.log("✅ Using individual applicantId:", individualApplicantId);
 
       // ✅ FIX: Trigger form validation before checking validity
       console.log("🔍 Triggering form validation...");
@@ -3826,7 +4164,7 @@ export function ApplicationForm() {
         };
 
         // Create COMPLETE form data structure for server submission (new nested structure)
-        const completeServerData = {
+        let completeServerData = {
           // Application Info (nested object)
           application: {
             buildingAddress: data.buildingAddress || formData.application?.buildingAddress,
@@ -4014,6 +4352,31 @@ export function ApplicationForm() {
            // Remove uploadedFilesMetadata from server request - files are sent via webhook
            uploadedFilesMetadata: undefined
          };
+
+        // Filter data for specific co-applicant/guarantor roles
+        if (userRole.startsWith('coapplicant') && specificIndex !== null) {
+          // For specific co-applicant, only include that co-applicant's data
+          const specificCoApplicant = (formData.coApplicants || [])[specificIndex];
+          if (specificCoApplicant) {
+            completeServerData = {
+              ...completeServerData,
+              // Remove other co-applicants, keep only the specific one
+              coApplicants: [specificCoApplicant]
+            };
+            console.log(`🎯 Filtered data for co-applicant ${specificIndex + 1}:`, specificCoApplicant);
+          }
+        } else if (userRole.startsWith('guarantor') && specificIndex !== null) {
+          // For specific guarantor, only include that guarantor's data
+          const specificGuarantor = (formData.guarantors || [])[specificIndex];
+          if (specificGuarantor) {
+            completeServerData = {
+              ...completeServerData,
+              // Remove other guarantors, keep only the specific one
+              guarantors: [specificGuarantor]
+            };
+            console.log(`🎯 Filtered data for guarantor ${specificIndex + 1}:`, specificGuarantor);
+          }
+        }
         
         // Log payload size for debugging
         const payloadSize = JSON.stringify(completeServerData).length;
@@ -4240,17 +4603,21 @@ export function ApplicationForm() {
 
         // Generate PDF first to get the S3 URL, then include it in form data
         let pdfUrl: string | null = null;
-        try {
-          console.log('🚀 Starting PDF generation to get S3 URL...');
-          pdfUrl = await generatePDF(completeServerData);
-          console.log('✅ PDF generated successfully, S3 URL:', pdfUrl);
-        } catch (pdfError) {
-          console.error('PDF generation failed:', pdfError);
-          toast({
-            title: "PDF Generation Failed",
-            description: "Application submitted successfully, but PDF generation failed. Please try generating the PDF again.",
-            variant: "destructive",
-          });
+        if (userRole !== 'applicant' && userRole !== 'coapplicant') {
+          try {
+            console.log('🚀 Starting PDF generation to get S3 URL...');
+            pdfUrl = await generatePDF(completeServerData);
+            console.log('✅ PDF generated successfully, S3 URL:', pdfUrl);
+          } catch (pdfError) {
+            console.error('PDF generation failed:', pdfError);
+            toast({
+              title: "PDF Generation Failed",
+              description: "Application submitted successfully, but PDF generation failed. Please try generating the PDF again.",
+              variant: "destructive",
+            });
+          }
+        } else {
+          console.log('🛑 Skipping PDF generation for role:', userRole);
         }
 
         // On form submit, send complete form data, application_id, and uploadedDocuments to the webhook
@@ -4503,8 +4870,8 @@ export function ApplicationForm() {
             },
             
             // Application IDs
-            applicantId: user?.applicantId || 'unknown',
-            application_id: user?.zoneinfo || user?.applicantId || 'unknown',
+            applicantId: individualApplicantId,
+            application_id: individualApplicantId,
             reference_id: referenceId,
             
 
@@ -4579,7 +4946,7 @@ export function ApplicationForm() {
           const webhookResult = await WebhookService.sendFormDataToWebhook(
             webhookPayload,
             referenceId,
-            user?.applicantId || 'unknown',
+            individualApplicantId,
             user?.zoneinfo,
             uploadedFilesMetadata
           );
@@ -4619,8 +4986,8 @@ export function ApplicationForm() {
           const { dynamoDBUtils } = await import('../lib/dynamodb-service');
           
           const submittedDraftData = {
-            zoneinfo: user?.zoneinfo || user?.applicantId || 'unknown',
-            applicantId: user?.applicantId || 'unknown',
+            zoneinfo: individualApplicantId,
+            applicantId: individualApplicantId,
             reference_id: submissionResult?.reference_id || referenceId,
             form_data: completeServerData,
             current_step: 12, // Mark as completed
@@ -5035,7 +5402,8 @@ export function ApplicationForm() {
 
   // Refactor renderStep to accept a stepIdx argument
   const renderStep = (stepIdx = currentStep) => {
-    switch (stepIdx) {
+    const actualStepId = getActualStepId(stepIdx);
+    switch (actualStepId) {
       case 0:
         return <ApplicationInstructions onNext={nextStep} />;
       case 1:
@@ -5782,6 +6150,280 @@ export function ApplicationForm() {
                   )}
                 />
               </div>
+
+              {/* Co-Applicant and Guarantor Count Selectors - Only for applicant role */}
+              {userRole === 'applicant' && (
+                <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-4">Additional People in Application</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-blue-800">How many Co-Applicants?</Label>
+                      <Select
+                        value={formData.coApplicantCount?.toString() || '0'}
+                        onValueChange={(value) => {
+                          const count = parseInt(value, 10);
+                          updateFormData('', 'coApplicantCount', count);
+                          updateFormData('', 'hasCoApplicant', count > 0);
+
+                          // Ensure coApplicants array is sized to count (extend or trim)
+                          const current = Array.isArray(formData.coApplicants) ? formData.coApplicants : [];
+                          let next = current.slice(0, Math.max(0, count));
+                          if (count > next.length) {
+                            const toAdd = count - next.length;
+                            const defaults = Array.from({ length: toAdd }, () => ({
+                              name: '',
+                              email: '',
+                              phone: '',
+                              zip: '',
+                              dob: undefined,
+                              ssn: '',
+                              license: '',
+                              licenseState: '',
+                              address: '',
+                              city: '',
+                              state: '',
+                              employmentType: '',
+                              employer: '',
+                              position: '',
+                              employmentStart: undefined,
+                              income: '',
+                              incomeFrequency: 'yearly',
+                              businessName: '',
+                              businessType: '',
+                              yearsInBusiness: '',
+                              otherIncome: '',
+                              otherIncomeFrequency: 'monthly',
+                              otherIncomeSource: '',
+                              creditScore: '',
+                              bankRecords: []
+                            }));
+                            next = next.concat(defaults);
+                          }
+                          updateFormData('', 'coApplicants', next);
+                        }}
+                      >
+                        <SelectTrigger className="w-64">
+                          <SelectValue placeholder="Select number of co-applicants" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">0 Co-Applicants</SelectItem>
+                          <SelectItem value="1">1 Co-Applicant</SelectItem>
+                          <SelectItem value="2">2 Co-Applicants</SelectItem>
+                          <SelectItem value="3">3 Co-Applicants</SelectItem>
+                          <SelectItem value="4">4 Co-Applicants</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-blue-800">How many Guarantors?</Label>
+                      <Select
+                        value={formData.guarantorCount?.toString() || '0'}
+                        onValueChange={(value) => {
+                          const count = parseInt(value, 10);
+                          updateFormData('', 'guarantorCount', count);
+                          updateFormData('', 'hasGuarantor', count > 0);
+
+                          // Ensure guarantors array is sized to count (extend or trim)
+                          const current = Array.isArray(formData.guarantors) ? formData.guarantors : [];
+                          let next = current.slice(0, Math.max(0, count));
+                          if (count > next.length) {
+                            const toAdd = count - next.length;
+                            const defaults = Array.from({ length: toAdd }, () => ({
+                              name: '',
+                              email: '',
+                              phone: '',
+                              zip: '',
+                              dob: undefined,
+                              ssn: '',
+                              license: '',
+                              licenseState: '',
+                              address: '',
+                              city: '',
+                              state: '',
+                              employmentType: '',
+                              employer: '',
+                              position: '',
+                              employmentStart: undefined,
+                              income: '',
+                              incomeFrequency: 'yearly',
+                              businessName: '',
+                              businessType: '',
+                              yearsInBusiness: '',
+                              otherIncome: '',
+                              otherIncomeFrequency: 'monthly',
+                              otherIncomeSource: '',
+                              creditScore: '',
+                              bankRecords: []
+                            }));
+                            next = next.concat(defaults);
+                          }
+                          updateFormData('', 'guarantors', next);
+                        }}
+                      >
+                        <SelectTrigger className="w-64">
+                          <SelectValue placeholder="Select number of guarantors" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">0 Guarantors</SelectItem>
+                          <SelectItem value="1">1 Guarantor</SelectItem>
+                          <SelectItem value="2">2 Guarantors</SelectItem>
+                          <SelectItem value="3">3 Guarantors</SelectItem>
+                          <SelectItem value="4">4 Guarantors</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <p className="text-xs text-blue-600 mt-3">
+                    Select the number of additional people who will be involved in this application. 
+                    You can add or remove people later if needed.
+                  </p>
+
+                  {/* Quick-entry fields for Co-Applicants */}
+                  {formData.coApplicantCount > 0 && (
+                    <div className="mt-6">
+                      <h4 className="text-sm font-semibold text-blue-900 mb-3">Co-Applicants</h4>
+                      <div className="space-y-4">
+                        {Array.from({ length: formData.coApplicantCount || 0 }, (_, index) => (
+                          <div key={`coapplicant-quick-${index}`} className="p-4 bg-white border border-blue-200 rounded-lg">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                              <div>
+                                <Label className="text-sm">Co-Applicant {index + 1} Name</Label>
+                                <Input
+                                  value={formData.coApplicants?.[index]?.name || ''}
+                                  onChange={(e) => {
+                                    updateArrayItem('coApplicants', index, 'name', e.target.value);
+                                    form.setValue(`coApplicants.${index}.name`, e.target.value);
+                                  }}
+                                  placeholder="Full name"
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-sm">Co-Applicant {index + 1} Email</Label>
+                                <Input
+                                  type="email"
+                                  value={formData.coApplicants?.[index]?.email || ''}
+                                  onChange={(e) => {
+                                    updateArrayItem('coApplicants', index, 'email', e.target.value);
+                                    form.setValue(`coApplicants.${index}.email`, e.target.value);
+                                  }}
+                                  placeholder="email@example.com"
+                                  className="mt-1"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  // Open specific co-applicant form
+                                  const url = new URL(window.location.href);
+                                  url.searchParams.set('role', `coapplicant${index + 1}`);
+                                  window.open(url.toString(), '_blank');
+                                }}
+                                className="text-blue-600 hover:text-blue-700 border-blue-300"
+                              >
+                                Open Co-Applicant {index + 1} Form
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  // Remove this co-applicant
+                                  const newCount = Math.max(0, (formData.coApplicantCount || 0) - 1);
+                                  const newCoApplicants = (formData.coApplicants || []).filter((_: any, i: number) => i !== index);
+                                  updateFormData('', 'coApplicantCount', newCount);
+                                  updateFormData('', 'hasCoApplicant', newCount > 0);
+                                  updateFormData('', 'coApplicants', newCoApplicants);
+                                }}
+                                className="text-red-600 hover:text-red-700 border-red-300"
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quick-entry fields for Guarantors */}
+                  {formData.guarantorCount > 0 && (
+                    <div className="mt-6">
+                      <h4 className="text-sm font-semibold text-blue-900 mb-3">Guarantors</h4>
+                      <div className="space-y-4">
+                        {Array.from({ length: formData.guarantorCount || 0 }, (_, index) => (
+                          <div key={`guarantor-quick-${index}`} className="p-4 bg-white border border-blue-200 rounded-lg">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                              <div>
+                                <Label className="text-sm">Guarantor {index + 1} Name</Label>
+                                <Input
+                                  value={formData.guarantors?.[index]?.name || ''}
+                                  onChange={(e) => {
+                                    updateArrayItem('guarantors', index, 'name', e.target.value);
+                                    form.setValue(`guarantors.${index}.name`, e.target.value);
+                                  }}
+                                  placeholder="Full name"
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-sm">Guarantor {index + 1} Email</Label>
+                                <Input
+                                  type="email"
+                                  value={formData.guarantors?.[index]?.email || ''}
+                                  onChange={(e) => {
+                                    updateArrayItem('guarantors', index, 'email', e.target.value);
+                                    form.setValue(`guarantors.${index}.email`, e.target.value);
+                                  }}
+                                  placeholder="email@example.com"
+                                  className="mt-1"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  // Open specific guarantor form
+                                  const url = new URL(window.location.href);
+                                  url.searchParams.set('role', `guarantor${index + 1}`);
+                                  window.open(url.toString(), '_blank');
+                                }}
+                                className="text-blue-600 hover:text-blue-700 border-blue-300"
+                              >
+                                Open Guarantor {index + 1} Form
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  // Remove this guarantor
+                                  const newCount = Math.max(0, (formData.guarantorCount || 0) - 1);
+                                  const newGuarantors = (formData.guarantors || []).filter((_: any, i: number) => i !== index);
+                                  updateFormData('', 'guarantorCount', newCount);
+                                  updateFormData('', 'hasGuarantor', newCount > 0);
+                                  updateFormData('', 'guarantors', newGuarantors);
+                                }}
+                                className="text-red-600 hover:text-red-700 border-red-300"
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         );
@@ -5889,26 +6531,32 @@ export function ApplicationForm() {
         );
 
       case 5:
+
         return (
           <div className="space-y-8">
             <Card className="form-section border-l-4 border-l-green-500">
               <CardHeader>
                 <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                   <Users className="w-5 h-5 mr-2" />
-                  Co-Applicant Information
+                  {userRole.startsWith('coapplicant') && specificIndex !== null 
+                    ? `Co-Applicant ${specificIndex + 1} Information`
+                    : 'Co-Applicant Information'
+                  }
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center space-x-3">
-                  <Checkbox 
-                    id="hasCoApplicant"
-                    checked={hasCoApplicant}
-                    onCheckedChange={(checked) => {
-                      const isChecked = checked as boolean;
-                      console.log('🔘 Co-Applicant checkbox changed:', isChecked);
-                      setHasCoApplicant(isChecked);
-                      form.setValue('hasCoApplicant', isChecked);
-                      // Also update the formData state to keep everything in sync
+                {/* Only show checkbox if not a specific co-applicant role */}
+                {!userRole.startsWith('coapplicant') && (
+                  <div className="flex items-center space-x-3">
+                    <Checkbox 
+                      id="hasCoApplicant"
+                      checked={hasCoApplicant}
+                      onCheckedChange={(checked) => {
+                        const isChecked = checked as boolean;
+                        console.log('🔘 Co-Applicant checkbox changed:', isChecked);
+                        setHasCoApplicant(isChecked);
+                        form.setValue('hasCoApplicant', isChecked);
+                        // Also update the formData state to keep everything in sync
                       setFormData((prev: any) => {
                         const updated = {
                           ...prev,
@@ -5967,6 +6615,7 @@ export function ApplicationForm() {
                     Add Co-Applicant
                   </Label>
                 </div>
+                )}
 
                 {hasCoApplicant && (
                   <div className="space-y-4">
@@ -6060,14 +6709,17 @@ export function ApplicationForm() {
               </CardContent>
             </Card>
 
-            {hasCoApplicant && (
-              <>
-                {Array.from({ length: formData.coApplicantCount || 1 }, (_, index) => (
+                {(hasCoApplicant || (userRole.startsWith('coapplicant') && specificIndex !== null)) && (
+                  <>
+                    {Array.from({ length: userRole.startsWith('coapplicant') && specificIndex !== null ? 1 : (formData.coApplicantCount || 1) }, (_, index) => {
+                      // For specific co-applicant roles, always show the specific index
+                      const actualIndex = userRole.startsWith('coapplicant') && specificIndex !== null ? specificIndex : index;
+                      return (
                   <Card key={`co-applicant-${index}`} className="form-section border-l-4 border-l-green-500">
                 <CardHeader>
                   <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                     <UserCheck className="w-5 h-5 mr-2" />
-                        Co-Applicant Information {index + 1}
+                        Co-Applicant Information {actualIndex + 1}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-8">
@@ -6078,10 +6730,11 @@ export function ApplicationForm() {
                             <FormControl>
                               <Input 
                                 placeholder="Enter full name" 
-                                value={formData.coApplicants?.[index]?.name || ''}
+                                value={formData.coApplicants?.[actualIndex]?.name || ''}
                                 className="input-field w-full mt-1"
                                 onChange={(e) => {
-                          updateArrayItem('coApplicants', index, 'name', e.target.value);
+                           updateArrayItem('coApplicants', actualIndex, 'name', e.target.value);
+                           form.setValue(`coApplicants.${actualIndex}.name`, e.target.value);
                                 }}
                               />
                             </FormControl>
@@ -6090,8 +6743,11 @@ export function ApplicationForm() {
                         <div className="col-span-1 md:col-span-2">
                           <Label className="mb-0.5">Relationship</Label>
                           <Select
-                            value={formData.coApplicants?.[index]?.relationship || ''}
-                    onValueChange={(value) => updateArrayItem('coApplicants', index, 'relationship', value)}
+                            value={formData.coApplicants?.[actualIndex]?.relationship || ''}
+                     onValueChange={(value) => {
+                       updateArrayItem('coApplicants', actualIndex, 'relationship', value);
+                       form.setValue(`coApplicants.${actualIndex}.relationship`, value);
+                     }}
                           >
                             <SelectTrigger className="w-full mt-1">
                               <SelectValue placeholder="Select" />
@@ -6109,11 +6765,12 @@ export function ApplicationForm() {
                           <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
                           <FormControl>
                             <DatePicker
-                              value={toValidDate(formData.coApplicants?.[index]?.dob)}
+                              value={toValidDate(formData.coApplicants?.[actualIndex]?.dob)}
                               onChange={(date) => {
                         // Store the date as a local date to prevent timezone conversion
                         const localDate = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate()) : undefined;
-                        updateArrayItem('coApplicants', index, 'dob', localDate);
+                         updateArrayItem('coApplicants', actualIndex, 'dob', localDate);
+                         form.setValue(`coApplicants.${actualIndex}.dob`, localDate);
                                 // Auto-calculate age
                                 if (date) {
                                   const today = new Date();
@@ -6123,9 +6780,9 @@ export function ApplicationForm() {
                                   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
                                     age--;
                                   }
-                          updateArrayItem('coApplicants', index, 'age', age);
+                           updateArrayItem('coApplicants', actualIndex, 'age', age);
                                 } else {
-                          updateArrayItem('coApplicants', index, 'age', '');
+                           updateArrayItem('coApplicants', actualIndex, 'age', '');
                                 }
                               }}
                               placeholder="Select date of birth"
@@ -6137,81 +6794,84 @@ export function ApplicationForm() {
                         <FormItem>
                           <FormControl>
                             <SSNInput
-                      name={`coApplicants.${index}.ssn`}
+                       name={`coApplicants.${actualIndex}.ssn`}
                               label="Social Security Number"
                               placeholder="XXX-XX-XXXX"
-                              value={formData.coApplicants?.[index]?.ssn || ''}
+                              value={formData.coApplicants?.[actualIndex]?.ssn || ''}
                               onChange={(value) => {
-                        updateArrayItem('coApplicants', index, 'ssn', value);
-                        form.setValue(`coApplicants.${index}.ssn`, value);
+                        updateArrayItem('coApplicants', actualIndex, 'ssn', value);
+                         form.setValue(`coApplicants.${actualIndex}.ssn`, value);
                               }}
                               className="w-full mt-1"
                             />
                           </FormControl>
-                  {form.formState.errors.coApplicants?.[index]?.ssn?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.coApplicants[index].ssn.message}</span>
-                  )}
+                  {form.formState.errors.coApplicants?.[actualIndex]?.ssn?.message && (
+                     <span className="text-red-500 text-xs">{form.formState.errors.coApplicants[actualIndex].ssn.message}</span>
+                    )}
                         </FormItem>
                         <FormItem>
                           <FormControl>
                             <PhoneInput
-                      name={`coApplicants.${index}.phone`}
+                      name={`coApplicants.${actualIndex}.phone`}
                               label="Phone Number"
                               placeholder="(555) 555-5555"
-                              value={formData.coApplicants?.[index]?.phone || ''}
+                              value={formData.coApplicants?.[actualIndex]?.phone || ''}
                               onChange={(value) => {
-                        updateArrayItem('coApplicants', index, 'phone', value);
-                        form.setValue(`coApplicants.${index}.phone`, value);
+                        updateArrayItem('coApplicants', actualIndex, 'phone', value);
+                         form.setValue(`coApplicants.${actualIndex}.phone`, value);
                               }}
                               className="w-full mt-1"
                             />
                           </FormControl>
-                  {form.formState.errors.coApplicants?.[index]?.phone?.message && (
-                    <span className="text-red-500 text-xs">{form.formState.errors.coApplicants[index].phone.message}</span>
-                  )}
+                  {form.formState.errors.coApplicants?.[actualIndex]?.phone?.message && (
+                     <span className="text-red-500 text-xs">{form.formState.errors.coApplicants[actualIndex].phone.message}</span>
+                    )}
                         </FormItem>
                         <FormItem>
                           <FormControl>
                             <EmailInput
-                      name={`coApplicants.${index}.email`}
+                      name={`coApplicants.${actualIndex}.email`}
                               label="Email Address"
                               placeholder="you@email.com"
-                              value={formData.coApplicants?.[index]?.email || ''}
+                              value={formData.coApplicants?.[actualIndex]?.email || ''}
                               onChange={(value) => {
-                        updateArrayItem('coApplicants', index, 'email', value);
-                        form.setValue(`coApplicants.${index}.email`, value);
+                        updateArrayItem('coApplicants', actualIndex, 'email', value);
+                         form.setValue(`coApplicants.${actualIndex}.email`, value);
                               }}
                               required={true}
                               className="w-full mt-1"
                             />
                           </FormControl>
-                  {form.formState.errors[`coApplicants.${index}.email` as keyof typeof form.formState.errors]?.message && (
-                    <span className="text-red-500 text-xs">{(form.formState.errors[`coApplicants.${index}.email` as keyof typeof form.formState.errors] as any)?.message}</span>
-                  )}
+                   {form.formState.errors[`coApplicants.${actualIndex}.email` as keyof typeof form.formState.errors]?.message && (
+                     <span className="text-red-500 text-xs">{(form.formState.errors[`coApplicants.${actualIndex}.email` as keyof typeof form.formState.errors] as any)?.message}</span>
+                    )}
                         </FormItem>
                         <FormItem>
                           <FormControl>
                             <LicenseInput
-                      name={`coApplicants.${index}.license`}
+                      name={`coApplicants.${actualIndex}.license`}
                               label="Driver's License Number"
                               placeholder="Enter license number"
-                              value={formData.coApplicants?.[index]?.license || ''}
+                              value={formData.coApplicants?.[actualIndex]?.license || ''}
                               onChange={(value) => {
-                        updateArrayItem('coApplicants', index, 'license', value);
-                        form.setValue(`coApplicants.${index}.license`, value);
+                        updateArrayItem('coApplicants', actualIndex, 'license', value);
+                         form.setValue(`coApplicants.${actualIndex}.license`, value);
                               }}
                               className="w-full mt-1"
                             />
                           </FormControl>
-                  {form.formState.errors[`coApplicants.${index}.license` as keyof typeof form.formState.errors]?.message && (
-                    <span className="text-red-500 text-xs">{(form.formState.errors[`coApplicants.${index}.license` as keyof typeof form.formState.errors] as any)?.message}</span>
-                  )}
+                  {form.formState.errors[`coApplicants.${actualIndex}.license` as keyof typeof form.formState.errors]?.message && (
+                     <span className="text-red-500 text-xs">{(form.formState.errors[`coApplicants.${actualIndex}.license` as keyof typeof form.formState.errors] as any)?.message}</span>
+                    )}
                         </FormItem>
                 <div className="space-y-2">
                         
                             <StateSelector
-                    selectedState={formData.coApplicants?.[index]?.licenseState || ''}
-                    onStateChange={(state) => updateArrayItem('coApplicants', index, 'licenseState', state)}
+                    selectedState={formData.coApplicants?.[actualIndex]?.licenseState || ''}
+                    onStateChange={(state) => {
+                      updateArrayItem('coApplicants', actualIndex, 'licenseState', state);
+                      form.setValue(`coApplicants.${actualIndex}.licenseState`, state);
+                    }}
                     label="License State"
                     required={false}
                               className="w-full mt-1"
@@ -6223,7 +6883,7 @@ export function ApplicationForm() {
                 <div className="space-y-2">
                 <FormField
                     control={form.control}
-                    name={`coApplicants.${index}.address`}
+                     name={`coApplicants.${actualIndex}.address`}
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel className="mb-0.5">Street Address</FormLabel>
@@ -6234,7 +6894,7 @@ export function ApplicationForm() {
                               className="input-field w-full mt-1"
                               onChange={(e) => {
                               field.onChange(e);
-                              updateArrayItem('coApplicants', index, 'address', e.target.value);
+                              updateArrayItem('coApplicants', actualIndex, 'address', e.target.value);
                               }}
                             />
                           </FormControl>
@@ -6245,37 +6905,40 @@ export function ApplicationForm() {
                         <FormItem>
                           <FormControl>
                             <ZIPInput
-                            name={`coApplicants.${index}.zip`}
+                             name={`coApplicants.${actualIndex}.zip`}
                             label="ZIP Code*"
                             placeholder="ZIP code"
-                              value={formData.coApplicants?.[index]?.zip || ''}
+                              value={formData.coApplicants?.[actualIndex]?.zip || ''}
                               onChange={(value: string) => {
-                              updateArrayItem('coApplicants', index, 'zip', value);
-                              form.setValue(`coApplicants.${index}.zip`, value);
+                              updateArrayItem('coApplicants', actualIndex, 'zip', value);
+                               form.setValue(`coApplicants.${actualIndex}.zip`, value);
                             }}
                             required={true}
                               className="w-full mt-1"
                             />
                           </FormControl>
-                        {form.formState.errors[`coApplicants.${index}.zip` as keyof typeof form.formState.errors]?.message && (
-                          <span className="text-red-500 text-xs">{(form.formState.errors[`coApplicants.${index}.zip` as keyof typeof form.formState.errors] as any)?.message}</span>
-                        )}
+                         {form.formState.errors[`coApplicants.${actualIndex}.zip` as keyof typeof form.formState.errors]?.message && (
+                           <span className="text-red-500 text-xs">{(form.formState.errors[`coApplicants.${actualIndex}.zip` as keyof typeof form.formState.errors] as any)?.message}</span>
+                          )}
                         </FormItem>
                 </div>
                 
                 <div className="space-y-2">
                   {/* Replace State* and City* text inputs with StateCitySelector */}
                   <StateCitySelector
-                    selectedState={formData.coApplicants?.[index]?.state || ''}
-                    selectedCity={formData.coApplicants?.[index]?.city || ''}
-                    onStateChange={(state) => {
-                      updateFormData('coApplicants', index.toString(), 'state', state);
-                      // Clear city if state changes
-                      updateFormData('coApplicants', index.toString(), 'city', '');
-                    }}
-                    onCityChange={(city) => {
-                      updateFormData('coApplicants', index.toString(), 'city', city);
-                    }}
+                    selectedState={formData.coApplicants?.[actualIndex]?.state || ''}
+                    selectedCity={formData.coApplicants?.[actualIndex]?.city || ''}
+                      onStateChange={(state) => {
+                       updateArrayItem('coApplicants', actualIndex, 'state', state);
+                       form.setValue(`coApplicants.${actualIndex}.state`, state);
+                        // Clear city if state changes
+                       updateArrayItem('coApplicants', actualIndex, 'city', '');
+                       form.setValue(`coApplicants.${actualIndex}.city`, '');
+                      }}
+                      onCityChange={(city) => {
+                       updateArrayItem('coApplicants', actualIndex, 'city', city);
+                       form.setValue(`coApplicants.${actualIndex}.city`, city);
+                      }}
                     stateLabel="State*"
                     cityLabel="City*"
                     required={true}
@@ -6290,8 +6953,12 @@ export function ApplicationForm() {
                             <Input 
                         type="number"
                         min={0}
-                        value={formData.coApplicants?.[index]?.lengthAtAddressYears ?? ''}
-                        onChange={e => updateFormData('coApplicants', index.toString(), 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
+                        value={formData.coApplicants?.[actualIndex]?.lengthAtAddressYears ?? ''}
+                         onChange={e => {
+                           const value = e.target.value === '' ? undefined : Number(e.target.value);
+                           updateArrayItem('coApplicants', actualIndex, 'lengthAtAddressYears', value);
+                           form.setValue(`coApplicants.${actualIndex}.lengthAtAddressYears`, value);
+                         }}
                         placeholder="e.g. 2 years"
                               className="w-full mt-1"
                             />
@@ -6299,8 +6966,12 @@ export function ApplicationForm() {
                               type="number"
                         min={0}
                         max={11}
-                        value={formData.coApplicants?.[index]?.lengthAtAddressMonths ?? ''}
-                        onChange={e => updateFormData('coApplicants', index.toString(), 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
+                        value={formData.coApplicants?.[actualIndex]?.lengthAtAddressMonths ?? ''}
+                         onChange={e => {
+                           const value = e.target.value === '' ? undefined : Number(e.target.value);
+                           updateArrayItem('coApplicants', actualIndex, 'lengthAtAddressMonths', value);
+                           form.setValue(`coApplicants.${actualIndex}.lengthAtAddressMonths`, value);
+                         }}
                         placeholder="e.g. 4 months"
                           className="w-full mt-1"
                       />
@@ -6310,11 +6981,12 @@ export function ApplicationForm() {
                       <FormControl>
                         <Input 
                           placeholder="Enter landlord's name" 
-                          value={formData.coApplicants?.[index]?.landlordName || ''}
+                          value={formData.coApplicants?.[actualIndex]?.landlordName || ''}
                           className="input-field w-full mt-1 border-gray-300 bg-white"
-                          onChange={(e) => {
-                            updateFormData('coApplicants', index.toString(), 'landlordName', e.target.value);
-                          }}
+                            onChange={(e) => {
+                             updateArrayItem('coApplicants', actualIndex, 'landlordName', e.target.value);
+                             form.setValue(`coApplicants.${actualIndex}.landlordName`, e.target.value);
+                            }}
                         />
                       </FormControl>
                     </FormItem>
@@ -6323,11 +6995,12 @@ export function ApplicationForm() {
                       <FormControl>
                         <Input 
                           placeholder="Enter landlord's street address" 
-                          value={formData.coApplicants?.[index]?.landlordAddressLine1 || ''}
+                          value={formData.coApplicants?.[actualIndex]?.landlordAddressLine1 || ''}
                           className="input-field w-full mt-1 border-gray-300 bg-white"
-                          onChange={(e) => {
-                            updateFormData('coApplicants', index.toString(), 'landlordAddressLine1', e.target.value);
-                          }}
+                            onChange={(e) => {
+                             updateArrayItem('coApplicants', actualIndex, 'landlordAddressLine1', e.target.value);
+                             form.setValue(`coApplicants.${actualIndex}.landlordAddressLine1`, e.target.value);
+                            }}
                         />
                       </FormControl>
                     </FormItem>
@@ -6336,21 +7009,23 @@ export function ApplicationForm() {
                       <FormControl>
                         <Input 
                           placeholder="Apartment, suite, etc." 
-                          value={formData.coApplicants?.[index]?.landlordAddressLine2 || ''}
+                          value={formData.coApplicants?.[actualIndex]?.landlordAddressLine2 || ''}
                           className="input-field w-full mt-1 border-gray-300 bg-white"
-                          onChange={(e) => {
-                            updateFormData('coApplicants', index.toString(), 'landlordAddressLine2', e.target.value);
-                          }}
+                            onChange={(e) => {
+                             updateArrayItem('coApplicants', actualIndex, 'landlordAddressLine2', e.target.value);
+                             form.setValue(`coApplicants.${actualIndex}.landlordAddressLine2`, e.target.value);
+                            }}
                         />
                       </FormControl>
                     </FormItem>
                     <FormItem>
                       <FormControl>
                         <StateSelector
-                          selectedState={formData.coApplicants?.[index]?.landlordState || ''}
-                          onStateChange={(value) => {
-                            updateFormData('coApplicants', index.toString(), 'landlordState', value);
-                          }}
+                          selectedState={formData.coApplicants?.[actualIndex]?.landlordState || ''}
+                            onStateChange={(value) => {
+                             updateArrayItem('coApplicants', actualIndex, 'landlordState', value);
+                             form.setValue(`coApplicants.${actualIndex}.landlordState`, value);
+                            }}
                           label="Landlord State"
                           className="w-full mt-1"
                         />
@@ -6359,11 +7034,12 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <CitySelector
-                          selectedState={formData.coApplicants?.[index]?.landlordState || ''}
-                          selectedCity={formData.coApplicants?.[index]?.landlordCity || ''}
-                          onCityChange={(value) => {
-                            updateFormData('coApplicants', index.toString(), 'landlordCity', value);
-                          }}
+                          selectedState={formData.coApplicants?.[actualIndex]?.landlordState || ''}
+                          selectedCity={formData.coApplicants?.[actualIndex]?.landlordCity || ''}
+                            onCityChange={(value) => {
+                             updateArrayItem('coApplicants', actualIndex, 'landlordCity', value);
+                             form.setValue(`coApplicants.${actualIndex}.landlordCity`, value);
+                            }}
                           label="Landlord City"
                           className="w-full mt-1"
                         />
@@ -6372,12 +7048,13 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <ZIPInput
-                          name={`coApplicants.${index}.landlordZipCode`}
+                           name={`coApplicants.${actualIndex}.landlordZipCode`}
                           label="Landlord ZIP Code"
                           placeholder="Enter landlord's ZIP code"
-                          value={formData.coApplicants?.[index]?.landlordZipCode || ''}
+                          value={formData.coApplicants?.[actualIndex]?.landlordZipCode || ''}
                           onChange={(value: string) => {
-                            updateFormData('coApplicants', index.toString(), 'landlordZipCode', value);
+                            updateArrayItem('coApplicants', actualIndex, 'landlordZipCode', value);
+                            form.setValue(`coApplicants.${actualIndex}.landlordZipCode`, value);
                           }}
                           className="w-full mt-1"
                         />
@@ -6386,12 +7063,13 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <PhoneInput
-                          name={`coApplicants.${index}.landlordPhone`}
+                           name={`coApplicants.${actualIndex}.landlordPhone`}
                           label="Landlord Phone Number"
                           placeholder="Enter landlord's phone number"
-                          value={formData.coApplicants?.[index]?.landlordPhone || ''}
+                          value={formData.coApplicants?.[actualIndex]?.landlordPhone || ''}
                           onChange={(value) => {
-                            updateFormData('coApplicants', index.toString(), 'landlordPhone', value);
+                            updateArrayItem('coApplicants', actualIndex, 'landlordPhone', value);
+                            form.setValue(`coApplicants.${actualIndex}.landlordPhone`, value);
                           }}
                           className="w-full mt-1"
                         />
@@ -6400,27 +7078,29 @@ export function ApplicationForm() {
                     <FormItem>
                       <FormControl>
                         <EmailInput
-                          name={`coApplicants.${index}.landlordEmail`}
+                           name={`coApplicants.${actualIndex}.landlordEmail`}
                           label="Landlord Email Address (Optional)"
                           placeholder="Enter landlord's email address"
-                          value={formData.coApplicants?.[index]?.landlordEmail || ''}
+                          value={formData.coApplicants?.[actualIndex]?.landlordEmail || ''}
                           onChange={(value) => {
-                            updateFormData('coApplicants', index.toString(), 'landlordEmail', value);
+                            updateArrayItem('coApplicants', actualIndex, 'landlordEmail', value);
+                            form.setValue(`coApplicants.${actualIndex}.landlordEmail`, value);
                           }}
                           className="w-full mt-1"
                         />
                       </FormControl>
                     </FormItem>
                     <div>
-                      <Label htmlFor={`coApplicants.${index}.currentRent`} className="mb-0.5">Monthly Rent</Label>
+                       <Label htmlFor={`coApplicants.${actualIndex}.currentRent`} className="mb-0.5">Monthly Rent</Label>
                       <Input
-                        id={`coApplicants.${index}.currentRent`}
+                        id={`coApplicants.${actualIndex}.currentRent`}
                         type="number"
                         placeholder="0.00"
-                        value={formData.coApplicants?.[index]?.currentRent?.toString() || ''}
+                        value={formData.coApplicants?.[actualIndex]?.currentRent?.toString() || ''}
                         onChange={e => {
                           const numValue = parseFloat(e.target.value) || 0;
-                          updateFormData('coApplicants', index.toString(), 'currentRent', numValue);
+                           updateArrayItem('coApplicants', actualIndex, 'currentRent', numValue);
+                           form.setValue(`coApplicants.${actualIndex}.currentRent`, numValue);
                         }}
                         className="input-field w-full mt-1"
                       />
@@ -6430,25 +7110,27 @@ export function ApplicationForm() {
                       <FormControl>
                         <Textarea 
                           placeholder="Please explain your reason for moving" 
-                          value={formData.coApplicants?.[index]?.reasonForMoving || ''}
+                          value={formData.coApplicants?.[actualIndex]?.reasonForMoving || ''}
                           className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
-                          onChange={(e) => {
-                            updateFormData('coApplicants', index.toString(), 'reasonForMoving', e.target.value);
-                          }}
+                            onChange={(e) => {
+                             updateArrayItem('coApplicants', actualIndex, 'reasonForMoving', e.target.value);
+                             form.setValue(`coApplicants.${actualIndex}.reasonForMoving`, e.target.value);
+                            }}
                         />
                       </FormControl>
                     </FormItem>
                   </div>
                 </CardContent>
               </Card>
-                ))}
+                      );
+                    })}
               </>
             )}
           </div>
         );
 
       case 6:
-        if (!hasCoApplicant) {
+        if (!hasCoApplicant && !(userRole.startsWith('coapplicant') && specificIndex !== null)) {
           return (
             <Card className="form-section">
               <CardHeader>
@@ -6465,31 +7147,35 @@ export function ApplicationForm() {
         }
         return (
           <>
-            {Array.from({ length: formData.coApplicantCount || 1 }, (_, index) => (
+            {Array.from({ length: (userRole.startsWith('coapplicant') && specificIndex !== null) ? 1 : (formData.coApplicantCount || 1) }, (_, index) => {
+              // For specific co-applicant roles, always show the specific index
+              const actualIndex = userRole.startsWith('coapplicant') && specificIndex !== null ? specificIndex : index;
+              return (
               <Card key={`co-applicant-financial-${index}`} className="form-section border-l-4 border-l-green-500 mb-6">
                 <CardHeader>
                   <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                     <CalendarDays className="w-5 h-5 mr-2" />
-                    Financial Information - Co-Applicant {index + 1}
+                    Financial Information - Co-Applicant {actualIndex + 1}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <FinancialSection 
-                    title={`Co-Applicant ${index + 1} Financial Information`}
-                    person={`coApplicants_${index}`}
+                    title={`Co-Applicant ${actualIndex + 1} Financial Information`}
+                    person={`coApplicants_${actualIndex}`}
                     formData={formData}
                     updateFormData={updateFormData}
                   />
                 </CardContent>
               </Card>
-            ))}
+                      );
+                    })}
           </>
         );
 
       case 7:
         
         // Only show the fallback message if there are no co-applicants at all
-        if (!hasCoApplicant) {
+        if (!hasCoApplicant && !(userRole.startsWith('coapplicant') && specificIndex !== null)) {
           return (
             <Card className="form-section border-l-4 border-l-green-500">
               <CardHeader>
@@ -6530,28 +7216,31 @@ export function ApplicationForm() {
           handleWebhookResponse('coApplicants', `0_${documentType}`, response);
         };
         return (
-          hasCoApplicant ? (
+          (hasCoApplicant || (userRole.startsWith('coapplicant') && specificIndex !== null)) ? (
             <>
-              {Array.from({ length: formData.coApplicantCount || 1 }, (_, index) => (
+              {Array.from({ length: (userRole.startsWith('coapplicant') && specificIndex !== null) ? 1 : (formData.coApplicantCount || 1) }, (_, index) => {
+                // For specific co-applicant roles, always show the specific index
+                const actualIndex = userRole.startsWith('coapplicant') && specificIndex !== null ? specificIndex : index;
+                return (
                 <Card key={`co-applicant-documents-${index}`} className="form-section border-l-4 border-l-green-500 mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                   <FolderOpen className="w-5 h-5 mr-2" />
-                      Co-Applicant Documents {index + 1}
+                      Co-Applicant Documents {actualIndex + 1}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {/* Employment Type Selection for Co-Applicant Documents */}
-                {!formData.coApplicants?.[index]?.employmentType ? (
+                {!formData.coApplicants?.[actualIndex]?.employmentType ? (
                   <div className="space-y-4">
-                    <div className="text-gray-500 text-sm mb-4">Please select Employment Type to upload supporting documents for Co-Applicant {index + 1}.</div>
+                    <div className="text-gray-500 text-sm mb-4">Please select Employment Type to upload supporting documents for Co-Applicant {actualIndex + 1}.</div>
                     
                     <div className="form-field">
-                      <Label htmlFor={`coApplicant-${index}-employmentType`}>Employment Type *</Label>
+                      <Label htmlFor={`coApplicant-${actualIndex}-employmentType`}>Employment Type *</Label>
                       <Select
-                        value={formData.coApplicants?.[index]?.employmentType || ''}
+                        value={formData.coApplicants?.[actualIndex]?.employmentType || ''}
                         onValueChange={(value) => {
-                          updateFormData('coApplicants', index.toString(), 'employmentType', value);
+                          updateFormData('coApplicants', actualIndex.toString(), 'employmentType', value);
                         }}
                       >
                         <SelectTrigger className="input-field">
@@ -6590,23 +7279,23 @@ export function ApplicationForm() {
                       ...formData,
                       webhookResponses: Object.fromEntries(
                         Object.entries(webhookResponses)
-                              .filter(([key]) => key.startsWith(`coApplicants_${index}_`))
-                              .map(([key, value]) => [key.replace(`coApplicants_${index}_`, ''), value])
+                              .filter(([key]) => key.startsWith(`coApplicants_${actualIndex}_`))
+                              .map(([key, value]) => [key.replace(`coApplicants_${actualIndex}_`, ''), value])
                           )
                         }}
                         originalWebhookResponses={webhookResponses}
                         onDocumentChange={(documentType: string, files: File[]) => {
-                          console.log(`🔑 Co-Applicant ${index + 1} document change for ${documentType}:`, files.length, 'files');
-                          handleDocumentChange('coApplicants', documentType, files, index);
+                          console.log(`🔑 Co-Applicant ${actualIndex + 1} document change for ${documentType}:`, files.length, 'files');
+                          handleDocumentChange('coApplicants', documentType, files, actualIndex);
                         }}
                         onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => {
-                          console.log(`🔑 Co-Applicant ${index + 1} encrypted document change for ${documentType}:`, encryptedFiles.length, 'files');
-                          handleEncryptedDocumentChange('coApplicants', documentType, encryptedFiles, index);
+                          console.log(`🔑 Co-Applicant ${actualIndex + 1} encrypted document change for ${documentType}:`, encryptedFiles.length, 'files');
+                          handleEncryptedDocumentChange('coApplicants', documentType, encryptedFiles, actualIndex);
                         }}
                         onWebhookResponse={(documentType: string, response: any) => {
                           // Pass the document type and index to the function
-                          console.log(`🔑 Co-Applicant ${index + 1} webhook response for ${documentType}:`, response);
-                          handleWebhookResponse('coApplicants', documentType, response, index);
+                          console.log(`🔑 Co-Applicant ${actualIndex + 1} webhook response for ${documentType}:`, response);
+                          handleWebhookResponse('coApplicants', documentType, response, actualIndex);
                         }}
                         referenceId={referenceId}
                         enableWebhook={true}
@@ -6614,12 +7303,13 @@ export function ApplicationForm() {
                         applicantId={user?.id}
                         zoneinfo={user?.zoneinfo}
                         showOnlyCoApplicant={true}
-                        index={index}
+                        index={actualIndex}
                   />
                 )}
               </CardContent>
             </Card>
-              ))}
+                      );
+                    })}
             </>
           ) : null
         );
@@ -6871,6 +7561,7 @@ export function ApplicationForm() {
         );
 
       case 9:
+
         return (
           <div className="space-y-6">
             {/* Guarantor Section with Checkbox */}
@@ -6878,19 +7569,24 @@ export function ApplicationForm() {
                 <CardHeader>
                   <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                     <Shield className="w-5 h-5 mr-2" />
-                    Guarantor Information
+                    {userRole.startsWith('guarantor') && specificIndex !== null 
+                      ? `Guarantor ${specificIndex + 1} Information`
+                      : 'Guarantor Information'
+                    }
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                <div className="flex items-center space-x-3 mb-4">
-                  <Checkbox 
-                    id="hasGuarantor"
-                    checked={hasGuarantor}
-                    onCheckedChange={(checked) => {
-                      const isChecked = checked as boolean;
-                      console.log('🔘 Guarantor checkbox changed:', isChecked);
-                      setHasGuarantor(isChecked);
-                      form.setValue('hasGuarantor', isChecked);
+                {/* Only show checkbox if not a specific guarantor role */}
+                {!userRole.startsWith('guarantor') && (
+                  <div className="flex items-center space-x-3 mb-4">
+                    <Checkbox 
+                      id="hasGuarantor"
+                      checked={hasGuarantor}
+                      onCheckedChange={(checked) => {
+                        const isChecked = checked as boolean;
+                        console.log('🔘 Guarantor checkbox changed:', isChecked);
+                        setHasGuarantor(isChecked);
+                        form.setValue('hasGuarantor', isChecked);
                       // Also update the formData state to keep everything in sync
                       setFormData((prev: any) => {
                         const updated = {
@@ -6950,8 +7646,9 @@ export function ApplicationForm() {
                     Add Guarantor
                   </Label>
                 </div>
+                )}
 
-                {hasGuarantor && (
+                {(hasGuarantor || (userRole.startsWith('guarantor') && specificIndex !== null)) && (
                   <div className="space-y-4">
                     <div className="flex items-center space-x-4">
                       <Label className="text-sm font-medium">How many Guarantors?</Label>
@@ -7036,12 +7733,15 @@ export function ApplicationForm() {
                     </div>
 
                     {/* Render guarantor forms based on count */}
-                    {Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
+                    {Array.from({ length: (userRole.startsWith('guarantor') && specificIndex !== null) ? 1 : Math.max(1, formData.guarantorCount || 1) }, (_, index) => {
+                      // For specific guarantor roles, always show the specific index
+                      const actualIndex = userRole.startsWith('guarantor') && specificIndex !== null ? specificIndex : index;
+                      return (
                       <Card key={index} className="form-section border-l-4 border-l-orange-500">
                         <CardHeader>
                           <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
                             <Shield className="w-5 h-5 mr-2" />
-                            Guarantor {index + 1}
+                            Guarantor {actualIndex + 1}
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="p-4 sm:p-8">
@@ -7052,11 +7752,12 @@ export function ApplicationForm() {
                           <FormControl>
                             <Input 
                               placeholder="Enter full name" 
-                                    value={formData.guarantors?.[index]?.name || ''}
+                                    value={formData.guarantors?.[actualIndex]?.name || ''}
                               className="input-field w-full mt-1"
-                              onChange={(e) => {
-                                      updateFormData('guarantors', index.toString(), 'name', e.target.value);
-                              }}
+                                onChange={(e) => {
+                                 updateArrayItem('guarantors', actualIndex, 'name', e.target.value);
+                                 form.setValue(`guarantors.${actualIndex}.name`, e.target.value);
+                                }}
                             />
                           </FormControl>
                         </FormItem>
@@ -7064,8 +7765,11 @@ export function ApplicationForm() {
                       <div className="col-span-1 md:col-span-2">
                         <Label className="mb-0.5">Relationship</Label>
                         <Select
-                                value={formData.guarantors?.[index]?.relationship || ''}
-                                onValueChange={(value) => updateFormData('guarantors', index.toString(), 'relationship', value)}
+                                value={formData.guarantors?.[actualIndex]?.relationship || ''}
+                                 onValueChange={(value) => {
+                                   updateArrayItem('guarantors', actualIndex, 'relationship', value);
+                                   form.setValue(`guarantors.${actualIndex}.relationship`, value);
+                                 }}
                         >
                           <SelectTrigger className="w-full mt-1">
                             <SelectValue placeholder="Select" />
@@ -7083,11 +7787,12 @@ export function ApplicationForm() {
                         <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
                         <FormControl>
                           <DatePicker
-                                  value={toValidDate(formData.guarantors?.[index]?.dob)}
+                                  value={toValidDate(formData.guarantors?.[actualIndex]?.dob)}
                             onChange={(date) => {
                                     // Store the date as a local date to prevent timezone conversion
                                     const localDate = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate()) : undefined;
-                                    updateFormData('guarantors', index.toString(), 'dob', localDate);
+                                     updateArrayItem('guarantors', actualIndex, 'dob', localDate);
+                                     form.setValue(`guarantors.${actualIndex}.dob`, localDate);
                               // Auto-calculate age
                               if (date) {
                                 const today = new Date();
@@ -7097,9 +7802,9 @@ export function ApplicationForm() {
                                 if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
                                   age--;
                                 }
-                                      updateFormData('guarantors', index.toString(), 'age', age);
-                              } else {
-                                      updateFormData('guarantors', index.toString(), 'age', '');
+                                       updateArrayItem('guarantors', actualIndex, 'age', age);
+                               } else {
+                                       updateArrayItem('guarantors', actualIndex, 'age', '');
                               }
                             }}
                             placeholder="Select date of birth"
@@ -7111,12 +7816,13 @@ export function ApplicationForm() {
                       <FormItem>
                         <FormControl>
                           <SSNInput
-                                  name={`guarantors.${index}.ssn`}
+                                   name={`guarantors.${actualIndex}.ssn`}
                             label="Social Security Number"
                             placeholder="XXX-XX-XXXX"
-                                  value={formData.guarantors?.[index]?.ssn || ''}
+                                  value={formData.guarantors?.[actualIndex]?.ssn || ''}
                             onChange={(value) => {
-                                    updateFormData('guarantors', index.toString(), 'ssn', value);
+                                    updateArrayItem('guarantors', actualIndex, 'ssn', value);
+                                    form.setValue(`guarantors.${actualIndex}.ssn`, value);
                             }}
                             className="w-full mt-1"
                           />
@@ -7125,12 +7831,13 @@ export function ApplicationForm() {
                       <FormItem>
                         <FormControl>
                           <PhoneInput
-                                  name={`guarantors.${index}.phone`}
+                                   name={`guarantors.${actualIndex}.phone`}
                             label="Phone Number"
                             placeholder="(555) 555-5555"
-                                  value={formData.guarantors?.[index]?.phone || ''}
+                                  value={formData.guarantors?.[actualIndex]?.phone || ''}
                             onChange={(value) => {
-                                    updateFormData('guarantors', index.toString(), 'phone', value);
+                                    updateArrayItem('guarantors', actualIndex, 'phone', value);
+                                    form.setValue(`guarantors.${actualIndex}.phone`, value);
                             }}
                             className="w-full mt-1"
                           />
@@ -7139,12 +7846,13 @@ export function ApplicationForm() {
                       <FormItem>
                         <FormControl>
                           <EmailInput
-                                  name={`guarantors.${index}.email`}
+                                  name={`guarantors.${actualIndex}.email`}
                             label="Email Address"
                             placeholder="you@email.com"
-                                  value={formData.guarantors?.[index]?.email || ''}
+                                  value={formData.guarantors?.[actualIndex]?.email || ''}
                             onChange={(value) => {
-                                    updateFormData('guarantors', index.toString(), 'email', value);
+                                    updateArrayItem('guarantors', actualIndex, 'email', value);
+                                    form.setValue(`guarantors.${actualIndex}.email`, value);
                             }}
                             required={true}
                             className="w-full mt-1"
@@ -7154,12 +7862,13 @@ export function ApplicationForm() {
                       <FormItem>
                         <FormControl>
                           <LicenseInput
-                                  name={`guarantors.${index}.license`}
+                                   name={`guarantors.${actualIndex}.license`}
                             label="Driver's License Number"
                             placeholder="Enter license number"
-                                  value={formData.guarantors[index]?.license || ''}
+                                  value={formData.guarantors[actualIndex]?.license || ''}
                             onChange={(value) => {
-                                    updateFormData('guarantors', index.toString(), 'license', value);
+                                    updateArrayItem('guarantors', actualIndex, 'license', value);
+                                    form.setValue(`guarantors.${actualIndex}.license`, value);
                             }}
                             className="w-full mt-1"
                           />
@@ -7167,8 +7876,11 @@ export function ApplicationForm() {
                       </FormItem>
                       <div className="space-y-2">
                         <StateSelector
-                          selectedState={formData.guarantors[index]?.licenseState || ''}
-                          onStateChange={(state) => updateFormData('guarantors', index.toString(), 'licenseState', state)}
+                           selectedState={formData.guarantors[actualIndex]?.licenseState || ''}
+                           onStateChange={(state) => {
+                             updateArrayItem('guarantors', actualIndex, 'licenseState', state);
+                             form.setValue(`guarantors.${actualIndex}.licenseState`, state);
+                           }}
                           label="License State"
                           required={false}
                           className="w-full mt-1"
@@ -7187,11 +7899,12 @@ export function ApplicationForm() {
                           <FormControl>
                             <Input 
                               placeholder="Enter street address" 
-                              value={formData.guarantors[index]?.address || ''}
-                              className="input-field w-full mt-1"
-                              onChange={(e) => {
-                                updateFormData('guarantors', index.toString(), 'address', e.target.value);
-                              }}
+                               value={formData.guarantors[actualIndex]?.address || ''}
+                               className="input-field w-full mt-1"
+                               onChange={(e) => {
+                                 updateArrayItem('guarantors', actualIndex, 'address', e.target.value);
+                                 form.setValue(`guarantors.${actualIndex}.address`, e.target.value);
+                               }}
                             />
                           </FormControl>
                         </FormItem>
@@ -7199,12 +7912,13 @@ export function ApplicationForm() {
                       <FormItem>
                         <FormControl>
                           <ZIPInput
-                            name={`guarantors.${index}.zip`}
+                             name={`guarantors.${actualIndex}.zip`}
                             label="ZIP Code*"
                             placeholder="ZIP code"
-                            value={formData.guarantors[index]?.zip || ''}
+                            value={formData.guarantors[actualIndex]?.zip || ''}
                             onChange={(value: string) => {
-                              updateFormData('guarantors', index.toString(), 'zip', value);
+                              updateArrayItem('guarantors', actualIndex, 'zip', value);
+                              form.setValue(`guarantors.${actualIndex}.zip`, value);
                             }}
                             required={true}
                             className="w-full mt-1"
@@ -7214,12 +7928,14 @@ export function ApplicationForm() {
                       <FormItem>
                         <FormControl>
                           <StateSelector
-                            selectedState={formData.guarantors[index]?.state || ''}
-                            onStateChange={(state) => {
-                              updateFormData('guarantors', index.toString(), 'state', state);
-                              // Clear city if state changes
-                              updateFormData('guarantors', index.toString(), 'city', '');
-                            }}
+                             selectedState={formData.guarantors[actualIndex]?.state || ''}
+                             onStateChange={(state) => {
+                               updateArrayItem('guarantors', actualIndex, 'state', state);
+                               form.setValue(`guarantors.${actualIndex}.state`, state);
+                               // Clear city if state changes
+                               updateArrayItem('guarantors', actualIndex, 'city', '');
+                               form.setValue(`guarantors.${actualIndex}.city`, '');
+                             }}
                             label="State*"
                             className="w-full mt-1"
                           />
@@ -7228,11 +7944,12 @@ export function ApplicationForm() {
                       <FormItem>
                         <FormControl>
                           <CitySelector
-                            selectedState={formData.guarantors[index]?.state || ''}
-                            selectedCity={formData.guarantors[index]?.city || ''}
-                            onCityChange={(city) => {
-                              updateFormData('guarantors', index.toString(), 'city', city);
-                            }}
+                             selectedState={formData.guarantors[actualIndex]?.state || ''}
+                             selectedCity={formData.guarantors[actualIndex]?.city || ''}
+                             onCityChange={(city) => {
+                               updateArrayItem('guarantors', actualIndex, 'city', city);
+                               form.setValue(`guarantors.${actualIndex}.city`, city);
+                             }}
                             label="City*"
                             className="w-full mt-1"
                           />
@@ -7246,8 +7963,12 @@ export function ApplicationForm() {
                         <Input 
                           type="number"
                           min={0}
-                          value={formData.guarantors[index]?.lengthAtAddressYears ?? ''}
-                          onChange={e => updateFormData('guarantors', index.toString(), 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
+                           value={formData.guarantors[actualIndex]?.lengthAtAddressYears ?? ''}
+                           onChange={e => {
+                             const value = e.target.value === '' ? undefined : Number(e.target.value);
+                             updateArrayItem('guarantors', actualIndex, 'lengthAtAddressYears', value);
+                             form.setValue(`guarantors.${actualIndex}.lengthAtAddressYears`, value);
+                           }}
                           placeholder="e.g. 2 years"
                           className="w-full mt-1"
                         />
@@ -7255,8 +7976,12 @@ export function ApplicationForm() {
                           type="number"
                           min={0}
                           max={11}
-                          value={formData.guarantors[index]?.lengthAtAddressMonths ?? ''}
-                          onChange={e => updateFormData('guarantors', index.toString(), 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
+                           value={formData.guarantors[actualIndex]?.lengthAtAddressMonths ?? ''}
+                           onChange={e => {
+                             const value = e.target.value === '' ? undefined : Number(e.target.value);
+                             updateArrayItem('guarantors', actualIndex, 'lengthAtAddressMonths', value);
+                             form.setValue(`guarantors.${actualIndex}.lengthAtAddressMonths`, value);
+                           }}
                           placeholder="e.g. 4 months"
                           className="w-full mt-1"
                         />
@@ -7274,10 +7999,11 @@ export function ApplicationForm() {
                           <FormControl>
                             <Input 
                               placeholder="Enter landlord's name" 
-                              value={formData.guarantors[index]?.landlordName || ''}
+                              value={formData.guarantors[actualIndex]?.landlordName || ''}
                               className="input-field w-full mt-1 border-gray-300 bg-white"
                               onChange={(e) => {
-                                updateFormData('guarantors', index.toString(), 'landlordName', e.target.value);
+                                updateArrayItem('guarantors', actualIndex, 'landlordName', e.target.value);
+                                form.setValue(`guarantors.${actualIndex}.landlordName`, e.target.value);
                               }}
                             />
                           </FormControl>
@@ -7287,10 +8013,11 @@ export function ApplicationForm() {
                           <FormControl>
                             <Input 
                               placeholder="Enter landlord's street address" 
-                              value={formData.guarantors[index]?.landlordAddressLine1 || ''}
+                              value={formData.guarantors[actualIndex]?.landlordAddressLine1 || ''}
                               className="input-field w-full mt-1 border-gray-300 bg-white"
                               onChange={(e) => {
-                                updateFormData('guarantors', index.toString(), 'landlordAddressLine1', e.target.value);
+                                updateArrayItem('guarantors', actualIndex, 'landlordAddressLine1', e.target.value);
+                                form.setValue(`guarantors.${actualIndex}.landlordAddressLine1`, e.target.value);
                               }}
                             />
                           </FormControl>
@@ -7300,10 +8027,11 @@ export function ApplicationForm() {
                           <FormControl>
                             <Input 
                               placeholder="Apartment, suite, etc." 
-                              value={formData.guarantors[index]?.landlordAddressLine2 || ''}
+                              value={formData.guarantors[actualIndex]?.landlordAddressLine2 || ''}
                               className="input-field w-full mt-1 border-gray-300 bg-white"
                               onChange={(e) => {
-                                updateFormData('guarantors', index.toString(), 'landlordAddressLine2', e.target.value);
+                                updateArrayItem('guarantors', actualIndex, 'landlordAddressLine2', e.target.value);
+                                form.setValue(`guarantors.${actualIndex}.landlordAddressLine2`, e.target.value);
                               }}
                             />
                           </FormControl>
@@ -7311,9 +8039,10 @@ export function ApplicationForm() {
                         <FormItem>
                           <FormControl>
                             <StateSelector
-                              selectedState={formData.guarantors[index]?.landlordState || ''}
+                              selectedState={formData.guarantors[actualIndex]?.landlordState || ''}
                               onStateChange={(value) => {
-                                updateFormData('guarantors', index.toString(), 'landlordState', value);
+                                updateArrayItem('guarantors', actualIndex, 'landlordState', value);
+                                form.setValue(`guarantors.${actualIndex}.landlordState`, value);
                               }}
                               label="Landlord State"
                               className="w-full mt-1"
@@ -7323,10 +8052,11 @@ export function ApplicationForm() {
                         <FormItem>
                           <FormControl>
                             <CitySelector
-                              selectedState={formData.guarantors[index]?.landlordState || ''}
-                              selectedCity={formData.guarantors[index]?.landlordCity || ''}
+                              selectedState={formData.guarantors[actualIndex]?.landlordState || ''}
+                              selectedCity={formData.guarantors[actualIndex]?.landlordCity || ''}
                               onCityChange={(value) => {
-                                updateFormData('guarantors', index.toString(), 'landlordCity', value);
+                                updateArrayItem('guarantors', actualIndex, 'landlordCity', value);
+                                form.setValue(`guarantors.${actualIndex}.landlordCity`, value);
                               }}
                               label="Landlord City"
                               className="w-full mt-1"
@@ -7336,12 +8066,13 @@ export function ApplicationForm() {
                         <FormItem>
                           <FormControl>
                             <ZIPInput
-                              name={`guarantors.${index}.landlordZipCode`}
+                              name={`guarantors.${actualIndex}.landlordZipCode`}
                               label="Landlord ZIP Code"
                               placeholder="Enter landlord's ZIP code"
-                              value={formData.guarantors[index]?.landlordZipCode || ''}
+                              value={formData.guarantors[actualIndex]?.landlordZipCode || ''}
                               onChange={(value: string) => {
-                                updateFormData('guarantors', index.toString(), 'landlordZipCode', value);
+                                updateArrayItem('guarantors', actualIndex, 'landlordZipCode', value);
+                                form.setValue(`guarantors.${actualIndex}.landlordZipCode`, value);
                               }}
                               className="w-full mt-1"
                             />
@@ -7350,12 +8081,13 @@ export function ApplicationForm() {
                         <FormItem>
                           <FormControl>
                             <PhoneInput
-                              name={`guarantors.${index}.landlordPhone`}
+                              name={`guarantors.${actualIndex}.landlordPhone`}
                               label="Landlord Phone Number"
                               placeholder="Enter landlord's phone number"
-                              value={formData.guarantors[index]?.landlordPhone || ''}
+                              value={formData.guarantors[actualIndex]?.landlordPhone || ''}
                               onChange={(value) => {
-                                updateFormData('guarantors', index.toString(), 'landlordPhone', value);
+                                updateArrayItem('guarantors', actualIndex, 'landlordPhone', value);
+                                form.setValue(`guarantors.${actualIndex}.landlordPhone`, value);
                               }}
                               className="w-full mt-1"
                             />
@@ -7364,27 +8096,29 @@ export function ApplicationForm() {
                         <FormItem>
                           <FormControl>
                             <EmailInput
-                              name={`guarantors.${index}.landlordEmail`}
+                              name={`guarantors.${actualIndex}.landlordEmail`}
                               label="Landlord Email Address (Optional)"
                               placeholder="Enter landlord's email address"
-                              value={formData.guarantors[index]?.landlordEmail || ''}
+                              value={formData.guarantors[actualIndex]?.landlordEmail || ''}
                               onChange={(value) => {
-                                updateFormData('guarantors', index.toString(), 'landlordEmail', value);
+                                updateArrayItem('guarantors', actualIndex, 'landlordEmail', value);
+                                form.setValue(`guarantors.${actualIndex}.landlordEmail`, value);
                               }}
                               className="w-full mt-1"
                             />
                           </FormControl>
                         </FormItem>
                         <div>
-                          <Label htmlFor={`guarantors.${index}.currentRent`} className="mb-0.5">Monthly Rent</Label>
+                          <Label htmlFor={`guarantors.${actualIndex}.currentRent`} className="mb-0.5">Monthly Rent</Label>
                           <Input
-                            id={`guarantors.${index}.currentRent`}
+                            id={`guarantors.${actualIndex}.currentRent`}
                             type="number"
                             placeholder="0.00"
-                            value={formData.guarantors[index]?.currentRent?.toString() || ''}
+                            value={formData.guarantors[actualIndex]?.currentRent?.toString() || ''}
                             onChange={e => {
                               const numValue = parseFloat(e.target.value) || 0;
-                              updateFormData('guarantors', index.toString(), 'currentRent', numValue);
+                              updateArrayItem('guarantors', actualIndex, 'currentRent', numValue);
+                              form.setValue(`guarantors.${actualIndex}.currentRent`, numValue);
                             }}
                             className="input-field w-full mt-1"
                           />
@@ -7394,18 +8128,20 @@ export function ApplicationForm() {
                           <FormControl>
                             <Textarea 
                               placeholder="Please explain your reason for moving" 
-                              value={formData.guarantors[index]?.reasonForMoving || ''}
-                              className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
-                              onChange={(e) => {
-                                updateFormData('guarantors', index.toString(), 'reasonForMoving', e.target.value);
-                              }}
+                            value={formData.guarantors[actualIndex]?.reasonForMoving || ''}
+                            className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
+                            onChange={(e) => {
+                              updateArrayItem('guarantors', actualIndex, 'reasonForMoving', e.target.value);
+                              form.setValue(`guarantors.${actualIndex}.reasonForMoving`, e.target.value);
+                            }}
                             />
                           </FormControl>
                         </FormItem>
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                      );
+                    })}
               </div>
             )}
           </CardContent>
@@ -7416,7 +8152,7 @@ export function ApplicationForm() {
       case 10:
         return (
           <div className="space-y-6">
-            {!hasGuarantor ? (
+            {!hasGuarantor && !(userRole.startsWith('guarantor') && specificIndex !== null) ? (
               <Card className="form-section border-l-4 border-l-orange-500">
                 <CardHeader>
                   <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
@@ -7440,19 +8176,23 @@ export function ApplicationForm() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
+                  {Array.from({ length: (userRole.startsWith('guarantor') && specificIndex !== null) ? 1 : Math.max(1, formData.guarantorCount || 1) }, (_, index) => {
+                    // For specific guarantor roles, always show the specific index
+                    const actualIndex = userRole.startsWith('guarantor') && specificIndex !== null ? specificIndex : index;
+                    return (
                     <div key={index} className="mb-8 last:mb-0">
                       <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
-                        Financial Information 3 - Guarantor {index + 1}
+                        Financial Information 3 - Guarantor {actualIndex + 1}
                       </h3>
                       <FinancialSection
-                        title={`Guarantor ${index + 1} Financial Information`}
-                        person={`guarantors_${index}`}
+                        title={`Guarantor ${actualIndex + 1} Financial Information`}
+                        person={`guarantors_${actualIndex}`}
                         formData={formData}
                         updateFormData={updateFormData}
                       />
                     </div>
-                  ))}
+                      );
+                    })}
                 </CardContent>
               </Card>
             )}
@@ -7462,7 +8202,7 @@ export function ApplicationForm() {
       case 11:
         return (
           <div className="space-y-6">
-            {!hasGuarantor ? (
+            {!hasGuarantor && !(userRole.startsWith('guarantor') && specificIndex !== null) ? (
               <Card className="form-section border-l-4 border-l-orange-500">
                 <CardHeader>
                   <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
@@ -7487,29 +8227,32 @@ export function ApplicationForm() {
                 </CardHeader>
                 <CardContent>
                   {/* Wrapper functions for SupportingDocuments to match expected signature */}
-                  {Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
+                  {Array.from({ length: (userRole.startsWith('guarantor') && specificIndex !== null) ? 1 : Math.max(1, formData.guarantorCount || 1) }, (_, index) => {
+                    // For specific guarantor roles, always show the specific index
+                    const actualIndex = userRole.startsWith('guarantor') && specificIndex !== null ? specificIndex : index;
+                    return (
                     <div key={index} className="mb-8 last:mb-0">
                       <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
-                        Guarantor {index + 1} Documents
+                        Guarantor {actualIndex + 1} Documents
                       </h3>
                       {/* Employment Type Selection for Guarantor Documents */}
-                      {!formData.guarantors?.[index]?.employmentType ? (
+                      {!formData.guarantors?.[actualIndex]?.employmentType ? (
                         <div className="space-y-4">
-                          <div className="text-gray-500 text-sm mb-4">Please select Employment Type to upload supporting documents for Guarantor {index + 1}.</div>
+                          <div className="text-gray-500 text-sm mb-4">Please select Employment Type to upload supporting documents for Guarantor {actualIndex + 1}.</div>
                           
                           <div className="form-field">
-                            <Label htmlFor={`guarantor-${index}-employmentType`}>Employment Type *</Label>
+                            <Label htmlFor={`guarantor-${actualIndex}-employmentType`}>Employment Type *</Label>
                             <div className="text-sm text-amber-600 dark:text-amber-400 mb-2">
                               Guarantor cannot be a student, only employment/ self-employment options
                             </div>
                             <Select
-                              value={formData.guarantors?.[index]?.employmentType || ''}
+                              value={formData.guarantors?.[actualIndex]?.employmentType || ''}
                               onValueChange={(value) => {
                                 // Prevent guarantors from selecting student employment type
                                 if (value === 'student') {
                                   return; // Don't allow this selection
                                 }
-                                updateFormData('guarantors', index.toString(), 'employmentType', value);
+                                updateFormData('guarantors', actualIndex.toString(), 'employmentType', value);
                               }}
                             >
                               <SelectTrigger className="input-field">
@@ -7548,20 +8291,20 @@ export function ApplicationForm() {
                             ...formData,
                             webhookResponses: Object.fromEntries(
                               Object.entries(webhookResponses)
-                                .filter(([key]) => key.startsWith(`guarantors_${index}_`))
-                                .map(([key, value]) => [key.replace(`guarantors_${index}_`, ''), value])
+                                .filter(([key]) => key.startsWith(`guarantors_${actualIndex}_`))
+                                .map(([key, value]) => [key.replace(`guarantors_${actualIndex}_`, ''), value])
                             )
                           }}
                           originalWebhookResponses={webhookResponses}
                           onDocumentChange={(documentType: string, files: File[]) => 
-                            handleDocumentChange('guarantors', documentType, files, index)
+                            handleDocumentChange('guarantors', documentType, files, actualIndex)
                           }
                           onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => 
-                            handleEncryptedDocumentChange('guarantors', documentType, encryptedFiles, index)
+                            handleEncryptedDocumentChange('guarantors', documentType, encryptedFiles, actualIndex)
                           }
                           onWebhookResponse={(documentType: string, response: any) => {
                             // Pass the document type and index to the function
-                            handleWebhookResponse('guarantors', documentType, response, index);
+                            handleWebhookResponse('guarantors', documentType, response, actualIndex);
                           }}
                           referenceId={referenceId}
                           enableWebhook={true}
@@ -7569,11 +8312,12 @@ export function ApplicationForm() {
                           applicantId={user?.id}
                           zoneinfo={user?.zoneinfo}
                           showOnlyGuarantor={true}
-                          index={index}
+                          index={actualIndex}
                         />
                       )}
                     </div>
-                  ))}
+                      );
+                    })}
                 </CardContent>
               </Card>
             )}
@@ -7594,15 +8338,19 @@ export function ApplicationForm() {
                   The Landlord shall not be bound by any lease, nor will possession of the premises be delivered to the Tenant, until a written lease agreement is executed by the Landlord and delivered to the Tenant. Approval of this application remains at Landlord’s discretion until a lease agreement is fully executed. Please be advised that the date on page one of the lease is your move-in date and also denotes the lease commencement date. No representations or agreements by agents, brokers or others shall be binding upon the Landlord or its Agent unless those representations or agreements are set forth in the written lease agreement executed by both Landlord and Tenant.</p>
                   <h3 className="font-bold uppercase text-sm mb-2">Certification & Consents</h3>
                   <p className="text-xs text-gray-700 whitespace-pre-line">By signing this application electronically, I consent to the use of electronic records and digital signatures in connection with this application and any resulting lease agreement. I agree that my electronic signature is legally binding and has the same effect as a handwritten signature. <br/>I hereby warrant that all my representations and information provided in this application are true, accurate, and complete to the best of my knowledge. I recognize the truth of the information contained herein is essential and I acknowledge that any false or misleading information may result in the rejection of my application  or rescission of the offer prior to possession or, if a lease has been executed and/or possession delivered, may constitute a material breach and provide grounds to commence appropriate legal proceedings to terminate the tenancy, as permitted by law. I further represent that I am not renting a room or an apartment under any other name, nor have I ever been dispossessed or evicted from any residence, nor am I now being dispossessed nor currently being evicted. I represent that I am over at least 18 years of age. I acknowledge and consent that my Social Security number and any other personal identifying information collected in this application may be used for tenant screening and will be maintained in confidence and protected against unauthorized disclosure in accordance with New York General Business Law and related privacy laws. I have been advised that I have the right, under the Fair Credit Reporting Act, to make a written request, directed to the appropriate credit reporting agency, within reasonable time, for a complete and accurate disclosure of the nature and scope of any credit investigation. I understand that upon submission, this application and all related documents become the property of the Landlord, and will not be returned to me under any circumstances regardless of whether my application is approved or denied. I consent to and authorize the Landlord, Agent and any designated screening or credit reporting agency to obtain a consumer credit report on me and to conduct any necessary background checks, to the extent permitted by law. I further authorize the Landlord and Agent to verify any and all information provided in this application with regard to my employment history, current and prior tenancies, bank accounts, and all other information that the Landlord deems pertinent to evaluating my leasing application. I authorize the designated screening company to contact my current and previous landlords, employers and references, if necessary. I understand that I shall not be permitted to receive or review my application file or my credit consumer report, <br/>and the Landlord and Agent are not obligated to provide me with copies of my application file or any consumer report obtained in the screening process, and that I may obtain my credit report from the credit reporting agency or as otherwise provided by law. I authorize banks, financial institutions, landlords, employers, business associates, credit bureaus, attorneys, accountants and other persons or institutions with whom I am acquainted and that may have information about me to furnish any and all information regarding myself. This authorization also applies to any updated reports which may be ordered as needed. A photocopy or fax of this authorization or an electronic copy (including any electronic signature) shall be accepted with the same authority as this original. I will provide any additional information required by the Landlord or Agent in connection with this application or any prospective lease contemplated herein. I understand that the application fee is non-refundable. <br/>The Civil Rights Act of 1968, as amended by the Fair Housing Amendments Act of 1988, prohibits discrimination in the rental of housing based on race, color, religion, gender, disability, familial status, lawful source of income (including housing vouchers and public assistance) or national origin. The Federal Agency, which administers compliance with this law, is the U.S. Department of Housing and Urban Development.” </p> </div>
-                <div>
-                  <Label className="text-base font-medium">Primary Applicant Signature *</Label>
-                  <SignaturePad 
-                    onSignatureChange={(signature) => handleSignatureChange('applicant', signature)}
-                    className="mt-2"
-                  />
-                </div>
+                {/* Primary Applicant Signature - Hide for coapplicant and guarantor roles */}
+                {userRole !== 'coapplicant' && userRole !== 'guarantor' && (
+                  <div>
+                    <Label className="text-base font-medium">Primary Applicant Signature *</Label>
+                    <SignaturePad 
+                      onSignatureChange={(signature) => handleSignatureChange('applicant', signature)}
+                      className="mt-2"
+                    />
+                  </div>
+                )}
 
-                {hasCoApplicant && Array.from({ length: formData.coApplicantCount || 1 }, (_, index) => (
+                {/* Co-Applicant Signatures - Hide for guarantor role */}
+                {userRole !== 'guarantor' && hasCoApplicant && Array.from({ length: formData.coApplicantCount || 1 }, (_, index) => (
                   <div key={`co-applicant-signature-${index}`}>
                     <Label className="text-base font-medium">Co-Applicant {index + 1} Signature *</Label>
                     <SignaturePad 
@@ -7612,7 +8360,8 @@ export function ApplicationForm() {
                   </div>
                 ))}
 
-                {hasGuarantor && Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
+                {/* Guarantor Signatures - Hide for coapplicant role, show for guarantor role */}
+                {userRole !== 'coapplicant' && hasGuarantor && Array.from({ length: Math.max(1, formData.guarantorCount || 1) }, (_, index) => (
                   <div key={`guarantor-signature-${index}`}>
                     <Label className="text-base font-medium">Guarantor {index + 1} Signature *</Label>
                     <SignaturePad 
@@ -7710,7 +8459,7 @@ export function ApplicationForm() {
         nextStep = 12; // Skip to Digital Signatures only when navigating TO step 11
       }
       
-      return Math.min(nextStep, STEPS.length - 1);
+      return Math.min(nextStep, filteredSteps.length - 1);
     });
   };
 
@@ -7751,21 +8500,21 @@ export function ApplicationForm() {
           {/* <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-semibold text-gray-900">
-                Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep]?.title}
+                Step {currentStep + 1} of {filteredSteps.length}: {filteredSteps[currentStep]?.title}
               </h2>
               <span className="text-sm text-gray-500">
-                {Math.round(((currentStep + 1) / STEPS.length) * 100)}% Complete
+                {Math.round(((currentStep + 1) / filteredSteps.length) * 100)}% Complete
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-in-out"
-                style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
+                style={{ width: `${((currentStep + 1) / filteredSteps.length) * 100}%` }}
               ></div>
           </div>
           
             <div className="flex flex-wrap gap-2 mt-4">
-            {STEPS.map((step, index) => {
+            {filteredSteps.map((step, index) => {
               const stepValidation = validateStep(index);
               const isCompleted = index < currentStep && stepValidation.isValid;
               const hasErrors = index < currentStep && !stepValidation.isValid;
@@ -7790,7 +8539,7 @@ export function ApplicationForm() {
                       {isCompleted && <Check className="w-3 h-3 ml-1" />}
                       {hasErrors && <X className="w-3 h-3 ml-1" />}
                   </button>
-                  {index < STEPS.length - 1 && (
+                  {index < filteredSteps.length - 1 && (
                       <ChevronRight className="w-3 h-3 text-gray-400 mx-1" />
                   )}
                 </div>
@@ -7881,7 +8630,7 @@ export function ApplicationForm() {
                 Save Draft
                 </Button>
                 
-              {currentStep === STEPS.length - 1 ? (
+              {currentStep === filteredSteps.length - 1 ? (
                   <Button
                     type="submit"
                     disabled={isSubmitting}
@@ -7923,15 +8672,61 @@ export function ApplicationForm() {
                 <p>
                   Your rental application has been submitted and is being processed.
                 </p>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-                  <div className="flex items-center justify-center mb-2">
-                    <FileText className="w-4 h-4 text-blue-600 mr-2" />
-                    <span className="font-semibold text-blue-800">PDF Generated & Downloaded</span>
+                {(userRole !== 'applicant' && userRole !== 'coapplicant') && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                    <div className="flex items-center justify-center mb-2">
+                      <FileText className="w-4 h-4 text-blue-600 mr-2" />
+                      <span className="font-semibold text-blue-800">PDF Generated & Downloaded</span>
+                    </div>
+                    <p className="text-blue-700">
+                      Your application PDF has been automatically generated and downloaded to your device.
+                    </p>
                   </div>
-                  <p className="text-blue-700">
-                    Your application PDF has been automatically generated and downloaded to your device.
-                  </p>
-                </div>
+                )}
+
+                {/* Additional People Summary - Only for applicant role */}
+                {userRole === 'applicant' && (formData.coApplicantCount > 0 || formData.guarantorCount > 0) && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-left">
+                    <div className="flex items-center mb-3">
+                      <Users className="w-4 h-4 text-green-600 mr-2" />
+                      <span className="font-semibold text-green-800">Additional People in Application</span>
+                    </div>
+                    
+                    {/* Co-Applicants Summary */}
+                    {formData.coApplicantCount > 0 && formData.coApplicants && (
+                      <div className="mb-3">
+                        <h4 className="font-medium text-green-700 mb-2">Co-Applicants ({formData.coApplicantCount}):</h4>
+                        <div className="space-y-1">
+                          {formData.coApplicants.slice(0, formData.coApplicantCount).map((coApplicant: any, index: number) => (
+                            <div key={index} className="text-green-600">
+                              <span className="font-medium">{coApplicant.name || `Co-Applicant ${index + 1}`}</span>
+                              {coApplicant.email && (
+                                <span className="text-gray-500 ml-2">({coApplicant.email})</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Guarantors Summary */}
+                    {formData.guarantorCount > 0 && formData.guarantors && (
+                      <div>
+                        <h4 className="font-medium text-green-700 mb-2">Guarantors ({formData.guarantorCount}):</h4>
+                        <div className="space-y-1">
+                          {formData.guarantors.slice(0, formData.guarantorCount).map((guarantor: any, index: number) => (
+                            <div key={index} className="text-green-600">
+                              <span className="font-medium">{guarantor.name || `Guarantor ${index + 1}`}</span>
+                              {guarantor.email && (
+                                <span className="text-gray-500 ml-2">({guarantor.email})</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex space-x-3">
                 <Button
