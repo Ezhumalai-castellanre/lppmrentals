@@ -207,7 +207,7 @@ export interface FormDataWebhookData {
     guarantor_credit_report: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
     other_occupants_identity: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
   };
-  submission_type: 'form_data';
+  submission_type: 'form_data' | 'applicant_only' | 'coapplicant_only' | 'guarantor_only';
 }
 
 export interface PDFWebhookData {
@@ -785,6 +785,257 @@ export class WebhookService {
   }
 
   /**
+   * Sends separate webhook for applicant only
+   */
+  static async sendApplicantWebhook(
+    formData: any,
+    referenceId: string,
+    applicationId: string,
+    zoneinfo?: string,
+    uploadedFiles?: any
+  ): Promise<{ success: boolean; error?: string }> {
+    const submissionId = `${referenceId}-applicant-${Date.now()}`;
+    
+    if (this.ongoingSubmissions.has(submissionId)) {
+      console.log('⚠️ Duplicate applicant webhook submission detected, skipping:', submissionId);
+      return { success: false, error: 'Duplicate submission detected' };
+    }
+    
+    this.ongoingSubmissions.add(submissionId);
+    
+    try {
+      // Create applicant-only payload
+      const applicantPayload = this.createApplicantOnlyPayload(formData, uploadedFiles);
+      
+      const webhookData: FormDataWebhookData = {
+        reference_id: referenceId,
+        application_id: zoneinfo || applicationId,
+        form_data: applicantPayload,
+        uploaded_files: this.filterApplicantFiles(uploadedFiles),
+        submission_type: 'applicant_only'
+      };
+
+      console.log(`📤 Sending applicant-only webhook for application ${applicationId}`);
+      
+      const response = await this.sendWebhookRequest(webhookData, 'applicant_only');
+      
+      this.ongoingSubmissions.delete(submissionId);
+      return response;
+
+    } catch (error) {
+      console.error('Error in sendApplicantWebhook:', error);
+      this.ongoingSubmissions.delete(submissionId);
+      
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Sends separate webhook for co-applicant
+   */
+  static async sendCoApplicantWebhook(
+    coApplicant: any,
+    coApplicantIndex: number,
+    formData: any,
+    referenceId: string,
+    applicationId: string,
+    zoneinfo?: string,
+    uploadedFiles?: any
+  ): Promise<{ success: boolean; error?: string }> {
+    const submissionId = `${referenceId}-coapplicant-${coApplicantIndex}-${Date.now()}`;
+    
+    if (this.ongoingSubmissions.has(submissionId)) {
+      console.log('⚠️ Duplicate co-applicant webhook submission detected, skipping:', submissionId);
+      return { success: false, error: 'Duplicate submission detected' };
+    }
+    
+    this.ongoingSubmissions.add(submissionId);
+    
+    try {
+      // Create co-applicant-only payload
+      const coApplicantPayload = this.createCoApplicantOnlyPayload(coApplicant, coApplicantIndex, formData, uploadedFiles);
+      
+      const webhookData: FormDataWebhookData = {
+        reference_id: referenceId,
+        application_id: zoneinfo || applicationId,
+        form_data: coApplicantPayload,
+        uploaded_files: this.filterCoApplicantFiles(uploadedFiles, coApplicantIndex),
+        submission_type: 'coapplicant_only'
+      };
+
+      console.log(`📤 Sending co-applicant ${coApplicantIndex + 1} webhook for application ${applicationId}`);
+      
+      const response = await this.sendWebhookRequest(webhookData, 'coapplicant_only');
+      
+      this.ongoingSubmissions.delete(submissionId);
+      return response;
+
+    } catch (error) {
+      console.error('Error in sendCoApplicantWebhook:', error);
+      this.ongoingSubmissions.delete(submissionId);
+      
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Sends separate webhook for guarantor
+   */
+  static async sendGuarantorWebhook(
+    guarantor: any,
+    guarantorIndex: number,
+    formData: any,
+    referenceId: string,
+    applicationId: string,
+    zoneinfo?: string,
+    uploadedFiles?: any
+  ): Promise<{ success: boolean; error?: string }> {
+    const submissionId = `${referenceId}-guarantor-${guarantorIndex}-${Date.now()}`;
+    
+    if (this.ongoingSubmissions.has(submissionId)) {
+      console.log('⚠️ Duplicate guarantor webhook submission detected, skipping:', submissionId);
+      return { success: false, error: 'Duplicate submission detected' };
+    }
+    
+    this.ongoingSubmissions.add(submissionId);
+    
+    try {
+      // Create guarantor-only payload
+      const guarantorPayload = this.createGuarantorOnlyPayload(guarantor, guarantorIndex, formData, uploadedFiles);
+      
+      const webhookData: FormDataWebhookData = {
+        reference_id: referenceId,
+        application_id: zoneinfo || applicationId,
+        form_data: guarantorPayload,
+        uploaded_files: this.filterGuarantorFiles(uploadedFiles, guarantorIndex),
+        submission_type: 'guarantor_only'
+      };
+
+      console.log(`📤 Sending guarantor ${guarantorIndex + 1} webhook for application ${applicationId}`);
+      
+      const response = await this.sendWebhookRequest(webhookData, 'guarantor_only');
+      
+      this.ongoingSubmissions.delete(submissionId);
+      return response;
+
+    } catch (error) {
+      console.error('Error in sendGuarantorWebhook:', error);
+      this.ongoingSubmissions.delete(submissionId);
+      
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Sends all webhooks separately for each role
+   */
+  static async sendSeparateWebhooks(
+    formData: any,
+    referenceId: string,
+    applicationId: string,
+    zoneinfo?: string,
+    uploadedFiles?: any
+  ): Promise<{ 
+    success: boolean; 
+    error?: string; 
+    results: {
+      applicant: { success: boolean; error?: string };
+      coApplicants: Array<{ success: boolean; error?: string; index: number }>;
+      guarantors: Array<{ success: boolean; error?: string; index: number }>;
+    }
+  }> {
+    console.log('🚀 Starting separate webhook submissions for all roles');
+    
+    const results = {
+      applicant: { success: false },
+      coApplicants: [] as Array<{ success: boolean; error?: string; index: number }>,
+      guarantors: [] as Array<{ success: boolean; error?: string; index: number }>
+    };
+
+    try {
+      // Send applicant webhook
+      console.log('📤 Sending applicant webhook...');
+      results.applicant = await this.sendApplicantWebhook(formData, referenceId, applicationId, zoneinfo, uploadedFiles);
+      
+      // Send co-applicant webhooks
+      if (formData.coApplicants && formData.coApplicants.length > 0) {
+        console.log(`📤 Sending ${formData.coApplicants.length} co-applicant webhooks...`);
+        
+        for (let i = 0; i < formData.coApplicants.length; i++) {
+          const coApplicant = formData.coApplicants[i];
+          if (coApplicant && coApplicant.name) {
+            const result = await this.sendCoApplicantWebhook(
+              coApplicant, 
+              i, 
+              formData, 
+              referenceId, 
+              applicationId, 
+              zoneinfo, 
+              uploadedFiles
+            );
+            results.coApplicants.push({ ...result, index: i });
+          }
+        }
+      }
+      
+      // Send guarantor webhooks
+      if (formData.guarantors && formData.guarantors.length > 0) {
+        console.log(`📤 Sending ${formData.guarantors.length} guarantor webhooks...`);
+        
+        for (let i = 0; i < formData.guarantors.length; i++) {
+          const guarantor = formData.guarantors[i];
+          if (guarantor && guarantor.name) {
+            const result = await this.sendGuarantorWebhook(
+              guarantor, 
+              i, 
+              formData, 
+              referenceId, 
+              applicationId, 
+              zoneinfo, 
+              uploadedFiles
+            );
+            results.guarantors.push({ ...result, index: i });
+          }
+        }
+      }
+
+      // Check if all webhooks were successful
+      const allSuccessful = results.applicant.success && 
+        results.coApplicants.every(r => r.success) && 
+        results.guarantors.every(r => r.success);
+
+      console.log('📊 Separate webhook submission results:', {
+        applicant: results.applicant.success,
+        coApplicants: results.coApplicants.map(r => ({ index: r.index, success: r.success })),
+        guarantors: results.guarantors.map(r => ({ index: r.index, success: r.success }))
+      });
+
+      return {
+        success: allSuccessful,
+        error: allSuccessful ? undefined : 'Some webhook submissions failed',
+        results
+      };
+
+    } catch (error) {
+      console.error('Error in sendSeparateWebhooks:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        results
+      };
+    }
+  }
+
+  /**
    * Sends form data to the webhook
    */
   static async sendFormDataToWebhook(
@@ -949,6 +1200,236 @@ export class WebhookService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Creates applicant-only payload
+   */
+  private static createApplicantOnlyPayload(formData: any, uploadedFiles?: any): any {
+    const transformedData = this.transformFormDataToWebhookFormat(formData, uploadedFiles);
+    
+    return {
+      application: transformedData.application,
+      applicant: transformedData.applicant,
+      // Include basic application info but exclude co-applicants and guarantors
+      hasCoApplicant: false,
+      hasGuarantor: false,
+      coApplicantCount: 0,
+      guarantorCount: 0,
+      coApplicants: [],
+      guarantors: [],
+      // Include legal questions
+      landlordTenantLegalAction: transformedData.landlordTenantLegalAction,
+      brokenLease: transformedData.brokenLease,
+      // Include signatures
+      signatures: transformedData.signatures,
+      // Include bank information for applicant only
+      bankInformation: {
+        applicant: transformedData.bankInformation?.applicant,
+        coApplicants: { totalBankRecords: 0, records: [] },
+        guarantors: { totalBankRecords: 0, records: [] },
+        summary: {
+          totalBankRecords: transformedData.bankInformation?.applicant?.totalBankRecords || 0
+        }
+      }
+    };
+  }
+
+  /**
+   * Creates co-applicant-only payload
+   */
+  private static createCoApplicantOnlyPayload(coApplicant: any, coApplicantIndex: number, formData: any, uploadedFiles?: any): any {
+    const transformedData = this.transformFormDataToWebhookFormat(formData, uploadedFiles);
+    
+    return {
+      application: transformedData.application,
+      // Include only the specific co-applicant
+      coApplicants: [transformedData.coApplicants[coApplicantIndex]],
+      // Include basic application info
+      hasCoApplicant: true,
+      hasGuarantor: false,
+      coApplicantCount: 1,
+      guarantorCount: 0,
+      guarantors: [],
+      // Include legal questions
+      landlordTenantLegalAction: transformedData.landlordTenantLegalAction,
+      brokenLease: transformedData.brokenLease,
+      // Include signatures
+      signatures: transformedData.signatures,
+      // Include bank information for this co-applicant only
+      bankInformation: {
+        applicant: { totalBankRecords: 0, records: [] },
+        coApplicants: {
+          totalBankRecords: coApplicant.bankRecords?.length || 0,
+          records: coApplicant.bankRecords || []
+        },
+        guarantors: { totalBankRecords: 0, records: [] },
+        summary: {
+          totalBankRecords: coApplicant.bankRecords?.length || 0
+        }
+      }
+    };
+  }
+
+  /**
+   * Creates guarantor-only payload
+   */
+  private static createGuarantorOnlyPayload(guarantor: any, guarantorIndex: number, formData: any, uploadedFiles?: any): any {
+    const transformedData = this.transformFormDataToWebhookFormat(formData, uploadedFiles);
+    
+    return {
+      application: transformedData.application,
+      // Include only the specific guarantor
+      guarantors: [transformedData.guarantors[guarantorIndex]],
+      // Include basic application info
+      hasCoApplicant: false,
+      hasGuarantor: true,
+      coApplicantCount: 0,
+      guarantorCount: 1,
+      coApplicants: [],
+      // Include legal questions
+      landlordTenantLegalAction: transformedData.landlordTenantLegalAction,
+      brokenLease: transformedData.brokenLease,
+      // Include signatures
+      signatures: transformedData.signatures,
+      // Include bank information for this guarantor only
+      bankInformation: {
+        applicant: { totalBankRecords: 0, records: [] },
+        coApplicants: { totalBankRecords: 0, records: [] },
+        guarantors: {
+          totalBankRecords: guarantor.bankRecords?.length || 0,
+          records: guarantor.bankRecords || []
+        },
+        summary: {
+          totalBankRecords: guarantor.bankRecords?.length || 0
+        }
+      }
+    };
+  }
+
+  /**
+   * Filters uploaded files for applicant only
+   */
+  private static filterApplicantFiles(uploadedFiles?: any): any {
+    if (!uploadedFiles) return {};
+    
+    return {
+      supporting_w9_forms: uploadedFiles.supporting_w9_forms || [],
+      supporting_photo_id: uploadedFiles.supporting_photo_id || [],
+      supporting_social_security: uploadedFiles.supporting_social_security || [],
+      supporting_bank_statement: uploadedFiles.supporting_bank_statement || [],
+      supporting_tax_returns: uploadedFiles.supporting_tax_returns || [],
+      supporting_employment_letter: uploadedFiles.supporting_employment_letter || [],
+      supporting_pay_stubs: uploadedFiles.supporting_pay_stubs || [],
+      supporting_credit_report: uploadedFiles.supporting_credit_report || [],
+      other_occupants_identity: uploadedFiles.other_occupants_identity || []
+    };
+  }
+
+  /**
+   * Filters uploaded files for specific co-applicant
+   */
+  private static filterCoApplicantFiles(uploadedFiles?: any, coApplicantIndex: number = 0): any {
+    if (!uploadedFiles) return {};
+    
+    // For now, return all co-applicant files since we can't easily separate by index
+    // In a more sophisticated implementation, you might want to prefix files by index
+    return {
+      coApplicant_w9_forms: uploadedFiles.coApplicant_w9_forms || [],
+      coApplicant_photo_id: uploadedFiles.coApplicant_photo_id || [],
+      coApplicant_social_security: uploadedFiles.coApplicant_social_security || [],
+      coApplicant_bank_statement: uploadedFiles.coApplicant_bank_statement || [],
+      coApplicant_tax_returns: uploadedFiles.coApplicant_tax_returns || [],
+      coApplicant_employment_letter: uploadedFiles.coApplicant_employment_letter || [],
+      coApplicant_pay_stubs: uploadedFiles.coApplicant_pay_stubs || [],
+      coApplicant_credit_report: uploadedFiles.coApplicant_credit_report || []
+    };
+  }
+
+  /**
+   * Filters uploaded files for specific guarantor
+   */
+  private static filterGuarantorFiles(uploadedFiles?: any, guarantorIndex: number = 0): any {
+    if (!uploadedFiles) return {};
+    
+    // For now, return all guarantor files since we can't easily separate by index
+    // In a more sophisticated implementation, you might want to prefix files by index
+    return {
+      guarantor_w9_forms: uploadedFiles.guarantor_w9_forms || [],
+      guarantor_photo_id: uploadedFiles.guarantor_photo_id || [],
+      guarantor_social_security: uploadedFiles.guarantor_social_security || [],
+      guarantor_bank_statement: uploadedFiles.guarantor_bank_statement || [],
+      guarantor_tax_returns: uploadedFiles.guarantor_tax_returns || [],
+      guarantor_employment_letter: uploadedFiles.guarantor_employment_letter || [],
+      guarantor_pay_stubs: uploadedFiles.guarantor_pay_stubs || [],
+      guarantor_credit_report: uploadedFiles.guarantor_credit_report || []
+    };
+  }
+
+  /**
+   * Sends webhook request with proper error handling
+   */
+  private static async sendWebhookRequest(webhookData: FormDataWebhookData, webhookType: string): Promise<{ success: boolean; error?: string }> {
+    const payloadSize = JSON.stringify(webhookData).length;
+    const payloadSizeMB = Math.round(payloadSize / (1024 * 1024) * 100) / 100;
+    
+    console.log(`📊 ${webhookType} payload size: ${payloadSizeMB}MB`);
+    
+    if (payloadSizeMB > 5) {
+      console.warn(`⚠️ Large ${webhookType} payload detected:`, payloadSizeMB, 'MB');
+    }
+
+    const startTime = Date.now();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout
+    
+    try {
+      const response = await fetch(this.WEBHOOK_PROXY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          webhookType: 'form_data',
+          webhookData: webhookData
+        }),
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`${webhookType} webhook failed:`, response.status, errorText);
+        return {
+          success: false,
+          error: `${webhookType} webhook failed: ${response.status} - ${errorText}`
+        };
+      }
+
+      const responseTime = Date.now() - startTime;
+      console.log(`✅ ${webhookType} webhook sent successfully in ${responseTime}ms`);
+      
+      return { success: true };
+
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        console.error(`${webhookType} webhook request timed out after 90 seconds`);
+        return {
+          success: false,
+          error: `${webhookType} webhook request timed out`
+        };
+      }
+      
+      console.error(`Error sending ${webhookType} webhook:`, fetchError);
+      
+      return {
+        success: false,
+        error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
       };
     }
   }

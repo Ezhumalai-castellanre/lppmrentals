@@ -3788,7 +3788,22 @@ export function ApplicationForm() {
 
   // Removed handleOccupantEncryptedDocumentChange - no longer needed
 
+  // Handle role-specific form submission (bypasses schema validation)
+  const handleRoleSpecificSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('🚀🚀🚀 ROLE-SPECIFIC SUBMIT BUTTON CLICKED!');
+    console.log('🔍 User role:', userRole, 'Specific index:', specificIndex);
+    
+    // Get current form values without validation
+    const formValues = form.getValues();
+    console.log('🔍 Current form values:', formValues);
+    
+    // Call the same onSubmit function with the form values
+    await onSubmit(formValues);
+  };
+
   const onSubmit = async (data: ApplicationFormData) => {
+    console.log('🚀🚀🚀 FORM SUBMIT BUTTON CLICKED - onSubmit function called!');
     console.log('🚀 Form submission started');
     console.log('Form data (data):', data);
     console.log('Form state (formData):', formData);
@@ -3797,6 +3812,12 @@ export function ApplicationForm() {
     console.log('Guarantors in formData:', formData.guarantors);
     console.log('User role:', userRole);
     console.log('Specific index:', specificIndex);
+    console.log('🔍 Form validation state before submission:', {
+      isValid: form.formState.isValid,
+      isDirty: form.formState.isDirty,
+      isSubmitting: form.formState.isSubmitting,
+      errors: form.formState.errors
+    });
     setIsSubmitting(true);
     
     try {
@@ -3869,9 +3890,14 @@ export function ApplicationForm() {
       const { validateSignatures, prepareSignaturesForSubmission } = await import('../lib/signature-utils');
       
       // Validate signatures before submission
-      const signatureValidation = validateSignatures(signatures, userRole);
+      console.log('🔍 Pre-signature validation - userRole:', userRole, 'specificIndex:', specificIndex);
+      console.log('🔍 Current signatures state:', signatures);
+      const signatureValidation = validateSignatures(signatures, userRole, specificIndex ?? undefined);
+      console.log('🔍 Signature validation result:', signatureValidation);
+      
       if (!signatureValidation.isValid) {
         const errorMessage = signatureValidation.errors.join(', ');
+        console.log('❌ Signature validation failed:', errorMessage);
         toast({
           title: "Signature Required",
           description: errorMessage,
@@ -3880,6 +3906,112 @@ export function ApplicationForm() {
         setIsSubmitting(false);
         return;
       }
+      
+      console.log('✅ Signature validation passed');
+      
+      // ✅ FIX: Trigger form validation before checking validity
+      console.log("🔍 Triggering form validation...");
+      console.log("🔍 Current form data before validation:", data);
+      console.log("🔍 User role:", userRole, "Specific index:", specificIndex);
+      const isValid = await form.trigger();
+      console.log("✅ Form validation result:", isValid);
+      console.log("✅ Updated form errors:", form.formState.errors);
+      
+      // For guarantor and co-applicant roles, we need to be more lenient with validation
+      // since they don't have all the applicant fields filled out
+      if (!isValid && (!userRole || userRole === 'applicant')) {
+        console.log("❌ Form validation failed for applicant role");
+        toast({
+          title: 'Form validation failed',
+          description: 'Please check the form for errors and try again.',
+          variant: 'destructive'
+        });
+        setIsSubmitting(false);
+        return;
+      } else if (!isValid && userRole && (userRole.startsWith('coapplicant') || userRole.startsWith('guarantor'))) {
+        console.log("⚠️ Form validation failed for role-specific submission, but continuing with role-specific validation");
+        // Continue with role-specific validation below
+      }
+      
+      // Ensure all required fields are present and valid based on user role
+      let missingFields = [];
+      
+      // Only validate applicant-specific fields for applicant role
+      if (!userRole || userRole === 'applicant') {
+        const requiredFields: (keyof ApplicationFormData)[] = [
+          'buildingAddress',
+          'apartmentNumber',
+          'moveInDate',
+          'monthlyRent',
+          'apartmentType',
+          'applicantName',
+          'applicantDob',
+          'applicantEmail',
+          'applicantAddress',
+          'applicantCity',
+          'applicantState',
+          'applicantZip',
+        ];
+        
+        for (const field of requiredFields) {
+          // Resolve value with fallbacks for nested application fields
+          let value = (data as any)[field];
+          if (field === 'monthlyRent') {
+            value = (data as any).monthlyRent ?? formData.application?.monthlyRent;
+          }
+          if (
+            value === undefined ||
+            value === null ||
+            (typeof value === 'string' && value.trim() === '') ||
+            (field === 'applicantDob' && !value) ||
+            (field === 'moveInDate' && !value)
+          ) {
+            missingFields.push(field);
+          }
+        }
+        
+        // Email format check for applicant
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(data.applicantEmail || '')) {
+          missingFields.push('applicantEmail');
+        }
+      }
+      
+      // For co-applicant and guarantor roles, validate role-specific fields
+      if (userRole && (userRole.startsWith('coapplicant') || userRole.startsWith('guarantor'))) {
+        const roleType = userRole.startsWith('coapplicant') ? 'coApplicant' : 'guarantor';
+        const roleData = formData[roleType + 's']?.[specificIndex || 0];
+        
+        console.log(`🔍 Validating ${roleType} ${(specificIndex || 0) + 1} fields:`, roleData);
+        
+        // Check required fields for the specific role
+        const requiredRoleFields = ['name', 'email', 'phone', 'address', 'city', 'state', 'zip'];
+        for (const field of requiredRoleFields) {
+          const value = roleData?.[field];
+          if (!value || (typeof value === 'string' && value.trim() === '')) {
+            missingFields.push(`${roleType} ${(specificIndex || 0) + 1} ${field}`);
+          }
+        }
+        
+        // Email format check for role
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (roleData?.email && !emailRegex.test(roleData.email)) {
+          missingFields.push(`${roleType} ${(specificIndex || 0) + 1} email format`);
+        }
+      }
+      
+      if (missingFields.length > 0) {
+        console.log('❌ Missing required fields:', missingFields);
+        toast({
+          title: 'Missing or invalid fields',
+          description: `Please fill in: ${missingFields.join(', ')}`,
+          variant: 'destructive'
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      console.log('✅ All validation passed, proceeding with submission');
       
       // ENSURE FULL METADATA IS AVAILABLE FOR WEBHOOK
       
@@ -4075,67 +4207,6 @@ export function ApplicationForm() {
       // Use the individual applicantId (could be temporary for development)
       console.log("✅ Using individual applicantId:", individualApplicantId);
 
-      // ✅ FIX: Trigger form validation before checking validity
-      console.log("🔍 Triggering form validation...");
-      const isValid = await form.trigger();
-      console.log("✅ Form validation result:", isValid);
-      console.log("✅ Updated form errors:", form.formState.errors);
-      
-      if (!isValid) {
-        console.log("❌ Form validation failed");
-        toast({
-          title: 'Form validation failed',
-          description: 'Please check all required fields and try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      // Ensure all required fields are present and valid
-      const requiredFields: (keyof ApplicationFormData)[] = [
-        'buildingAddress',
-        'apartmentNumber',
-        'moveInDate',
-        'monthlyRent',
-        'apartmentType',
-        'applicantName',
-        'applicantDob',
-        'applicantEmail',
-        'applicantAddress',
-        'applicantCity',
-        'applicantState',
-        'applicantZip',
-      ];
-      let missingFields = [];
-      for (const field of requiredFields) {
-        // Resolve value with fallbacks for nested application fields
-        let value = (data as any)[field];
-        if (field === 'monthlyRent') {
-          value = (data as any).monthlyRent ?? formData.application?.monthlyRent;
-        }
-        if (
-          value === undefined ||
-          value === null ||
-          (typeof value === 'string' && value.trim() === '') ||
-          (field === 'applicantDob' && !value) ||
-          (field === 'moveInDate' && !value)
-        ) {
-          missingFields.push(field);
-        }
-      }
-      // Email format check
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(data.applicantEmail || '')) {
-        missingFields.push('applicantEmail');
-      }
-      if (missingFields.length > 0) {
-        toast({
-          title: 'Missing or invalid fields',
-          description: `Please fill out: ${missingFields.join(', ')}`,
-          variant: 'destructive',
-        });
-        return;
-      }
 
       
       try {
@@ -4936,35 +5007,81 @@ export function ApplicationForm() {
           console.log('=== END WEBHOOK PAYLOAD DEBUG ===');
 
 
-          // Send the complete webhook data exactly as specified (fallback if server failed or always after)
-          console.log('🌐 === WEBHOOK SUBMISSION ===');
-          console.log('📤 Webhook payload being sent:', JSON.stringify(webhookPayload, null, 2));
+          // Send role-specific webhook submissions
+          console.log('🌐 === ROLE-SPECIFIC WEBHOOK SUBMISSIONS ===');
+          console.log('📤 Sending role-specific webhook...');
           console.log('🔗 Reference ID:', referenceId);
           console.log('🔗 Application ID:', user?.applicantId);
+          console.log('🔗 User Role:', userRole, 'Specific Index:', specificIndex);
           
-          // Send form data to webhook
-          const webhookResult = await WebhookService.sendFormDataToWebhook(
-            webhookPayload,
-            referenceId,
-            individualApplicantId,
-            user?.zoneinfo,
-            uploadedFilesMetadata
-          );
+          let webhookResult;
           
-          console.log('📥 Webhook response:', JSON.stringify(webhookResult, null, 2));
-          console.log('=== END WEBHOOK SUBMISSION ===');
+          if (userRole && userRole.startsWith('coapplicant') && specificIndex !== null) {
+            // Send co-applicant-specific webhook
+            const coApplicant = formData.coApplicants?.[specificIndex];
+            if (coApplicant && coApplicant.name) {
+              console.log(`📤 Sending co-applicant ${specificIndex + 1} webhook...`);
+              webhookResult = await WebhookService.sendCoApplicantWebhook(
+                coApplicant,
+                specificIndex,
+                webhookPayload,
+                referenceId,
+                individualApplicantId,
+                user?.zoneinfo,
+                uploadedFilesMetadata
+              );
+            } else {
+              webhookResult = { success: false, error: 'Co-applicant data not found' };
+            }
+          } else if (userRole && userRole.startsWith('guarantor') && specificIndex !== null) {
+            // Send guarantor-specific webhook
+            const guarantor = formData.guarantors?.[specificIndex];
+            if (guarantor && guarantor.name) {
+              console.log(`📤 Sending guarantor ${specificIndex + 1} webhook...`);
+              webhookResult = await WebhookService.sendGuarantorWebhook(
+                guarantor,
+                specificIndex,
+                webhookPayload,
+                referenceId,
+                individualApplicantId,
+                user?.zoneinfo,
+                uploadedFilesMetadata
+              );
+            } else {
+              webhookResult = { success: false, error: 'Guarantor data not found' };
+            }
+          } else {
+            // Send separate webhooks for all roles (applicant role)
+            console.log('📤 Sending separate webhooks for all roles...');
+            webhookResult = await WebhookService.sendSeparateWebhooks(
+              webhookPayload,
+              referenceId,
+              individualApplicantId,
+              user?.zoneinfo,
+              uploadedFilesMetadata
+            );
+          }
+          
+          console.log('📥 Webhook result:', JSON.stringify(webhookResult, null, 2));
+          console.log('=== END ROLE-SPECIFIC WEBHOOK SUBMISSIONS ===');
           
           if (webhookResult.success) {
+            const roleDescription = userRole && userRole.startsWith('coapplicant') ? `Co-applicant ${(specificIndex || 0) + 1}` :
+                                  userRole && userRole.startsWith('guarantor') ? `Guarantor ${(specificIndex || 0) + 1}` :
+                                  'all roles';
+            
             toast({
               title: "Application Submitted & Sent",
-              description: "Your rental application has been submitted and sent to the webhook successfully.",
+              description: `Your rental application has been submitted and sent to webhook successfully for ${roleDescription}.`,
             });
             setShowSuccessPopup(true);
             setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
           } else {
+            console.log('❌ Webhook submission failed:', webhookResult.error);
+            
             toast({
               title: "Application Submitted",
-              description: "Your rental application has been submitted, but webhook delivery failed.",
+              description: "Your rental application has been submitted, but webhook delivery failed. Check console for details.",
             });
             setShowSuccessPopup(true);
             setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
@@ -8486,7 +8603,7 @@ export function ApplicationForm() {
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={userRole && (userRole.startsWith('coapplicant') || userRole.startsWith('guarantor')) ? handleRoleSpecificSubmit : form.handleSubmit(onSubmit)} className="space-y-8">
           {/* Progress Bar - Hidden */}
           {/* <div className="mb-8">
             <div className="flex items-center justify-between mb-2">

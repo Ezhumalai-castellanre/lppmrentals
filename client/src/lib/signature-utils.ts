@@ -128,8 +128,11 @@ export function extractSignaturesForPDF(formData: any): SignatureData {
 /**
  * Validate signature data before form submission
  */
-export function validateSignatures(signatures: SignatureData, userRole?: string): { isValid: boolean; errors: string[] } {
+export function validateSignatures(signatures: SignatureData, userRole?: string, specificIndex?: number): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
+
+  console.log('🔍 Signature validation - userRole:', userRole, 'specificIndex:', specificIndex);
+  console.log('🔍 Signatures data:', signatures);
 
   // Only validate signatures based on user role
   if (!userRole || userRole === 'applicant') {
@@ -140,24 +143,46 @@ export function validateSignatures(signatures: SignatureData, userRole?: string)
   }
 
   if (!userRole || userRole === 'applicant' || userRole.startsWith('coapplicant')) {
-    // For applicant or co-applicant roles, check if all co-applicants have signed
+    // For applicant role, check if all co-applicants have signed
+    // For specific co-applicant role, check only that co-applicant
     if (signatures.coApplicants) {
-      Object.entries(signatures.coApplicants).forEach(([index, signature]) => {
+      if (userRole && userRole.startsWith('coapplicant') && specificIndex !== null && specificIndex !== undefined) {
+        // Check only the specific co-applicant
+        const signature = signatures.coApplicants[specificIndex.toString()];
         if (!signature) {
-          errors.push(`Co-applicant ${parseInt(index) + 1} signature is required`);
+          errors.push(`Co-applicant ${specificIndex + 1} signature is required`);
         }
-      });
+      } else {
+        // Check all co-applicants (for applicant role)
+        Object.entries(signatures.coApplicants).forEach(([index, signature]) => {
+          if (!signature) {
+            errors.push(`Co-applicant ${parseInt(index) + 1} signature is required`);
+          }
+        });
+      }
     }
   }
 
   if (!userRole || userRole === 'applicant' || userRole.startsWith('guarantor')) {
-    // For applicant or guarantor roles, check if all guarantors have signed
+    // For applicant role, check if all guarantors have signed
+    // For specific guarantor role, check only that guarantor
     if (signatures.guarantors) {
-      Object.entries(signatures.guarantors).forEach(([index, signature]) => {
+      console.log('🔍 Checking guarantor signatures:', signatures.guarantors);
+      if (userRole && userRole.startsWith('guarantor') && specificIndex !== null && specificIndex !== undefined) {
+        // Check only the specific guarantor
+        const signature = signatures.guarantors[specificIndex.toString()];
+        console.log(`🔍 Checking guarantor ${specificIndex + 1} signature:`, signature ? 'EXISTS' : 'MISSING');
         if (!signature) {
-          errors.push(`Guarantor ${parseInt(index) + 1} signature is required`);
+          errors.push(`Guarantor ${specificIndex + 1} signature is required`);
         }
-      });
+      } else {
+        // Check all guarantors (for applicant role)
+        Object.entries(signatures.guarantors).forEach(([index, signature]) => {
+          if (!signature) {
+            errors.push(`Guarantor ${parseInt(index) + 1} signature is required`);
+          }
+        });
+      }
     }
   }
 
