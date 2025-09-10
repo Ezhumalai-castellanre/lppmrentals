@@ -83,25 +83,7 @@ export const SupportingDocuments = ({
   index
 }: SupportingDocumentsProps): JSX.Element => {
   
-  // Debug component props
-  console.log(`🏗️ SupportingDocuments component props:`, {
-    showOnlyCoApplicant,
-    showOnlyGuarantor,
-    showOnlyApplicant,
-    referenceId,
-    applicationId,
-    index,
-    hasOriginalWebhookResponses: !!originalWebhookResponses,
-    originalWebhookResponsesKeys: originalWebhookResponses ? Object.keys(originalWebhookResponses) : []
-  });
   
-  // Debug index parameter specifically
-  if (index !== undefined) {
-    console.log(`🔍 SupportingDocuments: Index parameter received: ${index} (type: ${typeof index})`);
-    console.log(`🔍 SupportingDocuments: This should be for ${showOnlyCoApplicant ? 'Co-Applicant' : showOnlyGuarantor ? 'Guarantor' : 'Unknown'} ${index + 1}`);
-  } else {
-    console.log(`🔍 SupportingDocuments: No index parameter received`);
-  }
 
   // Helper function to get person type from document ID
   const getPersonType = (documentId: string): 'applicant' | 'coApplicant' | 'guarantor' | 'otherOccupants' => {
@@ -127,21 +109,6 @@ export const SupportingDocuments = ({
     return { personType: 'applicant' };
   };
 
-  // Debug formData structure
-  console.log(`🏗️ SupportingDocuments formData structure:`, {
-    hasApplicant: !!formData?.applicant,
-    hasCoApplicant: !!formData?.coApplicant,
-    hasCoApplicants: !!formData?.coApplicants,
-    coApplicantsLength: formData?.coApplicants?.length,
-    hasGuarantor: !!formData?.guarantor,
-    hasGuarantors: !!formData?.guarantors,
-    guarantorsLength: formData?.guarantors?.length,
-    applicantEmploymentType: formData?.applicant?.employmentType,
-    coApplicantEmploymentType: formData?.coApplicant?.employmentType,
-    firstCoApplicantEmploymentType: formData?.coApplicants?.[0]?.employmentType,
-    guarantorEmploymentType: formData?.guarantor?.employmentType,
-    firstGuarantorEmploymentType: formData?.guarantors?.[0]?.employmentType
-  });
   const [previewModal, setPreviewModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -171,65 +138,40 @@ export const SupportingDocuments = ({
 
   // Function to get current income frequency based on context
   const getCurrentIncomeFrequency = (): string => {
-    console.log('🔍 getCurrentIncomeFrequency called with:', {
-      showOnlyCoApplicant,
-      showOnlyGuarantor,
-      index,
-      coApplicantsData: formData.coApplicants,
-      guarantorsData: formData.guarantors,
-      legacyCoApplicant: formData.coApplicant,
-      legacyGuarantor: formData.guarantor,
-      applicant: formData.applicant
-    });
     
     // Handle array-based co-applicants and guarantors
     if (showOnlyCoApplicant && index !== undefined) {
       // For co-applicants with index
       const coApplicantData = formData.coApplicants?.[index];
-      console.log(`🔍 Co-applicant ${index} data:`, coApplicantData);
       if (coApplicantData?.incomeFrequency) {
-        console.log(`✅ Found co-applicant ${index} income frequency:`, coApplicantData.incomeFrequency);
         return coApplicantData.incomeFrequency;
       }
     } else if (showOnlyGuarantor && index !== undefined) {
       // For guarantors with index
       const guarantorData = formData.guarantors?.[index];
-      console.log(`🔍 Guarantor ${index} data:`, guarantorData);
       if (guarantorData?.incomeFrequency) {
-        console.log(`✅ Found guarantor ${index} income frequency:`, guarantorData.incomeFrequency);
         return guarantorData.incomeFrequency;
       }
     }
     
     // Fallback to legacy format
     if (showOnlyCoApplicant && formData.coApplicant?.incomeFrequency) {
-      console.log('✅ Found legacy co-applicant income frequency:', formData.coApplicant.incomeFrequency);
       return formData.coApplicant.incomeFrequency;
     } else if (showOnlyGuarantor && formData.guarantor?.incomeFrequency) {
-      console.log('✅ Found legacy guarantor income frequency:', formData.guarantor.incomeFrequency);
       return formData.guarantor.incomeFrequency;
     } else if (formData.applicant?.incomeFrequency) {
-      console.log('✅ Found applicant income frequency:', formData.applicant.incomeFrequency);
       return formData.applicant.incomeFrequency;
     }
     
-    console.log('⚠️ No income frequency found, using default: monthly');
     return 'monthly'; // Default fallback
   };
 
   // Function to generate Pay Stubs sections based on frequency
   const generatePayStubsSections = (frequency: string): DocumentInfo[] => {
-    console.log('🔍 generatePayStubsSections called with frequency:', frequency);
     
     const frequencyOption = payStubsFrequencyOptions.find(opt => opt.value === frequency);
     const count = frequencyOption?.count || 1;
     
-    console.log('🔍 Pay stubs generation:', {
-      frequency,
-      frequencyOption,
-      count,
-      allOptions: payStubsFrequencyOptions
-    });
     
     const sections: DocumentInfo[] = [];
     
@@ -243,7 +185,6 @@ export const SupportingDocuments = ({
       });
     }
     
-    console.log(`✅ Generated ${sections.length} pay stubs sections:`, sections);
     return sections;
   };
 
@@ -331,11 +272,6 @@ export const SupportingDocuments = ({
 
   const getDocumentStatus = (documentId: string): DocumentStatus => {
     // Debug logging to help troubleshoot
-    console.log(`🔍 getDocumentStatus called for documentId: ${documentId}`, {
-      webhookResponses: formData.webhookResponses,
-      originalWebhookResponses: (formData as any).originalWebhookResponses,
-      currentContext: getCurrentContext()
-    });
     
     // Special handling for Pay Stubs sections
     if (documentId.startsWith('pay_stubs_')) {
@@ -778,7 +714,6 @@ export const SupportingDocuments = ({
     
     // Get the current context to filter documents appropriately
     const currentContext = getCurrentContext();
-    console.log(`🔍 getUploadedDocuments called for documentId: ${documentId}, currentContext: ${currentContext}`);
     
     // Special handling for Pay Stubs sections
     if (documentId.startsWith('pay_stubs_')) {
@@ -1547,18 +1482,14 @@ export const SupportingDocuments = ({
   const filteredDocuments = filterDocumentsByEmploymentType(requiredDocuments, relevantEmploymentType);
 
   // Process Pay Stubs sections based on frequency
-  console.log('🔍 Processing documents for pay stubs generation...');
   const currentIncomeFrequency = getCurrentIncomeFrequency();
-  console.log('🔍 Current income frequency for document processing:', currentIncomeFrequency);
   
   const processedDocuments = (filteredDocuments || []).map(category => {
     if (category.category === 'Employment Documents') {
-      console.log('🔍 Processing Employment Documents category...');
       return {
         ...category,
         documents: category.documents.flatMap(document => {
           if (document.isPayStubs) {
-            console.log('🔍 Found pay stubs document, generating sections...');
             // Generate Pay Stubs sections based on frequency
             return generatePayStubsSections(currentIncomeFrequency);
           }
@@ -1569,7 +1500,6 @@ export const SupportingDocuments = ({
     return category;
   });
   
-  console.log('🔍 Processed documents:', processedDocuments);
 
   // Add Other Occupant Documents category if there are other occupants
   const otherOccupants = Array.isArray(formData?.otherOccupants) ? formData.otherOccupants : [];
@@ -1854,11 +1784,9 @@ export const SupportingDocuments = ({
                                   if (index !== undefined && (showOnlyCoApplicant || showOnlyGuarantor) && originalWebhookResponses) {
                                     const indexedKey = `${showOnlyCoApplicant ? 'coApplicants' : 'guarantors'}_${index}_${document.id}`;
                                     const response = originalWebhookResponses[indexedKey];
-                                    console.log(`🔍 SupportingDocuments: Looking up webhook response for ${indexedKey}:`, response);
                                     return response;
                                   } else {
                                     const response = formData.webhookResponses?.[document.id];
-                                    console.log(`🔍 SupportingDocuments: Looking up webhook response for ${document.id}:`, response);
                                     return response;
                                   }
                                 })()

@@ -128,30 +128,37 @@ export function extractSignaturesForPDF(formData: any): SignatureData {
 /**
  * Validate signature data before form submission
  */
-export function validateSignatures(signatures: SignatureData): { isValid: boolean; errors: string[] } {
+export function validateSignatures(signatures: SignatureData, userRole?: string): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
 
-  // Check if primary applicant has signed
-  if (!signatures.applicant) {
-    errors.push('Primary applicant signature is required');
+  // Only validate signatures based on user role
+  if (!userRole || userRole === 'applicant') {
+    // For applicant role, check if primary applicant has signed
+    if (!signatures.applicant) {
+      errors.push('Primary applicant signature is required');
+    }
   }
 
-  // Check if all co-applicants have signed
-  if (signatures.coApplicants) {
-    Object.entries(signatures.coApplicants).forEach(([index, signature]) => {
-      if (!signature) {
-        errors.push(`Co-applicant ${parseInt(index) + 1} signature is required`);
-      }
-    });
+  if (!userRole || userRole === 'applicant' || userRole.startsWith('coapplicant')) {
+    // For applicant or co-applicant roles, check if all co-applicants have signed
+    if (signatures.coApplicants) {
+      Object.entries(signatures.coApplicants).forEach(([index, signature]) => {
+        if (!signature) {
+          errors.push(`Co-applicant ${parseInt(index) + 1} signature is required`);
+        }
+      });
+    }
   }
 
-  // Check if all guarantors have signed
-  if (signatures.guarantors) {
-    Object.entries(signatures.guarantors).forEach(([index, signature]) => {
-      if (!signature) {
-        errors.push(`Guarantor ${parseInt(index) + 1} signature is required`);
-      }
-    });
+  if (!userRole || userRole === 'applicant' || userRole.startsWith('guarantor')) {
+    // For applicant or guarantor roles, check if all guarantors have signed
+    if (signatures.guarantors) {
+      Object.entries(signatures.guarantors).forEach(([index, signature]) => {
+        if (!signature) {
+          errors.push(`Guarantor ${parseInt(index) + 1} signature is required`);
+        }
+      });
+    }
   }
 
   return {
