@@ -13,6 +13,7 @@ interface User {
   given_name?: string;
   family_name?: string;
   phone_number?: string;
+  role?: string;
 }
 
 interface AuthContextType {
@@ -62,7 +63,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (currentUser) {
         try {
-          const userAttributes = await fetchUserAttributes();
+          const userAttributes: any = await fetchUserAttributes();
           console.log('✅ User attributes fetched:', Object.keys(userAttributes));
           
           // Check zoneinfo for applicantId (source of truth)
@@ -86,6 +87,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             given_name: userAttributes.given_name || '',
             family_name: userAttributes.family_name || '',
             phone_number: userAttributes.phone_number || '',
+            role: (userAttributes as any)['custom:role'] || '',
           };
           
           setUser(userState);
@@ -93,6 +95,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log('✅ User state set successfully:', userState);
           console.log('✅ User state set successfully with applicantId:', finalApplicantId);
           console.log('✅ User state set successfully with zoneinfo:', zoneinfoValue);
+          console.log('✅ User role (custom:role):', (userAttributes as any)['custom:role']);
         } catch (attributesError) {
           console.error('❌ Error fetching user attributes, using fallback:', attributesError);
           // Fallback: set user with basic info and generate applicantId
@@ -210,7 +213,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const debugResult = await getCurrentUserWithDebug();
         
         if (debugResult && debugResult.userAttributes) {
-          const { currentUser, userAttributes } = debugResult;
+          const { currentUser, userAttributes } = debugResult as any;
+          if (!currentUser) {
+            console.error('❌ Debug result missing currentUser');
+            return;
+          }
+          const attrs: any = (userAttributes && userAttributes.attributes) || {};
           
           console.log('✅ AWS Debug Results:', {
             currentUser: {
@@ -220,17 +228,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             userAttributes: {
               hasName: userAttributes.hasName,
               hasZoneinfo: userAttributes.hasZoneinfo,
-              zoneinfo: userAttributes.zoneinfo,
-              name: userAttributes.attributes.name,
-              given_name: userAttributes.attributes.given_name,
-              family_name: userAttributes.attributes.family_name,
+              zoneinfo: (userAttributes as any).zoneinfo,
+              name: attrs.name,
+              given_name: attrs.given_name,
+              family_name: attrs.family_name,
+              role: attrs['custom:role'],
             }
           });
           
           // No longer using database applicantId - only zoneinfo
 
           // Check if zoneinfo contains the applicantId (temporary mapping)
-          const zoneinfoValue = userAttributes.attributes.zoneinfo || userAttributes.attributes['custom:zoneinfo'];
+          const zoneinfoValue = attrs.zoneinfo || attrs['custom:zoneinfo'];
           
           // Use ONLY zoneinfo as applicantId - no fallbacks
           const finalApplicantId = zoneinfoValue;
@@ -244,36 +253,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           setUser({
             id: currentUser.username,
-            email: userAttributes.attributes.email || '',
+            email: attrs.email || '',
             username: currentUser.username,
             applicantId: finalApplicantId,
             zoneinfo: zoneinfoValue,
-            name: userAttributes.attributes.name,
-            given_name: userAttributes.attributes?.given_name || '',
-            family_name: userAttributes.attributes?.family_name || '',
-            phone_number: userAttributes.attributes?.phone_number || '',
+            name: attrs.name,
+            given_name: attrs?.given_name || '',
+            family_name: attrs?.family_name || '',
+            phone_number: attrs?.phone_number || '',
+            role: attrs?.['custom:role'] || '',
           });
           
           console.log('✅ User logged in with attributes:', {
             id: currentUser.username,
-            email: userAttributes.attributes.email,
+            email: attrs.email,
             zoneinfo: zoneinfoValue,
-            name: userAttributes.attributes.name,
-            given_name: userAttributes.attributes.given_name,
-            family_name: userAttributes.attributes.family_name,
-            phone_number: userAttributes.attributes.phone_number,
+            name: attrs.name,
+            given_name: attrs.given_name,
+            family_name: attrs.family_name,
+            phone_number: attrs.phone_number,
             finalApplicantId: finalApplicantId,
-            applicantIdSource: zoneinfoValue ? 'zoneinfo' : 'none'
+            applicantIdSource: zoneinfoValue ? 'zoneinfo' : 'none',
+            role: attrs['custom:role'],
           });
           
           // Additional detailed logging for zoneinfo
           console.log('🔍 Detailed zoneinfo analysis:', {
-            zoneinfo_standard: userAttributes.attributes.zoneinfo,
-            zoneinfo_custom: userAttributes.attributes['custom:zoneinfo'],
+            zoneinfo_standard: attrs.zoneinfo,
+            zoneinfo_custom: attrs['custom:zoneinfo'],
             zoneinfo_final: zoneinfoValue,
-            all_attributes_keys: Object.keys(userAttributes.attributes),
-            custom_attributes: Object.keys(userAttributes.attributes).filter(key => key.startsWith('custom:')),
+            all_attributes_keys: Object.keys(attrs),
+            custom_attributes: Object.keys(attrs).filter((key: string) => key.startsWith('custom:')),
             final_applicantId: finalApplicantId,
+            role: attrs['custom:role'],
           });
         } else {
           console.log('⚠️ No debug result available, falling back to basic auth');
@@ -287,20 +299,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const userAttributes = await fetchUserAttributes();
           
           // Check if zoneinfo contains the applicantId (source of truth)
-          const zoneinfoValue = userAttributes.zoneinfo || (userAttributes as any)['custom:zoneinfo'];
+          const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
           // Use ONLY zoneinfo as applicantId - no fallbacks
           const finalApplicantId = zoneinfoValue;
           
           setUser({
             id: currentUser.username,
-            email: (userAttributes as any).email || '',
+            email: userAttributes.email || '',
             username: currentUser.username,
             applicantId: finalApplicantId,
             zoneinfo: zoneinfoValue,
-            name: (userAttributes as any).name || '',
-            given_name: (userAttributes as any).given_name || '',
-            family_name: (userAttributes as any).family_name || '',
-            phone_number: (userAttributes as any).phone_number || '',
+            name: userAttributes.name || '',
+            given_name: userAttributes.given_name || '',
+            family_name: userAttributes.family_name || '',
+            phone_number: userAttributes.phone_number || '',
+            role: userAttributes['custom:role'] || '',
           });
         }
       } catch (identityError) {
@@ -323,15 +336,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const handleSignUp = async (username: string, email: string, password: string, userAttributes?: any, firstName?: string, lastName?: string, phoneNumber?: string) => {
     try {
-      // Generate LPPM-uincid for zoneinfo
-      const lppmUincid = generateLppmUincid();
-      console.log('🔧 Generated LPPM-uincid for new user:', lppmUincid);
-
-      const attributes = {
+      // Respect pre-supplied zoneinfo/custom:role from caller (e.g., login URL params)
+      const attributes: any = {
         ...userAttributes,
         email,
-        zoneinfo: lppmUincid, // Set the LPPM-uincid as zoneinfo
       };
+
+      // Ensure zoneinfo is available and track the value we will use
+      let uincidToUse = attributes.zoneinfo;
+      if (!uincidToUse) {
+        uincidToUse = generateLppmUincid();
+        console.log('🔧 Generated LPPM-uincid for new user (no zoneinfo provided):', uincidToUse);
+        attributes.zoneinfo = uincidToUse;
+      } else {
+        console.log('🔧 Using provided zoneinfo for new user:', uincidToUse);
+      }
 
       console.log('🔧 Signing up user with attributes:', attributes);
 
@@ -343,7 +362,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
       });
 
-      console.log('✅ User signed up successfully with LPPM-uincid:', lppmUincid);
+      console.log('✅ User signed up successfully with LPPM-uincid:', uincidToUse);
 
       // Register user in database after successful Cognito sign-up
       await registerUserInDatabase(username, email, firstName, lastName, phoneNumber);

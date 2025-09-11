@@ -22,6 +22,8 @@ interface DraftData {
   webhook_responses?: any;
   signatures?: any;
   encrypted_documents?: any;
+  flow_type?: 'legacy' | 'separate_webhooks';
+  webhook_flow_version?: string;
 }
 
 interface DraftCardProps {
@@ -31,6 +33,7 @@ interface DraftCardProps {
 }
 
 const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
+  const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -362,11 +365,31 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
         <div className="absolute inset-0" style={{backgroundImage: 'radial-gradient(circle at 20px 20px, rgba(255, 255, 255, 0.1) 1px, transparent 1px)', backgroundSize: '40px 40px'}}></div>
         <div className="flex justify-between items-start relative z-10">
           <div className="flex-1">
-            <CardTitle className="text-base sm:text-lg font-semibold text-gray-900">
-              {draft.status === 'submitted' ? 'Submitted Application' : 'Draft Application'}
-            </CardTitle>
+            <div className="flex items-center gap-2 mb-1">
+              <CardTitle className="text-base sm:text-lg font-semibold text-gray-900">
+                {draft.status === 'submitted' ? 'Submitted Application' : 'Draft Application'}
+              </CardTitle>
+              {/* Flow Type Indicator */}
+              {draft.flow_type && (
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs ${
+                    draft.flow_type === 'separate_webhooks' 
+                      ? 'border-blue-300 text-blue-700 bg-blue-50' 
+                      : 'border-gray-300 text-gray-700 bg-gray-50'
+                  }`}
+                >
+                  {draft.flow_type === 'separate_webhooks' ? 'New Flow' : 'Legacy'}
+                </Badge>
+              )}
+            </div>
             <p className="text-xs sm:text-sm text-gray-600 mt-1">
               {draft.status === 'submitted' ? 'Application has been submitted successfully' : 'Application in progress'}
+              {draft.webhook_flow_version && (
+                <span className="ml-2 text-gray-500">
+                  (v{draft.webhook_flow_version})
+                </span>
+              )}
             </p>
           </div>
           {draft.status === 'submitted' && (
@@ -389,32 +412,65 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
         </div>
 
         {/* Tabbed Interface */}
+        {
+          // Role-based tab visibility for submitted applications
+        }
+        {(() => {
+          const userRole = (user as any)?.role || '';
+          const isSubmitted = draft.status === 'submitted';
+          let allowedTabs = ["overview", "main", "applicant", "coapplicants", "guarantors", "occupants"] as string[];
+          if (isSubmitted) {
+            if (userRole && userRole.startsWith('coapplicant')) {
+              allowedTabs = ["coapplicants"];
+            } else if (userRole && userRole.startsWith('guarantor')) {
+              allowedTabs = ["guarantors"];
+            } else {
+              // Primary applicant: show Overview and Applicant tabs only
+              allowedTabs = ["overview", "applicant"];
+            }
+            if (!allowedTabs.includes(activeTab)) {
+              setTimeout(() => setActiveTab(allowedTabs[0]), 0);
+            }
+          }
+          return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-6 mb-4">
+            {allowedTabs.includes('overview') && (
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="w-4 h-4" />
               <span className="hidden sm:inline">Overview</span>
             </TabsTrigger>
+            )}
+            {allowedTabs.includes('main') && (
             <TabsTrigger value="main" className="flex items-center gap-2">
               <Building className="w-4 h-4" />
               <span className="hidden sm:inline">Main App</span>
             </TabsTrigger>
+            )}
+            {allowedTabs.includes('applicant') && (
             <TabsTrigger value="applicant" className="flex items-center gap-2">
               <User className="w-4 h-4" />
               <span className="hidden sm:inline">Applicant</span>
             </TabsTrigger>
+            )}
+            {allowedTabs.includes('coapplicants') && (
             <TabsTrigger value="coapplicants" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Co-Apps</span>
             </TabsTrigger>
+            )}
+            {allowedTabs.includes('guarantors') && (
             <TabsTrigger value="guarantors" className="flex items-center gap-2">
               <Shield className="w-4 h-4" />
               <span className="hidden sm:inline">Guarantors</span>
             </TabsTrigger>
+            )}
+            {allowedTabs.includes('occupants') && (
             <TabsTrigger value="occupants" className="flex items-center gap-2">
               <Home className="w-4 h-4" />
               <span className="hidden sm:inline">Occupants</span>
             </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Overview Tab */}
@@ -884,6 +940,8 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
             </div>
           </TabsContent>
         </Tabs>
+          );
+        })()}
 
         {/* Last Updated */}
         <div className="pt-3 border-t border-gray-100">

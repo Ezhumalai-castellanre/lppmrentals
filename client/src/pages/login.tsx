@@ -40,6 +40,9 @@ const LoginPage: React.FC = () => {
   const [markPhoneVerified, setMarkPhoneVerified] = useState(false);
   const [generatedUsername, setGeneratedUsername] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<UnitItem | null>(null);
+  // URL-derived attributes
+  const [urlRole, setUrlRole] = useState<string | null>(null);
+  const [urlZoneinfo, setUrlZoneinfo] = useState<string | null>(null);
 
   // Redirect to drafts page if already authenticated
   useEffect(() => {
@@ -50,6 +53,25 @@ const LoginPage: React.FC = () => {
 
   // Check for selected unit from landing page
   useEffect(() => {
+    // Parse URL params for role and zoneinfo
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const roleParam = params.get('role');
+      const zoneinfoParam = params.get('zoneinfo');
+      if (roleParam) {
+        setUrlRole(roleParam);
+        localStorage.setItem('lppm_role', roleParam);
+        console.log('🔍 Login URL role:', roleParam);
+      }
+      if (zoneinfoParam) {
+        setUrlZoneinfo(zoneinfoParam);
+        localStorage.setItem('lppm_zoneinfo', zoneinfoParam);
+        console.log('🔍 Login URL zoneinfo:', zoneinfoParam);
+      }
+    } catch (e) {
+      console.warn('Could not parse URL params for login:', e);
+    }
+
     const storedUnit = sessionStorage.getItem('selectedUnit');
     if (storedUnit) {
       try {
@@ -125,6 +147,15 @@ const LoginPage: React.FC = () => {
         given_name: firstName,
         family_name: lastName,
       };
+
+      // Inject URL-provided zoneinfo and role if present
+      if (urlZoneinfo && urlZoneinfo.trim()) {
+        userAttributes.zoneinfo = urlZoneinfo.trim();
+      }
+      if (urlRole && urlRole.trim()) {
+        // store role as custom attribute so we can add to group server-side
+        userAttributes['custom:role'] = urlRole.trim();
+      }
 
       // Add phone number if provided (with proper formatting)
       if (phoneNumber.trim()) {

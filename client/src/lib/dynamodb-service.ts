@@ -19,6 +19,8 @@ export interface DraftData {
   encrypted_documents?: any;
   storage_mode?: 'direct' | 'hybrid'; // Indicates storage method used
   s3_references?: string[]; // S3 URLs for hybrid storage
+  flow_type?: 'legacy' | 'separate_webhooks'; // Indicates the webhook flow type used
+  webhook_flow_version?: string; // Version of the webhook flow system
 }
 
 // Interface for form data that uses application_id
@@ -744,7 +746,9 @@ export class DynamoDBService {
               signatures: { S: JSON.stringify(hybridData.signatures) },
               encrypted_documents: { S: JSON.stringify(hybridData.encryptedDocuments) },
               storage_mode: { S: 'hybrid' }, // Indicate this uses hybrid storage
-              s3_references: { S: JSON.stringify(hybridData.s3References) }
+              s3_references: { S: JSON.stringify(hybridData.s3References) },
+              flow_type: { S: draftData.flow_type || 'legacy' }, // Flow type for webhook system
+              webhook_flow_version: { S: draftData.webhook_flow_version || '1.0' } // Webhook flow version
             },
           });
 
@@ -770,7 +774,9 @@ export class DynamoDBService {
             webhook_responses: { S: JSON.stringify(cleanWebhookResponses) },
             signatures: { S: JSON.stringify(cleanSignatures) },
             encrypted_documents: { S: JSON.stringify(cleanEncryptedDocuments) },
-            storage_mode: { S: 'direct' } // Indicate this is stored directly
+            storage_mode: { S: 'direct' }, // Indicate this is stored directly
+            flow_type: { S: draftData.flow_type || 'legacy' }, // Flow type for webhook system
+            webhook_flow_version: { S: draftData.webhook_flow_version || '1.0' } // Webhook flow version
           },
         });
 

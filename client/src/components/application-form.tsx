@@ -1821,6 +1821,109 @@ export function ApplicationForm() {
         } else {
           setSpecificIndex(null);
         }
+      } else if (user && user.role) {
+        // Fallback to Cognito custom:role when URL param is absent
+        const roleFromUser = user.role;
+        setUserRole(roleFromUser);
+        setFilteredSteps(getFilteredSteps(roleFromUser));
+
+        if (roleFromUser.startsWith('coapplicant') && /coapplicant\d+/.test(roleFromUser)) {
+          const match = roleFromUser.match(/coapplicant(\d+)/);
+          if (match) {
+            const index = parseInt(match[1], 10) - 1; // Convert to 0-based index
+            setSpecificIndex(index);
+            // Ensure coApplicants array has enough elements for this specific index
+            setFormData((prev: any) => {
+              const currentCoApplicants = prev.coApplicants || [];
+              if (index >= currentCoApplicants.length) {
+                // Extend array to accommodate the specific index
+                const newCoApplicants = [...currentCoApplicants];
+                for (let i = currentCoApplicants.length; i <= index; i++) {
+                  newCoApplicants[i] = {
+                    name: '',
+                    email: '',
+                    phone: '',
+                    relationship: '',
+                    dob: undefined,
+                    age: '',
+                    ssn: '',
+                    license: '',
+                    licenseState: '',
+                    address: '',
+                    city: '',
+                    state: '',
+                    zip: '',
+                    lengthAtAddressYears: undefined,
+                    lengthAtAddressMonths: undefined,
+                    landlordName: '',
+                    landlordAddressLine1: '',
+                    landlordAddressLine2: '',
+                    landlordCity: '',
+                    landlordState: '',
+                    landlordZipCode: '',
+                    landlordPhone: '',
+                    landlordEmail: '',
+                    currentRent: undefined,
+                    reasonForMoving: '',
+                    employmentType: '',
+                    bankRecords: []
+                  };
+                }
+                return {
+                  ...prev,
+                  coApplicants: newCoApplicants,
+                  coApplicantCount: Math.max(prev.coApplicantCount || 0, index + 1),
+                  hasCoApplicant: true
+                };
+              }
+              return prev;
+            });
+          }
+        } else if (roleFromUser.startsWith('guarantor') && /guarantor\d+/.test(roleFromUser)) {
+          const match = roleFromUser.match(/guarantor(\d+)/);
+          if (match) {
+            const index = parseInt(match[1], 10) - 1; // Convert to 0-based index
+            setSpecificIndex(index);
+            // Ensure guarantors array has enough elements for this specific index
+            setFormData((prev: any) => {
+              const currentGuarantors = prev.guarantors || [];
+              if (index >= currentGuarantors.length) {
+                // Extend array to accommodate the specific index
+                const newGuarantors = [...currentGuarantors];
+                for (let i = currentGuarantors.length; i <= index; i++) {
+                  newGuarantors[i] = {
+                    name: '',
+                    email: '',
+                    phone: '',
+                    relationship: '',
+                    dob: undefined,
+                    age: '',
+                    ssn: '',
+                    license: '',
+                    licenseState: '',
+                    address: '',
+                    city: '',
+                    state: '',
+                    zip: '',
+                    lengthAtAddressYears: undefined,
+                    lengthAtAddressMonths: undefined,
+                    employmentType: '',
+                    bankRecords: []
+                  };
+                }
+                return {
+                  ...prev,
+                  guarantors: newGuarantors,
+                  guarantorCount: Math.max(prev.guarantorCount || 0, index + 1),
+                  hasGuarantor: true
+                };
+              }
+              return prev;
+            });
+          }
+        } else {
+          setSpecificIndex(null);
+        }
       }
       
       if (shouldContinue) {
@@ -2494,7 +2597,7 @@ export function ApplicationForm() {
     return summary;
   };
 
-  // Save draft to DynamoDB function
+  // Save draft to DynamoDB function with updated flow type
   const saveDraftToDynamoDB = useCallback(async () => {
     const currentUserZoneinfo = getCurrentUserZoneinfo();
     
@@ -2575,6 +2678,7 @@ export function ApplicationForm() {
         userApplicantId: user?.applicantId
       });
 
+      // Create draft data with updated flow type support
       const draftData: DraftData = {
         zoneinfo: currentUserZoneinfo, // Source of truth - user's zoneinfo value
         applicantId: currentUserZoneinfo, // Use zoneinfo for DynamoDB partition key
@@ -2587,14 +2691,17 @@ export function ApplicationForm() {
         webhook_responses: webhookResponses,
         signatures: signatures,
         encrypted_documents: encryptedDocuments,
+        // Add flow type information for the new separate webhook system
+        flow_type: 'separate_webhooks', // Indicates this draft uses the new flow type
+        webhook_flow_version: '2.0' // Version of the webhook flow system
       };
 
       const saveResult = await dynamoDBService.saveDraft(draftData, draftData.applicantId);
       if (saveResult) {
-        console.log('💾 Draft saved to DynamoDB successfully');
+        console.log('💾 Draft saved to DynamoDB successfully with updated flow type');
         toast({
           title: 'Draft Saved Successfully',
-          description: 'Your application draft has been saved. You can continue working on it later.',
+          description: 'Your application draft has been saved with the updated flow type. You can continue working on it later.',
           variant: 'default',
         });
       } else {
@@ -3125,24 +3232,28 @@ export function ApplicationForm() {
       });
       
       // Debug: Check if signatures are actually base64 images
-      if (processedSignatures.applicant) {
+      if (processedSignatures.applicant && typeof processedSignatures.applicant === 'string') {
         console.log('🔍 Applicant signature preview:', processedSignatures.applicant.substring(0, 100) + '...');
         console.log('🔍 Applicant signature is base64:', processedSignatures.applicant.startsWith('data:image/'));
       }
       
       if (processedSignatures.coApplicants) {
         Object.entries(processedSignatures.coApplicants).forEach(([index, signature]) => {
-          const sig = signature as string;
-          console.log(`🔍 Co-applicant ${index} signature preview:`, sig.substring(0, 100) + '...');
-          console.log(`🔍 Co-applicant ${index} signature is base64:`, sig.startsWith('data:image/'));
+          const sig = signature as any;
+          if (typeof sig === 'string') {
+            console.log(`🔍 Co-applicant ${index} signature preview:`, sig.substring(0, 100) + '...');
+            console.log(`🔍 Co-applicant ${index} signature is base64:`, sig.startsWith('data:image/'));
+          }
         });
       }
       
       if (processedSignatures.guarantors) {
         Object.entries(processedSignatures.guarantors).forEach(([index, signature]) => {
-          const sig = signature as string;
-          console.log(`🔍 Guarantor ${index} signature preview:`, sig.substring(0, 100) + '...');
-          console.log(`🔍 Guarantor ${index} signature is base64:`, sig.startsWith('data:image/'));
+          const sig = signature as any;
+          if (typeof sig === 'string') {
+            console.log(`🔍 Guarantor ${index} signature preview:`, sig.substring(0, 100) + '...');
+            console.log(`🔍 Guarantor ${index} signature is base64:`, sig.startsWith('data:image/'));
+          }
         });
       }
       
@@ -3188,23 +3299,8 @@ export function ApplicationForm() {
       link.download = filename;
       link.click();
 
-      // Notify user of result
-      if (webhookResult.success) {
-        toast({
-          title: "PDF Generated & Downloaded",
-          description: "Your rental application PDF has been generated, downloaded, and sent to the webhook.",
-        });
-        
-        // Return the S3 URL from the webhook result
-        return webhookResult.s3Url || null;
-      } else {
-        toast({
-          title: "PDF Generated & Downloaded",
-          description: "Your rental application PDF has been generated and downloaded, but webhook delivery failed.",
-          variant: "destructive",
-        });
-        return null;
-      }
+      // Skip PDF toast notifications
+      return webhookResult.success ? (webhookResult.s3Url || null) : null;
 
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -3810,6 +3906,11 @@ export function ApplicationForm() {
     console.log('Has guarantor:', data.hasGuarantor);
     console.log('Guarantors in data:', data.guarantors);
     console.log('Guarantors in formData:', formData.guarantors);
+    console.log('🔍 ROLE DEBUG:');
+    console.log('  - userRole:', userRole);
+    console.log('  - specificIndex:', specificIndex);
+    console.log('  - userRole starts with guarantor:', userRole?.startsWith('guarantor'));
+    console.log('  - specificIndex is not null:', specificIndex !== null);
     console.log('User role:', userRole);
     console.log('Specific index:', specificIndex);
     console.log('🔍 Form validation state before submission:', {
@@ -3989,14 +4090,14 @@ export function ApplicationForm() {
         for (const field of requiredRoleFields) {
           const value = roleData?.[field];
           if (!value || (typeof value === 'string' && value.trim() === '')) {
-            missingFields.push(`${roleType} ${(specificIndex || 0) + 1} ${field}`);
+            missingFields.push(`${roleType}${(specificIndex || 0) + 1} ${field}`);
           }
         }
         
         // Email format check for role
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (roleData?.email && !emailRegex.test(roleData.email)) {
-          missingFields.push(`${roleType} ${(specificIndex || 0) + 1} email format`);
+          missingFields.push(`${roleType}${(specificIndex || 0) + 1} email format`);
         }
       }
       
@@ -4542,15 +4643,59 @@ export function ApplicationForm() {
         const apiEndpoint = import.meta.env.DEV ? '/api' : 'https://your-aws-api-gateway-url.amazonaws.com/prod';
         const submitEndpoint = apiEndpoint + '/submit-application';
         
-        // Validate required fields before submission
-        if (!serverOptimizedData.applicant?.dob) {
-          throw new Error('Date of birth is required. Please select your date of birth.');
+        // Validate required fields before submission based on user role
+        console.log('🔍 VALIDATION DEBUG:');
+        console.log('  - userRole:', userRole);
+        console.log('  - specificIndex:', specificIndex);
+        console.log('  - window.location.href:', window.location.href);
+        
+        // Check if this is a guarantor submission by URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const roleFromUrl = urlParams.get('role');
+        console.log('  - roleFromUrl:', roleFromUrl);
+        
+        if (roleFromUrl && roleFromUrl.startsWith('guarantor')) {
+          // Extract guarantor index from URL (guarantor4 -> index 3)
+          const match = roleFromUrl.match(/guarantor(\d+)/);
+          const guarantorIndex = match ? parseInt(match[1], 10) - 1 : 0;
+          console.log('  - guarantorIndex from URL:', guarantorIndex);
+          
+          // For guarantor role, validate guarantor data from the original formData
+          const specificGuarantor = (formData.guarantors || [])[guarantorIndex];
+          console.log('  - specificGuarantor:', specificGuarantor);
+          
+          if (!specificGuarantor?.dob) {
+            console.log('❌ GUARANTOR DOB MISSING:', specificGuarantor);
+            throw new Error('Date of birth is required. Please select your date of birth.');
+          }
+          if (!specificGuarantor?.name || specificGuarantor.name.trim() === '') {
+            throw new Error('Full name is required. Please enter your full name.');
+          }
+          console.log('✅ GUARANTOR VALIDATION PASSED');
+        } else if (userRole && userRole.startsWith('coapplicant') && specificIndex !== null) {
+          // For co-applicant role, validate co-applicant data from the original formData
+          const specificCoApplicant = (formData.coApplicants || [])[specificIndex];
+          if (!specificCoApplicant?.dob) {
+            throw new Error('Date of birth is required. Please select your date of birth.');
+          }
+          if (!specificCoApplicant?.name || specificCoApplicant.name.trim() === '') {
+            throw new Error('Full name is required. Please enter your full name.');
+          }
+        } else {
+          // For primary applicant role, validate applicant data
+          if (!serverOptimizedData.applicant?.dob) {
+            throw new Error('Date of birth is required. Please select your date of birth.');
+          }
+          if (!serverOptimizedData.applicantName || serverOptimizedData.applicantName.trim() === '') {
+            throw new Error('Full name is required. Please enter your full name.');
+          }
         }
-        if (!serverOptimizedData.application?.moveInDate) {
-          throw new Error('Move-in date is required. Please select your move-in date.');
-        }
-        if (!serverOptimizedData.applicantName || serverOptimizedData.applicantName.trim() === '') {
-          throw new Error('Full name is required. Please enter your full name.');
+        
+        // Move-in date validation (only for primary applicant)
+        if (!userRole || (!userRole.startsWith('guarantor') && !userRole.startsWith('coapplicant'))) {
+          if (!serverOptimizedData.application?.moveInDate) {
+            throw new Error('Move-in date is required. Please select your move-in date.');
+          }
         }
         
         let serverSubmissionOk = false;
@@ -4672,24 +4817,9 @@ export function ApplicationForm() {
           console.log('🔄 This is expected behavior when server endpoint is not available.');
         }
 
-        // Generate PDF first to get the S3 URL, then include it in form data
+        // Disabled automatic PDF generation on submit
         let pdfUrl: string | null = null;
-        if (userRole !== 'applicant' && userRole !== 'coapplicant') {
-          try {
-            console.log('🚀 Starting PDF generation to get S3 URL...');
-            pdfUrl = await generatePDF(completeServerData);
-            console.log('✅ PDF generated successfully, S3 URL:', pdfUrl);
-          } catch (pdfError) {
-            console.error('PDF generation failed:', pdfError);
-            toast({
-              title: "PDF Generation Failed",
-              description: "Application submitted successfully, but PDF generation failed. Please try generating the PDF again.",
-              variant: "destructive",
-            });
-          }
-        } else {
-          console.log('🛑 Skipping PDF generation for role:', userRole);
-        }
+        console.log('🛑 Skipping PDF generation on submit for all roles');
 
         // On form submit, send complete form data, application_id, and uploadedDocuments to the webhook
         try {
@@ -5050,6 +5180,29 @@ export function ApplicationForm() {
             } else {
               webhookResult = { success: false, error: 'Guarantor data not found' };
             }
+          } else if (userRole === 'coapplicant') {
+            // Generic co-applicant role: send one webhook per co-applicant present
+            console.log('📤 Sending individual webhooks for all co-applicants...');
+            const results: any[] = [];
+            const coApplicantsArray = Array.isArray(formData.coApplicants) ? formData.coApplicants : [];
+            for (let idx = 0; idx < coApplicantsArray.length; idx++) {
+              const ca = coApplicantsArray[idx];
+              if (ca && ca.name) {
+                console.log(`📤 Sending co-applicant ${idx + 1} webhook...`);
+                const result = await WebhookService.sendCoApplicantWebhook(
+                  ca,
+                  idx,
+                  webhookPayload,
+                  referenceId,
+                  `${user?.applicantId || user?.zoneinfo}-coapplicant${idx + 1}`,
+                  user?.zoneinfo,
+                  uploadedFilesMetadata
+                );
+                results.push({ index: idx, ...result });
+              }
+            }
+            const anySuccess = results.some(r => r.success);
+            webhookResult = anySuccess ? { success: true, results } : { success: false, error: 'No co-applicant webhooks sent' };
           } else {
             // Send separate webhooks for all roles (applicant role)
             console.log('📤 Sending separate webhooks for all roles...');
@@ -8833,6 +8986,42 @@ export function ApplicationForm() {
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Co-Applicant Submission Preview - Only show relevant co-applicant data */}
+                {userRole && userRole.startsWith('coapplicant') && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-left">
+                    <div className="flex items-center mb-3">
+                      <Users className="w-4 h-4 text-green-600 mr-2" />
+                      <span className="font-semibold text-green-800">Co-Applicant Submission Preview</span>
+                    </div>
+                    <div className="space-y-2">
+                      {(() => {
+                        const indices = (specificIndex !== null)
+                          ? [specificIndex]
+                          : (formData.coApplicants || []).map((_: any, idx: number) => idx);
+                        return indices.map((idx: number) => {
+                          const ca = (formData.coApplicants || [])[idx];
+                          if (!ca || (!ca.name && !ca.email && !ca.phone)) return null;
+                          return (
+                            <div key={`coapp-preview-${idx}`} className="p-3 bg-white border border-green-200 rounded-md">
+                              <div className="font-medium text-green-700 mb-1">Co-Applicant {idx + 1}</div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-gray-700">
+                                <div><span className="text-gray-500">Name:</span> {ca.name || '—'}</div>
+                                <div><span className="text-gray-500">Email:</span> {ca.email || '—'}</div>
+                                <div><span className="text-gray-500">Phone:</span> {ca.phone || '—'}</div>
+                                <div><span className="text-gray-500">Relationship:</span> {ca.relationship || '—'}</div>
+                                <div><span className="text-gray-500">Address:</span> {ca.address || '—'}</div>
+                                <div><span className="text-gray-500">City:</span> {ca.city || '—'}</div>
+                                <div><span className="text-gray-500">State:</span> {ca.state || '—'}</div>
+                                <div><span className="text-gray-500">Zip:</span> {ca.zip || '—'}</div>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
                   </div>
                 )}
               </div>

@@ -1243,10 +1243,16 @@ export class WebhookService {
   private static createCoApplicantOnlyPayload(coApplicant: any, coApplicantIndex: number, formData: any, uploadedFiles?: any): any {
     const transformedData = this.transformFormDataToWebhookFormat(formData, uploadedFiles);
     
+    // Guard against missing index in transformedData.coApplicants
+    const coApplicantFromTransformed = Array.isArray(transformedData.coApplicants)
+      ? transformedData.coApplicants[coApplicantIndex]
+      : undefined;
+    const safeCoApplicant = coApplicantFromTransformed || coApplicant || {};
+
     return {
       application: transformedData.application,
       // Include only the specific co-applicant
-      coApplicants: [transformedData.coApplicants[coApplicantIndex]],
+      coApplicants: [safeCoApplicant],
       // Include basic application info
       hasCoApplicant: true,
       hasGuarantor: false,
@@ -1262,12 +1268,12 @@ export class WebhookService {
       bankInformation: {
         applicant: { totalBankRecords: 0, records: [] },
         coApplicants: {
-          totalBankRecords: coApplicant.bankRecords?.length || 0,
-          records: coApplicant.bankRecords || []
+          totalBankRecords: (safeCoApplicant as any).bankRecords?.length || 0,
+          records: (safeCoApplicant as any).bankRecords || []
         },
         guarantors: { totalBankRecords: 0, records: [] },
         summary: {
-          totalBankRecords: coApplicant.bankRecords?.length || 0
+          totalBankRecords: (safeCoApplicant as any).bankRecords?.length || 0
         }
       }
     };
@@ -1584,7 +1590,7 @@ export class WebhookService {
 
       // Co-Applicants section - use new nested structure if available
       coApplicants: formData.coApplicants ? formData.coApplicants.map((coApplicant: any, index: number) => ({
-        coApplicant: coApplicant.coApplicant || (index + 1).toString(), // Dynamic type field
+        coApplicant: coApplicant.coApplicant || `coapplicant${index + 1}`, // Dynamic type field
         email: coApplicant.email,
         phone: coApplicant.phone,
         address: coApplicant.address || "",
@@ -1621,6 +1627,7 @@ export class WebhookService {
         otherIncomeFrequency: coApplicant.otherIncomeFrequency || "monthly",
         bankRecords: coApplicant.bankRecords || []
       })) : (formData.hasCoApplicant ? [{
+        coApplicant: "coapplicant1", // Single co-applicant gets coapplicant1
         email: formData.coApplicantEmail,
         phone: formData.coApplicantPhone,
         address: formData.coApplicantAddress || formData.coApplicant?.address || "",
