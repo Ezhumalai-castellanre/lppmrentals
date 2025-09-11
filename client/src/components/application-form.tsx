@@ -3462,18 +3462,21 @@ export function ApplicationForm() {
         }
         break;
 
-      case 3: // Financial Information - Primary Applicant - all fields required
+      case 3: // Financial Information - Primary Applicant - conditional based on employment type
         if (!formData.applicant?.employmentType?.trim()) {
           errors.push('Employment Type is required');
         }
-        if (!formData.applicant?.employer?.trim()) {
-          errors.push('Current Employer is required');
-        }
-        if (!formData.applicant?.position?.trim()) {
-          errors.push('Position/Title is required');
-        }
-        if (!formData.applicant?.employmentStart) {
-          errors.push('Employment Start Date is required');
+        // If not self-employed, require employer fields
+        if (formData.applicant?.employmentType !== 'self-employed') {
+          if (!formData.applicant?.employer?.trim()) {
+            errors.push('Current Employer is required');
+          }
+          if (!formData.applicant?.position?.trim()) {
+            errors.push('Position/Title is required');
+          }
+          if (!formData.applicant?.employmentStart) {
+            errors.push('Employment Start Date is required');
+          }
         }
         if (!formData.applicant?.income || formData.applicant?.income <= 0) {
           errors.push('Annual Income is required');
@@ -5266,7 +5269,10 @@ export function ApplicationForm() {
             uploaded_files_metadata: (completeServerData as any).uploaded_files_metadata || {},
             webhook_responses: (completeServerData as any).webhook_responses || {},
             signatures: (completeServerData as any).signatures || {},
-            encrypted_documents: (completeServerData as any).encrypted_documents || {}
+            encrypted_documents: (completeServerData as any).encrypted_documents || {},
+            // Add flow type information for the new separate webhook system
+            flow_type: 'separate_webhooks', // Indicates this draft uses the new flow type
+            webhook_flow_version: '2.0' // Version of the webhook flow system
           };
 
           const saveResult = await dynamoDBUtils.saveDraftForCurrentUser(submittedDraftData);

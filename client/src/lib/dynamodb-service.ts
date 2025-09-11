@@ -747,8 +747,8 @@ export class DynamoDBService {
               encrypted_documents: { S: JSON.stringify(hybridData.encryptedDocuments) },
               storage_mode: { S: 'hybrid' }, // Indicate this uses hybrid storage
               s3_references: { S: JSON.stringify(hybridData.s3References) },
-              flow_type: { S: draftData.flow_type || 'legacy' }, // Flow type for webhook system
-              webhook_flow_version: { S: draftData.webhook_flow_version || '1.0' } // Webhook flow version
+              flow_type: { S: draftData.flow_type || 'separate_webhooks' }, // Flow type for webhook system
+              webhook_flow_version: { S: draftData.webhook_flow_version || '2.0' } // Webhook flow version
             },
           });
 
@@ -775,8 +775,8 @@ export class DynamoDBService {
             signatures: { S: JSON.stringify(cleanSignatures) },
             encrypted_documents: { S: JSON.stringify(cleanEncryptedDocuments) },
             storage_mode: { S: 'direct' }, // Indicate this is stored directly
-            flow_type: { S: draftData.flow_type || 'legacy' }, // Flow type for webhook system
-            webhook_flow_version: { S: draftData.webhook_flow_version || '1.0' } // Webhook flow version
+            flow_type: { S: draftData.flow_type || 'separate_webhooks' }, // Flow type for webhook system
+            webhook_flow_version: { S: draftData.webhook_flow_version || '2.0' } // Webhook flow version
           },
         });
 

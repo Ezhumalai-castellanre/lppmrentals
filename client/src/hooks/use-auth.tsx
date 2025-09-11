@@ -352,6 +352,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('🔧 Using provided zoneinfo for new user:', uincidToUse);
       }
 
+      // Ensure role is set - default to "applicant" if not provided
+      if (!attributes['custom:role']) {
+        attributes['custom:role'] = 'applicant';
+        console.log('🔧 Set default role to "applicant" for new user');
+      } else {
+        console.log('🔧 Using provided role for new user:', attributes['custom:role']);
+      }
+
       console.log('🔧 Signing up user with attributes:', attributes);
 
       await signUp({
