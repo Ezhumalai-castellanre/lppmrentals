@@ -5187,10 +5187,22 @@ export function ApplicationForm() {
             const coApplicant = formData.coApplicants?.[specificIndex];
             if (coApplicant && coApplicant.name) {
               console.log(`📤 Sending co-applicant ${specificIndex + 1} webhook...`);
+              // Create complete form data for webhook service
+              const completeFormData = {
+                ...formData,
+                ...webhookPayload,
+                coApplicants: formData.coApplicants || [],
+                guarantors: formData.guarantors || [],
+                coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+                guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+                hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+                hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0)
+              };
+              
               webhookResult = await WebhookService.sendCoApplicantWebhook(
                 coApplicant,
                 specificIndex,
-                formData, // Pass the actual form data with co-applicants and guarantors
+                completeFormData,
                 referenceId,
                 individualApplicantId,
                 user?.zoneinfo,
@@ -5204,10 +5216,22 @@ export function ApplicationForm() {
             const guarantor = formData.guarantors?.[specificIndex];
             if (guarantor && guarantor.name) {
               console.log(`📤 Sending guarantor ${specificIndex + 1} webhook...`);
+              // Create complete form data for webhook service
+              const completeFormData = {
+                ...formData,
+                ...webhookPayload,
+                coApplicants: formData.coApplicants || [],
+                guarantors: formData.guarantors || [],
+                coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+                guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+                hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+                hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0)
+              };
+              
               webhookResult = await WebhookService.sendGuarantorWebhook(
                 guarantor,
                 specificIndex,
-                formData, // Pass the actual form data with co-applicants and guarantors
+                completeFormData,
                 referenceId,
                 individualApplicantId,
                 user?.zoneinfo,
@@ -5225,10 +5249,22 @@ export function ApplicationForm() {
               const ca = coApplicantsArray[idx];
               if (ca && ca.name) {
                 console.log(`📤 Sending co-applicant ${idx + 1} webhook...`);
+                // Create complete form data for webhook service
+                const completeFormData = {
+                  ...formData,
+                  ...webhookPayload,
+                  coApplicants: formData.coApplicants || [],
+                  guarantors: formData.guarantors || [],
+                  coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+                  guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+                  hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+                  hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0)
+                };
+                
                 const result = await WebhookService.sendCoApplicantWebhook(
                   ca,
                   idx,
-                  formData, // Pass the actual form data with co-applicants and guarantors
+                  completeFormData,
                   referenceId,
                   `${user?.applicantId || user?.zoneinfo}-coapplicant${idx + 1}`,
                   user?.zoneinfo,
@@ -5242,16 +5278,21 @@ export function ApplicationForm() {
           } else {
             // Send separate webhooks for all roles (applicant role)
             console.log('📤 Sending separate webhooks for all roles...');
-            console.log('🔍 Form data being sent to webhook:', {
-              hasCoApplicant: formData.hasCoApplicant,
-              hasGuarantor: formData.hasGuarantor,
-              coApplicantCount: formData.coApplicantCount,
-              guarantorCount: formData.guarantorCount,
-              coApplicants: formData.coApplicants,
-              guarantors: formData.guarantors
-            });
+            // Create complete form data for webhook service
+            const completeFormData = {
+              ...formData,
+              ...webhookPayload,
+              // Ensure co-applicants and guarantors are included
+              coApplicants: formData.coApplicants || [],
+              guarantors: formData.guarantors || [],
+              coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+              guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+              hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+              hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0)
+            };
+            
             webhookResult = await WebhookService.sendSeparateWebhooks(
-              formData, // Pass the actual form data with co-applicants and guarantors
+              completeFormData,
               referenceId,
               individualApplicantId,
               user?.zoneinfo,
