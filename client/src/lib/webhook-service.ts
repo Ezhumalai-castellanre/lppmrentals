@@ -162,94 +162,6 @@ export interface FormDataWebhookData {
       age?: number;
       documents?: any;
     }>;
-    // Support for multiple co-applicants
-    coApplicants?: Array<{
-      coApplicant?: string;
-      email?: string;
-      phone?: string;
-      address?: string;
-      zip?: string;
-      landlordZipCode?: string;
-      landlordPhone?: string;
-      landlordEmail?: string;
-      city?: string;
-      landlordCity?: string;
-      name?: string;
-      licenseState?: string;
-      state?: string;
-      relationship?: string;
-      dob?: string;
-      age?: number;
-      ssn?: string;
-      license?: string;
-      lengthAtAddressYears?: number;
-      lengthAtAddressMonths?: number;
-      landlordName?: string;
-      landlordAddressLine1?: string;
-      landlordAddressLine2?: string;
-      landlordState?: string;
-      currentRent?: number;
-      reasonForMoving?: string;
-      employmentType?: string;
-      employer?: string;
-      position?: string;
-      employmentStart?: string;
-      income?: string;
-      incomeFrequency?: string;
-      otherIncome?: string;
-      otherIncomeFrequency?: string;
-      otherIncomeSource?: string;
-      creditScore?: string;
-      bankRecords?: Array<{
-        bankName?: string;
-        accountType?: string;
-        accountNumber?: string;
-      }>;
-    }>;
-    // Support for multiple guarantors
-    guarantors?: Array<{
-      guarantor?: string;
-      email?: string;
-      phone?: string;
-      address?: string;
-      zip?: string;
-      landlordZipCode?: string;
-      landlordPhone?: string;
-      landlordEmail?: string;
-      city?: string;
-      landlordCity?: string;
-      name?: string;
-      licenseState?: string;
-      state?: string;
-      relationship?: string;
-      dob?: string;
-      age?: number;
-      ssn?: string;
-      license?: string;
-      lengthAtAddressYears?: number;
-      lengthAtAddressMonths?: number;
-      landlordName?: string;
-      landlordAddressLine1?: string;
-      landlordAddressLine2?: string;
-      landlordState?: string;
-      currentRent?: number;
-      reasonForMoving?: string;
-      employmentType?: string;
-      businessName?: string;
-      businessType?: string;
-      yearsInBusiness?: string;
-      income?: string;
-      incomeFrequency?: string;
-      otherIncome?: string;
-      otherIncomeFrequency?: string;
-      otherIncomeSource?: string;
-      creditScore?: string;
-      bankRecords?: Array<{
-        bankName?: string;
-        accountType?: string;
-        accountNumber?: string;
-      }>;
-    }>;
     applicantName?: string;
     applicantEmail?: string;
     application_id?: string;
@@ -257,8 +169,6 @@ export interface FormDataWebhookData {
     zoneinfo?: string;
     hasCoApplicant?: boolean;
     hasGuarantor?: boolean;
-    coApplicantCount?: number;
-    guarantorCount?: number;
     webhookSummary?: {
       totalResponses?: number;
       responsesByPerson?: {
@@ -270,71 +180,6 @@ export interface FormDataWebhookData {
       webhookResponses?: Record<string, string>;
     };
   };
-  // Additional People in Application section
-  "Additional People"?: {
-    zoneinfo?: string;
-    role?: string;
-    applicant?: string;
-    coApplicants1?: {
-      coApplicants?: string;
-      url?: string;
-      name?: string;
-      email?: string;
-    };
-    coApplicants2?: {
-      coApplicants?: string;
-      url?: string;
-      name?: string;
-      email?: string;
-    };
-    coApplicants3?: {
-      coApplicants?: string;
-      url?: string;
-      name?: string;
-      email?: string;
-    };
-    coApplicants4?: {
-      coApplicants?: string;
-      url?: string;
-      name?: string;
-      email?: string;
-    };
-    guarantor1?: {
-      guarantor?: string;
-      url?: string;
-      name?: string;
-      email?: string;
-    };
-    guarantor2?: {
-      guarantor?: string;
-      url?: string;
-      name?: string;
-      email?: string;
-    };
-    guarantor3?: {
-      guarantor?: string;
-      url?: string;
-      name?: string;
-      email?: string;
-    };
-    guarantor4?: {
-      guarantor?: string;
-      url?: string;
-      name?: string;
-      email?: string;
-    };
-  };
-  // Additional webhook fields
-  webhookResponses?: Record<string, any>;
-  pdfUrl?: string;
-  signatures?: {
-    applicant?: string;
-    coApplicants?: Record<string, string>;
-    guarantors?: Record<string, string>;
-  };
-  // Legal questions
-  landlordTenantLegalAction?: string;
-  brokenLease?: string;
   uploaded_files: {
     supporting_w9_forms: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
     supporting_photo_id: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
@@ -1388,10 +1233,7 @@ export class WebhookService {
         summary: {
           totalBankRecords: transformedData.bankInformation?.applicant?.totalBankRecords || 0
         }
-      },
-
-      // Additional People in Application section
-      "Additional People": this.createAdditionalPeopleSection(formData)
+      }
     };
   }
 
@@ -1433,10 +1275,7 @@ export class WebhookService {
         summary: {
           totalBankRecords: (safeCoApplicant as any).bankRecords?.length || 0
         }
-      },
-
-      // Additional People in Application section
-      "Additional People": this.createAdditionalPeopleSection(formData)
+      }
     };
   }
 
@@ -1472,10 +1311,7 @@ export class WebhookService {
         summary: {
           totalBankRecords: guarantor.bankRecords?.length || 0
         }
-      },
-
-      // Additional People in Application section
-      "Additional People": this.createAdditionalPeopleSection(formData)
+      }
     };
   }
 
@@ -1602,191 +1438,6 @@ export class WebhookService {
         error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
       };
     }
-  }
-
-  /**
-   * Creates the bank information section for webhook payload
-   */
-  private static createBankInformation(formData: any): any {
-    const bankInfo: any = {
-      applicant: { totalBankRecords: 0, records: [] },
-      coApplicants: { totalBankRecords: 0, records: [] },
-      guarantors: { totalBankRecords: 0, records: [] },
-      summary: { totalBankRecords: 0 }
-    };
-
-    // Process applicant bank records
-    if (formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0) {
-      bankInfo.applicant = {
-        totalBankRecords: formData.applicant.bankRecords.length,
-        records: formData.applicant.bankRecords
-      };
-    }
-
-    // Process co-applicants bank records
-    if (formData.coApplicants && formData.coApplicants.length > 0) {
-      let totalCoApplicantRecords = 0;
-      const coApplicantRecords: any[] = [];
-      
-      formData.coApplicants.forEach((coApplicant: any) => {
-        if (coApplicant.bankRecords && coApplicant.bankRecords.length > 0) {
-          totalCoApplicantRecords += coApplicant.bankRecords.length;
-          coApplicantRecords.push(...coApplicant.bankRecords);
-        }
-      });
-      
-      bankInfo.coApplicants = {
-        totalBankRecords: totalCoApplicantRecords,
-        records: coApplicantRecords
-      };
-    }
-
-    // Process guarantors bank records
-    if (formData.guarantors && formData.guarantors.length > 0) {
-      let totalGuarantorRecords = 0;
-      const guarantorRecords: any[] = [];
-      
-      formData.guarantors.forEach((guarantor: any) => {
-        if (guarantor.bankRecords && guarantor.bankRecords.length > 0) {
-          totalGuarantorRecords += guarantor.bankRecords.length;
-          guarantorRecords.push(...guarantor.bankRecords);
-        }
-      });
-      
-      bankInfo.guarantors = {
-        totalBankRecords: totalGuarantorRecords,
-        records: guarantorRecords
-      };
-    }
-
-    // Calculate total bank records
-    bankInfo.summary.totalBankRecords = 
-      bankInfo.applicant.totalBankRecords + 
-      bankInfo.coApplicants.totalBankRecords + 
-      bankInfo.guarantors.totalBankRecords;
-
-    return bankInfo;
-  }
-
-  /**
-   * Creates the "Additional People" section for webhook payload
-   */
-  private static createAdditionalPeopleSection(formData: any): any {
-    const zoneinfo = formData.zoneinfo || formData.applicantId || 'unknown';
-    const applicantName = formData.applicantName || formData.applicant?.name || 'unknown';
-    
-    const additionalPeople: any = {
-      zoneinfo,
-      role: 'applicant',
-      applicant: applicantName
-    };
-
-    // Debug logging
-    console.log('🔍 === ADDITIONAL PEOPLE DEBUG ===');
-    console.log('📊 Form data keys:', Object.keys(formData));
-    console.log('📊 coApplicants array:', formData.coApplicants);
-    console.log('📊 coApplicantCount:', formData.coApplicantCount);
-    console.log('📊 guarantors array:', formData.guarantors);
-    console.log('📊 guarantorCount:', formData.guarantorCount);
-    console.log('📊 hasCoApplicant:', formData.hasCoApplicant);
-    console.log('📊 hasGuarantor:', formData.hasGuarantor);
-
-    // Process co-applicants with multiple fallback strategies
-    let coApplicants = formData.coApplicants || [];
-    let coApplicantCount = formData.coApplicantCount || 0;
-    
-    // Fallback: Check if there's a single co-applicant in the old format
-    if (!coApplicants.length && formData.hasCoApplicant && formData.coApplicant) {
-      coApplicants = [formData.coApplicant];
-      coApplicantCount = 1;
-      console.log('📊 Using fallback single co-applicant:', formData.coApplicant);
-    }
-    
-    // Fallback: Check for co-applicant data in form fields
-    if (!coApplicants.length && formData.hasCoApplicant && formData.coApplicantName) {
-      coApplicants = [{
-        name: formData.coApplicantName,
-        email: formData.coApplicantEmail,
-        phone: formData.coApplicantPhone,
-        address: formData.coApplicantAddress,
-        city: formData.coApplicantCity,
-        state: formData.coApplicantState,
-        zip: formData.coApplicantZip
-      }];
-      coApplicantCount = 1;
-      console.log('📊 Using fallback co-applicant from form fields');
-    }
-    
-    console.log('📊 Processing co-applicants:', {
-      coApplicantsLength: coApplicants.length,
-      coApplicantCount,
-      hasCoApplicant: formData.hasCoApplicant
-    });
-    
-    for (let i = 0; i < Math.min(Math.max(coApplicantCount, coApplicants.length), 4); i++) {
-      const coApplicant = coApplicants[i];
-      console.log(`📊 Processing co-applicant ${i + 1}:`, coApplicant);
-      if (coApplicant && (coApplicant.name || coApplicant.email)) {
-        additionalPeople[`coApplicants${i + 1}`] = {
-          coApplicants: `coapplicants${i + 1}`,
-          url: `http://localhost:3000/login?role=coapplicants${i + 1}&zoneinfo=${zoneinfo}`,
-          name: coApplicant.name || coApplicant.coApplicantName || '',
-          email: coApplicant.email || coApplicant.coApplicantEmail || ''
-        };
-        console.log(`✅ Added coApplicants${i + 1}:`, additionalPeople[`coApplicants${i + 1}`]);
-      }
-    }
-
-    // Process guarantors with multiple fallback strategies
-    let guarantors = formData.guarantors || [];
-    let guarantorCount = formData.guarantorCount || 0;
-    
-    // Fallback: Check if there's a single guarantor in the old format
-    if (!guarantors.length && formData.hasGuarantor && formData.guarantor) {
-      guarantors = [formData.guarantor];
-      guarantorCount = 1;
-      console.log('📊 Using fallback single guarantor:', formData.guarantor);
-    }
-    
-    // Fallback: Check for guarantor data in form fields
-    if (!guarantors.length && formData.hasGuarantor && formData.guarantorName) {
-      guarantors = [{
-        name: formData.guarantorName,
-        email: formData.guarantorEmail,
-        phone: formData.guarantorPhone,
-        address: formData.guarantorAddress,
-        city: formData.guarantorCity,
-        state: formData.guarantorState,
-        zip: formData.guarantorZip
-      }];
-      guarantorCount = 1;
-      console.log('📊 Using fallback guarantor from form fields');
-    }
-    
-    console.log('📊 Processing guarantors:', {
-      guarantorsLength: guarantors.length,
-      guarantorCount,
-      hasGuarantor: formData.hasGuarantor
-    });
-    
-    for (let i = 0; i < Math.min(Math.max(guarantorCount, guarantors.length), 4); i++) {
-      const guarantor = guarantors[i];
-      console.log(`📊 Processing guarantor ${i + 1}:`, guarantor);
-      if (guarantor && (guarantor.name || guarantor.email)) {
-        additionalPeople[`guarantor${i + 1}`] = {
-          guarantor: `guarantor${i + 1}`,
-          url: `http://localhost:3000/login?role=guarantor${i + 1}&zoneinfo=${zoneinfo}`,
-          name: guarantor.name || guarantor.guarantorName || '',
-          email: guarantor.email || guarantor.guarantorEmail || ''
-        };
-        console.log(`✅ Added guarantor${i + 1}:`, additionalPeople[`guarantor${i + 1}`]);
-      }
-    }
-
-    console.log('📊 Final Additional People section:', additionalPeople);
-    console.log('=== END ADDITIONAL PEOPLE DEBUG ===');
-
-    return additionalPeople;
   }
 
   /**
@@ -2091,18 +1742,33 @@ export class WebhookService {
         bankRecords: formData.guarantorBankRecords || formData.guarantor?.bankRecords || []
       }] : []),
 
-      // Occupants section
-      occupants: (formData.otherOccupants || []).map((occupant: any) => ({
+      // Occupants section - Fixed structure with occupant field
+      occupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any, index: number) => ({
+        occupant: `occupant${index + 1}`, // Add occupant field
         name: occupant.name,
         relationship: occupant.relationship,
         dob: occupant.dob,
         ssn: occupant.ssn,
         license: occupant.license,
         age: occupant.age || 0,
-        documents: {
-          ssn1: [{}] // Placeholder for document structure
-        }
+        documents: occupant.documents || {} // Use actual documents structure
       })),
+
+      // Signatures section - Include signatures
+      signatures: formData.signatures || {
+        applicant: null,
+        coApplicants: {},
+        guarantors: {}
+      },
+
+      // Uploaded files URL section - Include uploaded files metadata
+      uploaded_files_url: uploadedFiles || {},
+
+      // Bank Information section - Include bank information
+      bankInformation: this.buildBankInformation(formData),
+
+      // Additional People section - Include additional people data
+      "Additional People": this.buildAdditionalPeopleData(formData),
 
       // Applicant summary fields
       applicantName: formData.applicantName,
@@ -2112,8 +1778,10 @@ export class WebhookService {
       zoneinfo: formData.zoneinfo || formData.applicantId,
       hasCoApplicant: formData.hasCoApplicant,
       hasGuarantor: formData.hasGuarantor,
-      coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
-      guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+
+      // Legal questions
+      landlordTenantLegalAction: formData.landlordTenantLegalAction || "",
+      brokenLease: formData.brokenLease || "",
 
       // Webhook summary
       webhookSummary: {
@@ -2123,56 +1791,8 @@ export class WebhookService {
       },
       
       // PDF URL from generated application PDF
-      pdfUrl: formData.pdfUrl,
-
-      // Bank Information section
-      bankInformation: this.createBankInformation(formData),
-
-      // Additional People in Application section
-      "Additional People": this.createAdditionalPeopleSection(formData)
+      pdfUrl: formData.pdfUrl
     };
-
-    // Fallback: ensure coApplicants present from legacy fields if arrays are empty
-    try {
-      const hasArrayCoApplicants = Array.isArray((transformedData as any).coApplicants) && (transformedData as any).coApplicants.length > 0;
-      const legacyCoApplicantPresent = !!(
-        (formData.coApplicant && (formData.coApplicant.name || formData.coApplicant.email)) ||
-        formData.coApplicantName || formData.coApplicantEmail
-      );
-      if (!hasArrayCoApplicants && legacyCoApplicantPresent) {
-        (transformedData as any).coApplicants = [{
-          coApplicant: 'coapplicant1',
-          name: formData.coApplicant?.name || formData.coApplicantName || '',
-          email: formData.coApplicant?.email || formData.coApplicantEmail || '',
-          phone: formData.coApplicant?.phone || formData.coApplicantPhone || '',
-          address: formData.coApplicant?.address || formData.coApplicantAddress || '',
-          city: formData.coApplicant?.city || formData.coApplicantCity || '',
-          state: formData.coApplicant?.state || formData.coApplicantState || '',
-          zip: formData.coApplicant?.zip || formData.coApplicantZip || ''
-        }];
-      }
-    } catch {}
-
-    // Fallback: ensure guarantors present from legacy fields if arrays are empty
-    try {
-      const hasArrayGuarantors = Array.isArray((transformedData as any).guarantors) && (transformedData as any).guarantors.length > 0;
-      const legacyGuarantorPresent = !!(
-        (formData.guarantor && (formData.guarantor.name || formData.guarantor.email)) ||
-        formData.guarantorName || formData.guarantorEmail
-      );
-      if (!hasArrayGuarantors && legacyGuarantorPresent) {
-        (transformedData as any).guarantors = [{
-          guarantor: '1',
-          name: formData.guarantor?.name || formData.guarantorName || '',
-          email: formData.guarantor?.email || formData.guarantorEmail || '',
-          phone: formData.guarantor?.phone || formData.guarantorPhone || '',
-          address: formData.guarantor?.address || formData.guarantorAddress || '',
-          city: formData.guarantor?.city || formData.guarantorCity || '',
-          state: formData.guarantor?.state || formData.guarantorState || '',
-          zip: formData.guarantor?.zip || formData.guarantorZip || ''
-        }];
-      }
-    } catch {}
 
     // Remove undefined sections
     if (!transformedData.coApplicants || transformedData.coApplicants.length === 0) {
@@ -2213,6 +1833,74 @@ export class WebhookService {
     console.log('=== END TRANSFORMED INCOME FIELDS DEBUG ===');
 
     return transformedData;
+  }
+
+  /**
+   * Builds bank information structure
+   */
+  private static buildBankInformation(formData: any): any {
+    const applicantBankRecords = formData.applicant?.bankRecords || formData.applicantBankRecords || [];
+    const coApplicantsBankRecords = (formData.coApplicants || []).reduce((total: number, co: any) => total + (co.bankRecords?.length || 0), 0);
+    const guarantorsBankRecords = (formData.guarantors || []).reduce((total: number, guarantor: any) => total + (guarantor.bankRecords?.length || 0), 0);
+    
+    return {
+      applicant: {
+        totalBankRecords: applicantBankRecords.length,
+        records: applicantBankRecords
+      },
+      coApplicants: {
+        totalBankRecords: coApplicantsBankRecords,
+        records: (formData.coApplicants || []).flatMap((co: any) => co.bankRecords || [])
+      },
+      guarantors: {
+        totalBankRecords: guarantorsBankRecords,
+        records: (formData.guarantors || []).flatMap((guarantor: any) => guarantor.bankRecords || [])
+      },
+      summary: {
+        totalBankRecords: applicantBankRecords.length + coApplicantsBankRecords + guarantorsBankRecords
+      }
+    };
+  }
+
+  /**
+   * Builds Additional People data structure
+   */
+  private static buildAdditionalPeopleData(formData: any): any {
+    const additionalPeople: any = {
+      zoneinfo: formData.zoneinfo || formData.applicantId || 'unknown',
+      role: 'applicant',
+      applicant: formData.applicantName || formData.applicant?.name || 'unknown'
+    };
+
+    // Add co-applicants
+    if (formData.coApplicants && formData.coApplicants.length > 0) {
+      formData.coApplicants.forEach((coApplicant: any, index: number) => {
+        if (coApplicant.name && coApplicant.email) {
+          additionalPeople[`coApplicants${index + 1}`] = {
+            coApplicants: `coapplicants${index + 1}`,
+            url: `http://localhost:3000/login?role=coapplicants${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+            name: coApplicant.name,
+            email: coApplicant.email
+          };
+        }
+      });
+    }
+
+    // Add guarantors
+    if (formData.guarantors && formData.guarantors.length > 0) {
+      formData.guarantors.forEach((guarantor: any, index: number) => {
+        if (guarantor.name && guarantor.email) {
+          additionalPeople[`guarantor${index + 1}`] = {
+            guarantor: `guarantor${index + 1}`,
+            url: `http://localhost:3000/login?role=guarantor${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+            name: guarantor.name,
+            email: guarantor.email
+          };
+        }
+      });
+    }
+
+    return additionalPeople;
   }
 
   /**
