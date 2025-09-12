@@ -5086,6 +5086,39 @@ export function ApplicationForm() {
             // PDF URL from generated application PDF
             pdfUrl: pdfUrl,
 
+            // Additional People in Application data - Always include this section
+            "Additional People": {
+              zoneinfo: user?.zoneinfo || 'unknown',
+              role: 'applicant',
+              applicant: data.applicantName || 'unknown',
+              // Include co-applicants if they exist
+              ...(formData.coApplicantCount > 0 && formData.coApplicants && formData.coApplicants.length > 0 ? {
+                coApplicants1: {
+                  coApplicants: 'coapplicants1',
+                  url: `http://localhost:3000/login?role=coapplicants1&zoneinfo=${user?.zoneinfo || 'unknown'}`,
+                  name: formData.coApplicants[0]?.name || '',
+                  email: formData.coApplicants[0]?.email || ''
+                }
+              } : {}),
+              ...(formData.coApplicantCount > 1 && formData.coApplicants && formData.coApplicants.length > 1 ? {
+                coApplicants2: {
+                  coApplicants: 'coapplicants2',
+                  url: `http://localhost:3000/login?role=coapplicants2&zoneinfo=${user?.zoneinfo || 'unknown'}`,
+                  name: formData.coApplicants[1]?.name || '',
+                  email: formData.coApplicants[1]?.email || ''
+                }
+              } : {}),
+              // Include guarantors if they exist
+              ...(formData.guarantorCount > 0 && formData.guarantors && formData.guarantors.length > 0 ? {
+                guarantor1: {
+                  guarantor: 'guarantor1',
+                  url: `http://localhost:3000/login?role=guarantor1&zoneinfo=${user?.zoneinfo || 'unknown'}`,
+                  name: formData.guarantors[0]?.name || '',
+                  email: formData.guarantors[0]?.email || ''
+                }
+              } : {})
+            }
+
           };
 
           const webhookPayload = completeWebhookData;
@@ -5157,7 +5190,7 @@ export function ApplicationForm() {
               webhookResult = await WebhookService.sendCoApplicantWebhook(
                 coApplicant,
                 specificIndex,
-                webhookPayload,
+                formData, // Pass the actual form data with co-applicants and guarantors
                 referenceId,
                 individualApplicantId,
                 user?.zoneinfo,
@@ -5174,7 +5207,7 @@ export function ApplicationForm() {
               webhookResult = await WebhookService.sendGuarantorWebhook(
                 guarantor,
                 specificIndex,
-                webhookPayload,
+                formData, // Pass the actual form data with co-applicants and guarantors
                 referenceId,
                 individualApplicantId,
                 user?.zoneinfo,
@@ -5195,7 +5228,7 @@ export function ApplicationForm() {
                 const result = await WebhookService.sendCoApplicantWebhook(
                   ca,
                   idx,
-                  webhookPayload,
+                  formData, // Pass the actual form data with co-applicants and guarantors
                   referenceId,
                   `${user?.applicantId || user?.zoneinfo}-coapplicant${idx + 1}`,
                   user?.zoneinfo,
@@ -5209,8 +5242,16 @@ export function ApplicationForm() {
           } else {
             // Send separate webhooks for all roles (applicant role)
             console.log('📤 Sending separate webhooks for all roles...');
+            console.log('🔍 Form data being sent to webhook:', {
+              hasCoApplicant: formData.hasCoApplicant,
+              hasGuarantor: formData.hasGuarantor,
+              coApplicantCount: formData.coApplicantCount,
+              guarantorCount: formData.guarantorCount,
+              coApplicants: formData.coApplicants,
+              guarantors: formData.guarantors
+            });
             webhookResult = await WebhookService.sendSeparateWebhooks(
-              webhookPayload,
+              formData, // Pass the actual form data with co-applicants and guarantors
               referenceId,
               individualApplicantId,
               user?.zoneinfo,
