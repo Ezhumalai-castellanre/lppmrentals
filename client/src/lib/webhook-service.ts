@@ -1205,21 +1205,55 @@ export class WebhookService {
   }
 
   /**
-   * Creates applicant-only payload
+   * Creates applicant-only payload with proper form field documents structure
    */
   private static createApplicantOnlyPayload(formData: any, uploadedFiles?: any): any {
     const transformedData = this.transformFormDataToWebhookFormat(formData, uploadedFiles);
     
+    // Create Additional People section with proper structure
+    const additionalPeople: any = {
+      zoneinfo: formData.zoneinfo || formData.applicantId || 'unknown',
+      role: 'applicant',
+      applicant: transformedData.applicant?.name || 'unknown'
+    };
+
+    // Add co-applicants if they exist
+    if (formData.coApplicants && formData.coApplicants.length > 0) {
+      formData.coApplicants.forEach((coApplicant: any, index: number) => {
+        if (coApplicant && coApplicant.name) {
+          additionalPeople[`coApplicants${index + 1}`] = {
+            coApplicants: `coapplicants${index + 1}`,
+            url: `http://localhost:3000/login?role=coapplicants${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+            name: coApplicant.name,
+            email: coApplicant.email || ''
+          };
+        }
+      });
+    }
+
+    // Add guarantors if they exist
+    if (formData.guarantors && formData.guarantors.length > 0) {
+      formData.guarantors.forEach((guarantor: any, index: number) => {
+        if (guarantor && guarantor.name) {
+          additionalPeople[`guarantor${index + 1}`] = {
+            guarantor: `guarantor${index + 1}`,
+            url: `http://localhost:3000/login?role=guarantor${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+            name: guarantor.name,
+            email: guarantor.email || ''
+          };
+        }
+      });
+    }
+    
     return {
       application: transformedData.application,
       applicant: transformedData.applicant,
-      // Include basic application info but exclude co-applicants and guarantors
-      hasCoApplicant: false,
-      hasGuarantor: false,
-      coApplicantCount: 0,
-      guarantorCount: 0,
-      coApplicants: [],
-      guarantors: [],
+      // Include occupants with proper structure
+      occupants: transformedData.occupants || [],
+      // Include Additional People section
+      "Additional People": additionalPeople,
+      // Include webhook summary for form field documents
+      webhookSummary: transformedData.webhookSummary,
       // Include legal questions
       landlordTenantLegalAction: transformedData.landlordTenantLegalAction,
       brokenLease: transformedData.brokenLease,
@@ -1742,33 +1776,19 @@ export class WebhookService {
         bankRecords: formData.guarantorBankRecords || formData.guarantor?.bankRecords || []
       }] : []),
 
-      // Occupants section - Fixed structure with occupant field
-      occupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any, index: number) => ({
-        occupant: `occupant${index + 1}`, // Add occupant field
+      // Occupants section with proper structure
+      occupants: (formData.otherOccupants || []).map((occupant: any, index: number) => ({
+        occupant: `occupant${index + 1}`,
         name: occupant.name,
         relationship: occupant.relationship,
         dob: occupant.dob,
         ssn: occupant.ssn,
         license: occupant.license,
         age: occupant.age || 0,
-        documents: occupant.documents || {} // Use actual documents structure
+        documents: {
+          ssn1: [{}] // Placeholder for document structure
+        }
       })),
-
-      // Signatures section - Include signatures
-      signatures: formData.signatures || {
-        applicant: null,
-        coApplicants: {},
-        guarantors: {}
-      },
-
-      // Uploaded files URL section - Include uploaded files metadata
-      uploaded_files_url: uploadedFiles || {},
-
-      // Bank Information section - Include bank information
-      bankInformation: this.buildBankInformation(formData),
-
-      // Additional People section - Include additional people data
-      "Additional People": this.buildAdditionalPeopleData(formData),
 
       // Applicant summary fields
       applicantName: formData.applicantName,
@@ -1778,10 +1798,6 @@ export class WebhookService {
       zoneinfo: formData.zoneinfo || formData.applicantId,
       hasCoApplicant: formData.hasCoApplicant,
       hasGuarantor: formData.hasGuarantor,
-
-      // Legal questions
-      landlordTenantLegalAction: formData.landlordTenantLegalAction || "",
-      brokenLease: formData.brokenLease || "",
 
       // Webhook summary
       webhookSummary: {
@@ -1793,6 +1809,46 @@ export class WebhookService {
       // PDF URL from generated application PDF
       pdfUrl: formData.pdfUrl
     };
+
+    // Add Additional People section if co-applicants or guarantors exist
+    if (transformedData.coApplicants && transformedData.coApplicants.length > 0 || 
+        transformedData.guarantors && transformedData.guarantors.length > 0) {
+      const additionalPeople: any = {
+        zoneinfo: formData.zoneinfo || formData.applicantId || 'unknown',
+        role: 'applicant',
+        applicant: transformedData.applicant?.name || 'unknown'
+      };
+
+      // Add co-applicants
+      if (transformedData.coApplicants && transformedData.coApplicants.length > 0) {
+        transformedData.coApplicants.forEach((coApplicant: any, index: number) => {
+          if (coApplicant && coApplicant.name) {
+            additionalPeople[`coApplicants${index + 1}`] = {
+              coApplicants: `coapplicants${index + 1}`,
+              url: `http://localhost:3000/login?role=coapplicants${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+              name: coApplicant.name,
+              email: coApplicant.email || ''
+            };
+          }
+        });
+      }
+
+      // Add guarantors
+      if (transformedData.guarantors && transformedData.guarantors.length > 0) {
+        transformedData.guarantors.forEach((guarantor: any, index: number) => {
+          if (guarantor && guarantor.name) {
+            additionalPeople[`guarantor${index + 1}`] = {
+              guarantor: `guarantor${index + 1}`,
+              url: `http://localhost:3000/login?role=guarantor${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+              name: guarantor.name,
+              email: guarantor.email || ''
+            };
+          }
+        });
+      }
+
+      (transformedData as any)["Additional People"] = additionalPeople;
+    }
 
     // Remove undefined sections
     if (!transformedData.coApplicants || transformedData.coApplicants.length === 0) {
@@ -1833,74 +1889,6 @@ export class WebhookService {
     console.log('=== END TRANSFORMED INCOME FIELDS DEBUG ===');
 
     return transformedData;
-  }
-
-  /**
-   * Builds bank information structure
-   */
-  private static buildBankInformation(formData: any): any {
-    const applicantBankRecords = formData.applicant?.bankRecords || formData.applicantBankRecords || [];
-    const coApplicantsBankRecords = (formData.coApplicants || []).reduce((total: number, co: any) => total + (co.bankRecords?.length || 0), 0);
-    const guarantorsBankRecords = (formData.guarantors || []).reduce((total: number, guarantor: any) => total + (guarantor.bankRecords?.length || 0), 0);
-    
-    return {
-      applicant: {
-        totalBankRecords: applicantBankRecords.length,
-        records: applicantBankRecords
-      },
-      coApplicants: {
-        totalBankRecords: coApplicantsBankRecords,
-        records: (formData.coApplicants || []).flatMap((co: any) => co.bankRecords || [])
-      },
-      guarantors: {
-        totalBankRecords: guarantorsBankRecords,
-        records: (formData.guarantors || []).flatMap((guarantor: any) => guarantor.bankRecords || [])
-      },
-      summary: {
-        totalBankRecords: applicantBankRecords.length + coApplicantsBankRecords + guarantorsBankRecords
-      }
-    };
-  }
-
-  /**
-   * Builds Additional People data structure
-   */
-  private static buildAdditionalPeopleData(formData: any): any {
-    const additionalPeople: any = {
-      zoneinfo: formData.zoneinfo || formData.applicantId || 'unknown',
-      role: 'applicant',
-      applicant: formData.applicantName || formData.applicant?.name || 'unknown'
-    };
-
-    // Add co-applicants
-    if (formData.coApplicants && formData.coApplicants.length > 0) {
-      formData.coApplicants.forEach((coApplicant: any, index: number) => {
-        if (coApplicant.name && coApplicant.email) {
-          additionalPeople[`coApplicants${index + 1}`] = {
-            coApplicants: `coapplicants${index + 1}`,
-            url: `http://localhost:3000/login?role=coapplicants${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
-            name: coApplicant.name,
-            email: coApplicant.email
-          };
-        }
-      });
-    }
-
-    // Add guarantors
-    if (formData.guarantors && formData.guarantors.length > 0) {
-      formData.guarantors.forEach((guarantor: any, index: number) => {
-        if (guarantor.name && guarantor.email) {
-          additionalPeople[`guarantor${index + 1}`] = {
-            guarantor: `guarantor${index + 1}`,
-            url: `http://localhost:3000/login?role=guarantor${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
-            name: guarantor.name,
-            email: guarantor.email
-          };
-        }
-      });
-    }
-
-    return additionalPeople;
   }
 
   /**

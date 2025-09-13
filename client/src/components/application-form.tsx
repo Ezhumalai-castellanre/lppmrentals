@@ -5278,7 +5278,7 @@ export function ApplicationForm() {
           } else {
             // Send separate webhooks for all roles (applicant role)
             console.log('📤 Sending separate webhooks for all roles...');
-            // Create complete form data for webhook service
+            // Create complete form data for webhook service with proper form field documents
             const completeFormData = {
               ...formData,
               ...webhookPayload,
@@ -5288,7 +5288,13 @@ export function ApplicationForm() {
               coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
               guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
               hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
-              hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0)
+              hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0),
+              // Ensure webhook responses are properly included for form field documents
+              webhookResponses: webhookResponses,
+              // Include uploaded files metadata for form field documents
+              uploadedFilesMetadata: uploadedFilesMetadata,
+              // Include encrypted documents for form field documents
+              encryptedDocuments: encryptedDocuments
             };
             
             webhookResult = await WebhookService.sendSeparateWebhooks(
