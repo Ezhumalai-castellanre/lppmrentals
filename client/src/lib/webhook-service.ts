@@ -1568,6 +1568,29 @@ export class WebhookService {
       }
     });
 
+    // Build role-based documents map from webhookResponses (extract direct URLs)
+    const buildDocumentsFromWebhookResponses = (rolePrefix: string): Record<string, string> => {
+      const docs: Record<string, string> = {};
+      try {
+        Object.entries(webhookResponses).forEach(([key, value]) => {
+          if (key.startsWith(`${rolePrefix}_`)) {
+            const sectionName = key.replace(`${rolePrefix}_`, '');
+            const url = extractWebhookUrl(value as any);
+            if (url) {
+              docs[sectionName] = url;
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('Failed building documents from webhookResponses for', rolePrefix, e);
+      }
+      return docs;
+    };
+
+    const applicantDocuments = buildDocumentsFromWebhookResponses('applicant');
+    const coApplicantDocuments = buildDocumentsFromWebhookResponses('coApplicant');
+    const guarantorDocuments = buildDocumentsFromWebhookResponses('guarantor');
+
     // Transform the data into the exact structure needed
     const transformedData = {
       // Application section - use new nested structure if available
@@ -1582,7 +1605,10 @@ export class WebhookService {
       },
 
       // Applicant section - use new nested structure if available
-      applicant: formData.applicant || {
+      applicant: (formData.applicant ? {
+        ...formData.applicant,
+        ...(Object.keys(applicantDocuments).length > 0 ? { documents: applicantDocuments } : {})
+      } : {
         name: formData.applicantName,
         email: formData.applicantEmail,
         phone: formData.applicantPhone,
@@ -1619,8 +1645,9 @@ export class WebhookService {
         otherIncome: formData.applicantOtherIncome || formData.applicant?.otherIncome || "",
         otherIncomeFrequency: formData.applicant?.otherIncomeFrequency || "monthly",
         otherIncomeSource: formData.applicantOtherIncomeSource || formData.applicant?.otherIncomeSource || "",
-        bankRecords: formData.applicantBankRecords || formData.applicant?.bankRecords || []
-      },
+        bankRecords: formData.applicantBankRecords || formData.applicant?.bankRecords || [],
+        ...(Object.keys(applicantDocuments).length > 0 ? { documents: applicantDocuments } : {})
+      }),
 
       // Co-Applicants section - use new nested structure if available
       coApplicants: formData.coApplicants ? formData.coApplicants.map((coApplicant: any, index: number) => ({
@@ -1659,7 +1686,8 @@ export class WebhookService {
         otherIncome: coApplicant.otherIncome || "",
         otherIncomeSource: coApplicant.otherIncomeSource || "",
         otherIncomeFrequency: coApplicant.otherIncomeFrequency || "monthly",
-        bankRecords: coApplicant.bankRecords || []
+        bankRecords: coApplicant.bankRecords || [],
+        ...(Object.keys(coApplicantDocuments).length > 0 ? { documents: coApplicantDocuments } : {})
       })) : (formData.hasCoApplicant ? [{
         coApplicant: "coapplicant1", // Single co-applicant gets coapplicant1
         email: formData.coApplicantEmail,
@@ -1696,7 +1724,8 @@ export class WebhookService {
         otherIncome: formData.coApplicantOtherIncome || formData.coApplicant?.otherIncome || "",
         otherIncomeSource: formData.coApplicantOtherIncomeSource || formData.coApplicant?.otherIncomeSource || "",
         otherIncomeFrequency: formData.coApplicantOtherIncomeFrequency || formData.coApplicant?.otherIncomeFrequency || "monthly",
-        bankRecords: formData.coApplicantBankRecords || formData.coApplicant?.bankRecords || []
+        bankRecords: formData.coApplicantBankRecords || formData.coApplicant?.bankRecords || [],
+        ...(Object.keys(coApplicantDocuments).length > 0 ? { documents: coApplicantDocuments } : {})
       }] : []),
 
       // Guarantors section - use new nested structure if available
@@ -1736,7 +1765,8 @@ export class WebhookService {
         otherIncome: guarantor.otherIncome || "",
         otherIncomeSource: guarantor.otherIncomeSource || "",
         otherIncomeFrequency: guarantor.otherIncomeFrequency || "monthly",
-        bankRecords: guarantor.bankRecords || []
+        bankRecords: guarantor.bankRecords || [],
+        ...(Object.keys(guarantorDocuments).length > 0 ? { documents: guarantorDocuments } : {})
       })) : (formData.hasGuarantor ? [{
         guarantor: "1", // Dynamic type field for single guarantor
         email: formData.guarantorEmail,
@@ -1773,7 +1803,8 @@ export class WebhookService {
         otherIncome: formData.guarantorOtherIncome || formData.guarantor?.otherIncome || "",
         otherIncomeSource: formData.guarantorOtherIncomeSource || formData.guarantor?.otherIncomeSource || "",
         otherIncomeFrequency: formData.guarantor?.otherIncomeFrequency || "monthly",
-        bankRecords: formData.guarantorBankRecords || formData.guarantor?.bankRecords || []
+        bankRecords: formData.guarantorBankRecords || formData.guarantor?.bankRecords || [],
+        ...(Object.keys(guarantorDocuments).length > 0 ? { documents: guarantorDocuments } : {})
       }] : []),
 
       // Occupants section with proper structure
@@ -1809,6 +1840,11 @@ export class WebhookService {
       // PDF URL from generated application PDF
       pdfUrl: formData.pdfUrl
     };
+
+    // Include uploadedFilesMetadata inside form data when present for consumers that expect it there
+    if (formData.uploadedFilesMetadata) {
+      (transformedData as any).uploadedFilesMetadata = formData.uploadedFilesMetadata;
+    }
 
     // Add Additional People section if co-applicants or guarantors exist
     if (transformedData.coApplicants && transformedData.coApplicants.length > 0 || 
