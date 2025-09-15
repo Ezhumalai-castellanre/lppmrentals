@@ -3,31 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com https://analytics.tiktok.com https://connect.facebook.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: https://maps.gstatic.com https://maps.googleapis.com https://analytics.tiktok.com https://www.facebook.com https://connect.facebook.net; connect-src 'self' http://localhost:5002 https://hook.us1.make.com https://cognito-idp.us-east-1.amazonaws.com https://*.amazonaws.com https://maps.googleapis.com https://places.googleapis.com https://www.googleapis.com https://api.monday.com https://analytics.tiktok.com https://www.facebook.com https://connect.facebook.net; worker-src 'none'; child-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com https://analytics.tiktok.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: https://maps.gstatic.com https://maps.googleapis.com https://analytics.tiktok.com; connect-src 'self' http://localhost:5002 https://hook.us1.make.com https://cognito-idp.us-east-1.amazonaws.com https://*.amazonaws.com https://maps.googleapis.com https://places.googleapis.com https://www.googleapis.com https://api.monday.com https://analytics.tiktok.com; worker-src 'none'; child-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="https://www.jotform.com/uploads/CRP_Affordable/form_files/image_686d7ef15b36a.png?nc=1" />
     <link rel="shortcut icon" type="image/png" href="https://www.jotform.com/uploads/CRP_Affordable/form_files/image_686d7ef15b36a.png?nc=1" />
     <link rel="apple-touch-icon" href="https://www.jotform.com/uploads/CRP_Affordable/form_files/image_686d7ef15b36a.png?nc=1" />
     
-    <!-- Meta Pixel Code -->
-    <script>
-!function(f,b,e,v,n,t,s)
-{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
-'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '730476173284501');
-fbq('track', 'PageView');
-    </script>
-    <noscript><img height="1" width="1" style="display:none"
-    src="https://www.facebook.com/tr?id=730476173284501&ev=PageView&noscript=1"
-    /></noscript>
-    <!-- End Meta Pixel Code -->
-
     <!-- Enhanced WebSocket blocking for localhost:8098 and inject.bundle.js -->
     <script>
       (function() {
