@@ -388,39 +388,9 @@ const STEPS = [
   { id: 12, title: "Digital Signatures", icon: Check },
 ];
 
-// Function to get filtered steps based on role
+// Function to get filtered steps - now shows all steps regardless of role
 const getFilteredSteps = (role: string) => {
-  if (role === 'applicant') {
-    // For applicant role, exclude Co-Applicant and Guarantor steps
-    return STEPS.filter(step => 
-      ![5, 6, 7, 9, 10, 11].includes(step.id) // Exclude Co-Applicant and Guarantor steps
-    );
-  }
-  if (role === 'coapplicant') {
-    // For coapplicant role, show only: Instructions, Co-Applicant, Co-Applicant Financial, Co-Applicant Documents, Digital Signatures
-    return STEPS.filter(step => 
-      [0, 5, 6, 7, 12].includes(step.id) // Only include specific steps for co-applicant
-    );
-  }
-  if (role.startsWith('coapplicant') && /coapplicant\d+/.test(role)) {
-    // For specific co-applicant role (coapplicant1, coapplicant2, etc.), show only: Instructions, Co-Applicant, Co-Applicant Financial, Co-Applicant Documents, Digital Signatures
-    return STEPS.filter(step => 
-      [0, 5, 6, 7, 12].includes(step.id) // Only include specific steps for co-applicant
-    );
-  }
-  if (role === 'guarantor') {
-    // For guarantor role, show only: Instructions, Guarantor, Guarantor Financial, Guarantor Documents, Digital Signatures
-    return STEPS.filter(step => 
-      [0, 9, 10, 11, 12].includes(step.id) // Only include specific steps for guarantor
-    );
-  }
-  if (role.startsWith('guarantor') && /guarantor\d+/.test(role)) {
-    // For specific guarantor role (guarantor1, guarantor2, etc.), show only: Instructions, Guarantor, Guarantor Financial, Guarantor Documents, Digital Signatures
-    return STEPS.filter(step => 
-      [0, 9, 10, 11, 12].includes(step.id) // Only include specific steps for guarantor
-    );
-  }
-  // For other roles or 'all', return all steps
+  // Always return all steps - role-based filtering removed
   return STEPS;
 };
 
@@ -3347,60 +3317,8 @@ export function ApplicationForm() {
     const currentStepId = getActualStepId(current);
     const nextStepId = getActualStepId(next);
     
-    // Check if primary applicant is a student
-    const isStudent = formData?.applicant?.employmentType === 'student';
-    
-    // If moving forward and primary applicant is student, skip Documents step (step 4)
-    if (direction === 1 && nextStepId === 4 && isStudent) {
-      // Find the next step that has ID 5 or higher
-      const nextStepIndex = filteredSteps.findIndex(step => step.id >= 5);
-      if (nextStepIndex !== -1) {
-        next = nextStepIndex;
-      }
-    }
-    // If moving backward and primary applicant is student, skip Documents step (step 4)
-    if (direction === -1 && nextStepId === 4 && isStudent) {
-      // Find the previous step that has ID 3 or lower
-      const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 3);
-      if (prevStepIndex !== -1) {
-        next = prevStepIndex;
-      }
-    }
-    
-    // If moving forward and co-applicant is not checked, skip co-applicant financial and docs
-    if (direction === 1 && (nextStepId === 6 || nextStepId === 7) && !hasCoApplicant) {
-      // Find the next step that has ID 8 or higher
-      const nextStepIndex = filteredSteps.findIndex(step => step.id >= 8);
-      if (nextStepIndex !== -1) {
-        next = nextStepIndex;
-      }
-    }
-    // If moving backward and co-applicant is not checked, skip co-applicant financial and docs
-    if (direction === -1 && (nextStepId === 6 || nextStepId === 7) && !hasCoApplicant) {
-      // Find the previous step that has ID 5 or lower
-      const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 5);
-      if (prevStepIndex !== -1) {
-        next = prevStepIndex;
-      }
-    }
-    // If moving forward and guarantor is not checked, skip guarantor financial and docs
-    if (direction === 1 && (nextStepId === 10 || nextStepId === 11) && !hasGuarantor) {
-      // Find the next step that has ID 12 or higher
-      const nextStepIndex = filteredSteps.findIndex(step => step.id >= 12);
-      if (nextStepIndex !== -1) {
-        next = nextStepIndex;
-      }
-    }
-    // If moving backward and guarantor is not checked, skip guarantor financial and docs
-    if (direction === -1 && (nextStepId === 10 || nextStepId === 11) && !hasGuarantor) {
-      // Find the previous step that has ID 9 or lower
-      const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 9);
-      if (prevStepIndex !== -1) {
-        next = prevStepIndex;
-      }
-    }
-    
-    // For role-based filtering, ensure we stay within filtered steps
+    // Role-based filtering removed - all users can access all steps
+    // Only basic bounds checking remains
     const maxStep = filteredSteps.length - 1;
     return Math.max(0, Math.min(maxStep, next));
   };
@@ -3745,20 +3663,7 @@ export function ApplicationForm() {
       }
     }
     
-    // Check if primary applicant is a student
-    const isStudent = formData?.applicant?.employmentType === 'student';
-    
-    // Step 4 is Supporting Documents - skip for students
-    if (step === 4 && isStudent) {
-      toast({
-        title: 'Documents Step Skipped',
-        description: 'Document validation is not required for students. Moving to next step.',
-        variant: 'default',
-      });
-      // Automatically move to next step instead of blocking
-      setCurrentStep(5);
-      return;
-    }
+    // Role-based step skipping removed - all users can access all steps
     
     // Step 6 is Co-Applicant Financial Information
     if (step === 6 && !hasCoApplicant) {
@@ -3897,8 +3802,680 @@ export function ApplicationForm() {
     const formValues = form.getValues();
     console.log('🔍 Current form values:', formValues);
     
-    // Call the same onSubmit function with the form values
-    await onSubmit(formValues);
+    // Call role-specific submission logic directly to avoid duplicate webhook triggers
+    await handleRoleSpecificSubmission(formValues);
+  };
+
+  // Handle role-specific submission logic (extracted from onSubmit to prevent duplicate webhooks)
+  const handleRoleSpecificSubmission = async (data: ApplicationFormData) => {
+    console.log('🚀🚀🚀 ROLE-SPECIFIC SUBMISSION LOGIC - handleRoleSpecificSubmission called!');
+    console.log('🚀 Role-specific submission started');
+    console.log('Form data (data):', data);
+    console.log('Form state (formData):', formData);
+    console.log('Has guarantor:', data.hasGuarantor);
+    console.log('Guarantors in data:', data.guarantors);
+    console.log('Guarantors in formData:', formData.guarantors);
+    console.log('🔍 ROLE DEBUG:');
+    console.log('  - userRole:', userRole);
+    console.log('  - specificIndex:', specificIndex);
+    console.log('  - userRole starts with guarantor:', userRole?.startsWith('guarantor'));
+    console.log('  - specificIndex is not null:', specificIndex !== null);
+    console.log('User role:', userRole);
+    console.log('Specific index:', specificIndex);
+    console.log('🔍 Form validation state before submission:', {
+      isValid: form.formState.isValid,
+      isDirty: form.formState.isDirty,
+      isSubmitting: form.formState.isSubmitting,
+      errors: form.formState.errors
+    });
+    setIsSubmitting(true);
+    
+    // Helper function to safely convert date to ISO string (preserving local date)
+    const safeDateToISO = (dateValue: any): string | null => {
+      if (!dateValue) return null;
+      try {
+        const date = new Date(dateValue);
+        if (isNaN(date.getTime())) return null;
+        return date.toISOString();
+      } catch (error) {
+        console.warn('Error converting date to ISO:', error);
+        return null;
+      }
+    };
+    
+    try {
+      // === Generate individual applicantId for specific roles ===
+      let individualApplicantId = user?.applicantId || user?.zoneinfo || 'unknown';
+      
+      if (userRole.startsWith('coapplicant') && specificIndex !== null) {
+        // Generate individual applicantId for specific co-applicant
+        individualApplicantId = `${user?.applicantId || user?.zoneinfo || 'unknown'}-coapplicant${specificIndex + 1}`;
+        console.log('🆔 Generated co-applicant applicantId:', individualApplicantId);
+      } else if (userRole.startsWith('guarantor') && specificIndex !== null) {
+        // Generate individual applicantId for specific guarantor
+        individualApplicantId = `${user?.applicantId || user?.zoneinfo || 'unknown'}-guarantor${specificIndex + 1}`;
+        console.log('🆔 Generated guarantor applicantId:', individualApplicantId);
+      }
+
+      // === Additional People in Application: minimal JSON + email POST ===
+      try {
+        if (userRole === 'applicant') {
+          const zoneinfo = user?.zoneinfo || user?.applicantId || 'unknown';
+          console.log('📧 Sending Additional People summary email for applicant role...');
+          
+          try {
+            // Prepare minimal JSON for Additional People
+            const additionalPeopleData = {
+              zoneinfo: zoneinfo,
+              applicantId: zoneinfo,
+              reference_id: referenceId,
+              form_data: {
+                buildingAddress: data.buildingAddress,
+                apartmentNumber: data.apartmentNumber,
+                moveInDate: data.moveInDate,
+                monthlyRent: data.monthlyRent,
+                apartmentType: data.apartmentType,
+                howDidYouHear: data.howDidYouHear,
+                applicantName: data.applicantName,
+                applicantEmail: data.applicantEmail,
+                coApplicants: data.coApplicants || [],
+                guarantors: data.guarantors || [],
+                occupants: formData.occupants || [],
+                coApplicantCount: data.coApplicantCount || 0,
+                guarantorCount: data.guarantorCount || 0,
+                hasCoApplicant: data.hasCoApplicant || false,
+                hasGuarantor: data.hasGuarantor || false
+              },
+              current_step: 12,
+              last_updated: new Date().toISOString(),
+              status: 'submitted',
+              webhook_flow_version: '2.0'
+            };
+
+            // Send to Additional People API
+            const additionalPeopleResponse = await fetch('/api/additional-people', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(additionalPeopleData),
+            });
+
+            if (additionalPeopleResponse.ok) {
+              console.log('✅ Additional People summary sent successfully');
+            } else {
+              console.warn('⚠️ Additional People API call failed:', additionalPeopleResponse.status);
+            }
+          } catch (emailErr) {
+            console.warn('✉️ Email API call failed (non-blocking):', emailErr);
+          }
+        }
+      } catch (summaryErr) {
+        console.warn('⚠️ Failed to prepare/send Additional People summary (non-blocking):', summaryErr);
+      }
+
+      // Import signature utilities
+      const { validateSignatures, prepareSignaturesForSubmission } = await import('../lib/signature-utils');
+      
+      // Validate signatures before submission
+      console.log('🔍 Pre-signature validation - userRole:', userRole, 'specificIndex:', specificIndex);
+      console.log('🔍 Current signatures state:', signatures);
+      const signatureValidation = validateSignatures(signatures, userRole);
+      console.log('🔍 Signature validation result:', signatureValidation);
+      
+      if (!signatureValidation.isValid) {
+        const errorMessage = signatureValidation.errors.join(', ');
+        console.log('❌ Signature validation failed:', errorMessage);
+        toast({
+          title: "Signature Required",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Prepare signatures for submission
+      const preparedSignatures = prepareSignaturesForSubmission(signatures);
+      console.log('🔍 Prepared signatures for submission:', preparedSignatures);
+
+      // Check if user is authenticated
+      if (!user?.applicantId) {
+        console.log("🔍 User applicantId:", user?.applicantId);
+        toast({
+          title: 'Authentication Required',
+          description: 'Please sign in to submit your application. If you are already signed in, please try refreshing the page.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Generate reference ID if not exists
+      if (!referenceId) {
+        const newReferenceId = `app_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        console.log('🆔 Generated new reference ID:', newReferenceId);
+      }
+
+      // Use the current reference ID
+      const currentReferenceId = referenceId || `app_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log('🆔 Using reference ID:', currentReferenceId);
+
+      // === Server Submission Logic ===
+      let serverSubmissionOk = false;
+      let submissionResult: any = null;
+
+      try {
+        // Prepare data for server submission
+        const serverOptimizedData = {
+          ...data,
+          application: {
+            ...data,
+            moveInDate: data.moveInDate ? new Date(data.moveInDate).toISOString() : null,
+            applicantDob: data.applicantDob ? new Date(data.applicantDob).toISOString() : null,
+            coApplicantDob: null, // Individual co-applicant DOBs are handled separately
+            guarantorDob: null, // Individual guarantor DOBs are handled separately
+          }
+        };
+
+        console.log('📤 Preparing server submission data...');
+        console.log('  - moveInDate (optimized):', serverOptimizedData.application?.moveInDate);
+        console.log('Current window location:', window.location.href);
+        
+        // Check if submit-application endpoint exists, if not, skip server submission
+        // Use Netlify functions endpoint for local development, or AWS Lambda for production
+        const apiEndpoint = import.meta.env.DEV ? '/api' : 'https://your-aws-api-gateway-url.amazonaws.com/prod';
+        const submitEndpoint = apiEndpoint + '/submit-application';
+        
+        // Validate required fields before submission based on user role
+        console.log('🔍 VALIDATION DEBUG:');
+        console.log('  - userRole:', userRole);
+        console.log('  - specificIndex:', specificIndex);
+        console.log('  - window.location.href:', window.location.href);
+        
+        // Check if this is a guarantor submission by URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const roleFromUrl = urlParams.get('role');
+        console.log('  - roleFromUrl:', roleFromUrl);
+        
+        if (roleFromUrl && roleFromUrl.startsWith('guarantor')) {
+          // Extract guarantor index from URL (guarantor4 -> index 3)
+          const match = roleFromUrl.match(/guarantor(\d+)/);
+          const guarantorIndex = match ? parseInt(match[1], 10) - 1 : 0;
+          console.log('  - guarantorIndex from URL:', guarantorIndex);
+          
+          // For guarantor role, validate guarantor data from the original formData
+          const specificGuarantor = (formData.guarantors || [])[guarantorIndex];
+          console.log('  - specificGuarantor:', specificGuarantor);
+          
+          if (!specificGuarantor?.dob) {
+            console.log('❌ GUARANTOR DOB MISSING:', specificGuarantor);
+            throw new Error('Date of birth is required. Please select your date of birth.');
+          }
+          if (!specificGuarantor?.name || specificGuarantor.name.trim() === '') {
+            throw new Error('Full name is required. Please enter your full name.');
+          }
+          console.log('✅ GUARANTOR VALIDATION PASSED');
+        } else if (userRole && userRole.startsWith('coapplicant') && specificIndex !== null) {
+          // For co-applicant role, validate co-applicant data from the original formData
+          const specificCoApplicant = (formData.coApplicants || [])[specificIndex];
+          console.log('  - specificCoApplicant:', specificCoApplicant);
+          
+          if (!specificCoApplicant?.dob) {
+            console.log('❌ CO-APPLICANT DOB MISSING:', specificCoApplicant);
+            throw new Error('Date of birth is required. Please select your date of birth.');
+          }
+          if (!specificCoApplicant?.name || specificCoApplicant.name.trim() === '') {
+            throw new Error('Full name is required. Please enter your full name.');
+          }
+          console.log('✅ CO-APPLICANT VALIDATION PASSED');
+        }
+
+        // Prepare complete server data
+        const completeServerData = {
+          ...serverOptimizedData,
+          zoneinfo: individualApplicantId,
+          applicantId: individualApplicantId,
+          reference_id: currentReferenceId,
+          current_step: 12,
+          last_updated: new Date().toISOString(),
+          status: 'submitted',
+          signatures: preparedSignatures,
+          webhook_flow_version: '2.0'
+        };
+
+        console.log('📤 Attempting server submission...');
+        console.log('  - Endpoint:', submitEndpoint);
+        console.log('  - Data size:', JSON.stringify(completeServerData).length, 'bytes');
+        
+        // Try server submission first
+        try {
+          const requestBody = {
+            ...completeServerData,
+            // Include uploaded files metadata for server processing
+            uploaded_files_metadata: uploadedFilesMetadata,
+            // Include webhook responses for server processing
+            webhook_responses: webhookResponses,
+            // Include encrypted documents for server processing
+            encrypted_documents: encryptedDocuments
+          };
+
+          console.log('📤 Sending to server:', submitEndpoint);
+          console.log('📤 Request body keys:', Object.keys(requestBody));
+          console.log('📤 Request body size:', JSON.stringify(requestBody).length, 'bytes');
+          
+          const submissionController = new AbortController();
+          const submissionTimeoutId = setTimeout(() => submissionController.abort(), 45000); // 45 second timeout
+          
+          const submissionResponse = await fetch(submitEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+            signal: submissionController.signal
+          });
+
+          clearTimeout(submissionTimeoutId);
+
+          if (!submissionResponse.ok) {
+            const errorText = await submissionResponse.text();
+            console.error('Submission response error:', submissionResponse.status, submissionResponse.statusText);
+            console.error('Error response body:', errorText);
+            
+            // Handle specific error cases
+            if (submissionResponse.status === 413) {
+              throw new Error('Application data is too large. Please reduce file sizes and try again.');
+            } else if (submissionResponse.status === 504) {
+              throw new Error('Submission timed out. Please try again with smaller files or fewer files at once.');
+            } else if (submissionResponse.status === 500) {
+              console.warn('⚠️ Server error (500). Proceeding with webhook fallback.');
+              serverSubmissionOk = false;
+              // Don't throw error, just continue to webhook fallback
+              console.log('🔄 500 error caught, will proceed with webhook submission');
+            } else {
+              throw new Error(`Submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
+            }
+          } else {
+            submissionResult = await submissionResponse.json();
+            serverSubmissionOk = true;
+            console.log('✅ === SERVER SUBMISSION RESULT ===');
+            console.log('📤 Data sent to server:', JSON.stringify(requestBody, null, 2));
+            console.log('📥 Server response:', JSON.stringify(submissionResult, null, 2));
+            if (submissionResult?.application_id) console.log('🔗 Application ID:', submissionResult.application_id);
+            if (submissionResult?.reference_id) console.log('🔗 Reference ID:', submissionResult.reference_id);
+            console.log('=== END SERVER SUBMISSION ===');
+          }
+        } catch (error) {
+          console.warn('⚠️ Server submission failed. Proceeding with webhook fallback:', error);
+          serverSubmissionOk = false;
+        }
+        
+        // If server submission failed or endpoint doesn't exist, inform user about webhook fallback
+        if (!serverSubmissionOk) {
+          console.log('📤 Proceeding with webhook submission fallback...');
+          toast({
+            title: "Application Submission",
+            description: "Submitting application via webhook system. This may take a moment.",
+          });
+          
+          // Skip the rest of the server submission logic and go directly to webhook
+          console.log('🔄 Bypassing server submission, proceeding with webhook submission...');
+        }
+
+        // Mark draft as submitted in DynamoDB
+        if (user?.applicantId) {
+          try {
+            const markSubmittedResult = await dynamoDBService.markAsSubmitted(user.applicantId, currentReferenceId);
+            if (markSubmittedResult) {
+              console.log('✅ Draft marked as submitted in DynamoDB');
+            } else {
+              console.warn('⚠️ Failed to mark draft as submitted in DynamoDB');
+            }
+          } catch (error) {
+            console.error('❌ Error marking draft as submitted:', error);
+          }
+        }
+
+        // Note: Encrypted data and files are now sent separately via webhooks
+        if (serverSubmissionOk) {
+          console.log('✅ Server submission successful. Files and encrypted data sent via webhooks.');
+        } else {
+          console.log('📤 Server submission failed. Proceeding with webhook submission fallback.');
+          console.log('🔄 This is expected behavior when server endpoint is not available.');
+        }
+
+        // Disabled automatic PDF generation on submit
+        let pdfUrl: string | null = null;
+        console.log('🛑 Skipping PDF generation on submit for all roles');
+
+        // On form submit, send complete form data, application_id, and uploadedDocuments to the webhook
+        try {
+          // Create complete webhook payload with ALL data
+          const completeWebhookData = {
+            // Application Info
+            buildingAddress: data.buildingAddress,
+            apartmentNumber: data.apartmentNumber,
+            moveInDate: safeDateToISO(data.moveInDate || formData.application?.moveInDate),
+            monthlyRent: data.monthlyRent,
+            apartmentType: data.apartmentType,
+            howDidYouHear: data.howDidYouHear,
+            
+            // Primary Applicant - Complete data
+            applicantName: data.applicantName,
+            applicantDob: safeDateToISO(data.applicantDob || formData.applicant?.dob),
+            applicantSsn: formData.applicant?.ssn && formData.applicant.ssn.trim() !== '' ? formData.applicant.ssn : null,
+            applicantPhone: formatPhoneForPayload(formData.applicant?.phone),
+            applicantEmail: data.applicantEmail,
+            applicantAddress: formData.applicant?.address,
+            applicantCity: formData.applicant?.city,
+            applicantState: formData.applicant?.state,
+            applicantZip: formData.applicant?.zip,
+            applicantLicense: formData.applicant?.license,
+            applicantLicenseState: formData.applicant?.licenseState,
+            applicantLengthAtAddressYears: formData.applicant?.lengthAtAddressYears,
+            applicantLengthAtAddressMonths: formData.applicant?.lengthAtAddressMonths,
+            applicantLandlordName: formData.applicant?.landlordName,
+            applicantLandlordAddressLine1: formData.applicant?.landlordAddressLine1,
+            applicantLandlordAddressLine2: formData.applicant?.landlordAddressLine2,
+            applicantLandlordCity: formData.applicant?.landlordCity,
+            applicantLandlordState: formData.applicant?.landlordState,
+            applicantLandlordZipCode: formData.applicant?.landlordZipCode,
+            applicantLandlordPhone: formData.applicant?.landlordPhone,
+            applicantLandlordEmail: formData.applicant?.landlordEmail,
+            applicantCurrentRent: formData.applicant?.currentRent,
+            applicantReasonForMoving: formData.applicant?.reasonForMoving,
+            applicantEmploymentType: formData.applicant?.employmentType,
+            applicantBusinessName: formData.applicant?.businessName,
+            applicantBusinessType: formData.applicant?.businessType,
+            applicantYearsInBusiness: formData.applicant?.yearsInBusiness,
+            applicantIncome: formData.applicant?.income,
+            applicantIncomeFrequency: formData.applicant?.incomeFrequency,
+            applicantOtherIncome: formData.applicant?.otherIncome,
+            applicantOtherIncomeSource: formData.applicant?.otherIncomeSource,
+            applicantCreditScore: formData.applicant?.creditScore,
+            applicantBankRecords: formData.applicant?.bankRecords || [],
+            
+            // Co-Applicants - Complete data
+            coApplicants: formData.coApplicants || [],
+            coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+            hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+            
+            // Guarantors - Complete data
+            guarantors: formData.guarantors || [],
+            guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+            hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0),
+            
+            // Other Occupants - Complete data
+            occupants: formData.occupants || [],
+            
+            // Legal Questions
+            legalQuestions: formData.legalQuestions || {},
+            
+            // Signatures
+            signatures: preparedSignatures,
+            
+            // Additional metadata
+            zoneinfo: individualApplicantId,
+            applicantId: individualApplicantId,
+            reference_id: currentReferenceId,
+            current_step: 12,
+            last_updated: new Date().toISOString(),
+            status: 'submitted',
+            webhook_flow_version: '2.0',
+            
+            // Include webhook responses for form field documents
+            webhookResponses: webhookResponses,
+            // Include uploaded files metadata for form field documents
+            uploadedFilesMetadata: uploadedFilesMetadata,
+            // Include encrypted documents for form field documents
+            encryptedDocuments: encryptedDocuments
+          };
+
+          console.log('📤 === ROLE-SPECIFIC WEBHOOK SUBMISSIONS ===');
+          console.log('🔍 User role:', userRole);
+          console.log('🔍 Specific index:', specificIndex);
+          console.log('🔍 Individual applicant ID:', individualApplicantId);
+          
+          let webhookResult: any = { success: false, error: 'No webhook sent' };
+          
+          if (userRole && userRole.startsWith('coapplicant') && specificIndex !== null) {
+            // Specific co-applicant role: send webhook for specific co-applicant only
+            console.log(`📤 Sending co-applicant ${specificIndex + 1} webhook...`);
+            const coApplicant = formData.coApplicants?.[specificIndex];
+            if (coApplicant && coApplicant.name) {
+              // Create complete form data for webhook service
+              const completeFormData = {
+                ...formData,
+                ...completeWebhookData,
+                coApplicants: formData.coApplicants || [],
+                guarantors: formData.guarantors || [],
+                coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+                guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+                hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+                hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0)
+              };
+              
+              webhookResult = await WebhookService.sendCoApplicantWebhook(
+                coApplicant,
+                specificIndex,
+                completeFormData,
+                currentReferenceId,
+                individualApplicantId,
+                user?.zoneinfo,
+                uploadedFilesMetadata
+              );
+            } else {
+              webhookResult = { success: false, error: 'Co-applicant data not found' };
+            }
+          } else if (userRole && userRole.startsWith('guarantor') && specificIndex !== null) {
+            // Specific guarantor role: send webhook for specific guarantor only
+            console.log(`📤 Sending guarantor ${specificIndex + 1} webhook...`);
+            const guarantor = formData.guarantors?.[specificIndex];
+            if (guarantor && guarantor.name) {
+              // Create complete form data for webhook service
+              const completeFormData = {
+                ...formData,
+                ...completeWebhookData,
+                coApplicants: formData.coApplicants || [],
+                guarantors: formData.guarantors || [],
+                coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+                guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+                hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+                hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0)
+              };
+              
+              webhookResult = await WebhookService.sendGuarantorWebhook(
+                guarantor,
+                specificIndex,
+                completeFormData,
+                currentReferenceId,
+                individualApplicantId,
+                user?.zoneinfo,
+                uploadedFilesMetadata
+              );
+            } else {
+              webhookResult = { success: false, error: 'Guarantor data not found' };
+            }
+          } else if (userRole === 'coapplicant') {
+            // Generic co-applicant role: send one webhook per co-applicant present
+            console.log('📤 Sending individual webhooks for all co-applicants...');
+            const results: any[] = [];
+            const coApplicantsArray = Array.isArray(formData.coApplicants) ? formData.coApplicants : [];
+            for (let idx = 0; idx < coApplicantsArray.length; idx++) {
+              const ca = coApplicantsArray[idx];
+              if (ca && ca.name) {
+                console.log(`📤 Sending co-applicant ${idx + 1} webhook...`);
+                // Create complete form data for webhook service
+                const completeFormData = {
+                  ...formData,
+                  ...completeWebhookData,
+                  coApplicants: formData.coApplicants || [],
+                  guarantors: formData.guarantors || [],
+                  coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+                  guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+                  hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+                  hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0)
+                };
+                
+                const result = await WebhookService.sendCoApplicantWebhook(
+                  ca,
+                  idx,
+                  completeFormData,
+                  currentReferenceId,
+                  individualApplicantId,
+                  user?.zoneinfo,
+                  uploadedFilesMetadata
+                );
+                results.push({ ...result, index: idx });
+              }
+            }
+            const anySuccess = results.some(r => r.success);
+            webhookResult = anySuccess ? { success: true, results } : { success: false, error: 'No co-applicant webhooks sent' };
+          } else {
+            // Send separate webhooks for all roles (applicant role)
+            console.log('📤 Sending separate webhooks for all roles...');
+            // Create complete form data for webhook service with proper form field documents
+            const completeFormData = {
+              ...formData,
+              ...completeWebhookData,
+              // Ensure co-applicants and guarantors are included
+              coApplicants: formData.coApplicants || [],
+              guarantors: formData.guarantors || [],
+              coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+              guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+              hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+              hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0),
+              // Ensure webhook responses are properly included for form field documents
+              webhookResponses: webhookResponses,
+              // Include uploaded files metadata for form field documents
+              uploadedFilesMetadata: uploadedFilesMetadata,
+              // Include encrypted documents for form field documents
+              encryptedDocuments: encryptedDocuments
+            };
+            
+            webhookResult = await WebhookService.sendSeparateWebhooks(
+              completeFormData,
+              currentReferenceId,
+              individualApplicantId,
+              user?.zoneinfo,
+              uploadedFilesMetadata
+            );
+          }
+          
+          console.log('📥 Webhook result:', JSON.stringify(webhookResult, null, 2));
+          console.log('=== END ROLE-SPECIFIC WEBHOOK SUBMISSIONS ===');
+          
+          if (webhookResult.success) {
+            const roleDescription = userRole && userRole.startsWith('coapplicant') ? `Co-applicant ${(specificIndex || 0) + 1}` :
+                                  userRole && userRole.startsWith('guarantor') ? `Guarantor ${(specificIndex || 0) + 1}` :
+                                  'all roles';
+            
+            toast({
+              title: "Application Submitted & Sent",
+              description: `Your rental application has been submitted and sent to webhook successfully for ${roleDescription}.`,
+            });
+            setShowSuccessPopup(true);
+            setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : currentReferenceId);
+          } else {
+            console.log('❌ Webhook submission failed:', webhookResult.error);
+            
+            toast({
+              title: "Application Submitted",
+              description: "Your rental application has been submitted, but webhook delivery failed. Check console for details.",
+            });
+            setShowSuccessPopup(true);
+            setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : currentReferenceId);
+          }
+        } catch (webhookError) {
+          console.error('Webhook error:', webhookError);
+          toast({
+            title: "Application Submitted",
+              description: "Your rental application has been submitted, but webhook delivery failed.",
+          });
+          setShowSuccessPopup(true);
+          setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : currentReferenceId);
+        }
+
+        // Save to DynamoDB with submitted status
+        try {
+          console.log('💾 Saving submitted application to DynamoDB...');
+          const { dynamoDBUtils } = await import('../lib/dynamodb-service');
+          
+          const submittedDraftData = {
+            zoneinfo: individualApplicantId,
+            applicantId: individualApplicantId,
+            reference_id: submissionResult?.reference_id || currentReferenceId,
+            form_data: completeServerData,
+            current_step: 12, // Mark as completed
+            last_updated: new Date().toISOString(),
+            status: 'submitted' as const,
+            uploaded_files_metadata: (completeServerData as any).uploaded_files_metadata || {},
+            webhook_responses: (completeServerData as any).webhook_responses || {},
+            signatures: (completeServerData as any).signatures || {},
+            // Include additional metadata
+            webhook_flow_version: '2.0' // Version of the webhook flow system
+          };
+
+          const saveResult = await dynamoDBUtils.saveDraftForCurrentUser(submittedDraftData);
+          if (saveResult) {
+            console.log('✅ Application saved to DynamoDB with submitted status');
+          } else {
+            console.warn('⚠️ Failed to save application to DynamoDB');
+          }
+        } catch (error) {
+          console.error('❌ Error saving to DynamoDB:', error);
+          // Don't show error to user as submission was successful
+        }
+      } catch (error) {
+        console.error('Failed to submit application:', error);
+        
+        let errorMessage = "Failed to submit application. Please try again.";
+        
+        // Handle specific error types
+        if (error instanceof Error) {
+          if (error.message.includes('Date of birth is required')) {
+            errorMessage = error.message;
+          } else if (error.message.includes('Full name is required')) {
+            errorMessage = error.message;
+          } else if (error.message.includes('too large')) {
+            errorMessage = error.message;
+          } else if (error.message.includes('timed out')) {
+            errorMessage = error.message;
+          }
+        }
+        
+        toast({
+          title: "Submission Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      console.error('Failed to submit application:', error);
+      
+      let errorMessage = "Failed to submit application. Please try again.";
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes('Date of birth is required')) {
+          errorMessage = error.message;
+        } else if (error.message.includes('Full name is required')) {
+          errorMessage = error.message;
+        } else if (error.message.includes('too large')) {
+          errorMessage = error.message;
+        } else if (error.message.includes('timed out')) {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast({
+        title: "Submission Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   const onSubmit = async (data: ApplicationFormData) => {
@@ -3996,7 +4573,7 @@ export function ApplicationForm() {
       // Validate signatures before submission
       console.log('🔍 Pre-signature validation - userRole:', userRole, 'specificIndex:', specificIndex);
       console.log('🔍 Current signatures state:', signatures);
-      const signatureValidation = validateSignatures(signatures, userRole, specificIndex ?? undefined);
+      const signatureValidation = validateSignatures(signatures, userRole);
       console.log('🔍 Signature validation result:', signatureValidation);
       
       if (!signatureValidation.isValid) {
