@@ -8838,6 +8838,10 @@ export function ApplicationForm() {
                 return null;
               })()} */}
               
+
+
+
+              
               {renderStep()}
               
               {/* Student Documents Skip Notice */}
