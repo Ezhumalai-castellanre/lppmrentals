@@ -167,93 +167,8 @@ export interface FormDataWebhookData {
     application_id?: string;
     applicantId?: string;
     zoneinfo?: string;
-    hasCoApplicant?: boolean;        // Yes/No flag
-    hasGuarantor?: boolean;          // Yes/No flag  
-    coApplicantCount?: number;       // Count (0-4)
-    guarantorCount?: number;         // Count (0-4)
-    coApplicants?: Array<{
-      email?: string;
-      phone?: string;
-      address?: string;
-      zip?: string;
-      landlordZipCode?: string;
-      landlordPhone?: string;
-      landlordEmail?: string;
-      city?: string;
-      landlordCity?: string;
-      name?: string;
-      licenseState?: string;
-      state?: string;
-      relationship?: string;
-      dob?: string;
-      age?: number;
-      ssn?: string;
-      license?: string;
-      lengthAtAddressYears?: number;
-      lengthAtAddressMonths?: number;
-      landlordName?: string;
-      landlordAddressLine1?: string;
-      landlordAddressLine2?: string;
-      landlordState?: string;
-      currentRent?: number;
-      reasonForMoving?: string;
-      employmentType?: string;
-      employer?: string;
-      position?: string;
-      employmentStart?: string;
-      income?: string;
-      incomeFrequency?: string;
-      otherIncome?: string;
-      otherIncomeFrequency?: string;
-      otherIncomeSource?: string;
-      creditScore?: string;
-      bankRecords?: Array<{
-        bankName?: string;
-        accountType?: string;
-        accountNumber?: string;
-      }>;
-    }>;
-    guarantors?: Array<{
-      email?: string;
-      phone?: string;
-      address?: string;
-      zip?: string;
-      landlordZipCode?: string;
-      landlordPhone?: string;
-      landlordEmail?: string;
-      city?: string;
-      landlordCity?: string;
-      name?: string;
-      licenseState?: string;
-      state?: string;
-      relationship?: string;
-      dob?: string;
-      age?: number;
-      ssn?: string;
-      license?: string;
-      lengthAtAddressYears?: number;
-      lengthAtAddressMonths?: number;
-      landlordName?: string;
-      landlordState?: string;
-      landlordAddressLine1?: string;
-      landlordAddressLine2?: string;
-      currentRent?: number;
-      reasonForMoving?: string;
-      employmentType?: string;
-      businessName?: string;
-      businessType?: string;
-      yearsInBusiness?: string;
-      income?: string;
-      incomeFrequency?: string;
-      otherIncome?: string;
-      otherIncomeSource?: string;
-      creditScore?: string;
-      bankRecords?: Array<{
-        bankName?: string;
-        accountType?: string;
-        accountNumber?: string;
-      }>;
-    }>;
+    hasCoApplicant?: boolean;
+    hasGuarantor?: boolean;
     webhookSummary?: {
       totalResponses?: number;
       responsesByPerson?: {
@@ -1344,13 +1259,6 @@ export class WebhookService {
       brokenLease: transformedData.brokenLease,
       // Include signatures
       signatures: transformedData.signatures,
-      // Include co-applicants and guarantors data with proper structure
-      hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
-      hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0),
-      coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
-      guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
-      coApplicants: formData.coApplicants || [],
-      guarantors: formData.guarantors || [],
       // Include bank information for applicant only
       bankInformation: {
         applicant: transformedData.bankInformation?.applicant,
@@ -1379,12 +1287,12 @@ export class WebhookService {
       application: transformedData.application,
       // Include only the specific co-applicant
       coApplicants: [safeCoApplicant],
-      // Include basic application info with proper structure
+      // Include basic application info
       hasCoApplicant: true,
-      hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0),
+      hasGuarantor: false,
       coApplicantCount: 1,
-      guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
-      guarantors: formData.guarantors || [],
+      guarantorCount: 0,
+      guarantors: [],
       // Include legal questions
       landlordTenantLegalAction: transformedData.landlordTenantLegalAction,
       brokenLease: transformedData.brokenLease,
@@ -1415,12 +1323,12 @@ export class WebhookService {
       application: transformedData.application,
       // Include only the specific guarantor
       guarantors: [transformedData.guarantors[guarantorIndex]],
-      // Include basic application info with proper structure
-      hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+      // Include basic application info
+      hasCoApplicant: false,
       hasGuarantor: true,
-      coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+      coApplicantCount: 0,
       guarantorCount: 1,
-      coApplicants: formData.coApplicants || [],
+      coApplicants: [],
       // Include legal questions
       landlordTenantLegalAction: transformedData.landlordTenantLegalAction,
       brokenLease: transformedData.brokenLease,
@@ -1919,10 +1827,8 @@ export class WebhookService {
       application_id: formData.application_id || formData.applicantId,
       applicantId: formData.applicantId,
       zoneinfo: formData.zoneinfo || formData.applicantId,
-      hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
-      hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0),
-      coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
-      guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+      hasCoApplicant: formData.hasCoApplicant,
+      hasGuarantor: formData.hasGuarantor,
 
       // Webhook summary
       webhookSummary: {

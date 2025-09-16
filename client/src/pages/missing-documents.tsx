@@ -100,74 +100,15 @@ export default function MissingDocumentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterApplicantType, setFilterApplicantType] = useState<string>('all');
-  const [filterRole, setFilterRole] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name' | 'status' | 'applicantType' | 'priority'>('priority');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [documentHistory, setDocumentHistory] = useState<{[key: string]: any[]}>({});
   const [exportLoading, setExportLoading] = useState(false);
 
-  // Helper function to get available role filter options based on user role
-  const getAvailableRoleFilters = () => {
-    const baseOptions = [
-      { value: 'all', label: 'All Roles' },
-      { value: 'applicant', label: 'Applicant Only' },
-      { value: 'coapplicant', label: 'Co-Applicant Only' },
-      { value: 'guarantor', label: 'Guarantor Only' }
-    ];
-
-    // Add admin/staff options if user has those roles
-    if (user?.role === 'admin' || user?.role === 'staff') {
-      baseOptions.push(
-        { value: 'admin', label: 'Admin View (All)' },
-        { value: 'staff', label: 'Staff View (All)' }
-      );
-    }
-
-    return baseOptions;
-  };
-
-  // Helper function to filter documents based on user role
-  const getRoleBasedFilteredItems = (items: MissingSubitem[]) => {
-    if (!user?.role) return items;
-    
-    const userRole = user.role.toLowerCase();
-    
-    // If filterRole is set to 'all', show all items
-    if (filterRole === 'all') {
-      return items;
-    }
-    
-    // Filter based on selected role
-    return items.filter(item => {
-      const itemApplicantType = item.applicantType?.toLowerCase() || '';
-      
-      switch (filterRole) {
-        case 'applicant':
-          return itemApplicantType === 'applicant';
-        case 'coapplicant':
-        case 'coapplicant1':
-        case 'coapplicant2':
-        case 'coapplicant3':
-          return itemApplicantType === 'co-applicant' || itemApplicantType === 'coapplicant';
-        case 'guarantor':
-        case 'guarantor1':
-        case 'guarantor2':
-        case 'guarantor3':
-          return itemApplicantType === 'guarantor';
-        case 'admin':
-        case 'staff':
-          return true; // Admin and staff can see all documents
-        default:
-          return true;
-      }
-    });
-  };
-
-  // Split items by status and apply role-based filtering
-  const allItems = getRoleBasedFilteredItems(missingItems);
-  const uploadedItems = allItems.filter(item => item.status === 'Received');
-  const pendingItems = allItems.filter(item => item.status === 'Missing' || item.status === 'Rejected');
+  // Split items by status
+  const uploadedItems = missingItems.filter(item => item.status === 'Received');
+  const pendingItems = missingItems.filter(item => item.status === 'Missing' || item.status === 'Rejected');
 
   // Auto-switch to pending if any pending, otherwise uploaded
   useEffect(() => {
@@ -201,24 +142,6 @@ export default function MissingDocumentsPage() {
         }
       }
     }, [user]);
-
-    // Set default role filter based on user's role
-    useEffect(() => {
-      if (user?.role && filterRole === 'all') {
-        const userRole = user.role.toLowerCase();
-        
-        // Set default filter based on user role
-        if (userRole === 'applicant') {
-          setFilterRole('applicant');
-        } else if (userRole.startsWith('coapplicant')) {
-          setFilterRole('coapplicant');
-        } else if (userRole.startsWith('guarantor')) {
-          setFilterRole('guarantor');
-        } else if (userRole === 'admin' || userRole === 'staff') {
-          setFilterRole('all'); // Admin/staff see all by default
-        }
-      }
-    }, [user?.role, filterRole]);
 
   const fetchMissingSubitems = async (id: string) => {
     setLoading(true);
@@ -598,10 +521,7 @@ export default function MissingDocumentsPage() {
 
   // Enhanced filtering and sorting functions
   const getFilteredAndSortedItems = (items: MissingSubitem[]) => {
-    // First apply role-based filtering
-    const roleFilteredItems = getRoleBasedFilteredItems(items);
-    
-    let filtered = roleFilteredItems.filter(item => {
+    let filtered = items.filter(item => {
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            item.parentItemName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            item.coApplicantName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -869,11 +789,8 @@ export default function MissingDocumentsPage() {
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">{allItems.length}</div>
+                    <div className="text-2xl font-bold text-blue-600">{missingItems.length}</div>
                     <div className="text-sm text-gray-600">Total Documents</div>
-                    {filterRole !== 'all' && (
-                      <div className="text-xs text-gray-500">({filterRole} view)</div>
-                    )}
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-orange-600">{pendingItems.length}</div>
@@ -908,21 +825,6 @@ export default function MissingDocumentsPage() {
                         className="pl-10"
                       />
                     </div>
-                    {/* Role Filter Indicator */}
-                    {filterRole !== 'all' && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md text-sm">
-                        <span className="text-blue-700 font-medium">Viewing:</span>
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                          {getAvailableRoleFilters().find(opt => opt.value === filterRole)?.label || filterRole}
-                        </Badge>
-                        <button
-                          onClick={() => setFilterRole('all')}
-                          className="text-blue-600 hover:text-blue-800 text-xs underline"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    )}
                     <select
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
@@ -943,21 +845,6 @@ export default function MissingDocumentsPage() {
                       <option value="Co-Applicant">Co-Applicant</option>
                       <option value="Guarantor">Guarantor</option>
                     </select>
-                    <div className="flex flex-col">
-                      <select
-                        value={filterRole}
-                        onChange={(e) => setFilterRole(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        title="Filter documents by applicant role (Applicant, Co-Applicant, Guarantor)"
-                      >
-                        {getAvailableRoleFilters().map(option => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="text-xs text-gray-500 mt-1">Filter by Role</span>
-                    </div>
                   </div>
                   
                   {/* Advanced Controls */}
@@ -1047,23 +934,11 @@ export default function MissingDocumentsPage() {
                     <div className="text-center py-8">
                       <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        {filterRole !== 'all' ? 'No Pending Documents for Selected Role!' : 'No Pending Documents!'}
+                        No Pending Documents!
                       </h3>
                       <p className="text-gray-600">
-                        {filterRole !== 'all' 
-                          ? `No pending documents found for ${getAvailableRoleFilters().find(opt => opt.value === filterRole)?.label || filterRole}. Try changing the role filter or check if all documents are uploaded.`
-                          : 'All documents have been uploaded and received.'
-                        }
+                        All documents have been uploaded and received.
                       </p>
-                      {filterRole !== 'all' && (
-                        <Button
-                          variant="outline"
-                          onClick={() => setFilterRole('all')}
-                          className="mt-4"
-                        >
-                          View All Documents
-                        </Button>
-                      )}
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -1276,23 +1151,11 @@ export default function MissingDocumentsPage() {
                     <div className="text-center py-8">
                       <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        {filterRole !== 'all' ? 'No Uploaded Documents for Selected Role!' : 'No Uploaded Documents'}
+                        No Uploaded Documents
                       </h3>
                       <p className="text-gray-600">
-                        {filterRole !== 'all' 
-                          ? `No uploaded documents found for ${getAvailableRoleFilters().find(opt => opt.value === filterRole)?.label || filterRole}. Try changing the role filter.`
-                          : 'No documents have been received yet.'
-                        }
+                        No documents have been received yet.
                       </p>
-                      {filterRole !== 'all' && (
-                        <Button
-                          variant="outline"
-                          onClick={() => setFilterRole('all')}
-                          className="mt-4"
-                        >
-                          View All Documents
-                        </Button>
-                      )}
                     </div>
                   ) : (
                     <div className="space-y-4">
