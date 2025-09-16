@@ -169,6 +169,16 @@ export interface FormDataWebhookData {
     zoneinfo?: string;
     hasCoApplicant?: boolean;
     hasGuarantor?: boolean;
+    coApplicantCount?: number;
+    guarantorCount?: number;
+    coApplicants?: any[];
+    guarantors?: any[];
+    bankInformation?: {
+      applicant?: { totalBankRecords?: number; records?: any[] };
+      coApplicants?: { totalBankRecords?: number; records?: any[] };
+      guarantors?: { totalBankRecords?: number; records?: any[] };
+      summary?: { totalBankRecords?: number };
+    };
     webhookSummary?: {
       totalResponses?: number;
       responsesByPerson?: {
@@ -1254,6 +1264,13 @@ export class WebhookService {
       applicant: transformedData.applicant,
       // Include occupants with proper structure
       occupants: transformedData.occupants || [],
+      // Relationship flags and counts + arrays
+      hasCoApplicant: Array.isArray(formData.coApplicants) && formData.coApplicants.length > 0,
+      hasGuarantor: Array.isArray(formData.guarantors) && formData.guarantors.length > 0,
+      coApplicantCount: Array.isArray(formData.coApplicants) ? formData.coApplicants.length : 0,
+      guarantorCount: Array.isArray(formData.guarantors) ? formData.guarantors.length : 0,
+      coApplicants: Array.isArray(transformedData.coApplicants) ? transformedData.coApplicants : [],
+      guarantors: Array.isArray(transformedData.guarantors) ? transformedData.guarantors : [],
       // Include Additional People section
       "Additional People": additionalPeople,
       // Include webhook summary for form field documents
