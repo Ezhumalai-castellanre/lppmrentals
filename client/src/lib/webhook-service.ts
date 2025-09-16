@@ -804,7 +804,8 @@ export class WebhookService {
     zoneinfo?: string,
     uploadedFiles?: any
   ): Promise<{ success: boolean; error?: string }> {
-    const submissionId = `${referenceId}-applicant-${Date.now()}`;
+    const stableAppId = zoneinfo || applicationId || '';
+    const submissionId = `${referenceId}-applicant-${stableAppId}`;
     
     if (this.ongoingSubmissions.has(submissionId)) {
       console.log('⚠️ Duplicate applicant webhook submission detected, skipping:', submissionId);
@@ -855,7 +856,8 @@ export class WebhookService {
     zoneinfo?: string,
     uploadedFiles?: any
   ): Promise<{ success: boolean; error?: string }> {
-    const submissionId = `${referenceId}-coapplicant-${coApplicantIndex}-${Date.now()}`;
+    const stableAppId = zoneinfo || applicationId || '';
+    const submissionId = `${referenceId}-coapplicant-${coApplicantIndex}-${stableAppId}`;
     
     if (this.ongoingSubmissions.has(submissionId)) {
       console.log('⚠️ Duplicate co-applicant webhook submission detected, skipping:', submissionId);
@@ -906,7 +908,8 @@ export class WebhookService {
     zoneinfo?: string,
     uploadedFiles?: any
   ): Promise<{ success: boolean; error?: string }> {
-    const submissionId = `${referenceId}-guarantor-${guarantorIndex}-${Date.now()}`;
+    const stableAppId = zoneinfo || applicationId || '';
+    const submissionId = `${referenceId}-guarantor-${guarantorIndex}-${stableAppId}`;
     
     if (this.ongoingSubmissions.has(submissionId)) {
       console.log('⚠️ Duplicate guarantor webhook submission detected, skipping:', submissionId);
@@ -1046,6 +1049,47 @@ export class WebhookService {
   }
 
   /**
+   * Sends webhook(s) based on role
+   */
+  static async sendRoleBasedWebhook(
+    role: 'applicant' | 'coApplicant' | 'guarantor' | 'all',
+    formData: any,
+    referenceId: string,
+    applicationId: string,
+    zoneinfo?: string,
+    uploadedFiles?: any
+  ): Promise<{ success: boolean; error?: string }> {
+    if (role === 'applicant') {
+      return this.sendApplicantWebhook(formData, referenceId, applicationId, zoneinfo, uploadedFiles);
+    }
+    if (role === 'coApplicant') {
+      if (Array.isArray(formData.coApplicants) && formData.coApplicants.length > 0) {
+        const results = [] as Array<{ success: boolean; error?: string }>;
+        for (let i = 0; i < formData.coApplicants.length; i++) {
+          const res = await this.sendCoApplicantWebhook(formData.coApplicants[i], i, formData, referenceId, applicationId, zoneinfo, uploadedFiles);
+          results.push(res);
+        }
+        return { success: results.every(r => r.success), error: results.find(r => !r.success)?.error };
+      }
+      return { success: true };
+    }
+    if (role === 'guarantor') {
+      if (Array.isArray(formData.guarantors) && formData.guarantors.length > 0) {
+        const results = [] as Array<{ success: boolean; error?: string }>;
+        for (let i = 0; i < formData.guarantors.length; i++) {
+          const res = await this.sendGuarantorWebhook(formData.guarantors[i], i, formData, referenceId, applicationId, zoneinfo, uploadedFiles);
+          results.push(res);
+        }
+        return { success: results.every(r => r.success), error: results.find(r => !r.success)?.error };
+      }
+      return { success: true };
+    }
+    // role === 'all'
+    const all = await this.sendSeparateWebhooks(formData, referenceId, applicationId, zoneinfo, uploadedFiles);
+    return { success: all.success, error: all.error };
+  }
+
+  /**
    * Sends form data to the webhook
    */
 
@@ -1085,8 +1129,9 @@ export class WebhookService {
       other_occupants_identity?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
     }
   ): Promise<{ success: boolean; error?: string }> {
-    // Create a unique submission ID
-    const submissionId = `${referenceId}-${applicationId}-${Date.now()}`;
+    // Create a stable submission ID to prevent duplicate sends
+    const stableAppId = zoneinfo || applicationId || '';
+    const submissionId = `${referenceId}-form-${stableAppId}`;
     
     // Check if this submission is already in progress
     if (this.ongoingSubmissions.has(submissionId)) {
