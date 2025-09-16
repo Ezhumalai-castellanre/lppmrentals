@@ -1176,6 +1176,8 @@ export default function MissingDocumentsPage() {
                                     <span>Applicant: {item.parentItemName}</span>
                                   )}
                                   
+
+                                  
                                 </p>
                               </div>
                             </div>

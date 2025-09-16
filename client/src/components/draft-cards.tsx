@@ -62,6 +62,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
+  
 
   // Normalize form_data (parse JSON string if needed)
   const rawFormData = draft.form_data;
