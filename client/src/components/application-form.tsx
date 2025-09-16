@@ -18,7 +18,6 @@ import { DocumentSection } from "./document-section";
 import { SupportingDocuments } from "./supporting-documents";
 import { PDFGenerator } from "../lib/pdf-generator";
 import { EnhancedPDFGenerator } from "../lib/pdf-generator-enhanced";
-import { RentalApplicationPDF } from "../lib/rental-application-pdf";
 import { Download, FileText, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search, Save, X } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { useAuth } from "../hooks/use-auth";
@@ -434,7 +433,6 @@ function formatPhoneForPayload(phone: string) {
   }
   return phone;
 }
-
 export function ApplicationForm() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -1036,7 +1034,6 @@ export function ApplicationForm() {
       console.log('🔗 Merged webhook responses from webhookSummary in useEffect:', mergedWebhookResponses);
     }
   }, [formData.webhookSummary?.webhookResponses]);
-
   // Load draft data from DynamoDB
   const loadDraftData = useCallback(async (applicationId: string) => {
     try {
@@ -1703,7 +1700,6 @@ export function ApplicationForm() {
       });
     }
   }, [referenceId]);
-
   // Set up welcome message and load draft data
   useEffect(() => {
     if (user) {
@@ -2462,7 +2458,6 @@ export function ApplicationForm() {
       return updated;
     });
   };
-
   // Enhanced webhook response handler
   const handleWebhookResponse = (person: 'applicant' | 'coApplicant' | 'coApplicants' | 'guarantor' | 'guarantors' | 'occupants', documentTypeOrIndex: string, response: any, index?: number) => {
     console.log(`📥 === WEBHOOK RESPONSE RECEIVED ===`);
@@ -3192,11 +3187,10 @@ export function ApplicationForm() {
     console.log('Form guarantors count:', form.getValues().guarantors?.length || 0);
     return processedSignatures;
   };
-
     const generatePDF = async (submissionData?: any): Promise<string | null> => {
     try {
-      // Use the rental application PDF generator for clean, professional alignment
-      const pdfGenerator = new RentalApplicationPDF();
+      // Use the enhanced PDF generator for clean, professional alignment
+      const pdfGenerator = new EnhancedPDFGenerator();
 
       // Use submission data if provided, otherwise get current form values
       const dataToUse = submissionData || form.getValues();
@@ -3257,19 +3251,23 @@ export function ApplicationForm() {
         });
       }
       
-      console.log('🔍 About to call pdfGenerator.generate with signatures:', processedSignatures);
+      console.log('🔍 About to call pdfGenerator.generatePDF with signatures:', processedSignatures);
       
-      const pdfDoc = pdfGenerator.generate({
+      const firstCoApplicant = (dataToUse.coApplicants && dataToUse.coApplicants.length > 0) ? dataToUse.coApplicants[0] : undefined;
+      const firstGuarantor = (dataToUse.guarantors && dataToUse.guarantors.length > 0) ? dataToUse.guarantors[0] : undefined;
+
+      const pdfData = pdfGenerator.generatePDF({
         application: combinedApplicationData,
         applicant: dataToUse.applicant,
-        coApplicants: dataToUse.coApplicants || [],
-        guarantors: dataToUse.guarantors || [],
+        coApplicant: firstCoApplicant,
+        guarantor: firstGuarantor,
         occupants: dataToUse.occupants || [],
-        signatures: processedSignatures, // Use processed signatures
+        signatures: {
+          applicant: processedSignatures.applicant || undefined,
+          coApplicant: processedSignatures.coApplicants ? (processedSignatures.coApplicants as any)[0] : undefined,
+          guarantor: processedSignatures.guarantors ? (processedSignatures.guarantors as any)[0] : undefined,
+        },
       });
-    
-      // Convert PDF document to data URL for download
-      const pdfData = pdfDoc.output('dataurlstring');
 
       // Extract base64 from data URL
       const base64 = pdfData.split(',')[1];
@@ -3900,7 +3898,6 @@ export function ApplicationForm() {
     // Call the same onSubmit function with the form values
     await onSubmit(formValues);
   };
-
   const onSubmit = async (data: ApplicationFormData) => {
     console.log('🚀🚀🚀 FORM SUBMIT BUTTON CLICKED - onSubmit function called!');
     console.log('🚀 Form submission started');
@@ -4307,7 +4304,6 @@ export function ApplicationForm() {
         });
         return;
       }
-
       // Use the individual applicantId (could be temporary for development)
       console.log("✅ Using individual applicantId:", individualApplicantId);
 
@@ -4823,7 +4819,6 @@ export function ApplicationForm() {
         // Disabled automatic PDF generation on submit
         let pdfUrl: string | null = null;
         console.log('🛑 Skipping PDF generation on submit for all roles');
-
         // On form submit, send complete form data, application_id, and uploadedDocuments to the webhook
         try {
           // Create complete webhook payload with ALL data
@@ -5967,7 +5962,6 @@ export function ApplicationForm() {
             </CardContent>
           </Card>
         );
-
       case 2:
         return (
           <Card className="form-section">
@@ -6768,7 +6762,6 @@ export function ApplicationForm() {
             </CardContent>
           </Card>
         );
-
       case 3:
         return (
           <div className="space-y-6">
@@ -7512,7 +7505,6 @@ export function ApplicationForm() {
                     })}
           </>
         );
-
       case 7:
         
         // Only show the fallback message if there are no co-applicants at all
@@ -7900,7 +7892,6 @@ export function ApplicationForm() {
             </CardContent>
           </Card>
         );
-
       case 9:
 
         return (
@@ -8664,7 +8655,6 @@ export function ApplicationForm() {
             )}
           </div>
         );
-
       case 12:
         return (
           <div className="space-y-8">
@@ -8676,9 +8666,9 @@ export function ApplicationForm() {
                 <div className="mb-6">
                   <h3 className="font-bold uppercase text-sm mb-2">PLEASE READ CAREFULLY BEFORE SIGNING</h3>
                   <p className="text-xs text-gray-700 whitespace-pre-line">
-                  The Landlord shall not be bound by any lease, nor will possession of the premises be delivered to the Tenant, until a written lease agreement is executed by the Landlord and delivered to the Tenant. Approval of this application remains at Landlord’s discretion until a lease agreement is fully executed. Please be advised that the date on page one of the lease is your move-in date and also denotes the lease commencement date. No representations or agreements by agents, brokers or others shall be binding upon the Landlord or its Agent unless those representations or agreements are set forth in the written lease agreement executed by both Landlord and Tenant.</p>
+                  The Landlord shall not be bound by any lease, nor will possession of the premises be delivered to the Tenant, until a written lease agreement is executed by the Landlord and delivered to the Tenant. Approval of this application remains at Landlord's discretion until a lease agreement is fully executed. Please be advised that the date on page one of the lease is your move-in date and also denotes the lease commencement date. No representations or agreements by agents, brokers or others shall be binding upon the Landlord or its Agent unless those representations or agreements are set forth in the written lease agreement executed by both Landlord and Tenant.</p>
                   <h3 className="font-bold uppercase text-sm mb-2">Certification & Consents</h3>
-                  <p className="text-xs text-gray-700 whitespace-pre-line">By signing this application electronically, I consent to the use of electronic records and digital signatures in connection with this application and any resulting lease agreement. I agree that my electronic signature is legally binding and has the same effect as a handwritten signature. <br/>I hereby warrant that all my representations and information provided in this application are true, accurate, and complete to the best of my knowledge. I recognize the truth of the information contained herein is essential and I acknowledge that any false or misleading information may result in the rejection of my application  or rescission of the offer prior to possession or, if a lease has been executed and/or possession delivered, may constitute a material breach and provide grounds to commence appropriate legal proceedings to terminate the tenancy, as permitted by law. I further represent that I am not renting a room or an apartment under any other name, nor have I ever been dispossessed or evicted from any residence, nor am I now being dispossessed nor currently being evicted. I represent that I am over at least 18 years of age. I acknowledge and consent that my Social Security number and any other personal identifying information collected in this application may be used for tenant screening and will be maintained in confidence and protected against unauthorized disclosure in accordance with New York General Business Law and related privacy laws. I have been advised that I have the right, under the Fair Credit Reporting Act, to make a written request, directed to the appropriate credit reporting agency, within reasonable time, for a complete and accurate disclosure of the nature and scope of any credit investigation. I understand that upon submission, this application and all related documents become the property of the Landlord, and will not be returned to me under any circumstances regardless of whether my application is approved or denied. I consent to and authorize the Landlord, Agent and any designated screening or credit reporting agency to obtain a consumer credit report on me and to conduct any necessary background checks, to the extent permitted by law. I further authorize the Landlord and Agent to verify any and all information provided in this application with regard to my employment history, current and prior tenancies, bank accounts, and all other information that the Landlord deems pertinent to evaluating my leasing application. I authorize the designated screening company to contact my current and previous landlords, employers and references, if necessary. I understand that I shall not be permitted to receive or review my application file or my credit consumer report, <br/>and the Landlord and Agent are not obligated to provide me with copies of my application file or any consumer report obtained in the screening process, and that I may obtain my credit report from the credit reporting agency or as otherwise provided by law. I authorize banks, financial institutions, landlords, employers, business associates, credit bureaus, attorneys, accountants and other persons or institutions with whom I am acquainted and that may have information about me to furnish any and all information regarding myself. This authorization also applies to any updated reports which may be ordered as needed. A photocopy or fax of this authorization or an electronic copy (including any electronic signature) shall be accepted with the same authority as this original. I will provide any additional information required by the Landlord or Agent in connection with this application or any prospective lease contemplated herein. I understand that the application fee is non-refundable. <br/>The Civil Rights Act of 1968, as amended by the Fair Housing Amendments Act of 1988, prohibits discrimination in the rental of housing based on race, color, religion, gender, disability, familial status, lawful source of income (including housing vouchers and public assistance) or national origin. The Federal Agency, which administers compliance with this law, is the U.S. Department of Housing and Urban Development.” </p> </div>
+                  <p className="text-xs text-gray-700 whitespace-pre-line">By signing this application electronically, I consent to the use of electronic records and digital signatures in connection with this application and any resulting lease agreement. I agree that my electronic signature is legally binding and has the same effect as a handwritten signature. <br/>I hereby warrant that all my representations and information provided in this application are true, accurate, and complete to the best of my knowledge. I recognize the truth of the information contained herein is essential and I acknowledge that any false or misleading information may result in the rejection of my application  or rescission of the offer prior to possession or, if a lease has been executed and/or possession delivered, may constitute a material breach and provide grounds to commence appropriate legal proceedings to terminate the tenancy, as permitted by law. I further represent that I am not renting a room or an apartment under any other name, nor have I ever been dispossessed or evicted from any residence, nor am I now being dispossessed nor currently being evicted. I represent that I am over at least 18 years of age. I acknowledge and consent that my Social Security number and any other personal identifying information collected in this application may be used for tenant screening and will be maintained in confidence and protected against unauthorized disclosure in accordance with New York General Business Law and related privacy laws. I have been advised that I have the right, under the Fair Credit Reporting Act, to make a written request, directed to the appropriate credit reporting agency, within reasonable time, for a complete and accurate disclosure of the nature and scope of any credit investigation. I understand that upon submission, this application and all related documents become the property of the Landlord, and will not be returned to me under any circumstances regardless of whether my application is approved or denied. I consent to and authorize the Landlord, Agent and any designated screening or credit reporting agency to obtain a consumer credit report on me and to conduct any necessary background checks, to the extent permitted by law. I further authorize the Landlord and Agent to verify any and all information provided in this application with regard to my employment history, current and prior tenancies, bank accounts, and all other information that the Landlord deems pertinent to evaluating my leasing application. I authorize the designated screening company to contact my current and previous landlords, employers and references, if necessary. I understand that I shall not be permitted to receive or review my application file or my credit consumer report, <br/>and the Landlord and Agent are not obligated to provide me with copies of my application file or any consumer report obtained in the screening process, and that I may obtain my credit report from the credit reporting agency or as otherwise provided by law. I authorize banks, financial institutions, landlords, employers, business associates, credit bureaus, attorneys, accountants and other persons or institutions with whom I am acquainted and that may have information about me to furnish any and all information regarding myself. This authorization also applies to any updated reports which may be ordered as needed. A photocopy or fax of this authorization or an electronic copy (including any electronic signature) shall be accepted with the same authority as this original. I will provide any additional information required by the Landlord or Agent in connection with this application or any prospective lease contemplated herein. I understand that the application fee is non-refundable. <br/>The Civil Rights Act of 1968, as amended by the Fair Housing Amendments Act of 1988, prohibits discrimination in the rental of housing based on race, color, religion, gender, disability, familial status, lawful source of income (including housing vouchers and public assistance) or national origin. The Federal Agency, which administers compliance with this law, is the U.S. Department of Housing and Urban Development." </p> </div>
                 {/* Primary Applicant Signature - Show only for applicant role */}
                 {userRole === 'applicant' && (
                   <div>
