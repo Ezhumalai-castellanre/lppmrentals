@@ -879,7 +879,7 @@ export class WebhookService {
     zoneinfo?: string,
     uploadedFiles?: any
   ): Promise<{ success: boolean; error?: string }> {
-    const submissionId = `${referenceId}-applicant`;
+    const submissionId = `${referenceId}-applicant-${Date.now()}`;
     
     if (this.ongoingSubmissions.has(submissionId)) {
       console.log('⚠️ Duplicate applicant webhook submission detected, skipping:', submissionId);
@@ -930,7 +930,7 @@ export class WebhookService {
     zoneinfo?: string,
     uploadedFiles?: any
   ): Promise<{ success: boolean; error?: string }> {
-    const submissionId = `${referenceId}-coapplicant-${coApplicantIndex}`;
+    const submissionId = `${referenceId}-coapplicant-${coApplicantIndex}-${Date.now()}`;
     
     if (this.ongoingSubmissions.has(submissionId)) {
       console.log('⚠️ Duplicate co-applicant webhook submission detected, skipping:', submissionId);
@@ -981,7 +981,7 @@ export class WebhookService {
     zoneinfo?: string,
     uploadedFiles?: any
   ): Promise<{ success: boolean; error?: string }> {
-    const submissionId = `${referenceId}-guarantor-${guarantorIndex}`;
+    const submissionId = `${referenceId}-guarantor-${guarantorIndex}-${Date.now()}`;
     
     if (this.ongoingSubmissions.has(submissionId)) {
       console.log('⚠️ Duplicate guarantor webhook submission detected, skipping:', submissionId);

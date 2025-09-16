@@ -3795,10 +3795,6 @@ export function ApplicationForm() {
   // Handle role-specific form submission (bypasses schema validation)
   const handleRoleSpecificSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) {
-      console.log('⏳ Submit already in progress, ignoring duplicate click');
-      return;
-    }
     console.log('🚀🚀🚀 ROLE-SPECIFIC SUBMIT BUTTON CLICKED!');
     console.log('🔍 User role:', userRole, 'Specific index:', specificIndex);
     
@@ -3811,10 +3807,6 @@ export function ApplicationForm() {
   };
 
   const onSubmit = async (data: ApplicationFormData) => {
-    if (isSubmitting) {
-      console.log('⏳ Submit already in progress, ignoring duplicate trigger');
-      return;
-    }
     console.log('🚀🚀🚀 FORM SUBMIT BUTTON CLICKED - onSubmit function called!');
     console.log('🚀 Form submission started');
     console.log('Form data (data):', data);
