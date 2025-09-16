@@ -1,35 +1,43 @@
 import React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { SignaturePad } from "@/components/ui/signature-pad";
-import { DatePicker } from "@/components/ui/date-picker";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
+import { Checkbox } from "./ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
+import { SignaturePad } from "./ui/signature-pad";
+import { DatePicker } from "./ui/date-picker";
 import { FinancialSection } from "./financial-section";
 import { DocumentSection } from "./document-section";
 import { SupportingDocuments } from "./supporting-documents";
-import { PDFGenerator } from "@/lib/pdf-generator";
-import { EnhancedPDFGenerator } from "@/lib/pdf-generator-enhanced";
-import { ResetPDFGenerator } from "@/lib/pdf-generator-reset";
-import { Download, FileText, Save, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { PDFGenerator } from "../lib/pdf-generator";
+import { EnhancedPDFGenerator } from "../lib/pdf-generator-enhanced";
+import { Download, FileText, Users, UserCheck, CalendarDays, Shield, FolderOpen, ChevronLeft, ChevronRight, Check, Search, Save, X } from "lucide-react";
+import { useToast } from "../hooks/use-toast";
+import { useAuth } from "../hooks/use-auth";
+
+
 import ApplicationInstructions from "./application-instructions";
+import RentalDashboard from "./rental-dashboard";
 import { useRef } from "react";
 import { useLocation } from "wouter";
-import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "@/lib/file-encryption";
-import { WebhookService } from "@/lib/webhook-service";
-import { MondayApiService, type UnitItem } from "@/lib/monday-api";
-import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "@/components/ui/validated-input";
-import { StateCitySelector, StateSelector, CitySelector } from "@/components/ui/state-city-selector";
-import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail } from "@/lib/validation";
+import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "../lib/file-encryption";
+import { WebhookService } from "../lib/webhook-service";
+import { MondayApiService, type UnitItem } from "../lib/monday-api";
+import { dynamoDBService, type DraftData } from "../lib/dynamodb-service";
+
+
+import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "./ui/validated-input";
+import { StateCitySelector, StateSelector, CitySelector } from "./ui/state-city-selector";
+import { validatePhoneNumber, validateSSN, validateZIPCode, validateEmail, validateDriverLicense } from "../lib/validation";
+import { FileUpload } from "./ui/file-upload";
+
 
 
 const applicationSchema = z.object({
@@ -40,27 +48,34 @@ const applicationSchema = z.object({
     required_error: "Move-in date is required",
     invalid_type_error: "Please select a valid move-in date",
   }),
-  monthlyRent: z.number().optional().or(z.undefined()),
+  monthlyRent: z.union([
+    z.number().optional(),
+    z.string().optional().transform((val) => val ? Number(val) : undefined)
+  ]).or(z.undefined()),
   apartmentType: z.string().optional(),
   howDidYouHear: z.string().optional(),
   howDidYouHearOther: z.string().optional(),
 
   // Primary Applicant
-  applicantName: z.string().min(1, "Full name is required"),
-  applicantDob: z.date({
-    required_error: "Date of birth is required",
-    invalid_type_error: "Please select a valid date of birth",
-  }),
+  applicantName: z.string().optional(), // Lenient: any name entry is okay
+  applicantDob: z.date().optional(),
   applicantSsn: z.string().optional().refine((val) => !val || validateSSN(val), {
     message: "Please enter a valid 9-digit Social Security Number"
   }),
-  applicantPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+  applicantPhone: z.string().optional().refine((val) => {
+    // If no value or empty string, it's valid (optional field)
+    if (!val || val.trim() === '') return true;
+    // Validate the phone number
+    return validatePhoneNumber(val);
+  }, {
     message: "Please enter a valid US phone number"
   }),
   applicantEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
     message: "Please enter a valid email address"
   }),
-  applicantLicense: z.string().optional(),
+  applicantLicense: z.string().optional().refine((val) => !val || validateDriverLicense(val), {
+    message: "Please enter a valid driver's license number"
+  }),
   applicantLicenseState: z.string().optional(),
   applicantAddress: z.string().optional(),
   applicantCity: z.string().optional(),
@@ -68,20 +83,290 @@ const applicationSchema = z.object({
   applicantZip: z.string().optional().refine((val) => !val || validateZIPCode(val), {
     message: "Please enter a valid ZIP code"
   }),
-  applicantLengthAtAddressYears: z.number().optional().or(z.undefined()),
-  applicantLengthAtAddressMonths: z.number().optional().or(z.undefined()),
+  applicantLengthAtAddressYears: z.union([
+    z.number().optional(),
+    z.string().optional().transform((val) => val ? Number(val) : undefined)
+  ]).or(z.undefined()),
+  applicantLengthAtAddressMonths: z.union([
+    z.number().optional(),
+    z.string().optional().transform((val) => val ? Number(val) : undefined)
+  ]).or(z.undefined()),
   applicantLandlordName: z.string().optional(),
-  applicantCurrentRent: z.number().optional().or(z.undefined()),
+  applicantLandlordAddressLine1: z.string().optional(),
+  applicantLandlordAddressLine2: z.string().optional(),
+  applicantLandlordCity: z.string().optional(),
+  applicantLandlordState: z.string().optional(),
+  applicantLandlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+    message: "Please enter a valid ZIP code"
+  }),
+  applicantLandlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+    message: "Please enter a valid US phone number"
+  }),
+  applicantLandlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+    message: "Please enter a valid email address"
+  }),
+  applicantCurrentRent: z.union([
+    z.number().optional(),
+    z.string().optional().transform((val) => val ? Number(val) : undefined)
+  ]).or(z.undefined()),
   applicantReasonForMoving: z.string().optional(),
-  applicantGender: z.string().optional(),
+
+  // Co-Applicants (Array of up to 4)
+  coApplicants: z.array(z.object({
+    name: z.string().optional(), // Lenient: any name entry is okay
+    relationship: z.string().optional(),
+    dob: z.date().optional(),
+    ssn: z.string().optional().refine((val) => !val || validateSSN(val), {
+      message: "Please enter a valid 9-digit Social Security Number"
+    }),
+    phone: z.string().optional().refine((val) => {
+      // If no value or empty string, it's valid (optional field)
+      if (!val || val.trim() === '') return true;
+      // Validate the phone number
+      return validatePhoneNumber(val);
+    }, {
+      message: "Please enter a valid US phone number"
+    }),
+    email: z.string().optional().refine((val) => !val || validateEmail(val), {
+      message: "Please enter a valid email address"
+    }),
+    license: z.string().optional().refine((val) => !val || validateDriverLicense(val), {
+      message: "Please enter a valid driver's license number"
+    }),
+    licenseState: z.string().optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zip: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+      message: "Please enter a valid ZIP code"
+    }),
+    lengthAtAddressYears: z.union([
+      z.number().optional(),
+      z.string().optional().transform((val) => val ? Number(val) : undefined)
+    ]).or(z.undefined()),
+    lengthAtAddressMonths: z.union([
+      z.number().optional(),
+      z.string().optional().transform((val) => val ? Number(val) : undefined)
+    ]).or(z.undefined()),
+    landlordName: z.string().optional(),
+    landlordAddressLine1: z.string().optional(),
+    landlordAddressLine2: z.string().optional(),
+    landlordCity: z.string().optional(),
+    landlordState: z.string().optional(),
+    landlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+      message: "Please enter a valid ZIP code"
+    }),
+    landlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+      message: "Please enter a valid US phone number"
+    }),
+    landlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+      message: "Please enter a valid email address"
+    }),
+    currentRent: z.union([
+      z.number().optional(),
+      z.string().optional().transform((val) => val ? Number(val) : undefined)
+    ]).or(z.undefined()),
+    reasonForMoving: z.string().optional(),
+    // Employment & Financial Information
+    employmentType: z.string().optional(),
+    employer: z.string().optional(),
+    position: z.string().optional(),
+    employmentStart: z.date().optional(),
+    income: z.string().optional(),
+    incomeFrequency: z.string().optional(),
+    businessName: z.string().optional(),
+    businessType: z.string().optional(),
+    yearsInBusiness: z.string().optional(),
+    otherIncome: z.string().optional(),
+    otherIncomeFrequency: z.string().optional(),
+    otherIncomeSource: z.string().optional(),
+    creditScore: z.string().optional(),
+    bankRecords: z.array(z.any()).optional(),
+  })).max(4, "Maximum 4 co-applicants allowed"),
+
+  // Guarantors (Array of up to 4) - Only required when hasGuarantor is true
+  guarantors: z.array(z.object({
+    name: z.string().optional(), // Make optional since validation depends on hasGuarantor
+    relationship: z.string().optional(),
+    dob: z.date().optional(), // Make optional since validation depends on hasGuarantor
+    ssn: z.string().optional().refine((val) => !val || validateSSN(val), {
+      message: "Please enter a valid 9-digit Social Security Number"
+    }),
+    phone: z.string().optional().refine((val) => {
+      // If no value or empty string, it's valid (optional field)
+      if (!val || val.trim() === '') return true;
+      // Validate the phone number
+      return validatePhoneNumber(val);
+    }, {
+      message: "Please enter a valid US phone number"
+    }),
+    email: z.string().optional().refine((val) => !val || validateEmail(val), {
+      message: "Please enter a valid email address"
+    }),
+    license: z.string().optional().refine((val) => !val || validateDriverLicense(val), {
+      message: "Please enter a valid driver's license number"
+    }),
+    licenseState: z.string().optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zip: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+      message: "Please enter a valid ZIP code"
+    }),
+    lengthAtAddressYears: z.union([
+      z.number().optional(),
+      z.string().optional().transform((val) => val ? Number(val) : undefined)
+    ]).or(z.undefined()),
+    lengthAtAddressMonths: z.union([
+      z.number().optional(),
+      z.string().optional().transform((val) => val ? Number(val) : undefined)
+    ]).or(z.undefined()),
+    landlordName: z.string().optional(),
+    landlordAddressLine1: z.string().optional(),
+    landlordAddressLine2: z.string().optional(),
+    landlordCity: z.string().optional(),
+    landlordState: z.string().optional(),
+    landlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+      message: "Please enter a valid ZIP code"
+    }),
+    landlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+      message: "Please enter a valid US phone number"
+    }),
+    landlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+      message: "Please enter a valid email address"
+    }),
+    currentRent: z.union([
+      z.number().optional(),
+      z.string().optional().transform((val) => val ? Number(val) : undefined)
+    ]).or(z.undefined()),
+    reasonForMoving: z.string().optional(),
+    // Employment & Financial Information
+    employmentType: z.string().optional(),
+    employer: z.string().optional(),
+    position: z.string().optional(),
+    employmentStart: z.date().optional(),
+    income: z.string().optional(),
+    incomeFrequency: z.string().optional(),
+    businessName: z.string().optional(),
+    businessType: z.string().optional(),
+    yearsInBusiness: z.string().optional(),
+    otherIncome: z.string().optional(),
+    otherIncomeFrequency: z.string().optional(),
+    otherIncomeSource: z.string().optional(),
+    creditScore: z.string().optional(),
+    bankRecords: z.array(z.any()).optional(),
+  })).max(4, "Maximum 4 guarantors allowed"),
+
+  // Legacy fields for backward compatibility
+  coApplicantSsn: z.string().optional().refine((val) => !val || validateSSN(val), {
+    message: "Please enter a valid 9-digit Social Security Number"
+  }),
+  coApplicantPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+    message: "Please enter a valid US phone number"
+  }),
+  coApplicantEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+    message: "Please enter a valid email address"
+  }),
+  coApplicantLicense: z.string().optional().refine((val) => !val || validateDriverLicense(val), {
+    message: "Please enter a valid driver's license number"
+  }),
+  coApplicantZip: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+    message: "Please enter a valid ZIP code"
+  }),
+  coApplicantLandlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+    message: "Please enter a valid ZIP code"
+  }),
+  coApplicantLandlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+    message: "Please enter a valid US phone number"
+  }),
+  coApplicantLandlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+    message: "Please enter a valid email address"
+  }),
+
+  // Legacy guarantor fields for backward compatibility
+  guarantorSsn: z.string().optional().refine((val) => !val || validateSSN(val), {
+    message: "Please enter a valid 9-digit Social Security Number"
+  }),
+  guarantorPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+    message: "Please enter a valid US phone number"
+  }),
+  guarantorEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+    message: "Please enter a valid email address"
+  }),
+  guarantorLicense: z.string().optional().refine((val) => !val || validateDriverLicense(val), {
+    message: "Please enter a valid driver's license number"
+  }),
+  guarantorZip: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+    message: "Please enter a valid ZIP code"
+  }),
+  guarantorLandlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
+    message: "Please enter a valid ZIP code"
+  }),
+  guarantorLandlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
+    message: "Please enter a valid US phone number"
+  }),
+  guarantorLandlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
+    message: "Please enter a valid email address"
+  }),
 
   // Conditional fields
   hasCoApplicant: z.boolean().default(false),
   hasGuarantor: z.boolean().default(false),
+  coApplicantCount: z.number().min(0).max(4).default(0),
+  guarantorCount: z.number().min(0).max(4).default(0),
 
   // Legal Questions
   landlordTenantLegalAction: z.string().optional(),
   brokenLease: z.string().optional(),
+}).superRefine((data, ctx) => {
+  // Co-applicants validation when enabled
+  if (data.hasCoApplicant) {
+    if (!data.coApplicants || data.coApplicants.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Add at least one co-applicant",
+        path: ["coApplicants"]
+      });
+    } else {
+      data.coApplicants.forEach((coApplicant: any, index: number) => {
+        if (!coApplicant || typeof coApplicant !== "object") {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid co-applicant", path: ["coApplicants", index] });
+          return;
+        }
+        // Date of birth validation removed - no validation required
+      });
+    }
+  }
+
+  // Guarantors validation when enabled
+  if (data.hasGuarantor) {
+    if (!data.guarantors || data.guarantors.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Add at least one guarantor",
+        path: ["guarantors"]
+      });
+    } else {
+      // Filter out completely empty guarantors
+      const nonEmptyGuarantors = data.guarantors.filter((guarantor: any) => {
+        if (!guarantor || typeof guarantor !== "object") return false;
+        return guarantor.name || guarantor.dob || guarantor.ssn || guarantor.phone || guarantor.email;
+      });
+      
+      if (nonEmptyGuarantors.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Add at least one guarantor with information",
+          path: ["guarantors"]
+        });
+      } else {
+        nonEmptyGuarantors.forEach((guarantor: any, index: number) => {
+          const originalIndex = data.guarantors.indexOf(guarantor);
+          // Date of birth validation removed - no validation required
+        });
+      }
+    }
+  }
 });
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
@@ -92,42 +377,227 @@ const STEPS = [
   { id: 2, title: "Primary Applicant", icon: UserCheck },
   { id: 3, title: "Financial Info", icon: CalendarDays },
   { id: 4, title: "Supporting Documents", icon: FolderOpen },
-  { id: 5, title: "Co-Applicant Supporting Documents", icon: FolderOpen }, // NEW STEP
-  { id: 6, title: "Other Occupants", icon: Users },
-  { id: 7, title: "Guarantor Documents", icon: Shield },
-  { id: 8, title: "Digital Signatures", icon: Check },
+  { id: 5, title: "Co-Applicant", icon: Users },
+  { id: 6, title: "Co-Applicant Financial", icon: CalendarDays },
+  { id: 7, title: "Co-Applicant Documents", icon: FolderOpen },
+  { id: 8, title: "Other Occupants", icon: Users },
+  { id: 9, title: "Guarantor", icon: Shield },
+  { id: 10, title: "Guarantor Financial", icon: CalendarDays },
+  { id: 11, title: "Guarantor Documents", icon: FolderOpen },
+  { id: 12, title: "Digital Signatures", icon: Check },
 ];
+
+// Function to get filtered steps based on role
+const getFilteredSteps = (role: string) => {
+  if (role === 'applicant') {
+    // For applicant role, exclude Co-Applicant and Guarantor steps
+    return STEPS.filter(step => 
+      ![5, 6, 7, 9, 10, 11].includes(step.id) // Exclude Co-Applicant and Guarantor steps
+    );
+  }
+  if (role === 'coapplicant') {
+    // For coapplicant role, show only: Instructions, Co-Applicant, Co-Applicant Financial, Co-Applicant Documents, Digital Signatures
+    return STEPS.filter(step => 
+      [0, 5, 6, 7, 12].includes(step.id) // Only include specific steps for co-applicant
+    );
+  }
+  if (role.startsWith('coapplicant') && /coapplicant\d+/.test(role)) {
+    // For specific co-applicant role (coapplicant1, coapplicant2, etc.), show only: Instructions, Co-Applicant, Co-Applicant Financial, Co-Applicant Documents, Digital Signatures
+    return STEPS.filter(step => 
+      [0, 5, 6, 7, 12].includes(step.id) // Only include specific steps for co-applicant
+    );
+  }
+  if (role === 'guarantor') {
+    // For guarantor role, show only: Instructions, Guarantor, Guarantor Financial, Guarantor Documents, Digital Signatures
+    return STEPS.filter(step => 
+      [0, 9, 10, 11, 12].includes(step.id) // Only include specific steps for guarantor
+    );
+  }
+  if (role.startsWith('guarantor') && /guarantor\d+/.test(role)) {
+    // For specific guarantor role (guarantor1, guarantor2, etc.), show only: Instructions, Guarantor, Guarantor Financial, Guarantor Documents, Digital Signatures
+    return STEPS.filter(step => 
+      [0, 9, 10, 11, 12].includes(step.id) // Only include specific steps for guarantor
+    );
+  }
+  // For other roles or 'all', return all steps
+  return STEPS;
+};
+
+// 1. Add phone formatting helper
+function formatPhoneForPayload(phone: string) {
+  const digits = (phone || '').replace(/\D/g, '');
+  if (digits.length === 10) {
+    return `+1${digits}`;
+  } else if (digits.length === 11 && digits.startsWith('1')) {
+    return `+${digits}`;
+  }
+  return phone;
+}
 
 export function ApplicationForm() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  
+  // Parse role from URL query parameters
+  const [userRole, setUserRole] = useState<string>('applicant');
+  const [specificIndex, setSpecificIndex] = useState<number | null>(null);
+  
+  // Get filtered steps based on role
+  const [filteredSteps, setFilteredSteps] = useState(getFilteredSteps('applicant'));
+  
+  // Helper function to get actual step ID from filtered step index
+  const getActualStepId = (filteredIndex: number) => {
+    return filteredSteps[filteredIndex]?.id ?? filteredIndex;
+  };
+
+
+  // Read selected rental from sessionStorage
+  const [selectedRental, setSelectedRental] = useState<any>(null);
+
+
+
+
+
+
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<any>({
-    application: {},
-    applicant: {},
-    coApplicant: {},
-    guarantor: {},
-    occupants: [], // Each occupant: { name, relationship, dob, ssn, age, gender }
+    application: {
+      buildingAddress: '',
+      apartmentNumber: '',
+      apartmentType: '',
+      monthlyRent: undefined,
+      moveInDate: undefined,
+      howDidYouHear: '',
+      howDidYouHearOther: ''
+    },
+    applicant: {
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      dob: undefined,
+      ssn: '',
+      license: '',
+      licenseState: '',
+      lengthAtAddressYears: undefined,
+      lengthAtAddressMonths: undefined,
+      landlordName: '',
+      landlordAddressLine1: '',
+      landlordAddressLine2: '',
+      landlordCity: '',
+      landlordState: '',
+      landlordZipCode: '',
+      landlordPhone: '',
+      landlordEmail: '',
+      currentRent: undefined,
+      reasonForMoving: '',
+      // Employment & Financial Information
+      employmentType: '',
+      employer: '',
+      position: '',
+      employmentStart: undefined,
+      income: '',
+      incomeFrequency: 'yearly',
+      businessName: '',
+      businessType: '',
+      yearsInBusiness: '',
+      otherIncome: '',
+      otherIncomeFrequency: 'monthly',
+      otherIncomeSource: '',
+      creditScore: '',
+      bankRecords: []
+    },
+    coApplicant: {
+      email: '',
+      phone: '',
+      zip: '',
+      landlordZipCode: '',
+      landlordPhone: '',
+      landlordEmail: '',
+      // Employment & Financial Information
+      employmentType: '',
+      employer: '',
+      position: '',
+      employmentStart: undefined,
+      income: '',
+      incomeFrequency: 'yearly',
+      businessName: '',
+      businessType: '',
+      yearsInBusiness: '',
+      otherIncome: '',
+      otherIncomeFrequency: 'monthly',
+      otherIncomeSource: '',
+      creditScore: '',
+      bankRecords: []
+    },
+    guarantor: {
+      email: '',
+      phone: '',
+      zip: '',
+      landlordZipCode: '',
+      landlordPhone: '',
+      landlordEmail: '',
+      // Employment & Financial Information
+      employmentType: '',
+      employer: '',
+      position: '',
+      employmentStart: undefined,
+      income: '',
+      incomeFrequency: 'yearly',
+      businessName: '',
+      businessType: '',
+      yearsInBusiness: '',
+      otherIncome: '',
+      otherIncomeFrequency: 'monthly',
+      otherIncomeSource: '',
+      creditScore: '',
+      bankRecords: []
+    },
+    occupants: [], // Each occupant: { name, relationship, dob, ssn, age, ssnDocument, ssnEncryptedDocument, documents }
+    
+    // Conditional flags
+    hasCoApplicant: false,
+    hasGuarantor: false,
   });
-  const [signatures, setSignatures] = useState<any>({});
-  const [signatureTimestamps, setSignatureTimestamps] = useState<any>({});
+  const [signatures, setSignatures] = useState<any>({
+    applicant: null,
+    coApplicants: {},
+    guarantors: {}
+  });
+  const [signatureTimestamps, setSignatureTimestamps] = useState<any>({
+    applicant: null,
+    coApplicants: {},
+    guarantors: {}
+  });
   const [documents, setDocuments] = useState<any>({});
   const [encryptedDocuments, setEncryptedDocuments] = useState<any>({});
   const [hasCoApplicant, setHasCoApplicant] = useState(false);
   const [hasGuarantor, setHasGuarantor] = useState(false);
-  const [sameAddressCoApplicant, setSameAddressCoApplicant] = useState(false);
+
   const [sameAddressGuarantor, setSameAddressGuarantor] = useState(false);
   const [showHowDidYouHearOther, setShowHowDidYouHearOther] = useState(false);
   const pdfContentRef = useRef<HTMLDivElement>(null);
   const [referenceId] = useState(() => `app_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
-  const [applicationId] = useState(() => `app_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const [uploadedFilesMetadata, setUploadedFilesMetadata] = useState<{ [section: string]: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[] }>({});
   // Add state for uploadedDocuments
   const [uploadedDocuments, setUploadedDocuments] = useState<{
     reference_id: string;
     file_name: string;
     section_name: string;
+    documents?: string;
+    file_url?: string;
   }[]>([]);
+
+  // Add state for webhook responses
+  const [webhookResponses, setWebhookResponses] = useState<Record<string, any>>({});
+
+  // Welcome message state
+  const [showWelcomeMessage, setShowWelcomeMessage] = useState(true);
+  const [welcomeMessage, setWelcomeMessage] = useState('');
 
   // Monday.com API state
   const [units, setUnits] = useState<UnitItem[]>([]);
@@ -136,22 +606,133 @@ export function ApplicationForm() {
   const [availableApartments, setAvailableApartments] = useState<UnitItem[]>([]);
   const [isLoadingUnits, setIsLoadingUnits] = useState(false);
 
-  // Fetch units from Monday.com API
+  // Fetch units from NYC listings API
   useEffect(() => {
     const fetchUnits = async () => {
       setIsLoadingUnits(true);
       try {
-        const fetchedUnits = await MondayApiService.fetchVacantUnits();
-        setUnits(fetchedUnits);
+        // Fetching from NYC listings API...
+        const nycResponse = await fetch('https://5sdpaqwf0f.execute-api.us-east-1.amazonaws.com/dev/getnyclisting', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            "Stage": "Active"
+          }),
+        });
+
+        if (nycResponse.ok) {
+          const nycResult = await nycResponse.json();
+          // NYC listings API response received
+          
+          // Handle the new API response structure
+          let fetchedUnits: UnitItem[] = [];
+          
+          if (nycResult.body) {
+            try {
+              // Parse the body if it's a JSON string
+              const bodyData = typeof nycResult.body === 'string' ? JSON.parse(nycResult.body) : nycResult.body;
+              
+              // Check if we have items array
+              if (bodyData.items && Array.isArray(bodyData.items)) {
+                fetchedUnits = bodyData.items.map((item: any) => {
+                  const monthlyRent = item.price ? Number(item.price) : 0;
+                  // Mapping item: price=${item.price}, monthlyRent=${monthlyRent}
+                  
+                  return {
+                    id: item.id || String(Math.random()),
+                    name: item.name || 'Unknown Unit',
+                    propertyName: item.address || 'Unknown Property',
+                    unitType: item.unit_type || 'Unknown',
+                    status: item.Stage || 'Available',
+                    monthlyRent: monthlyRent,
+                    amenities: item.description || item.short_description || '',
+                    images: (item.subitems || []).map((subitem: any) => ({
+                      id: subitem.id || String(Math.random()),
+                      name: subitem.name || 'Media',
+                      url: subitem.url || '',
+                      text: 'Media'
+                    }))
+                  };
+                });
+              }
+            } catch (parseError) {
+              // Error parsing API response body
+            }
+          }
+          
+          // Fallback: check if result has items directly
+          if (fetchedUnits.length === 0 && nycResult.items && Array.isArray(nycResult.items)) {
+            fetchedUnits = nycResult.items.map((item: any) => {
+              const monthlyRent = item.price ? Number(item.price) : 0;
+              // Fallback mapping item: price=${item.price}, monthlyRent=${monthlyRent}
+              
+              return {
+                id: item.id || String(Math.random()),
+                name: item.name || 'Unknown Unit',
+                propertyName: item.address || 'Unknown Property',
+                unitType: item.unit_type || 'Unknown',
+                status: item.Stage || 'Available',
+                monthlyRent: monthlyRent,
+                amenities: item.description || item.short_description || '',
+                images: (item.subitems || []).map((subitem: any) => ({
+                  id: subitem.id || String(Math.random()),
+                  name: subitem.name || 'Media',
+                  url: subitem.url || '',
+                  text: 'Media'
+                }))
+              };
+            });
+          }
+          
+          // Processed units from NYC listings API
+          setUnits(fetchedUnits);
+        } else {
+          // Fallback to Monday.com API if NYC API fails
+          // NYC API failed, falling back to Monday.com API...
+          const fetchedUnits = await MondayApiService.fetchVacantUnits();
+          setUnits(fetchedUnits);
+        }
       } catch (error) {
-        console.error('Failed to fetch units:', error);
+        // Failed to fetch unitsa
+        // Final fallback to Monday.com API
+        try {
+          const fetchedUnits = await MondayApiService.fetchVacantUnits();
+          setUnits(fetchedUnits);
+        } catch (fallbackError) {
+          // Fallback to Monday.com API also failed
+        }
       } finally {
         setIsLoadingUnits(false);
       }
     };
 
     fetchUnits();
-  }, []);
+  }, []); // ✅ Add empty dependency array to run only once on mount
+
+  // Restore building selection once units are loaded
+  useEffect(() => {
+    if (units.length > 0 && formData.application?.buildingAddress) {
+              // Units loaded, restoring building selection
+      // Use restoreBuildingSelection to preserve original apartment selection
+      restoreBuildingSelection(
+        formData.application.buildingAddress,
+        formData.application.apartmentNumber,
+        formData.application.apartmentType
+      );
+    }
+  }, [units, formData.application?.buildingAddress, formData.application?.apartmentNumber, formData.application?.apartmentType]);
+
+
+
+
+
+
+
+
+
+
 
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
@@ -180,13 +761,129 @@ export function ApplicationForm() {
       applicantLengthAtAddressYears: undefined,
       applicantLengthAtAddressMonths: undefined,
       applicantLandlordName: "",
+      applicantLandlordAddressLine1: "",
+      applicantLandlordAddressLine2: "",
+      applicantLandlordCity: "",
+      applicantLandlordState: "",
+      applicantLandlordZipCode: "",
+      applicantLandlordPhone: "",
+      applicantLandlordEmail: "",
       applicantCurrentRent: undefined,
       applicantReasonForMoving: "",
-      applicantGender: "",
+      
+
+
+      // Co-Applicants (Array of up to 4)
+      coApplicants: [
+        {
+          name: '',
+          relationship: '',
+          dob: undefined as any,
+          ssn: '',
+          phone: '',
+          email: '',
+          license: '',
+          licenseState: '',
+          address: '',
+          city: '',
+          state: '',
+          zip: '',
+          lengthAtAddressYears: undefined,
+          lengthAtAddressMonths: undefined,
+          landlordName: '',
+          landlordAddressLine1: '',
+          landlordAddressLine2: '',
+          landlordCity: '',
+          landlordState: '',
+          landlordZipCode: '',
+          landlordPhone: '',
+          landlordEmail: '',
+          currentRent: undefined,
+          reasonForMoving: '',
+          employmentType: '',
+          employer: '',
+          position: '',
+          employmentStart: undefined,
+          income: '',
+          incomeFrequency: 'yearly',
+          businessName: '',
+          businessType: '',
+          yearsInBusiness: '',
+          otherIncome: '',
+          otherIncomeFrequency: 'monthly',
+          otherIncomeSource: '',
+          bankRecords: []
+        }
+      ],
+
+      // Guarantors (Array of up to 4)
+      guarantors: [
+        {
+          name: '',
+          relationship: '',
+          dob: undefined as any,
+          ssn: '',
+          phone: '',
+          email: '',
+          license: '',
+          licenseState: '',
+          address: '',
+          city: '',
+          state: '',
+          zip: '',
+          lengthAtAddressYears: undefined,
+          lengthAtAddressMonths: undefined,
+          landlordName: '',
+          landlordAddressLine1: '',
+          landlordAddressLine2: '',
+          landlordCity: '',
+          landlordState: '',
+          landlordZipCode: '',
+          landlordPhone: '',
+          landlordEmail: '',
+          currentRent: undefined,
+          reasonForMoving: '',
+          employmentType: '',
+          employer: '',
+          position: '',
+          employmentStart: undefined,
+          income: '',
+          incomeFrequency: 'yearly',
+          businessName: '',
+          businessType: '',
+          yearsInBusiness: '',
+          otherIncome: '',
+          otherIncomeFrequency: 'monthly',
+          otherIncomeSource: '',
+          bankRecords: []
+        }
+      ],
+
+      // Legacy fields for backward compatibility
+      coApplicantSsn: "",
+      coApplicantPhone: "",
+      coApplicantEmail: "",
+      coApplicantLicense: "",
+      coApplicantZip: "",
+      coApplicantLandlordZipCode: "",
+      coApplicantLandlordPhone: "",
+      coApplicantLandlordEmail: "",
+
+      // Legacy guarantor fields for backward compatibility
+      guarantorSsn: "",
+      guarantorPhone: "",
+      guarantorEmail: "",
+      guarantorLicense: "",
+      guarantorZip: "",
+      guarantorLandlordZipCode: "",
+      guarantorLandlordPhone: "",
+      guarantorLandlordEmail: "",
 
       // Conditional fields
       hasCoApplicant: false,
       hasGuarantor: false,
+      coApplicantCount: 0,
+      guarantorCount: 1,
 
       // Legal Questions
       landlordTenantLegalAction: "",
@@ -195,19 +892,1392 @@ export function ApplicationForm() {
     mode: "onChange", // Enable real-time validation
   });
 
-  const updateFormData = (section: string, field: string, value: any) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value,
+  // Sync checkbox states with form field values
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'hasCoApplicant') {
+        // Form field hasCoApplicant changed
+        setHasCoApplicant(value.hasCoApplicant || false);
+      }
+              if (name === 'hasGuarantor') {
+          // Form field hasGuarantor changed
+          setHasGuarantor(value.hasGuarantor || false);
+        }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
+  // Helper function to get current user's zoneinfo (source of truth for LPPM numbers)
+  const getCurrentUserZoneinfo = useCallback(() => {
+    return user?.zoneinfo || user?.applicantId;
+  }, [user?.zoneinfo, user?.applicantId]);
+
+  // Helper function to check if co-applicant has meaningful data
+  const hasCoApplicantData = useCallback((coApplicant: any) => {
+    if (!coApplicant) return false;
+    
+    // Check for any meaningful co-applicant data
+    const hasBasicInfo = coApplicant.name || coApplicant.email || coApplicant.phone || coApplicant.ssn;
+    const hasAddressInfo = coApplicant.address || coApplicant.city || coApplicant.state || coApplicant.zip;
+    const hasEmploymentInfo = coApplicant.employmentType || coApplicant.employerName || coApplicant.employerPhone;
+    const hasFinancialInfo = coApplicant.monthlyIncome || coApplicant.bankRecords;
+    const hasDocuments = coApplicant.documents && Object.keys(coApplicant.documents).length > 0;
+    
+    return hasBasicInfo || hasAddressInfo || hasEmploymentInfo || hasFinancialInfo || hasDocuments;
+  }, []);
+
+  // Helper function to check if guarantor has meaningful data
+  const hasGuarantorData = useCallback((guarantor: any) => {
+    if (!guarantor) return false;
+    
+    // Check for any meaningful guarantor data
+    const hasBasicInfo = guarantor.name || guarantor.email || guarantor.phone || guarantor.ssn;
+    const hasAddressInfo = guarantor.address || guarantor.city || guarantor.state || guarantor.zip;
+    const hasEmploymentInfo = guarantor.employmentType || guarantor.employerName || guarantor.employerPhone;
+    const hasFinancialInfo = guarantor.monthlyIncome || guarantor.bankRecords;
+    const hasDocuments = guarantor.documents && Object.keys(guarantor.documents).length > 0;
+    
+    return hasBasicInfo || hasAddressInfo || hasEmploymentInfo || hasFinancialInfo || hasDocuments;
+  }, []);
+
+  // Ensure form data always uses current user's zoneinfo
+  useEffect(() => {
+    const currentUserZoneinfo = getCurrentUserZoneinfo();
+    
+    if (currentUserZoneinfo) {
+      setFormData((prevData: any) => {
+        // Only update if the values are different
+        if (prevData.application_id !== currentUserZoneinfo || prevData.applicantId !== currentUserZoneinfo) {
+          // useEffect: Forcing form data update to use current user zoneinfo
+          return {
+            ...prevData,
+            application_id: currentUserZoneinfo,
+            applicantId: currentUserZoneinfo
+          };
+        }
+        return prevData;
+      });
+    }
+  }, [getCurrentUserZoneinfo]);
+
+  // Ensure guarantors array is always properly initialized
+  useEffect(() => {
+    setFormData((prevData: any) => {
+      // Ensure guarantors array exists and has at least one item
+      if (!prevData.guarantors || !Array.isArray(prevData.guarantors) || prevData.guarantors.length === 0) {
+        return {
+          ...prevData,
+          guarantors: [
+            {
+              name: '',
+              relationship: '',
+              dob: undefined,
+              ssn: '',
+              phone: '',
+              email: '',
+              license: '',
+              licenseState: '',
+              address: '',
+              city: '',
+              state: '',
+              zip: '',
+              lengthAtAddressYears: undefined,
+              lengthAtAddressMonths: undefined,
+              landlordName: '',
+              landlordAddressLine1: '',
+              landlordAddressLine2: '',
+              landlordCity: '',
+              landlordState: '',
+              landlordZipCode: '',
+              landlordPhone: '',
+              landlordEmail: '',
+              currentRent: undefined,
+              reasonForMoving: '',
+              employmentType: '',
+              employer: '',
+              position: '',
+              employmentStart: undefined,
+              income: '',
+              incomeFrequency: 'yearly',
+              businessName: '',
+              businessType: '',
+              yearsInBusiness: '',
+              otherIncome: '',
+              otherIncomeFrequency: 'monthly',
+              otherIncomeSource: '',
+              bankRecords: []
+            }
+          ],
+          guarantorCount: Math.max(1, prevData.guarantorCount || 1)
+        };
+      }
+      return prevData;
+    });
+  }, []);
+
+  // Handle webhook responses from formData when it changes
+  useEffect(() => {
+    if (formData.webhookSummary?.webhookResponses) {
+      // Merge webhookSummary.webhookResponses into the main formData.webhookResponses
+      const mergedWebhookResponses = {
+        ...formData.webhookResponses,
+        ...formData.webhookSummary.webhookResponses
+      };
+      
+      // Update formData with merged webhook responses
+      setFormData((prevData: any) => ({
+        ...prevData,
+        webhookResponses: mergedWebhookResponses
+      }));
+      
+      // Update webhook responses state
+      setWebhookResponses(mergedWebhookResponses);
+      console.log('🔗 Merged webhook responses from webhookSummary in useEffect:', mergedWebhookResponses);
+    }
+  }, [formData.webhookSummary?.webhookResponses]);
+
+  // Load draft data from DynamoDB
+  const loadDraftData = useCallback(async (applicationId: string) => {
+    try {
+      // Loading draft data from DynamoDB for application ID
+      
+      // Try to load the most recent draft for this application
+      const draftData = await dynamoDBService.getDraft(applicationId, referenceId);
+      
+      if (draftData && draftData.status === 'draft') {
+        // Draft data loaded from DynamoDB
+        
+        // Restore form data
+        if (draftData.form_data) {
+          // Parse the form data if it's a string (from DynamoDB)
+          let parsedFormData = draftData.form_data;
+          if (typeof draftData.form_data === 'string') {
+            try {
+              parsedFormData = JSON.parse(draftData.form_data);
+              // Parsed form data from JSON string
+              
+              // Clean up the parsed data to ensure consistency
+              // Always use the current user's zoneinfo/applicantId, not the stored draft data
+              const currentUserZoneinfo = getCurrentUserZoneinfo();
+              
+              // Form data cleaning - Current user zoneinfo
+              // Form data before cleaning
+              
+              // ALWAYS update application_id to current user's zoneinfo (overwrite any draft data)
+              if (currentUserZoneinfo) {
+                const oldApplicationId = parsedFormData.application_id;
+                parsedFormData.application_id = currentUserZoneinfo;
+                // FORCED UPDATE: application_id changed
+              }
+              
+              // ALWAYS update applicantId to current user's zoneinfo (overwrite any draft data)
+              if (currentUserZoneinfo) {
+                const oldApplicantId = parsedFormData.applicantId;
+                parsedFormData.applicantId = currentUserZoneinfo;
+                // FORCED UPDATE: applicantId changed
+              }
+              
+              // Form data after cleaning
+              
+              // Ensure all required sections exist
+              parsedFormData.application = parsedFormData.application || {};
+              parsedFormData.applicant = parsedFormData.applicant || {};
+              parsedFormData.coApplicant = parsedFormData.coApplicant || {};
+              parsedFormData.guarantor = parsedFormData.guarantor || {};
+              parsedFormData.occupants = parsedFormData.occupants || [];
+              
+              // Cleaned and normalized form data
+            } catch (parseError) {
+              // Error parsing form data JSON
+              parsedFormData = {
+                application: {},
+                applicant: {},
+                coApplicant: {},
+                guarantor: {},
+                occupants: []
+              };
+            }
+          }
+          
+          // Merge webhookSummary.webhookResponses into the main formData.webhookResponses
+          if (parsedFormData.webhookSummary?.webhookResponses) {
+            parsedFormData.webhookResponses = {
+              ...parsedFormData.webhookResponses,
+              ...parsedFormData.webhookSummary.webhookResponses
+            };
+            console.log('🔗 Merged webhook responses from webhookSummary:', parsedFormData.webhookResponses);
+          }
+          
+          setFormData(parsedFormData);
+          
+          // Draft data loaded successfully
+          
+          // Restore current step
+          if (draftData.current_step !== undefined) {
+            setCurrentStep(draftData.current_step);
+          }
+          
+          // Restore signatures
+          if (draftData.signatures) {
+            let parsedSignatures = draftData.signatures;
+            if (typeof draftData.signatures === 'string') {
+              try {
+                parsedSignatures = JSON.parse(draftData.signatures);
+              } catch (parseError) {
+                // Error parsing signatures JSON
+                parsedSignatures = {};
+              }
+            }
+            setSignatures(parsedSignatures);
+          }
+          
+          // Restore webhook responses
+          if (draftData.webhook_responses) {
+            let parsedWebhookResponses = draftData.webhook_responses;
+            if (typeof draftData.webhook_responses === 'string') {
+              try {
+                parsedWebhookResponses = JSON.parse(draftData.webhook_responses);
+              } catch (parseError) {
+                // Error parsing webhook responses JSON
+                parsedWebhookResponses = {};
+              }
+            }
+            setWebhookResponses(parsedWebhookResponses);
+          }
+          
+          // Also set webhook responses from the merged formData
+          if (parsedFormData.webhookResponses) {
+            setWebhookResponses(parsedFormData.webhookResponses);
+            console.log('🔗 Set webhook responses state from formData:', parsedFormData.webhookResponses);
+          }
+          
+          // Restore uploaded files metadata
+          if (draftData.uploaded_files_metadata) {
+            let parsedUploadedFiles = draftData.uploaded_files_metadata;
+            if (typeof draftData.uploaded_files_metadata === 'string') {
+              try {
+                parsedUploadedFiles = JSON.parse(draftData.uploaded_files_metadata);
+              } catch (parseError) {
+                // Error parsing uploaded files JSON
+                parsedUploadedFiles = {};
+              }
+            }
+            setUploadedFilesMetadata(parsedUploadedFiles);
+          }
+          
+          // Restore encrypted documents
+          if (draftData.encrypted_documents) {
+            let parsedEncryptedDocuments = draftData.encrypted_documents;
+            if (typeof draftData.encrypted_documents === 'string') {
+              try {
+                parsedEncryptedDocuments = JSON.parse(draftData.encrypted_documents);
+              } catch (parseError) {
+                // Error parsing encrypted documents JSON
+                parsedEncryptedDocuments = {};
+              }
+            }
+            setEncryptedDocuments(parsedEncryptedDocuments);
+          }
+          
+          // Restore form values for React Hook Form
+          if (parsedFormData.application) {
+            const app = parsedFormData.application;
+            console.log('🔧 Restoring application form values:', app);
+            
+            // Restore all application fields
+            if (app.buildingAddress !== undefined) {
+              form.setValue('buildingAddress', app.buildingAddress || '');
+              // Set buildingAddress
+            }
+            if (app.apartmentNumber !== undefined) {
+              form.setValue('apartmentNumber', app.apartmentNumber || '');
+              // Set apartmentNumber
+            }
+            if (app.apartmentType !== undefined) {
+              form.setValue('apartmentType', app.apartmentType || '');
+              // Set apartmentType
+            }
+            
+            // Apartment fields restored from draft
+            if (app.monthlyRent) {
+              form.setValue('monthlyRent', app.monthlyRent);
+              // Set monthlyRent
+            }
+            if (app.howDidYouHear) {
+              form.setValue('howDidYouHear', app.howDidYouHear);
+              // Set howDidYouHear
+            }
+            if (app.howDidYouHearOther) {
+              form.setValue('howDidYouHearOther', app.howDidYouHearOther);
+              // Set howDidYouHearOther
+            }
+            if (app.moveInDate) {
+              const moveInDate = new Date(app.moveInDate);
+              if (!isNaN(moveInDate.getTime())) {
+                form.setValue('moveInDate', moveInDate);
+                // Set moveInDate
+              }
+            }
+            
+            // Application form values restored
+            
+            // Verify the form values were actually set
+            // Verify the form values were actually set
+            setTimeout(() => {
+              // Verifying form values after restoration
+            }, 200);
+          }
+          
+          if (parsedFormData.applicant) {
+            const applicant = parsedFormData.applicant;
+            if (applicant.name !== undefined) form.setValue('applicantName', applicant.name || '');
+            if (applicant.email !== undefined) form.setValue('applicantEmail', applicant.email || '');
+            if (applicant.phone !== undefined) form.setValue('applicantPhone', applicant.phone || '');
+            if (applicant.address !== undefined) form.setValue('applicantAddress', applicant.address || '');
+            if (applicant.city !== undefined) {
+              form.setValue('applicantCity', applicant.city || '');
+              // Set applicantCity
+            }
+            if (applicant.state !== undefined) {
+              form.setValue('applicantState', applicant.state || '');
+              // Set applicantState
+            }
+            if (applicant.zip !== undefined) {
+              form.setValue('applicantZip', applicant.zip || '');
+              // Set applicantZip
+            }
+            if (applicant.dob) {
+              const dob = new Date(applicant.dob);
+              if (!isNaN(dob.getTime())) {
+                form.setValue('applicantDob', dob);
+              }
+            }
+            
+            // Restore length of stay fields
+            if (applicant.lengthAtAddressYears !== undefined) {
+              form.setValue('applicantLengthAtAddressYears', applicant.lengthAtAddressYears);
+              // Set applicantLengthAtAddressYears
+            }
+            if (applicant.lengthAtAddressMonths !== undefined) {
+              form.setValue('applicantLengthAtAddressMonths', applicant.lengthAtAddressMonths);
+              // Set applicantLengthAtAddressMonths
+            }
+            
+            // Restore landlord information
+            if (applicant.landlordName !== undefined) {
+              form.setValue('applicantLandlordName', applicant.landlordName || '');
+              console.log('🏠 Set applicantLandlordName:', applicant.landlordName || '');
+            }
+            if (applicant.landlordAddressLine1 !== undefined) {
+              form.setValue('applicantLandlordAddressLine1', applicant.landlordAddressLine1 || '');
+              console.log('🏠 Set applicantLandlordAddressLine1:', applicant.landlordAddressLine1 || '');
+            }
+            if (applicant.landlordAddressLine2 !== undefined) {
+              form.setValue('applicantLandlordAddressLine2', applicant.landlordAddressLine2 || '');
+              console.log('🏠 Set applicantLandlordAddressLine2:', applicant.landlordAddressLine2 || '');
+            }
+            if (applicant.landlordCity !== undefined) {
+              form.setValue('applicantLandlordCity', applicant.landlordCity || '');
+              console.log('🏠 Set applicantLandlordCity:', applicant.landlordCity || '');
+            }
+            if (applicant.landlordState !== undefined) {
+              form.setValue('applicantLandlordState', applicant.landlordState || '');
+              console.log('🏠 Set applicantLandlordState:', applicant.landlordState || '');
+            }
+            if (applicant.landlordZipCode !== undefined) {
+              form.setValue('applicantLandlordZipCode', applicant.landlordZipCode || '');
+              // Set applicantLandlordZipCode
+            }
+            if (applicant.landlordPhone !== undefined) {
+              form.setValue('applicantLandlordPhone', applicant.landlordPhone || '');
+              // Set applicantLandlordPhone
+            }
+            if (applicant.landlordEmail !== undefined) {
+              form.setValue('applicantLandlordEmail', applicant.landlordEmail || '');
+              // Set applicantLandlordEmail
+            }
+            
+            // Restore current rent and reason for moving
+            if (applicant.currentRent !== undefined) {
+              form.setValue('applicantCurrentRent', applicant.currentRent);
+              // Set applicantCurrentRent
+            }
+            if (applicant.reasonForMoving !== undefined) {
+              form.setValue('applicantReasonForMoving', applicant.reasonForMoving || '');
+              // Set applicantReasonForMoving
+            }
+          }
+          
+          // Restore co-applicant information (only fields that exist in schema)
+          if (parsedFormData.coApplicant) {
+            const coApplicant = parsedFormData.coApplicant;
+            if (coApplicant.email !== undefined) form.setValue('coApplicantEmail', coApplicant.email || '');
+            if (coApplicant.phone !== undefined) form.setValue('coApplicantPhone', coApplicant.phone || '');
+            if (coApplicant.zip !== undefined) form.setValue('coApplicantZip', coApplicant.zip || '');
+            
+            // Restore co-applicant landlord information (only fields that exist in schema)
+            if (coApplicant.landlordZipCode !== undefined) {
+              form.setValue('coApplicantLandlordZipCode', coApplicant.landlordZipCode || '');
+              // Set coApplicantLandlordZipCode
+            }
+            if (coApplicant.landlordPhone !== undefined) {
+              form.setValue('coApplicantLandlordPhone', coApplicant.landlordPhone || '');
+              // Set coApplicantLandlordPhone
+            }
+            if (coApplicant.landlordEmail !== undefined) {
+              form.setValue('coApplicantLandlordEmail', coApplicant.landlordEmail || '');
+              // Set coApplicantLandlordEmail
+            }
+            
+            // Auto-check co-applicant checkbox if there's co-applicant data but no explicit flag
+            if (parsedFormData.hasCoApplicant === undefined && hasCoApplicantData(coApplicant)) {
+              // Auto-detected co-applicant data, checking checkbox
+              setHasCoApplicant(true);
+              form.setValue('hasCoApplicant', true);
+              // Also update formData state
+              setFormData((prev: any) => ({
+                ...prev,
+                hasCoApplicant: true
+              }));
+            }
+          }
+          
+          // Also check for coApplicants array (new format)
+          if (parsedFormData.coApplicants && Array.isArray(parsedFormData.coApplicants) && parsedFormData.coApplicants.length > 0) {
+            // Auto-check co-applicant checkbox if there's co-applicant data but no explicit flag
+            if (parsedFormData.hasCoApplicant === undefined) {
+              // Auto-detected co-applicant data, checking checkbox
+              setHasCoApplicant(true);
+              form.setValue('hasCoApplicant', true);
+              // Also update formData state
+              setFormData((prev: any) => ({
+                ...prev,
+                hasCoApplicant: true
+              }));
+            }
+            
+            // Set coApplicantCount based on the array length
+            if (parsedFormData.coApplicantCount === undefined) {
+              const count = parsedFormData.coApplicants.length;
+              setFormData((prev: any) => ({
+                ...prev,
+                coApplicantCount: count
+              }));
+              form.setValue('coApplicantCount', count);
+            }
+            
+            // Set form values for each co-applicant
+            parsedFormData.coApplicants.forEach((coApplicant: any, index: number) => {
+              if (coApplicant.name) form.setValue(`coApplicants.${index}.name`, coApplicant.name);
+              if (coApplicant.relationship) form.setValue(`coApplicants.${index}.relationship`, coApplicant.relationship);
+              if (coApplicant.dob) form.setValue(`coApplicants.${index}.dob`, new Date(coApplicant.dob));
+              if (coApplicant.ssn) form.setValue(`coApplicants.${index}.ssn`, coApplicant.ssn);
+              if (coApplicant.phone) form.setValue(`coApplicants.${index}.phone`, coApplicant.phone);
+              if (coApplicant.email) form.setValue(`coApplicants.${index}.email`, coApplicant.email);
+              if (coApplicant.license) form.setValue(`coApplicants.${index}.license`, coApplicant.license);
+              if (coApplicant.licenseState) form.setValue(`coApplicants.${index}.licenseState`, coApplicant.licenseState);
+              if (coApplicant.address) form.setValue(`coApplicants.${index}.address`, coApplicant.address);
+              if (coApplicant.city) form.setValue(`coApplicants.${index}.city`, coApplicant.city);
+              if (coApplicant.state) form.setValue(`coApplicants.${index}.state`, coApplicant.state);
+              if (coApplicant.zip) form.setValue(`coApplicants.${index}.zip`, coApplicant.zip);
+              if (coApplicant.lengthAtAddressYears !== undefined) form.setValue(`coApplicants.${index}.lengthAtAddressYears`, coApplicant.lengthAtAddressYears);
+              if (coApplicant.lengthAtAddressMonths !== undefined) form.setValue(`coApplicants.${index}.lengthAtAddressMonths`, coApplicant.lengthAtAddressMonths);
+              if (coApplicant.landlordName) form.setValue(`coApplicants.${index}.landlordName`, coApplicant.landlordName);
+              if (coApplicant.landlordAddressLine1) form.setValue(`coApplicants.${index}.landlordAddressLine1`, coApplicant.landlordAddressLine1);
+              if (coApplicant.landlordAddressLine2) form.setValue(`coApplicants.${index}.landlordAddressLine2`, coApplicant.landlordAddressLine2);
+              if (coApplicant.landlordCity) form.setValue(`coApplicants.${index}.landlordCity`, coApplicant.landlordCity);
+              if (coApplicant.landlordState) form.setValue(`coApplicants.${index}.landlordState`, coApplicant.landlordState);
+              if (coApplicant.landlordZipCode) form.setValue(`coApplicants.${index}.landlordZipCode`, coApplicant.landlordZipCode);
+              if (coApplicant.landlordPhone) form.setValue(`coApplicants.${index}.landlordPhone`, coApplicant.landlordPhone);
+              if (coApplicant.landlordEmail) form.setValue(`coApplicants.${index}.landlordEmail`, coApplicant.landlordEmail);
+              if (coApplicant.currentRent !== undefined) form.setValue(`coApplicants.${index}.currentRent`, coApplicant.currentRent);
+              if (coApplicant.reasonForMoving) form.setValue(`coApplicants.${index}.reasonForMoving`, coApplicant.reasonForMoving);
+              if (coApplicant.employmentType) form.setValue(`coApplicants.${index}.employmentType`, coApplicant.employmentType);
+              if (coApplicant.employer) form.setValue(`coApplicants.${index}.employer`, coApplicant.employer);
+              if (coApplicant.position) form.setValue(`coApplicants.${index}.position`, coApplicant.position);
+              if (coApplicant.employmentStart) form.setValue(`coApplicants.${index}.employmentStart`, new Date(coApplicant.employmentStart));
+              if (coApplicant.income) form.setValue(`coApplicants.${index}.income`, coApplicant.income);
+              if (coApplicant.incomeFrequency) form.setValue(`coApplicants.${index}.incomeFrequency`, coApplicant.incomeFrequency);
+              if (coApplicant.businessName) form.setValue(`coApplicants.${index}.businessName`, coApplicant.businessName);
+              if (coApplicant.businessType) form.setValue(`coApplicants.${index}.businessType`, coApplicant.businessType);
+              if (coApplicant.yearsInBusiness) form.setValue(`coApplicants.${index}.yearsInBusiness`, coApplicant.yearsInBusiness);
+              if (coApplicant.otherIncome) form.setValue(`coApplicants.${index}.otherIncome`, coApplicant.otherIncome);
+              if (coApplicant.otherIncomeFrequency) form.setValue(`coApplicants.${index}.otherIncomeFrequency`, coApplicant.otherIncomeFrequency);
+              if (coApplicant.otherIncomeSource) form.setValue(`coApplicants.${index}.otherIncomeSource`, coApplicant.otherIncomeSource);
+              if (coApplicant.bankRecords && Array.isArray(coApplicant.bankRecords)) {
+                form.setValue(`coApplicants.${index}.bankRecords`, coApplicant.bankRecords);
+              }
+            });
+          }
+          
+          // Restore guarantor information (only fields that exist in schema)
+          if (parsedFormData.guarantor) {
+            const guarantor = parsedFormData.guarantor;
+            if (guarantor.email !== undefined) form.setValue('guarantorEmail', guarantor.email || '');
+            if (guarantor.phone !== undefined) form.setValue('guarantorPhone', guarantor.phone || '');
+            if (guarantor.zip !== undefined) form.setValue('guarantorZip', guarantor.zip || '');
+            
+            // Restore guarantor landlord information (only fields that exist in schema)
+            if (guarantor.landlordZipCode !== undefined) {
+              form.setValue('guarantorLandlordZipCode', guarantor.landlordZipCode || '');
+              // Set guarantorLandlordZipCode
+            }
+            if (guarantor.landlordPhone !== undefined) {
+              form.setValue('guarantorLandlordPhone', guarantor.landlordPhone || '');
+              // Set guarantorLandlordPhone
+            }
+            if (guarantor.landlordEmail !== undefined) {
+              form.setValue('guarantorLandlordEmail', guarantor.landlordEmail || '');
+              // Set guarantorLandlordEmail
+            }
+            
+            // Auto-check guarantor checkbox if there's guarantor data but no explicit flag
+            if (parsedFormData.hasGuarantor === undefined && hasGuarantorData(guarantor)) {
+              // Auto-detected guarantor data, checking checkbox
+              setHasGuarantor(true);
+              form.setValue('hasGuarantor', true);
+              // Also update formData state
+              setFormData((prev: any) => ({
+                ...prev,
+                hasGuarantor: true
+              }));
+            }
+          }
+          
+          // Also check for guarantors array (new format)
+          if (parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0) {
+            // Auto-check guarantor checkbox if there's guarantor data but no explicit flag
+            if (parsedFormData.hasGuarantor === undefined) {
+              // Auto-detected guarantor data, checking checkbox
+              setHasGuarantor(true);
+              form.setValue('hasGuarantor', true);
+              // Also update formData state
+              setFormData((prev: any) => ({
+                ...prev,
+                hasGuarantor: true
+              }));
+            }
+            
+            // Set guarantorCount based on the array length
+            if (parsedFormData.guarantorCount === undefined) {
+              const count = parsedFormData.guarantors.length;
+              setFormData((prev: any) => ({
+                ...prev,
+                guarantorCount: count
+              }));
+              form.setValue('guarantorCount', count);
+            }
+            
+            // Set form values for each guarantor
+            parsedFormData.guarantors.forEach((guarantor: any, index: number) => {
+              if (guarantor.name) form.setValue(`guarantors.${index}.name`, guarantor.name);
+              if (guarantor.relationship) form.setValue(`guarantors.${index}.relationship`, guarantor.relationship);
+              if (guarantor.dob) form.setValue(`guarantors.${index}.dob`, new Date(guarantor.dob));
+              if (guarantor.ssn) form.setValue(`guarantors.${index}.ssn`, guarantor.ssn);
+              if (guarantor.phone) form.setValue(`guarantors.${index}.phone`, guarantor.phone);
+              if (guarantor.email) form.setValue(`guarantors.${index}.email`, guarantor.email);
+              if (guarantor.license) form.setValue(`guarantors.${index}.license`, guarantor.license);
+              if (guarantor.licenseState) form.setValue(`guarantors.${index}.licenseState`, guarantor.licenseState);
+              if (guarantor.address) form.setValue(`guarantors.${index}.address`, guarantor.address);
+              if (guarantor.city) form.setValue(`guarantors.${index}.city`, guarantor.city);
+              if (guarantor.state) form.setValue(`guarantors.${index}.state`, guarantor.state);
+              if (guarantor.zip) form.setValue(`guarantors.${index}.zip`, guarantor.zip);
+              if (guarantor.lengthAtAddressYears !== undefined) form.setValue(`guarantors.${index}.lengthAtAddressYears`, guarantor.lengthAtAddressYears);
+              if (guarantor.lengthAtAddressMonths !== undefined) form.setValue(`guarantors.${index}.lengthAtAddressMonths`, guarantor.lengthAtAddressMonths);
+              if (guarantor.landlordName) form.setValue(`guarantors.${index}.landlordName`, guarantor.landlordName);
+              if (guarantor.landlordAddressLine1) form.setValue(`guarantors.${index}.landlordAddressLine1`, guarantor.landlordAddressLine1);
+              if (guarantor.landlordAddressLine2) form.setValue(`guarantors.${index}.landlordAddressLine2`, guarantor.landlordAddressLine2);
+              if (guarantor.landlordCity) form.setValue(`guarantors.${index}.landlordCity`, guarantor.landlordCity);
+              if (guarantor.landlordState) form.setValue(`guarantors.${index}.landlordState`, guarantor.landlordState);
+              if (guarantor.landlordZipCode) form.setValue(`guarantors.${index}.landlordZipCode`, guarantor.landlordZipCode);
+              if (guarantor.landlordPhone) form.setValue(`guarantors.${index}.landlordPhone`, guarantor.landlordPhone);
+              if (guarantor.landlordEmail) form.setValue(`guarantors.${index}.landlordEmail`, guarantor.landlordEmail);
+              if (guarantor.currentRent !== undefined) form.setValue(`guarantors.${index}.currentRent`, guarantor.currentRent);
+              if (guarantor.reasonForMoving) form.setValue(`guarantors.${index}.reasonForMoving`, guarantor.reasonForMoving);
+              if (guarantor.employmentType) form.setValue(`guarantors.${index}.employmentType`, guarantor.employmentType);
+              if (guarantor.employer) form.setValue(`guarantors.${index}.employer`, guarantor.employer);
+              if (guarantor.position) form.setValue(`guarantors.${index}.position`, guarantor.position);
+              if (guarantor.employmentStart) form.setValue(`guarantors.${index}.employmentStart`, new Date(guarantor.employmentStart));
+              if (guarantor.income) form.setValue(`guarantors.${index}.income`, guarantor.income);
+              if (guarantor.incomeFrequency) form.setValue(`guarantors.${index}.incomeFrequency`, guarantor.incomeFrequency);
+              if (guarantor.businessName) form.setValue(`guarantors.${index}.businessName`, guarantor.businessName);
+              if (guarantor.businessType) form.setValue(`guarantors.${index}.businessType`, guarantor.businessType);
+              if (guarantor.yearsInBusiness) form.setValue(`guarantors.${index}.yearsInBusiness`, guarantor.yearsInBusiness);
+              if (guarantor.otherIncome) form.setValue(`guarantors.${index}.otherIncome`, guarantor.otherIncome);
+              if (guarantor.otherIncomeFrequency) form.setValue(`guarantors.${index}.otherIncomeFrequency`, guarantor.otherIncomeFrequency);
+              if (guarantor.otherIncomeSource) form.setValue(`guarantors.${index}.otherIncomeSource`, guarantor.otherIncomeSource);
+              if (guarantor.bankRecords && Array.isArray(guarantor.bankRecords)) {
+                form.setValue(`guarantors.${index}.bankRecords`, guarantor.bankRecords);
+              }
+            });
+          }
+          
+          // Restore co-applicant and guarantor flags
+          if (parsedFormData.hasCoApplicant !== undefined) {
+            // Restoring hasCoApplicant
+            setHasCoApplicant(parsedFormData.hasCoApplicant);
+            // Also set the form field value to keep them in sync
+            form.setValue('hasCoApplicant', parsedFormData.hasCoApplicant);
+          }
+          if (parsedFormData.hasGuarantor !== undefined) {
+            // Restoring hasGuarantor
+            setHasGuarantor(parsedFormData.hasGuarantor);
+            // Also set the form field value to keep them in sync
+            form.setValue('hasGuarantor', parsedFormData.hasGuarantor);
+          }
+          
+          // Force form to re-render with the restored values
+          setTimeout(() => {
+            form.reset(form.getValues());
+            // Form reset completed with values
+            
+            // Re-sync checkbox values after form reset to ensure they're properly maintained
+            if (parsedFormData.hasCoApplicant !== undefined) {
+              form.setValue('hasCoApplicant', parsedFormData.hasCoApplicant);
+              // Re-syncing hasCoApplicant after form reset
+              // Also ensure the state is in sync
+              setHasCoApplicant(parsedFormData.hasCoApplicant);
+            }
+            if (parsedFormData.hasGuarantor !== undefined) {
+              form.setValue('hasGuarantor', parsedFormData.hasGuarantor);
+              // Re-syncing hasGuarantor after form reset
+              // Also ensure the state is in sync
+              setHasGuarantor(parsedFormData.hasGuarantor);
+            }
+            
+            // Ensure apartment fields are properly synchronized after form reset
+            if (parsedFormData.application?.buildingAddress) {
+              form.setValue('buildingAddress', parsedFormData.application.buildingAddress);
+              // Re-syncing buildingAddress after form reset
+            }
+            if (parsedFormData.application?.apartmentNumber) {
+              form.setValue('apartmentNumber', parsedFormData.application.apartmentNumber);
+              // Re-syncing apartmentNumber after form reset
+            }
+            if (parsedFormData.application?.apartmentType) {
+              form.setValue('apartmentType', parsedFormData.application.apartmentType);
+              // Re-syncing apartmentType after form reset
+            }
+          
+            // Ensure city, state, and zip fields are properly synchronized after form reset
+            if (parsedFormData.applicant?.city !== undefined) {
+              form.setValue('applicantCity', parsedFormData.applicant.city || '');
+              // Re-syncing applicantCity after form reset
+            }
+            if (parsedFormData.applicant?.state !== undefined) {
+              form.setValue('applicantState', parsedFormData.applicant.state || '');
+              // Re-syncing applicantState after form reset
+            }
+            if (parsedFormData.applicant?.zip !== undefined) {
+              form.setValue('applicantZip', parsedFormData.applicant.zip || '');
+              // Re-syncing applicantZip after form reset
+            }
+            
+            // Ensure landlord fields are properly synchronized after form reset
+            if (parsedFormData.applicant?.landlordName !== undefined) {
+              form.setValue('applicantLandlordName', parsedFormData.applicant.landlordName || '');
+              // Re-syncing applicantLandlordName after form reset
+            }
+            if (parsedFormData.applicant?.landlordAddressLine1 !== undefined) {
+              form.setValue('applicantLandlordAddressLine1', parsedFormData.applicant.landlordAddressLine1 || '');
+              // Re-syncing applicantLandlordAddressLine1 after form reset
+            }
+            if (parsedFormData.applicant?.landlordAddressLine2 !== undefined) {
+              form.setValue('applicantLandlordAddressLine2', parsedFormData.applicant.landlordAddressLine2 || '');
+              console.log('🏠 Re-syncing applicantLandlordAddressLine2 after form reset:', parsedFormData.applicant.landlordAddressLine2 || '');
+            }
+            if (parsedFormData.applicant?.landlordCity !== undefined) {
+              form.setValue('applicantLandlordCity', parsedFormData.applicant.landlordCity || '');
+              console.log('🏠 Re-syncing applicantLandlordCity after form reset:', parsedFormData.applicant.landlordCity || '');
+            }
+            if (parsedFormData.applicant?.landlordAddressLine2 !== undefined) {
+              form.setValue('applicantLandlordAddressLine2', parsedFormData.applicant.landlordAddressLine2 || '');
+              console.log('🏠 Re-syncing applicantLandlordAddressLine2 after form reset:', parsedFormData.applicant.landlordAddressLine2 || '');
+            }
+    if (parsedFormData.applicant?.landlordState !== undefined) {
+      form.setValue('applicantLandlordState', parsedFormData.applicant.landlordState || '');
+      console.log('🏠 Re-syncing applicantLandlordState after form reset:', parsedFormData.applicant.landlordState || '');
+    }
+    if (parsedFormData.applicant?.landlordZipCode !== undefined) {
+      form.setValue('applicantLandlordZipCode', parsedFormData.applicant.landlordZipCode || '');
+      console.log('🏠 Re-syncing applicantLandlordZipCode after form reset:', parsedFormData.applicant.landlordZipCode || '');
+    }
+    if (parsedFormData.applicant?.landlordPhone !== undefined) {
+      form.setValue('applicantLandlordPhone', parsedFormData.applicant.landlordPhone || '');
+      console.log('🏠 Re-syncing applicantLandlordPhone after form reset:', parsedFormData.applicant.landlordPhone || '');
+    }
+    if (parsedFormData.applicant?.landlordEmail !== undefined) {
+      form.setValue('applicantLandlordEmail', parsedFormData.applicant.landlordEmail || '');
+      console.log('🏠 Re-syncing applicantLandlordEmail after form reset:', parsedFormData.applicant.landlordEmail || '');
+    }
+    
+    // Ensure other applicant fields are properly synchronized after form reset
+    if (parsedFormData.applicant?.currentRent !== undefined) {
+      form.setValue('applicantCurrentRent', parsedFormData.applicant.currentRent);
+      console.log('💰 Re-syncing applicantCurrentRent after form reset:', parsedFormData.applicant.currentRent);
+    }
+    if (parsedFormData.applicant?.reasonForMoving !== undefined) {
+      form.setValue('applicantReasonForMoving', parsedFormData.applicant.reasonForMoving || '');
+      console.log('🏠 Re-syncing applicantReasonForMoving after form reset:', parsedFormData.applicant.reasonForMoving || '');
+    }
+    if (parsedFormData.applicant?.lengthAtAddressYears !== undefined) {
+      form.setValue('applicantLengthAtAddressYears', parsedFormData.applicant.lengthAtAddressYears);
+      console.log('⏰ Re-syncing applicantLengthAtAddressYears after form reset:', parsedFormData.applicant.lengthAtAddressYears);
+    }
+    if (parsedFormData.applicant?.lengthAtAddressMonths !== undefined) {
+      form.setValue('applicantLengthAtAddressMonths', parsedFormData.applicant.lengthAtAddressMonths);
+      console.log('⏰ Re-syncing applicantLengthAtAddressMonths after form reset:', parsedFormData.applicant.lengthAtAddressMonths);
+    }
+    
+          // Log the final checkbox states after restoration
+      console.log('🎯 Final checkbox states after restoration:', {
+        hasCoApplicant: parsedFormData.hasCoApplicant,
+        hasGuarantor: parsedFormData.hasGuarantor,
+        coApplicantDataExists: parsedFormData.coApplicant ? hasCoApplicantData(parsedFormData.coApplicant) : false,
+        coApplicantsDataExists: parsedFormData.coApplicants && Array.isArray(parsedFormData.coApplicants) && parsedFormData.coApplicants.length > 0,
+        guarantorDataExists: parsedFormData.guarantor ? hasGuarantorData(parsedFormData.guarantor) : false,
+        guarantorsDataExists: parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0
+      });
+      
+      // Force a re-render by updating the formData state
+      setFormData((prev: any) => ({
+        ...prev,
+        application: {
+        ...prev.application,
+        apartmentNumber: parsedFormData.application?.apartmentNumber || '',
+        apartmentType: parsedFormData.application?.apartmentType || ''
       },
+      applicant: {
+        ...prev.applicant,
+        city: parsedFormData.applicant?.city || '',
+        state: parsedFormData.applicant?.state || '',
+        zip: parsedFormData.applicant?.zip || '',
+        landlordName: parsedFormData.applicant?.landlordName || '',
+        landlordAddressLine1: parsedFormData.applicant?.landlordAddressLine1 || '',
+        landlordAddressLine2: parsedFormData.applicant?.landlordAddressLine2 || '',
+        landlordCity: parsedFormData.applicant?.landlordCity || '',
+        landlordState: parsedFormData.applicant?.landlordState || '',
+        landlordZipCode: parsedFormData.applicant?.landlordZipCode || '',
+        landlordPhone: parsedFormData.applicant?.landlordPhone || '',
+        landlordEmail: parsedFormData.applicant?.landlordEmail || '',
+        currentRent: parsedFormData.applicant?.currentRent,
+        reasonForMoving: parsedFormData.applicant?.reasonForMoving || '',
+        lengthAtAddressYears: parsedFormData.applicant?.lengthAtAddressYears,
+        lengthAtAddressMonths: parsedFormData.applicant?.lengthAtAddressMonths
+      },
+      // Restore co-applicants array
+      coApplicants: parsedFormData.coApplicants || [],
+      // Restore guarantors array
+      guarantors: parsedFormData.guarantors || [],
+      // Restore occupants array
+      occupants: parsedFormData.occupants || []
     }));
+    }, 100);
+          
+          // If we have building data, ensure the apartments are loaded
+          if (parsedFormData.application?.buildingAddress) {
+            console.log('🏠 Restoring building and apartment selection...');
+            // Restore building selection without auto-selecting first unit
+            await restoreBuildingSelection(
+              parsedFormData.application.buildingAddress,
+              parsedFormData.application.apartmentNumber,
+              parsedFormData.application.apartmentType
+            );
+          }
+          
+          toast({
+            title: "Draft Loaded",
+            description: "Your previous draft has been restored. You can continue from where you left off.",
+          });
+        }
+      } else {
+        console.log('📭 No draft data found or draft already submitted');
+      }
+    } catch (error) {
+      console.error('❌ Error loading draft data:', error);
+      toast({
+        title: "Draft Load Error",
+        description: "Failed to load your previous draft. Starting with a fresh form.",
+        variant: "destructive",
+      });
+    }
+  }, [referenceId]);
+
+  // Set up welcome message and load draft data
+  useEffect(() => {
+    if (user) {
+      const userName = user.name || user.given_name || user.email?.split('@')[0] || 'User';
+      setWelcomeMessage(`Welcome back, ${userName}!`);
+      
+      // Check if we should continue an existing application
+      const urlParams = new URLSearchParams(window.location.search);
+      const shouldContinue = urlParams.get('continue') === 'true';
+      const stepParam = urlParams.get('step');
+      const roleParam = urlParams.get('role');
+      
+      // Set role and update filtered steps
+      if (roleParam) {
+        setUserRole(roleParam);
+        setFilteredSteps(getFilteredSteps(roleParam));
+        
+        // Parse specific index for coapplicant1, coapplicant2, guarantor1, guarantor2, etc.
+        if (roleParam.startsWith('coapplicant') && /coapplicant\d+/.test(roleParam)) {
+          const match = roleParam.match(/coapplicant(\d+)/);
+          if (match) {
+            const index = parseInt(match[1], 10) - 1; // Convert to 0-based index
+            setSpecificIndex(index);
+            
+            // Ensure coApplicants array has enough elements for this specific index
+            setFormData((prev: any) => {
+              const currentCoApplicants = prev.coApplicants || [];
+              if (index >= currentCoApplicants.length) {
+                // Extend array to accommodate the specific index
+                const newCoApplicants = [...currentCoApplicants];
+                for (let i = currentCoApplicants.length; i <= index; i++) {
+                  newCoApplicants[i] = {
+                    name: '',
+                    email: '',
+                    phone: '',
+                    relationship: '',
+                    dob: undefined,
+                    age: '',
+                    ssn: '',
+                    license: '',
+                    licenseState: '',
+                    address: '',
+                    city: '',
+                    state: '',
+                    zip: '',
+                    lengthAtAddressYears: undefined,
+                    lengthAtAddressMonths: undefined,
+                    landlordName: '',
+                    landlordAddressLine1: '',
+                    landlordAddressLine2: '',
+                    landlordCity: '',
+                    landlordState: '',
+                    landlordZipCode: '',
+                    landlordPhone: '',
+                    landlordEmail: '',
+                    currentRent: undefined,
+                    reasonForMoving: '',
+                    employmentType: '',
+                    bankRecords: []
+                  };
+                }
+                return {
+                  ...prev,
+                  coApplicants: newCoApplicants,
+                  coApplicantCount: Math.max(prev.coApplicantCount || 0, index + 1),
+                  hasCoApplicant: true
+                };
+              }
+              return prev;
+            });
+          }
+        } else if (roleParam.startsWith('guarantor') && /guarantor\d+/.test(roleParam)) {
+          const match = roleParam.match(/guarantor(\d+)/);
+          if (match) {
+            const index = parseInt(match[1], 10) - 1; // Convert to 0-based index
+            setSpecificIndex(index);
+            
+            // Ensure guarantors array has enough elements for this specific index
+            setFormData((prev: any) => {
+              const currentGuarantors = prev.guarantors || [];
+              if (index >= currentGuarantors.length) {
+                // Extend array to accommodate the specific index
+                const newGuarantors = [...currentGuarantors];
+                for (let i = currentGuarantors.length; i <= index; i++) {
+                  newGuarantors[i] = {
+                    name: '',
+                    email: '',
+                    phone: '',
+                    relationship: '',
+                    dob: undefined,
+                    age: '',
+                    ssn: '',
+                    license: '',
+                    licenseState: '',
+                    address: '',
+                    city: '',
+                    state: '',
+                    zip: '',
+                    lengthAtAddressYears: undefined,
+                    lengthAtAddressMonths: undefined,
+                    employmentType: '',
+                    bankRecords: []
+                  };
+                }
+                return {
+                  ...prev,
+                  guarantors: newGuarantors,
+                  guarantorCount: Math.max(prev.guarantorCount || 0, index + 1),
+                  hasGuarantor: true
+                };
+              }
+              return prev;
+            });
+          }
+        } else {
+          setSpecificIndex(null);
+        }
+      } else if (user && user.role) {
+        // Fallback to Cognito custom:role when URL param is absent
+        const roleFromUser = user.role;
+        setUserRole(roleFromUser);
+        setFilteredSteps(getFilteredSteps(roleFromUser));
+
+        if (roleFromUser.startsWith('coapplicant') && /coapplicant\d+/.test(roleFromUser)) {
+          const match = roleFromUser.match(/coapplicant(\d+)/);
+          if (match) {
+            const index = parseInt(match[1], 10) - 1; // Convert to 0-based index
+            setSpecificIndex(index);
+            // Ensure coApplicants array has enough elements for this specific index
+            setFormData((prev: any) => {
+              const currentCoApplicants = prev.coApplicants || [];
+              if (index >= currentCoApplicants.length) {
+                // Extend array to accommodate the specific index
+                const newCoApplicants = [...currentCoApplicants];
+                for (let i = currentCoApplicants.length; i <= index; i++) {
+                  newCoApplicants[i] = {
+                    name: '',
+                    email: '',
+                    phone: '',
+                    relationship: '',
+                    dob: undefined,
+                    age: '',
+                    ssn: '',
+                    license: '',
+                    licenseState: '',
+                    address: '',
+                    city: '',
+                    state: '',
+                    zip: '',
+                    lengthAtAddressYears: undefined,
+                    lengthAtAddressMonths: undefined,
+                    landlordName: '',
+                    landlordAddressLine1: '',
+                    landlordAddressLine2: '',
+                    landlordCity: '',
+                    landlordState: '',
+                    landlordZipCode: '',
+                    landlordPhone: '',
+                    landlordEmail: '',
+                    currentRent: undefined,
+                    reasonForMoving: '',
+                    employmentType: '',
+                    bankRecords: []
+                  };
+                }
+                return {
+                  ...prev,
+                  coApplicants: newCoApplicants,
+                  coApplicantCount: Math.max(prev.coApplicantCount || 0, index + 1),
+                  hasCoApplicant: true
+                };
+              }
+              return prev;
+            });
+          }
+        } else if (roleFromUser.startsWith('guarantor') && /guarantor\d+/.test(roleFromUser)) {
+          const match = roleFromUser.match(/guarantor(\d+)/);
+          if (match) {
+            const index = parseInt(match[1], 10) - 1; // Convert to 0-based index
+            setSpecificIndex(index);
+            // Ensure guarantors array has enough elements for this specific index
+            setFormData((prev: any) => {
+              const currentGuarantors = prev.guarantors || [];
+              if (index >= currentGuarantors.length) {
+                // Extend array to accommodate the specific index
+                const newGuarantors = [...currentGuarantors];
+                for (let i = currentGuarantors.length; i <= index; i++) {
+                  newGuarantors[i] = {
+                    name: '',
+                    email: '',
+                    phone: '',
+                    relationship: '',
+                    dob: undefined,
+                    age: '',
+                    ssn: '',
+                    license: '',
+                    licenseState: '',
+                    address: '',
+                    city: '',
+                    state: '',
+                    zip: '',
+                    lengthAtAddressYears: undefined,
+                    lengthAtAddressMonths: undefined,
+                    employmentType: '',
+                    bankRecords: []
+                  };
+                }
+                return {
+                  ...prev,
+                  guarantors: newGuarantors,
+                  guarantorCount: Math.max(prev.guarantorCount || 0, index + 1),
+                  hasGuarantor: true
+                };
+              }
+              return prev;
+            });
+          }
+        } else {
+          setSpecificIndex(null);
+        }
+      }
+      
+      if (shouldContinue) {
+        console.log('🔄 Continue parameter detected, loading existing draft...');
+        // Load draft data from DynamoDB if available
+        if (user.applicantId) {
+          loadDraftData(user.applicantId);
+        }
+        
+        // If a specific step is provided, navigate to it after draft is loaded
+        if (stepParam) {
+          const targetStep = parseInt(stepParam, 10);
+          if (!isNaN(targetStep) && targetStep >= 0 && targetStep < filteredSteps.length) {
+            console.log('🎯 Step parameter detected, will navigate to step:', targetStep);
+            // Set the target step - it will be applied after draft data is loaded
+            setCurrentStep(targetStep);
+          }
+        }
+      } else {
+        console.log('🆕 No continue parameter, starting fresh...');
+        // Clear any existing draft data and start fresh
+        setFormData({
+          // Application Info
+          buildingAddress: '',
+          apartmentNumber: '',
+          apartmentType: '',
+          monthlyRent: undefined,
+          moveInDate: undefined,
+          howDidYouHear: '',
+          howDidYouHearOther: '',
+
+          // Primary Applicant
+          applicantName: '',
+          applicantDob: undefined,
+          applicantSsn: '',
+          applicantPhone: '',
+          applicantEmail: '',
+          applicantLicense: '',
+          applicantLicenseState: '',
+          applicantAddress: '',
+          applicantCity: '',
+          applicantState: '',
+          applicantZip: '',
+          applicantLengthAtAddressYears: undefined,
+          applicantLengthAtAddressMonths: undefined,
+          applicantLandlordName: '',
+          applicantLandlordAddressLine1: '',
+          applicantLandlordAddressLine2: '',
+          applicantLandlordCity: '',
+          applicantLandlordState: '',
+          applicantLandlordZipCode: '',
+          applicantLandlordPhone: '',
+          applicantLandlordEmail: '',
+          applicantCurrentRent: undefined,
+          applicantReasonForMoving: '',
+
+          // Co-Applicants (Array of up to 4)
+          coApplicants: [
+            {
+              name: '',
+              relationship: '',
+              dob: undefined,
+              ssn: '',
+              phone: '',
+              email: '',
+              license: '',
+              licenseState: '',
+              address: '',
+              city: '',
+              state: '',
+              zip: '',
+              lengthAtAddressYears: undefined,
+              lengthAtAddressMonths: undefined,
+              landlordName: '',
+              landlordAddressLine1: '',
+              landlordAddressLine2: '',
+              landlordCity: '',
+              landlordState: '',
+              landlordZipCode: '',
+              landlordPhone: '',
+              landlordEmail: '',
+              currentRent: undefined,
+              reasonForMoving: '',
+              employmentType: '',
+              employer: '',
+              position: '',
+              employmentStart: undefined,
+              income: '',
+              incomeFrequency: 'yearly',
+              businessName: '',
+              businessType: '',
+              yearsInBusiness: '',
+              otherIncome: '',
+              otherIncomeFrequency: 'monthly',
+              otherIncomeSource: '',
+              bankRecords: []
+            }
+          ],
+
+          // Guarantors (Array of up to 4)
+          guarantors: [
+            {
+              name: '',
+              relationship: '',
+              dob: undefined,
+              ssn: '',
+              phone: '',
+              email: '',
+              license: '',
+              licenseState: '',
+              address: '',
+              city: '',
+              state: '',
+              zip: '',
+              lengthAtAddressYears: undefined,
+              lengthAtAddressMonths: undefined,
+              landlordName: '',
+              landlordAddressLine1: '',
+              landlordAddressLine2: '',
+              landlordCity: '',
+              landlordState: '',
+              landlordZipCode: '',
+              landlordPhone: '',
+              landlordEmail: '',
+              currentRent: undefined,
+              reasonForMoving: '',
+              employmentType: '',
+              employer: '',
+              position: '',
+              employmentStart: undefined,
+              income: '',
+              incomeFrequency: 'yearly',
+              businessName: '',
+              businessType: '',
+              yearsInBusiness: '',
+              otherIncome: '',
+              otherIncomeFrequency: 'monthly',
+              otherIncomeSource: '',
+              bankRecords: []
+            }
+          ],
+
+          // Conditional fields
+          hasCoApplicant: false,
+          hasGuarantor: false,
+          coApplicantCount: 1,
+          guarantorCount: 1,
+
+          // Legal Questions
+          landlordTenantLegalAction: '',
+          brokenLease: '',
+
+          // Occupants
+          occupants: []
+        });
+        setCurrentStep(0);
+      }
+      
+      // Hide welcome message after 5 minutes
+      const timer = setTimeout(() => {
+        setShowWelcomeMessage(false);
+      }, 5 * 60 * 1000); // 5 minutes
+
+      return () => clearTimeout(timer);
+    }
+  }, [user, loadDraftData]);
+
+  // Read selected rental from sessionStorage and pre-populate form
+  useEffect(() => {
+    const storedRental = sessionStorage.getItem('selectedRental');
+    if (storedRental) {
+      try {
+        const rental = JSON.parse(storedRental);
+        setSelectedRental(rental);
+        console.log('Loaded selected rental:', rental);
+        
+        // Pre-populate form with rental data
+        if (rental) {
+          form.setValue('buildingAddress', rental.propertyName || '');
+          form.setValue('apartmentNumber', rental.name || '');
+          form.setValue('apartmentType', rental.unitType || '');
+          form.setValue('monthlyRent', rental.monthlyRent ? parseFloat(rental.monthlyRent) : undefined);
+        }
+      } catch (error) {
+        console.error('Error parsing selected rental:', error);
+      }
+    }
+  }, [form]);
+
+  // Draft saving is now only triggered on navigation (Next, Previous, GoTo buttons)
+  // This prevents unnecessary saves on every field change
+
+
+
+  const updateFormData = async (section: string, indexOrField: string, fieldOrValue: any, value?: any) => {
+    // Reduced logging to prevent spam
+    // console.log(`🔄 updateFormData: ${section}.${indexOrField} = ${fieldOrValue || value}`);
+    
+    setFormData((prev: any) => {
+      let newFormData;
+      
+      if (section === '') {
+        // Handle top-level fields
+        newFormData = {
+          ...prev,
+          [indexOrField]: fieldOrValue,
+        };
+      } else if (section === 'guarantors' || section === 'coApplicants') {
+        // Handle array sections (guarantors, coApplicants)
+        // Call format: updateFormData('guarantors', '0', 'city', 'New York')
+        const arrayIndex = parseInt(indexOrField, 10);
+        const subField = fieldOrValue;
+        const actualValue = value;
+        
+        if (!prev[section] || !Array.isArray(prev[section])) {
+          console.warn(`🚨 ${section} is not an array, initializing as empty array`);
+          newFormData = {
+            ...prev,
+            [section]: []
+          };
+        } else {
+          newFormData = {
+            ...prev,
+            [section]: prev[section].map((item: any, i: number) => 
+              i === arrayIndex ? { ...item, [subField]: actualValue } : item
+            )
+          };
+        }
+      } else {
+        // Handle other nested section fields (objects)
+        newFormData = {
+          ...prev,
+          [section]: {
+            ...(prev[section] || {}), // Initialize section if it doesn't exist
+            [indexOrField]: fieldOrValue,
+          },
+        };
+      }
+      
+      return newFormData;
+    });
+
+  // Remove automatic draft saving - only save when Next button is clicked
+  // This prevents unnecessary saves on every field change
+  };
+
+  // Auto-populate specific co-applicant/guarantor data when role parameter is set
+  useEffect(() => {
+    if (userRole.startsWith('coapplicant') && specificIndex !== null) {
+      const specificCoApplicant = (formData.coApplicants || [])[specificIndex];
+      if (specificCoApplicant) {
+        if (specificCoApplicant.name) {
+          form.setValue(`coApplicants.${specificIndex}.name`, specificCoApplicant.name);
+          updateFormData('coApplicants', specificIndex.toString(), 'name', specificCoApplicant.name);
+        }
+        if (specificCoApplicant.email) {
+          form.setValue(`coApplicants.${specificIndex}.email`, specificCoApplicant.email);
+          updateFormData('coApplicants', specificIndex.toString(), 'email', specificCoApplicant.email);
+        }
+        if (specificCoApplicant.phone) {
+          form.setValue(`coApplicants.${specificIndex}.phone`, specificCoApplicant.phone);
+          updateFormData('coApplicants', specificIndex.toString(), 'phone', specificCoApplicant.phone);
+        }
+        // Set hasCoApplicant to true for specific role
+        setHasCoApplicant(true);
+        form.setValue('hasCoApplicant', true);
+      }
+    }
+  }, [userRole, specificIndex, form, setHasCoApplicant]);
+
+  useEffect(() => {
+    if (userRole.startsWith('guarantor') && specificIndex !== null) {
+      const specificGuarantor = (formData.guarantors || [])[specificIndex];
+      if (specificGuarantor) {
+        if (specificGuarantor.name) {
+          form.setValue(`guarantors.${specificIndex}.name`, specificGuarantor.name);
+          updateFormData('guarantors', specificIndex.toString(), 'name', specificGuarantor.name);
+        }
+        if (specificGuarantor.email) {
+          form.setValue(`guarantors.${specificIndex}.email`, specificGuarantor.email);
+          updateFormData('guarantors', specificIndex.toString(), 'email', specificGuarantor.email);
+        }
+        if (specificGuarantor.phone) {
+          form.setValue(`guarantors.${specificIndex}.phone`, specificGuarantor.phone);
+          updateFormData('guarantors', specificIndex.toString(), 'phone', specificGuarantor.phone);
+        }
+        // Set hasGuarantor to true for specific role
+        setHasGuarantor(true);
+        form.setValue('hasGuarantor', true);
+      }
+    }
+  }, [userRole, specificIndex, form, setHasGuarantor]);
+
+  // Helper function to update array items (coApplicants, guarantors)
+  const updateArrayItem = (arrayName: string, index: number, field: string, value: any) => {
+    setFormData((prev: any) => {
+      const currentArray = prev[arrayName] || [];
+      
+      // Ensure array has enough elements to accommodate the index
+      let newArray = [...currentArray];
+      while (newArray.length <= index) {
+        // Create a new empty object with all required fields
+        const emptyItem = {
+          name: '',
+          email: '',
+          phone: '',
+          relationship: '',
+          dob: undefined,
+          age: '',
+          ssn: '',
+          license: '',
+          licenseState: '',
+          address: '',
+          city: '',
+          state: '',
+          zip: '',
+          lengthAtAddressYears: undefined,
+          lengthAtAddressMonths: undefined,
+          landlordName: '',
+          landlordAddressLine1: '',
+          landlordAddressLine2: '',
+          landlordCity: '',
+          landlordState: '',
+          landlordZipCode: '',
+          landlordPhone: '',
+          landlordEmail: '',
+          currentRent: undefined,
+          reasonForMoving: '',
+          employmentType: '',
+          bankRecords: []
+        };
+        newArray.push(emptyItem);
+      }
+      
+      // Update the specific field
+      newArray[index] = { ...newArray[index], [field]: value };
+      
+      const updated = {
+        ...prev,
+        [arrayName]: newArray
+      };
+      return updated;
+    });
   };
 
   // Handle building selection
-  const handleBuildingSelect = (buildingAddress: string) => {
+  const handleBuildingSelect = async (buildingAddress: string) => {
     setSelectedBuilding(buildingAddress);
+    
+    // Wait for units to be loaded if they're not available yet
+    if (units.length === 0) {
+      console.log('⏳ Units not loaded yet, waiting...');
+      return;
+    }
+    
     const unitsForBuilding = MondayApiService.getUnitsByBuilding(units, buildingAddress);
     setAvailableApartments(unitsForBuilding);
     
@@ -215,138 +2285,998 @@ export function ApplicationForm() {
     const firstUnit = unitsForBuilding[0] || null;
     setSelectedUnit(firstUnit);
     
-    // Update form data
-    updateFormData('application', 'buildingAddress', buildingAddress);
-    updateFormData('application', 'apartmentNumber', firstUnit?.name || '');
-    updateFormData('application', 'apartmentType', firstUnit?.unitType || '');
-    
-    // Update form fields
+    // Update form fields directly - the useEffect will handle formData synchronization
     form.setValue('buildingAddress', buildingAddress);
     form.setValue('apartmentNumber', firstUnit?.name || '');
     form.setValue('apartmentType', firstUnit?.unitType || '');
   };
 
+  // Restore building selection from draft data without auto-selecting first unit
+  const restoreBuildingSelection = async (buildingAddress: string, apartmentNumber?: string, apartmentType?: string) => {
+    setSelectedBuilding(buildingAddress);
+    
+    // Wait for units to be loaded if they're not available yet
+    if (units.length === 0) {
+      console.log('⏳ Units not loaded yet, waiting...');
+      return;
+    }
+    
+    const unitsForBuilding = MondayApiService.getUnitsByBuilding(units, buildingAddress);
+    setAvailableApartments(unitsForBuilding);
+    
+    // Find the specific apartment that was previously selected
+    let selectedUnit = null;
+    if (apartmentNumber) {
+      selectedUnit = unitsForBuilding.find(unit => unit.name === apartmentNumber);
+      console.log('🏠 Found previously selected apartment:', selectedUnit);
+    }
+    
+    // If no specific apartment found, don't auto-select anything
+    setSelectedUnit(selectedUnit || null);
+    
+    // Update form fields directly - the useEffect will handle formData synchronization
+    form.setValue('buildingAddress', buildingAddress);
+    if (apartmentNumber) {
+      form.setValue('apartmentNumber', apartmentNumber);
+      console.log('🏠 Restored apartmentNumber:', apartmentNumber);
+    }
+    if (apartmentType) {
+      form.setValue('apartmentType', apartmentType);
+      console.log('🏠 Restored apartmentType:', apartmentType);
+    }
+    // If we successfully found the unit, restore monthlyRent as well
+    if (selectedUnit && typeof selectedUnit.monthlyRent !== 'undefined') {
+      form.setValue('monthlyRent', selectedUnit.monthlyRent as any);
+      updateFormData('application', 'monthlyRent', selectedUnit.monthlyRent as any);
+      console.log('🏠 Restored monthlyRent:', selectedUnit.monthlyRent);
+    }
+    
+    // Verify the form values were actually set
+    setTimeout(() => {
+      console.log('🔍 Verifying form values after restoration:', {
+        buildingAddress: form.getValues('buildingAddress'),
+        apartmentNumber: form.getValues('apartmentNumber'),
+        apartmentType: form.getValues('apartmentType')
+      });
+    }, 100);
+  };
+
   // Handle apartment selection
-  const handleApartmentSelect = (apartmentName: string) => {
+  const handleApartmentSelect = async (apartmentName: string) => {
+    console.log('🏠 handleApartmentSelect called with:', apartmentName);
     const selectedApartment = availableApartments.find(unit => unit.name === apartmentName);
+    console.log('🏠 selectedApartment:', selectedApartment);
+    console.log('🏠 selectedApartment.monthlyRent:', selectedApartment?.monthlyRent);
+    console.log('🏠 selectedApartment.monthlyRent type:', typeof selectedApartment?.monthlyRent);
     setSelectedUnit(selectedApartment || null);
     
-    // Update form data
-    updateFormData('application', 'apartmentNumber', apartmentName);
-    updateFormData('application', 'apartmentType', selectedApartment?.unitType || '');
-    updateFormData('application', 'monthlyRent', selectedApartment?.monthlyRent || undefined);
+    // Update form fields directly - the useEffect will handle formData synchronization
+    console.log('🏠 Setting form values:');
+    console.log('  - apartmentNumber:', apartmentName);
+    console.log('  - apartmentType:', selectedApartment?.unitType || '');
+    console.log('  - monthlyRent:', selectedApartment?.monthlyRent || undefined);
     
-    // Update form fields
     form.setValue('apartmentNumber', apartmentName);
     form.setValue('apartmentType', selectedApartment?.unitType || '');
     form.setValue('monthlyRent', selectedApartment?.monthlyRent || undefined);
+    updateFormData('application', 'monthlyRent', selectedApartment?.monthlyRent || undefined);
+    
+    // Verify the form values were actually set
+    setTimeout(() => {
+      console.log('🔍 Verifying form values after apartment selection:', {
+        apartmentNumber: form.getValues('apartmentNumber'),
+        apartmentType: form.getValues('apartmentType'),
+        monthlyRent: form.getValues('monthlyRent')
+      });
+    }, 100);
   };
 
-  const handleDocumentChange = (person: string, documentType: string, files: File[]) => {
-    setDocuments((prev: any) => ({
-      ...prev,
-      [person]: {
-        ...prev[person],
-        [documentType]: files,
+  const handleDocumentChange = async (person: string, documentType: string, files: File[], index?: number) => {
+    console.log(`🚀 === DOCUMENT CHANGE DEBUG ===`);
+    console.log(`📁 Document change for ${person} ${documentType}:`, files.length, 'files', 'index:', index);
+    console.log(`📁 Files:`, files.map(f => ({ name: f.name, size: f.size, lastModified: f.lastModified })));
+    
+    // Handle array-based people (guarantors, coApplicants) with index
+    let actualPerson = person;
+    let actualDocumentType = documentType;
+    
+    if (index !== undefined && (person === 'guarantors' || person === 'coApplicants')) {
+      // For array-based people, create indexed keys
+      actualPerson = `${person}_${index}`;
+      actualDocumentType = documentType;
+      console.log(`🚀 Array-based person detected: ${person} -> ${actualPerson}`);
+    }
+    
+    console.log(`🚀 Final storage keys: actualPerson=${actualPerson}, actualDocumentType=${actualDocumentType}`);
+    
+    setDocuments((prev: any) => {
+      console.log(`🚀 Previous documents state:`, prev);
+      const newDocs = {
+        ...prev,
+        [actualPerson]: {
+          ...prev[actualPerson],
+          [actualDocumentType]: files,
+        },
+      };
+      console.log(`🚀 Documents state updated:`, newDocs);
+      return newDocs;
+    });
+    
+    console.log(`🚀 === END DOCUMENT CHANGE DEBUG ===`);
+  };
+
+  // Handler to attach webhook file URL to encrypted file
+  const handleWebhookFileUrl = (person: string, documentType: string, fileUrl: string, fileName: string) => {
+    console.log(`🔍 handleWebhookFileUrl called with:`, { person, documentType, fileUrl, fileName });
+    
+    setEncryptedDocuments((prev: any) => {
+      const updated = { ...prev };
+      
+      // Handle indexed person types (e.g., coApplicants_1, guarantors_2)
+      let searchPerson = person;
+      let searchDocumentType = documentType;
+      
+      // If person contains underscore, it's already indexed (e.g., coApplicants_1)
+      if (person.includes('_')) {
+        searchPerson = person;
+        console.log(`🔍 handleWebhookFileUrl: Person is already indexed: ${searchPerson}`);
+      } else {
+        // Map plural person types to singular for backward compatibility
+        if (person === 'coApplicants') {
+          searchPerson = 'coApplicant';
+          console.log(`🔍 handleWebhookFileUrl: Mapped coApplicants to coApplicant: ${searchPerson}`);
+        } else if (person === 'guarantors') {
+          searchPerson = 'guarantor';
+          console.log(`🔍 handleWebhookFileUrl: Mapped guarantors to guarantor: ${searchPerson}`);
+        }
+      }
+      
+      console.log(`🔍 handleWebhookFileUrl: Searching for ${searchPerson}.${searchDocumentType}`);
+      console.log(`🔍 Available keys in encryptedDocuments:`, Object.keys(updated));
+      
+      // Safety check: ensure person and documentType exist
+      if (!updated[searchPerson]) {
+        console.log(`ℹ️ handleWebhookFileUrl: ${searchPerson} not found in encryptedDocuments, skipping file URL update`);
+        console.log(`ℹ️ Available persons:`, Object.keys(updated));
+        return prev;
+      }
+      
+      if (!updated[searchPerson][searchDocumentType]) {
+        console.log(`ℹ️ handleWebhookFileUrl: ${searchPerson}.${searchDocumentType} not found in encryptedDocuments, skipping file URL update`);
+        console.log(`ℹ️ Available document types for ${searchPerson}:`, Object.keys(updated[searchPerson] || {}));
+        return prev;
+      }
+      
+      // Safety check: ensure documentType is an array before calling .map()
+      if (!Array.isArray(updated[searchPerson][searchDocumentType])) {
+        console.warn(`⚠️ handleWebhookFileUrl: ${searchPerson}.${searchDocumentType} is not an array:`, updated[searchPerson][searchDocumentType]);
+        return prev;
+      }
+      
+      updated[searchPerson][searchDocumentType] = updated[searchPerson][searchDocumentType].map((file: any) =>
+        file.filename === fileName ? { ...file, fileUrl } : file
+      );
+      
+      console.log(`✅ handleWebhookFileUrl: Successfully updated ${searchPerson}.${searchDocumentType} with file URL for ${fileName}`);
+      return updated;
+    });
+  };
+
+  // Enhanced webhook response handler
+  const handleWebhookResponse = (person: 'applicant' | 'coApplicant' | 'coApplicants' | 'guarantor' | 'guarantors' | 'occupants', documentTypeOrIndex: string, response: any, index?: number) => {
+    console.log(`📥 === WEBHOOK RESPONSE RECEIVED ===`);
+    console.log(`👤 Person: ${person}`);
+    console.log(`📄 Document Type or Index: ${documentTypeOrIndex}`);
+    console.log(`📨 Raw Response:`, response);
+    console.log(`🔢 Index: ${index}`);
+    
+    // Store webhook response with proper key generation
+    let responseKey: string;
+    
+    if (person === 'coApplicants') {
+      // Handle coApplicants with index
+      if (index !== undefined) {
+        responseKey = `coApplicants_${index}_${documentTypeOrIndex}`;
+        console.log(`🔑 Co-Applicant with index ${index}: responseKey = ${responseKey}`);
+      } else {
+        // Fallback to default index 0
+        responseKey = `coApplicants_0_${documentTypeOrIndex}`;
+        console.log(`🔑 Co-Applicant fallback to index 0: responseKey = ${responseKey}`);
+      }
+    } else if (person === 'guarantors') {
+      // Handle guarantors with index
+      if (index !== undefined) {
+        responseKey = `guarantors_${index}_${documentTypeOrIndex}`;
+        console.log(`🔑 Guarantor with index ${index}: responseKey = ${responseKey}`);
+      } else {
+        // Fallback to default index 0
+        responseKey = `guarantors_0_${documentTypeOrIndex}`;
+        console.log(`🔑 Guarantor fallback to index 0: responseKey = ${responseKey}`);
+      }
+    } else if (person === 'occupants') {
+      responseKey = `occupants_${documentTypeOrIndex}`;
+      console.log(`🔑 Occupant: responseKey = ${responseKey}`);
+    } else {
+      // Handle applicant, coApplicant, guarantor (singular)
+      responseKey = `${person}_${documentTypeOrIndex}`;
+      console.log(`🔑 Singular person: responseKey = ${responseKey}`);
+    }
+    
+    console.log(`🔑 Setting webhook response for key: ${responseKey}`);
+    console.log(`🔑 Previous webhook responses:`, webhookResponses);
+    
+    setWebhookResponses(prev => {
+      const newResponses = {
+        ...prev,
+        [responseKey]: response
+      };
+      console.log(`💾 Updated webhook responses:`, newResponses);
+      return newResponses;
+    });
+    
+    // Log the state after setting
+    setTimeout(() => {
+      console.log(`⏰ Webhook responses after setState:`, webhookResponses);
+    }, 0);
+
+    // Extract file URL from webhook response
+    let fileUrl = '';
+    let responseType = 'unknown';
+    
+    if (typeof response === 'string') {
+      // Check if the response is actually a valid URL or just a document type identifier
+      if (response.startsWith('http://') || response.startsWith('https://') || response.startsWith('s3://')) {
+        fileUrl = response;
+        responseType = 'url_string';
+      } else {
+        // This is likely a document type identifier, not a file URL
+        console.log(`ℹ️ Response appears to be a document type identifier: ${response}`);
+        responseType = 'document_type';
+        // Don't treat this as a file URL
+      }
+    } else if (response && response.body) {
+      fileUrl = response.body;
+      responseType = 'body';
+    } else if (response && response.url) {
+      fileUrl = response.url;
+      responseType = 'url';
+    }
+
+    console.log(`🔍 Response Analysis:`);
+    console.log(`  - Response Type: ${responseType}`);
+    console.log(`  - File URL: ${fileUrl}`);
+    console.log(`  - Has File URL: ${!!fileUrl}`);
+
+    if (fileUrl && responseType !== 'document_type') {
+      console.log(`✅ File URL successfully extracted: ${fileUrl}`);
+      
+      // Also update the webhook file URL for encrypted documents
+      // Construct the full indexed person key for array-based people
+      let fullPersonKey: string = person;
+      let documentTypeOnly: string = documentTypeOrIndex;
+      
+      if (person === 'coApplicants' && index !== undefined) {
+        // For coApplicants, use the index parameter directly
+        fullPersonKey = `coApplicants_${index}`;
+        documentTypeOnly = documentTypeOrIndex;
+        console.log(`🔑 Co-Applicant detected: constructing full person key: ${person} -> ${fullPersonKey}, document type: ${documentTypeOnly}`);
+      } else if (person === 'guarantors' && index !== undefined) {
+        // For guarantors, use the index parameter directly
+        fullPersonKey = `guarantors_${index}`;
+        documentTypeOnly = documentTypeOrIndex;
+        console.log(`🔑 Guarantor detected: constructing full person key: ${person} -> ${fullPersonKey}, document type: ${documentTypeOnly}`);
+      }
+      
+      // Use person-specific filename to maintain context
+      const personSpecificFilename = `${fullPersonKey}_${documentTypeOrIndex}_${Date.now()}`;
+      console.log(`🔑 Setting webhook file URL with full person key: ${fullPersonKey} and document type: ${documentTypeOnly}`);
+      handleWebhookFileUrl(fullPersonKey, documentTypeOnly, fileUrl, personSpecificFilename);
+      
+      console.log(`✅ Webhook response processing completed for ${fullPersonKey} ${documentTypeOrIndex}`);
+    } else {
+      console.log(`ℹ️ Webhook response stored but no file URL processing needed for ${person} ${documentTypeOrIndex}`);
+    }
+    
+    console.log(`=== END WEBHOOK RESPONSE ===`);
+  };
+
+  // Helper function to get comprehensive webhook summary
+  const getWebhookSummary = () => {
+    const summary = {
+      totalResponses: Object.keys(webhookResponses).length,
+      responsesByPerson: {
+        applicant: Object.keys(webhookResponses).filter(key => key.startsWith('applicant_')).length,
+        coApplicant: Object.keys(webhookResponses).filter(key => key.startsWith('coApplicant_')).length,
+        guarantor: Object.keys(webhookResponses).filter(key => key.startsWith('guarantor_')).length,
+        occupants: Object.keys(webhookResponses).filter(key => key.startsWith('occupants_')).length
       },
-    }));
+      webhookResponses: webhookResponses
+    };
+    
+    return summary;
   };
 
-  const handleEncryptedDocumentChange = (person: string, documentType: string, encryptedFiles: EncryptedFile[]) => {
-    console.log('handleEncryptedDocumentChange called:', { person, documentType, encryptedFilesCount: encryptedFiles.length });
+  // Save draft to DynamoDB function with updated flow type
+  const saveDraftToDynamoDB = useCallback(async () => {
+    const currentUserZoneinfo = getCurrentUserZoneinfo();
+    
+    if (!currentUserZoneinfo) {
+      console.log('⚠️ No zoneinfo/applicantId available, skipping draft save');
+      toast({
+        title: 'Cannot Save Draft',
+        description: 'No applicant ID available. Please ensure you are properly authenticated.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!currentUserZoneinfo.trim()) {
+      console.log('⚠️ Empty zoneinfo/applicantId, skipping draft save');
+      toast({
+        title: 'Cannot Save Draft',
+        description: 'Invalid applicant ID. Please ensure you are properly authenticated.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingDraft(true);
+    try {
+      // Get the latest form data from state
+      const currentFormData = formData;
+      
+      // Ensure coApplicants and guarantors arrays are properly included
+      const enhancedFormData = {
+        ...currentFormData,
+        // Ensure coApplicants array is included
+        coApplicants: currentFormData.coApplicants || [],
+        // Ensure guarantors array is included  
+        guarantors: currentFormData.guarantors || [],
+        // Ensure counts are set
+        coApplicantCount: currentFormData.coApplicantCount || (currentFormData.coApplicants?.length || 0),
+        guarantorCount: currentFormData.guarantorCount || (currentFormData.guarantors?.length || 0)
+      };
+      
+      // Debug: Log what's in the enhancedFormData before cleaning
+      console.log('🔍 === DEBUG: ENHANCED FORM DATA BEFORE CLEANING ===');
+      console.log('📊 enhancedFormData.coApplicants:', enhancedFormData.coApplicants);
+      console.log('📊 enhancedFormData.coApplicant:', enhancedFormData.coApplicant);
+      console.log('📊 enhancedFormData.hasCoApplicant:', enhancedFormData.hasCoApplicant);
+      console.log('📊 enhancedFormData.coApplicantCount:', enhancedFormData.coApplicantCount);
+      console.log('📊 enhancedFormData.guarantors:', enhancedFormData.guarantors);
+      console.log('📊 enhancedFormData.guarantor:', enhancedFormData.guarantor);
+      console.log('📊 enhancedFormData.hasGuarantor:', enhancedFormData.hasGuarantor);
+      console.log('=== END DEBUG ===');
+      
+      // Clean up the form data before saving to remove empty values and ensure consistency
+      const cleanedFormData = cleanFormDataForStorage(enhancedFormData);
+      
+      // Debug: Log what's in the cleanedFormData after cleaning
+      console.log('🔍 === DEBUG: CLEANED FORM DATA AFTER CLEANING ===');
+      console.log('📊 cleanedFormData.coApplicants:', cleanedFormData.coApplicants);
+      console.log('📊 cleanedFormData.coApplicant:', cleanedFormData.coApplicant);
+      console.log('📊 cleanedFormData.hasCoApplicant:', cleanedFormData.hasCoApplicant);
+      console.log('📊 cleanedFormData.coApplicantCount:', cleanedFormData.coApplicantCount);
+      console.log('📊 cleanedFormData.guarantors:', cleanedFormData.guarantors);
+      console.log('📊 cleanedFormData.guarantor:', cleanedFormData.guarantor);
+      console.log('📊 cleanedFormData.hasGuarantor:', cleanedFormData.hasGuarantor);
+      console.log('=== END DEBUG ===');
+      
+      // ALWAYS use the current user's zoneinfo for both fields
+      const enhancedFormDataSnapshot = {
+        ...cleanedFormData,
+        application_id: currentUserZoneinfo, // Use zoneinfo as application_id
+        applicantId: currentUserZoneinfo,    // Use zoneinfo as applicantId
+        webhookSummary: getWebhookSummary()
+      };
+
+      console.log('💾 Saving draft with zoneinfo-based IDs:', {
+        application_id: currentUserZoneinfo,
+        applicantId: currentUserZoneinfo,
+        userZoneinfo: user?.zoneinfo,
+        userApplicantId: user?.applicantId
+      });
+
+      // Create draft data with updated flow type support
+      const draftData: DraftData = {
+        zoneinfo: currentUserZoneinfo, // Source of truth - user's zoneinfo value
+        applicantId: currentUserZoneinfo, // Use zoneinfo for DynamoDB partition key
+        reference_id: referenceId,
+        form_data: enhancedFormDataSnapshot,
+        current_step: currentStep,
+        last_updated: new Date().toISOString(),
+        status: 'draft',
+        uploaded_files_metadata: uploadedFilesMetadata,
+        webhook_responses: webhookResponses,
+        signatures: signatures,
+        encrypted_documents: encryptedDocuments,
+        // Add flow type information for the new separate webhook system
+        flow_type: 'separate_webhooks', // Indicates this draft uses the new flow type
+        webhook_flow_version: '2.0' // Version of the webhook flow system
+      };
+
+      const saveResult = await dynamoDBService.saveDraft(draftData, draftData.applicantId);
+      if (saveResult) {
+        console.log('💾 Draft saved to DynamoDB successfully with updated flow type');
+        toast({
+          title: 'Draft Saved Successfully',
+          description: 'Your application draft has been saved with the updated flow type. You can continue working on it later.',
+          variant: 'default',
+        });
+      } else {
+        console.warn('⚠️ Failed to save draft to DynamoDB');
+        toast({
+          title: 'Failed to Save Draft',
+          description: 'There was an error saving your draft. This may be due to an expired session. Please try refreshing the page and signing in again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error saving draft to DynamoDB:', error);
+      toast({
+        title: 'Error Saving Draft',
+        description: 'An unexpected error occurred while saving your draft. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }, [getCurrentUserZoneinfo, formData, referenceId, currentStep, uploadedFilesMetadata, webhookResponses, signatures, encryptedDocuments, getWebhookSummary]);
+
+  // Function to log current webhook state (useful for debugging)
+  const logCurrentWebhookState = () => {
+    console.log('🔍 === CURRENT WEBHOOK STATE ===');
+    console.log('📊 Webhook Summary:', getWebhookSummary());
+    console.log('🌐 Webhook Responses:', webhookResponses);
+    console.log('📋 Uploaded Documents:', uploadedDocuments);
+    console.log('=== END CURRENT WEBHOOK STATE ===');
+  };
+
+  // Function to log current occupant form data structure
+  const logOccupantFormData = () => {
+    console.log('👥 === CURRENT OCCUPANT FORM DATA ===');
+    console.log('📊 Total Occupants:', formData.occupants?.length || 0);
+    
+    if (formData.occupants && formData.occupants.length > 0) {
+      formData.occupants.forEach((occupant: any, index: number) => {
+        console.log(`👤 Occupant ${index + 1}:`, {
+          name: occupant.name,
+          relationship: occupant.relationship,
+          dob: occupant.dob,
+          ssn: occupant.ssn,
+          license: occupant.license,
+          age: occupant.age,
+          documents: occupant.documents
+        });
+      });
+    }
+    
+    console.log('📁 Document Sections Created:');
+    const documentSections: string[] = [];
+    if (formData.occupants) {
+      formData.occupants.forEach((_: any, index: number) => {
+        documentSections.push(`occupants_ssn${index + 1}`);
+      });
+    }
+    console.log('  - SSN Document Sections:', documentSections);
+    console.log('=== END OCCUPANT FORM DATA ===');
+  };
+
+  // Clean form data for storage by removing empty values and ensuring consistency
+  const cleanFormDataForStorage = (data: any) => {
+    const cleaned: any = {};
+    
+    // Clean application section
+    if (data.application) {
+      cleaned.application = {};
+      Object.entries(data.application).forEach(([key, value]) => {
+        // Always preserve apartment fields even if they're empty strings
+        if (key === 'apartmentNumber' || key === 'apartmentType' || key === 'buildingAddress') {
+          cleaned.application[key] = value || '';
+        } else if (value !== '' && value !== null && value !== undefined) {
+          cleaned.application[key] = value;
+        }
+      });
+    }
+    
+    // Clean applicant section
+    if (data.applicant) {
+      cleaned.applicant = {};
+      Object.entries(data.applicant).forEach(([key, value]) => {
+        if (value !== '' && value !== null && value !== undefined) {
+          cleaned.applicant[key] = value;
+        }
+      });
+    }
+    
+    // Clean coApplicant section (legacy format)
+    if (data.coApplicant) {
+      cleaned.coApplicant = {};
+      Object.entries(data.coApplicant).forEach(([key, value]) => {
+        if (value !== '' && value !== null && value !== undefined) {
+          cleaned.coApplicant[key] = value;
+        }
+      });
+    }
+    
+    // Clean coApplicants array (new format)
+    if (data.coApplicants && Array.isArray(data.coApplicants)) {
+      cleaned.coApplicants = data.coApplicants.map((coApplicant: any) => {
+        const cleanCoApplicant: any = {};
+        if (coApplicant) {
+          Object.entries(coApplicant).forEach(([key, value]) => {
+            if (value !== '' && value !== null && value !== undefined) {
+              cleanCoApplicant[key] = value;
+            }
+          });
+        }
+        return cleanCoApplicant;
+      }).filter((coApplicant: any) => Object.keys(coApplicant).length > 0);
+    }
+    
+    // Clean guarantor section (legacy format)
+    if (data.guarantor) {
+      cleaned.guarantor = {};
+      Object.entries(data.guarantor).forEach(([key, value]) => {
+        if (value !== '' && value !== null && value !== undefined) {
+          cleaned.guarantor[key] = value;
+        }
+      });
+    }
+    
+    // Clean guarantors array (new format)
+    if (data.guarantors && Array.isArray(data.guarantors)) {
+      cleaned.guarantors = data.guarantors.map((guarantor: any) => {
+        const cleanGuarantor: any = {};
+        if (guarantor) {
+          Object.entries(guarantor).forEach(([key, value]) => {
+            if (value !== '' && value !== null && value !== undefined) {
+              cleanGuarantor[key] = value;
+            }
+          });
+        }
+        return cleanGuarantor;
+      }).filter((guarantor: any) => Object.keys(guarantor).length > 0);
+    }
+    
+    // Clean occupants array
+    if (data.occupants && Array.isArray(data.occupants)) {
+      cleaned.occupants = data.occupants.map((occupant: any) => {
+        const cleanOccupant: any = {};
+        if (occupant) {
+          Object.entries(occupant).forEach(([key, value]) => {
+            if (value !== '' && value !== null && value !== undefined) {
+              cleanOccupant[key] = value;
+            }
+          });
+        }
+        return cleanOccupant;
+      }).filter((occupant: any) => Object.keys(occupant).length > 0);
+    }
+    
+    // Copy other fields
+    Object.entries(data).forEach(([key, value]) => {
+      if (!['application', 'applicant', 'coApplicant', 'coApplicants', 'guarantor', 'guarantors', 'occupants'].includes(key)) {
+        cleaned[key] = value;
+      }
+    });
+    
+    return cleaned;
+  };
+
+  // Function to get occupant document status
+  const getOccupantDocumentStatus = (occupantIndex: number, documentType: string) => {
+    const sectionName = `occupants_${documentType}`;
+    
+    console.log(`🔍 Checking occupant document status for section: ${sectionName}`);
+    console.log(`🔍 Available webhook responses:`, Object.keys(formData.webhookResponses || {}));
+    
+    // Check webhook responses first
+    const webhookResponse = formData.webhookResponses?.[sectionName];
+    console.log(`🔍 Webhook response for ${sectionName}:`, webhookResponse);
+    
+    if (webhookResponse) {
+      let fileUrl = '';
+      if (typeof webhookResponse === 'string') {
+        fileUrl = webhookResponse;
+      } else if (webhookResponse && webhookResponse.body) {
+        fileUrl = webhookResponse.body;
+      } else if (webhookResponse && webhookResponse.url) {
+        fileUrl = webhookResponse.url;
+      }
+      console.log(`🔍 Extracted file URL:`, fileUrl);
+      if (fileUrl && fileUrl.trim()) {
+        return { status: "uploaded", count: 1 };
+      }
+    }
+    
+    // Check encrypted documents
+    const occupant = formData.occupants?.[occupantIndex];
+    if (occupant?.encryptedDocuments?.[documentType]?.length > 0) {
+      return { status: "pending", count: occupant.encryptedDocuments[documentType].length };
+    }
+    
+    // Check regular documents
+    if (occupant?.documents?.[documentType]?.length > 0) {
+      return { status: "pending", count: occupant.documents[documentType].length };
+    }
+    
+    return { status: "missing", count: 0 };
+  };
+
+  // Function to get occupant uploaded documents
+  const getOccupantUploadedDocuments = (occupantIndex: number, documentType: string) => {
+    const uploadedDocs: Array<{ filename: string; webhookbodyUrl: string }> = [];
+    const sectionName = `occupants_${documentType}`;
+    
+    console.log(`📁 Getting uploaded documents for section: ${sectionName}`);
+    
+    // Check webhook responses first
+    const webhookResponse = formData.webhookResponses?.[sectionName];
+    console.log(`📁 Webhook response for ${sectionName}:`, webhookResponse);
+    
+    if (webhookResponse) {
+      let fileUrl = '';
+      if (typeof webhookResponse === 'string') {
+        fileUrl = webhookResponse;
+      } else if (webhookResponse && webhookResponse.body) {
+        fileUrl = webhookResponse.body;
+      } else if (webhookResponse && webhookResponse.url) {
+        fileUrl = webhookResponse.url;
+      }
+      console.log(`📁 Extracted file URL:`, fileUrl);
+      if (fileUrl && fileUrl.trim()) {
+        uploadedDocs.push({ 
+          filename: `${documentType}_document`, 
+          webhookbodyUrl: fileUrl 
+        });
+        console.log(`📁 Added document to uploaded docs:`, uploadedDocs[uploadedDocs.length - 1]);
+      }
+    }
+    
+    console.log(`📁 Final uploaded docs array:`, uploadedDocs);
+    return uploadedDocs;
+  };
+
+  // Function to handle occupant document preview
+  const handlePreviewOccupantDocument = (filename: string, fileUrl: string, documentName: string) => {
+    console.log(`👁️ Previewing occupant document:`, { filename, fileUrl, documentName });
+    
+    // Open in new tab for preview
+    window.open(fileUrl, '_blank');
+  };
+
+  const handleEncryptedDocumentChange = async (person: string, documentType: string, encryptedFiles: EncryptedFile[], index?: number) => {
+    // Safety check: ensure encryptedFiles is an array
+    if (!Array.isArray(encryptedFiles)) {
+      console.error('❌ handleEncryptedDocumentChange: encryptedFiles is not an array:', {
+        person,
+        documentType,
+        encryptedFiles,
+        type: typeof encryptedFiles,
+        isArray: Array.isArray(encryptedFiles)
+      });
+      return; // Exit early to prevent crash
+    }
+    
+    console.log('🚀 === ENCRYPTED DOCUMENT CHANGE DEBUG ===');
+    console.log('handleEncryptedDocumentChange called:', { person, documentType, encryptedFilesCount: encryptedFiles.length, index });
+    console.log('🚀 Encrypted files details:', encryptedFiles.map(f => ({ 
+      filename: f.filename, 
+      size: f.encryptedData.length,
+      originalSize: f.originalSize,
+      uploadDate: f.uploadDate
+    })));
     
     // Special debugging for guarantor documents
-    if (person === 'guarantor') {
+    if (person === 'guarantor' || person === 'guarantors') {
       console.log('🚀 GUARANTOR ENCRYPTED DOCUMENT CHANGE:', {
         person,
         documentType,
+        index,
         encryptedFilesCount: encryptedFiles.length,
         encryptedFiles: encryptedFiles.map(f => ({ filename: f.filename, size: f.encryptedData.length }))
       });
     }
     
+    // Special debugging for co-applicant documents
+    if (person === 'coApplicant' || person === 'coApplicants') {
+      console.log('🚀 CO-APPLICANT ENCRYPTED DOCUMENT CHANGE:', {
+        person,
+        documentType,
+        index,
+        encryptedFilesCount: encryptedFiles.length,
+        encryptedFiles: encryptedFiles.map(f => ({ filename: f.filename, size: f.encryptedData.length }))
+      });
+    }
+    console.log('🚀 === END ENCRYPTED DOCUMENT CHANGE DEBUG ===');
+    
+    // Handle array-based people (guarantors, coApplicants) with index
+    let actualPerson = person;
+    let actualDocumentType = documentType;
+    
+    if (index !== undefined && (person === 'guarantors' || person === 'coApplicants')) {
+      // For array-based people, create indexed keys
+      actualPerson = `${person}_${index}`;
+      actualDocumentType = documentType;
+      console.log(`🚀 Encrypted: Array-based person detected: ${person} -> ${actualPerson}, index: ${index}`);
+    }
+    
     setEncryptedDocuments((prev: any) => ({
       ...prev,
-      [person]: {
-        ...prev[person],
-        [documentType]: encryptedFiles,
+      [actualPerson]: {
+        ...prev[actualPerson],
+        [actualDocumentType]: encryptedFiles,
       },
     }));
 
     // Track uploadedDocuments for webhook
-    const sectionKey = `${person}_${documentType}`;
-    const docs = encryptedFiles.map(file => ({
+    const sectionKey = `${actualPerson}_${actualDocumentType}`;
+    // Map docs and include file_url if present on the file
+    const docs = (encryptedFiles || []).map(file => ({
       reference_id: file.uploadDate + '-' + file.filename, // or use a better unique id if available
       file_name: file.filename,
-      section_name: sectionKey
+      section_name: sectionKey,
+      documents: actualDocumentType, // <-- Now included
+      file_url: file.fileUrl || '' // Use fileUrl if present, else blank
     }));
     setUploadedDocuments(prev => {
+      // Ensure prev is always an array
+      const safePrev = Array.isArray(prev) ? prev : [];
       // Remove any previous docs for this section
-      const filtered = prev.filter(doc => doc.section_name !== sectionKey);
+      const filtered = safePrev.filter(doc => doc.section_name !== sectionKey);
       return [...filtered, ...docs];
     });
 
-    // Track uploaded files metadata for webhook
-    const filesMetadata = encryptedFiles.map(file => ({
+    // Track uploaded files metadata for webhook - OPTIMIZED VERSION
+    const filesMetadata = (encryptedFiles || []).map(file => ({
       file_name: file.filename,
       file_size: file.originalSize,
       mime_type: file.mimeType,
       upload_date: file.uploadDate
     }));
 
-    setUploadedFilesMetadata(prev => ({
-      ...prev,
-      [sectionKey]: filesMetadata
-    }));
-  };
-
-  const handleSignatureChange = (person: string, signature: string) => {
-    setSignatures((prev: any) => ({
-      ...prev,
-      [person]: signature,
-    }));
-    setSignatureTimestamps((prev: any) => ({
-      ...prev,
-      [person]: new Date().toISOString(),
-    }));
-  };
-
-  const generatePDF = async () => {
-    try {
-    // Use the reset PDF generator for clean, professional alignment
-    const pdfGenerator = new ResetPDFGenerator();
-
-    // Get current form values to ensure we have the latest data
-    const currentFormData = form.getValues();
-    
-    // Combine form data from both sources to ensure all fields are included
-    const combinedApplicationData = {
-      ...formData.application,
-      buildingAddress: currentFormData.buildingAddress || formData.application?.buildingAddress,
-      apartmentNumber: currentFormData.apartmentNumber || formData.application?.apartmentNumber,
-      moveInDate: currentFormData.moveInDate || formData.application?.moveInDate,
-      monthlyRent: currentFormData.monthlyRent || formData.application?.monthlyRent,
-      apartmentType: currentFormData.apartmentType || formData.application?.apartmentType,
-      howDidYouHear: currentFormData.howDidYouHear || formData.application?.howDidYouHear,
-    };
-
-    // Debug logging to verify data
-    console.log('PDF Generation Debug:');
-    console.log('Current form data:', currentFormData);
-    console.log('FormData state:', formData.application);
-    console.log('Combined application data:', combinedApplicationData);
-    console.log('Applicant bank records:', formData.applicant?.bankRecords);
-    console.log('Co-applicant bank records:', formData.coApplicant?.bankRecords);
-    console.log('Guarantor bank records:', formData.guarantor?.bankRecords);
-
-    const pdfData = pdfGenerator.generatePDF({
-      application: combinedApplicationData,
-      applicant: formData.applicant,
-      coApplicant: hasCoApplicant ? formData.coApplicant : undefined,
-      guarantor: hasGuarantor ? formData.guarantor : undefined,
-      signatures,
-      occupants: formData.occupants || [],
+    setUploadedFilesMetadata(prev => {
+      const newMetadata = {
+        ...prev,
+        [sectionKey]: filesMetadata
+      };
+      
+      // Log metadata size for debugging
+      const metadataSize = JSON.stringify(newMetadata).length;
+      console.log(`📊 UploadedFilesMetadata size: ${metadataSize} characters for section ${sectionKey}`);
+      
+      // If metadata is getting too large, log a warning
+      if (metadataSize > 50000) { // 50KB warning threshold
+        console.warn(`⚠️ UploadedFilesMetadata is getting large: ${metadataSize} characters`);
+      }
+      
+      return newMetadata;
     });
+
+    // Note: Draft saving is now manual - only when Save Draft button is clicked
+    console.log('📁 File uploaded successfully for:', actualPerson, actualDocumentType, '- Draft will be saved when Save Draft button is clicked');
+  };
+
+  const handleSignatureChange = async (person: string, index?: string, signature?: string) => {
+    // Handle both old format (person, signature) and new format (person, index, signature)
+    let actualPerson = person;
+    let actualSignature = signature || index;
+    let actualIndex = signature ? index : undefined;
+
+    console.log('🔍 handleSignatureChange called with:', { person, index, signature });
+    console.log('🔍 Processed values:', { actualPerson, actualSignature, actualIndex });
+    console.log('🔍 Signature type:', typeof actualSignature);
+    console.log('🔍 Is base64 image:', typeof actualSignature === 'string' && actualSignature.startsWith('data:image/'));
+
+    if (actualIndex !== undefined) {
+      // New format: person is the type (e.g., 'coApplicants'), index is the position
+      setSignatures((prev: any) => {
+        const newSignatures = {
+          ...prev,
+          [actualPerson]: {
+            ...prev[actualPerson],
+            [actualIndex]: actualSignature,
+          },
+        };
+        console.log('🔍 Updated signatures (new format):', newSignatures);
+        return newSignatures;
+      });
+      setSignatureTimestamps((prev: any) => ({
+        ...prev,
+        [actualPerson]: {
+          ...prev[actualPerson],
+          [actualIndex]: new Date().toISOString(),
+        },
+      }));
+      console.log(`✍️ Signature updated for: ${actualPerson}[${actualIndex}] - Draft will be saved when Save Draft button is clicked`);
+    } else {
+      // Old format: person is the identifier (e.g., 'applicant')
+      setSignatures((prev: any) => {
+        const newSignatures = {
+          ...prev,
+          [actualPerson]: actualSignature,
+        };
+        console.log('🔍 Updated signatures (old format):', newSignatures);
+        return newSignatures;
+      });
+      setSignatureTimestamps((prev: any) => ({
+        ...prev,
+        [actualPerson]: new Date().toISOString(),
+      }));
+      console.log(`✍️ Signature updated for: ${actualPerson} - Draft will be saved when Save Draft button is clicked`);
+    }
+  };
+
+  // Enhanced document change handlers for each person type
+  const applicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('applicant', documentType, files);
+  const applicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('applicant', documentType, encryptedFiles);
+
+  const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicant', documentType, files);
+  const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicant', documentType, encryptedFiles);
+
+  const guarantorDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('guarantor', documentType, files);
+  const guarantorEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('guarantor', documentType, encryptedFiles);
+
+  const occupantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('occupants', documentType, files);
+  // Removed occupantEncryptedDocumentChange - no longer needed
+
+  // Enhanced webhook response handlers for each person type
+  const applicantWebhookResponse = (documentType: string, response: any) => {
+    handleWebhookResponse('applicant', documentType, response);
+  };
+
+  const coApplicantWebhookResponse = (documentType: string, response: any) => {
+    handleWebhookResponse('coApplicant', documentType, response);
+  };
+
+  const guarantorWebhookResponse = (documentType: string, response: any) => {
+    handleWebhookResponse('guarantor', documentType, response);
+  };
+
+  const occupantWebhookResponse = (documentType: string, response: any) => {
+    console.log(`🌐 Occupant webhook response for ${documentType}:`, response);
+    console.log(`🌐 Calling handleWebhookResponse with:`, { person: 'occupants', documentType, response });
+    handleWebhookResponse('occupants', documentType, response);
+  };
+
+  // Process signatures to extract meaningful information for PDF
+  const processSignaturesForPDF = (rawSignatures: any) => {
+    if (!rawSignatures) rawSignatures = {};
+    
+    const processedSignatures: any = {};
+    
+    // Process applicant signature - preserve actual signature data for image rendering
+    if (rawSignatures.applicant) {
+      processedSignatures.applicant = rawSignatures.applicant;
+    } else {
+      // If no applicant signature, add a placeholder
+      processedSignatures.applicant = null;
+    }
+    
+    // Process co-applicant signatures - preserve actual signature data
+    // Get the actual co-applicants from the form data to ensure we process all of them
+    const coApplicants = form.getValues().coApplicants || [];
+    if (coApplicants.length > 0) {
+      processedSignatures.coApplicants = {};
+      coApplicants.forEach((_: any, index: number) => {
+        const signature = rawSignatures.coApplicants?.[index];
+        if (signature) {
+          processedSignatures.coApplicants[index] = signature;
+        } else {
+          // If no signature for this co-applicant, add a placeholder
+          processedSignatures.coApplicants[index] = null;
+        }
+      });
+    }
+    
+    // Process guarantor signatures - preserve actual signature data
+    // Get the actual guarantors from the form data to ensure we process all of them
+    const guarantors = form.getValues().guarantors || [];
+    if (guarantors.length > 0) {
+      processedSignatures.guarantors = {};
+      guarantors.forEach((_: any, index: number) => {
+        const signature = rawSignatures.guarantors?.[index];
+        if (signature) {
+          processedSignatures.guarantors[index] = signature;
+        } else {
+          // If no signature for this guarantor, add a placeholder
+          processedSignatures.guarantors[index] = null;
+        }
+      });
+    }
+    
+    console.log('Processed signatures for PDF (preserving actual data):', processedSignatures);
+    console.log('Form co-applicants count:', form.getValues().coApplicants?.length || 0);
+    console.log('Form guarantors count:', form.getValues().guarantors?.length || 0);
+    return processedSignatures;
+  };
+
+    const generatePDF = async (submissionData?: any): Promise<string | null> => {
+    try {
+      // Use the enhanced PDF generator for clean, professional alignment
+      const pdfGenerator = new EnhancedPDFGenerator();
+
+      // Use submission data if provided, otherwise get current form values
+      const dataToUse = submissionData || form.getValues();
+      
+      // Combine application data with any additional data
+      const combinedApplicationData = {
+        ...dataToUse.application,
+        ...dataToUse,
+        submittedAt: new Date().toISOString(),
+      };
+
+      // Debug logging to verify data
+      console.log('PDF Generation Debug:');
+      console.log('Data being used for PDF:', dataToUse);
+      console.log('Combined application data:', combinedApplicationData);
+      console.log('Applicant data:', dataToUse.applicant);
+      console.log('Co-applicants data:', dataToUse.coApplicants);
+      console.log('Guarantors data:', dataToUse.guarantors);
+      console.log('Occupants data:', dataToUse.occupants);
+      console.log('Applicant bank records:', dataToUse.applicant?.bankRecords);
+      console.log('Co-applicants bank records:', dataToUse.coApplicants?.[0]?.bankRecords);
+      console.log('Guarantors bank records:', dataToUse.guarantors?.[0]?.bankRecords);
+
+      // Process signatures for PDF generation
+      const processedSignatures = processSignaturesForPDF(signatures);
+      
+      console.log('🔍 PDF Generation - Raw signatures:', signatures);
+      console.log('🔍 PDF Generation - Processed signatures:', processedSignatures);
+      console.log('🔍 PDF Generation - Signature types:', {
+        applicant: typeof processedSignatures.applicant,
+        coApplicants: processedSignatures.coApplicants ? Object.entries(processedSignatures.coApplicants).map(([k, v]) => ({ key: k, type: typeof v, isBase64: typeof v === 'string' && v.startsWith('data:image/') })) : [],
+        guarantors: processedSignatures.guarantors ? Object.entries(processedSignatures.guarantors).map(([k, v]) => ({ key: k, type: typeof v, isBase64: typeof v === 'string' && v.startsWith('data:image/') })) : []
+      });
+      
+      // Debug: Check if signatures are actually base64 images
+      if (processedSignatures.applicant && typeof processedSignatures.applicant === 'string') {
+        console.log('🔍 Applicant signature preview:', processedSignatures.applicant.substring(0, 100) + '...');
+        console.log('🔍 Applicant signature is base64:', processedSignatures.applicant.startsWith('data:image/'));
+      }
+      
+      if (processedSignatures.coApplicants) {
+        Object.entries(processedSignatures.coApplicants).forEach(([index, signature]) => {
+          const sig = signature as any;
+          if (typeof sig === 'string') {
+            console.log(`🔍 Co-applicant ${index} signature preview:`, sig.substring(0, 100) + '...');
+            console.log(`🔍 Co-applicant ${index} signature is base64:`, sig.startsWith('data:image/'));
+          }
+        });
+      }
+      
+      if (processedSignatures.guarantors) {
+        Object.entries(processedSignatures.guarantors).forEach(([index, signature]) => {
+          const sig = signature as any;
+          if (typeof sig === 'string') {
+            console.log(`🔍 Guarantor ${index} signature preview:`, sig.substring(0, 100) + '...');
+            console.log(`🔍 Guarantor ${index} signature is base64:`, sig.startsWith('data:image/'));
+          }
+        });
+      }
+      
+      console.log('🔍 About to call pdfGenerator.generatePDF with signatures:', processedSignatures);
+      
+      // Map current form data to the generator's expected structure
+      const firstCoApplicant = (dataToUse.coApplicants && dataToUse.coApplicants.length > 0) ? dataToUse.coApplicants[0] : undefined;
+      const firstGuarantor = (dataToUse.guarantors && dataToUse.guarantors.length > 0) ? dataToUse.guarantors[0] : undefined;
+
+      const generatorPayload: any = {
+        application: combinedApplicationData,
+        applicant: dataToUse.applicant,
+        coApplicant: firstCoApplicant,
+        guarantor: firstGuarantor,
+        occupants: dataToUse.occupants || [],
+        signatures: {
+          applicant: processedSignatures.applicant || undefined,
+          coApplicant: processedSignatures.coApplicants ? processedSignatures.coApplicants[0] : undefined,
+          guarantor: processedSignatures.guarantors ? processedSignatures.guarantors[0] : undefined,
+        },
+      };
+
+      // Generate a data URL string
+      const pdfData = pdfGenerator.generatePDF(generatorPayload);
 
       // Extract base64 from data URL
       const base64 = pdfData.split(',')[1];
@@ -358,456 +3288,2124 @@ export function ApplicationForm() {
       console.log('Sending PDF to webhook:', {
         filename,
         referenceId,
-        applicationId,
+        applicantId: user?.applicantId,
         base64Length: base64.length
       });
       
       const webhookResult = await WebhookService.sendPDFToWebhook(
         base64,
         referenceId,
-        applicationId,
+        user?.applicantId || 'unknown',
+        user?.applicantId || 'unknown',
         filename
       );
 
-      // Notify user of result
-      if (webhookResult.success) {
-        toast({
-          title: "PDF Generated & Sent",
-          description: "Your rental application PDF has been generated and sent to the webhook.",
-        });
-      } else {
-        toast({
-          title: "PDF Generated",
-          description: "Your rental application PDF has been generated, but webhook delivery failed.",
-          variant: "destructive",
-        });
-      }
-
-      // Trigger browser download
-    const link = document.createElement('a');
-    link.href = pdfData;
+      // Trigger browser download first
+      const link = document.createElement('a');
+      link.href = pdfData;
       link.download = filename;
-    link.click();
+      link.click();
+
+      // Skip PDF toast notifications
+      return webhookResult.success ? (webhookResult.s3Url || null) : null;
 
     } catch (error) {
       console.error('Error generating PDF:', error);
-    toast({
+      toast({
         title: "PDF Generation Failed",
         description: "There was an error generating your PDF.",
         variant: "destructive",
-    });
-    }
-  };
-
-  const saveDraft = () => {
-    localStorage.setItem('rentalApplicationDraft', JSON.stringify({
-      formData,
-      signatures,
-      hasCoApplicant,
-      hasGuarantor,
-      sameAddressCoApplicant,
-      sameAddressGuarantor,
-      currentStep,
-    }));
-
-    toast({
-      title: "Draft Saved",
-      description: "Your application has been saved as a draft.",
-    });
-  };
-
-  const nextStep = () => {
-    if (currentStep < STEPS.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const prevStep = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const goToStep = (step: number) => {
-    setCurrentStep(step);
-  };
-
-  const uploadEncryptedFiles = async (encryptedFiles: EncryptedFile[], personType: string) => {
-    try {
-      console.log(`Starting upload of ${encryptedFiles.length} files for ${personType}...`);
-      
-      // Create FormData
-      const formData = new FormData();
-      formData.append('personType', personType);
-      formData.append('applicationId', Date.now().toString());
-      
-      // Add each file to FormData
-      encryptedFiles.forEach((file, index) => {
-        formData.append(`files[${index}][filename]`, file.filename);
-        formData.append(`files[${index}][encryptedData]`, file.encryptedData);
-        formData.append(`files[${index}][originalSize]`, file.originalSize.toString());
-        formData.append(`files[${index}][mimeType]`, file.mimeType);
-        formData.append(`files[${index}][uploadDate]`, file.uploadDate);
       });
-      
-      // Create AbortController for timeout handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      const response = await fetch('/api/upload-files', {
-        method: 'POST',
-        body: formData, // Use FormData instead of JSON
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Upload response error:', response.status, response.statusText);
-        console.error('Error response body:', errorText);
-        
-        // Handle specific error cases
-        if (response.status === 413) {
-          throw new Error('Files are too large. Please reduce file sizes and try again.');
-        } else if (response.status === 504) {
-          throw new Error('Upload timed out. Please try again with smaller files or fewer files at once.');
-        } else {
-          throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
-        }
-      }
-
-      const result = await response.json();
-      console.log(`Files uploaded successfully for ${personType}:`, result);
-      
-
-      
-      return result;
-    } catch (error) {
-      console.error(`Failed to upload files for ${personType}:`, error);
-      
-      // Handle timeout errors specifically
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Upload timed out. Please try again with smaller files or fewer files at once.');
-      }
-      
-      throw error;
+      return null;
     }
   };
 
-  const onSubmit = async (data: ApplicationFormData) => {
-    console.log("=== FORM SUBMISSION DEBUG ===");
-    console.log("Form data received:", data);
-    console.log("Form data applicantDob:", data.applicantDob);
-    console.log("Form data moveInDate:", data.moveInDate);
-    console.log("Form data applicantName:", data.applicantName);
-    console.log("Form validation errors:", form.formState.errors);
-    console.log("Form is valid:", form.formState.isValid);
-    console.log("Form is dirty:", form.formState.isDirty);
-    console.log("=== END DEBUG ===");
+
+
+  // Clear webhook cache when starting fresh
+  const clearWebhookCache = () => {
+    WebhookService.clearFailedUploads();
+    // Don't clear successful webhook responses - they're needed for preview functionality
+    console.log('🧹 Cleared failed uploads cache');
+  };
+
+  // Check webhook status
+  const getWebhookStatus = () => {
+    const status = WebhookService.getUploadStatus();
+    console.log('📊 Webhook Status:', status);
+    return status;
+  };
+
+  // Clear cache when component mounts or when referenceId changes
+  useEffect(() => {
+    if (referenceId) {
+      console.log('🔄 useEffect triggered - referenceId changed to:', referenceId);
+      console.log('🔄 Current webhook responses before clearing:', webhookResponses);
+      clearWebhookCache();
+      console.log('🔄 After clearWebhookCache - webhook responses:', webhookResponses);
+    }
+  }, [referenceId]);
+
+  // --- Add this helper to get the next allowed step index ---
+  const getNextAllowedStep = (current: number, direction: 1 | -1) => {
+    let next = current + direction;
     
-    // Ensure all required fields are present and valid
-    const requiredFields: (keyof ApplicationFormData)[] = [
-      'buildingAddress',
-      'apartmentNumber',
-      'moveInDate',
-      'monthlyRent',
-      'apartmentType',
-      'applicantName',
-      'applicantDob',
-      'applicantEmail',
-      'applicantAddress',
-      'applicantCity',
-      'applicantState',
-      'applicantZip',
-    ];
-    let missingFields = [];
-    for (const field of requiredFields) {
-      if (
-        data[field] === undefined ||
-        data[field] === null ||
-        (typeof data[field] === 'string' && data[field].trim() === '') ||
-        (field === 'monthlyRent' && (!data[field] || isNaN(data[field] as any) || (data[field] as any) <= 0)) ||
-        (field === 'applicantDob' && !data[field]) ||
-        (field === 'moveInDate' && !data[field])
-      ) {
-        missingFields.push(field);
+    // Get actual step IDs for current and next steps
+    const currentStepId = getActualStepId(current);
+    const nextStepId = getActualStepId(next);
+    
+    // Check if primary applicant is a student
+    const isStudent = formData?.applicant?.employmentType === 'student';
+    
+    // If moving forward and primary applicant is student, skip Documents step (step 4)
+    if (direction === 1 && nextStepId === 4 && isStudent) {
+      // Find the next step that has ID 5 or higher
+      const nextStepIndex = filteredSteps.findIndex(step => step.id >= 5);
+      if (nextStepIndex !== -1) {
+        next = nextStepIndex;
       }
     }
-    // Email format check
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.applicantEmail || '')) {
-      missingFields.push('applicantEmail');
+    // If moving backward and primary applicant is student, skip Documents step (step 4)
+    if (direction === -1 && nextStepId === 4 && isStudent) {
+      // Find the previous step that has ID 3 or lower
+      const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 3);
+      if (prevStepIndex !== -1) {
+        next = prevStepIndex;
+      }
     }
-    if (missingFields.length > 0) {
+    
+    // If moving forward and co-applicant is not checked, skip co-applicant financial and docs
+    if (direction === 1 && (nextStepId === 6 || nextStepId === 7) && !hasCoApplicant) {
+      // Find the next step that has ID 8 or higher
+      const nextStepIndex = filteredSteps.findIndex(step => step.id >= 8);
+      if (nextStepIndex !== -1) {
+        next = nextStepIndex;
+      }
+    }
+    // If moving backward and co-applicant is not checked, skip co-applicant financial and docs
+    if (direction === -1 && (nextStepId === 6 || nextStepId === 7) && !hasCoApplicant) {
+      // Find the previous step that has ID 5 or lower
+      const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 5);
+      if (prevStepIndex !== -1) {
+        next = prevStepIndex;
+      }
+    }
+    // If moving forward and guarantor is not checked, skip guarantor financial and docs
+    if (direction === 1 && (nextStepId === 10 || nextStepId === 11) && !hasGuarantor) {
+      // Find the next step that has ID 12 or higher
+      const nextStepIndex = filteredSteps.findIndex(step => step.id >= 12);
+      if (nextStepIndex !== -1) {
+        next = nextStepIndex;
+      }
+    }
+    // If moving backward and guarantor is not checked, skip guarantor financial and docs
+    if (direction === -1 && (nextStepId === 10 || nextStepId === 11) && !hasGuarantor) {
+      // Find the previous step that has ID 9 or lower
+      const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 9);
+      if (prevStepIndex !== -1) {
+        next = prevStepIndex;
+      }
+    }
+    
+    // For role-based filtering, ensure we stay within filtered steps
+    const maxStep = filteredSteps.length - 1;
+    return Math.max(0, Math.min(maxStep, next));
+  };
+
+  // Step validation functions
+  const validateStep = (step: number): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    const actualStepId = getActualStepId(step);
+    
+    switch (actualStepId) {
+      case 1: // Application Information - all fields required
+        if (!formData.application?.buildingAddress?.trim()) {
+          errors.push('Building Address is required');
+        }
+        if (!formData.application?.apartmentNumber?.trim()) {
+          errors.push('Apartment Number is required');
+        }
+        if (!formData.application?.moveInDate) {
+          errors.push('Move-in Date is required');
+        }
+        if (!formData.application?.monthlyRent || formData.application?.monthlyRent <= 0) {
+          errors.push('Monthly Rent is required');
+        }
+        if (!formData.application?.apartmentType?.trim()) {
+          errors.push('Apartment Type is required');
+        }
+        break;
+
+      case 2: // Primary Applicant Information - all fields required
+        if (!formData.applicant?.name?.trim()) {
+          errors.push('Full Name is required');
+        }
+        if (!formData.applicant?.ssn?.trim()) {
+          errors.push('Social Security Number is required');
+        }
+        if (!formData.applicant?.phone?.trim()) {
+          errors.push('Phone Number is required');
+        }
+        if (!formData.applicant?.email?.trim()) {
+          errors.push('Email Address is required');
+        }
+        if (!formData.applicant?.license?.trim()) {
+          errors.push('Driver\'s License is required');
+        }
+        if (!formData.applicant?.licenseState?.trim()) {
+          errors.push('Driver\'s License State is required');
+        }
+        if (!formData.applicant?.address?.trim()) {
+          errors.push('Address is required');
+        }
+        if (!formData.applicant?.city?.trim()) {
+          errors.push('City is required');
+        }
+        if (!formData.applicant?.state?.trim()) {
+          errors.push('State is required');
+        }
+        if (!formData.applicant?.zip?.trim()) {
+          errors.push('ZIP Code is required');
+        }
+        break;
+
+      case 3: // Financial Information - Primary Applicant - conditional based on employment type
+        if (!formData.applicant?.employmentType?.trim()) {
+          errors.push('Employment Type is required');
+        }
+        // If not self-employed, require employer fields
+        if (formData.applicant?.employmentType !== 'self-employed') {
+          if (!formData.applicant?.employer?.trim()) {
+            errors.push('Current Employer is required');
+          }
+          if (!formData.applicant?.position?.trim()) {
+            errors.push('Position/Title is required');
+          }
+          if (!formData.applicant?.employmentStart) {
+            errors.push('Employment Start Date is required');
+          }
+        }
+        if (!formData.applicant?.income || formData.applicant?.income <= 0) {
+          errors.push('Annual Income is required');
+        }
+        break;
+
+      case 5: // Co-Applicant Information - conditional based on checkbox
+        if (formData.hasCoApplicant) {
+          const coApplicant = formData.coApplicants?.[0]; // Get first co-applicant
+          if (!coApplicant?.name?.trim()) {
+            errors.push('Co-Applicant Full Name is required');
+          }
+          if (!coApplicant?.ssn?.trim()) {
+            errors.push('Co-Applicant Social Security Number is required');
+          }
+          if (!coApplicant?.phone?.trim()) {
+            errors.push('Co-Applicant Phone Number is required');
+          }
+          if (!coApplicant?.email?.trim()) {
+            errors.push('Co-Applicant Email Address is required');
+          }
+          if (!coApplicant?.license?.trim()) {
+            errors.push('Co-Applicant Driver\'s License is required');
+          }
+          if (!coApplicant?.licenseState?.trim()) {
+            errors.push('Co-Applicant Driver\'s License State is required');
+          }
+          if (!coApplicant?.address?.trim()) {
+            errors.push('Co-Applicant Address is required');
+          }
+          if (!coApplicant?.city?.trim()) {
+            errors.push('Co-Applicant City is required');
+          }
+          if (!coApplicant?.state?.trim()) {
+            errors.push('Co-Applicant State is required');
+          }
+          if (!coApplicant?.zip?.trim()) {
+            errors.push('Co-Applicant ZIP Code is required');
+          }
+        }
+        break;
+
+      case 6: // Co-Applicant Financial Information - conditional based on employment type
+        if (formData.hasCoApplicant) {
+          const coApplicant = formData.coApplicants?.[0]; // Get first co-applicant
+          if (!coApplicant?.employmentType?.trim()) {
+            errors.push('Co-Applicant Employment Type is required');
+          }
+          // If not student, require financial fields
+          if (coApplicant?.employmentType !== 'student') {
+            if (!coApplicant?.employer?.trim()) {
+              errors.push('Co-Applicant Current Employer is required');
+            }
+            if (!coApplicant?.position?.trim()) {
+              errors.push('Co-Applicant Position/Title is required');
+            }
+            if (!coApplicant?.income || coApplicant?.income <= 0) {
+              errors.push('Co-Applicant Income is required');
+            }
+            if (!coApplicant?.incomeFrequency?.trim()) {
+              errors.push('Co-Applicant Income Frequency is required');
+            }
+          }
+        }
+        break;
+
+      case 8: // Other Occupants - conditional based on checkbox
+        if (formData.hasOtherOccupants) {
+          if (!formData.occupants || formData.occupants.length === 0) {
+            errors.push('At least one occupant must be added');
+          } else {
+            formData.occupants.forEach((occupant: any, index: number) => {
+              if (!occupant?.name?.trim()) {
+                errors.push(`Occupant ${index + 1} Name is required`);
+              }
+              if (!occupant?.relationship?.trim()) {
+                errors.push(`Occupant ${index + 1} Relationship is required`);
+              }
+              if (!occupant?.dob) {
+                errors.push(`Occupant ${index + 1} Date of Birth is required`);
+              }
+              if (!occupant?.ssn?.trim()) {
+                errors.push(`Occupant ${index + 1} Social Security Number is required`);
+              }
+            });
+          }
+        }
+        break;
+
+      case 9: // Guarantor Information - conditional based on checkbox
+        if (formData.hasGuarantor) {
+          const guarantor = formData.guarantors?.[0]; // Get first guarantor
+          if (!guarantor?.name?.trim()) {
+            errors.push('Guarantor Full Name is required');
+          }
+          if (!guarantor?.ssn?.trim()) {
+            errors.push('Guarantor Social Security Number is required');
+          }
+          if (!guarantor?.phone?.trim()) {
+            errors.push('Guarantor Phone Number is required');
+          }
+          if (!guarantor?.email?.trim()) {
+            errors.push('Guarantor Email Address is required');
+          }
+          if (!guarantor?.license?.trim()) {
+            errors.push('Guarantor Driver\'s License is required');
+          }
+          if (!guarantor?.licenseState?.trim()) {
+            errors.push('Guarantor Driver\'s License State is required');
+          }
+          if (!guarantor?.address?.trim()) {
+            errors.push('Guarantor Address is required');
+          }
+          if (!guarantor?.city?.trim()) {
+            errors.push('Guarantor City is required');
+          }
+          if (!guarantor?.state?.trim()) {
+            errors.push('Guarantor State is required');
+          }
+          if (!guarantor?.zip?.trim()) {
+            errors.push('Guarantor ZIP Code is required');
+          }
+        }
+        break;
+
+      case 10: // Guarantor Financial Information - conditional based on employment type
+        if (formData.hasGuarantor) {
+          const guarantor = formData.guarantors?.[0]; // Get first guarantor
+          if (!guarantor?.employmentType?.trim()) {
+            errors.push('Guarantor Employment Type is required');
+          }
+          // If not student, require financial fields
+          if (guarantor?.employmentType !== 'student') {
+            if (!guarantor?.employer?.trim()) {
+              errors.push('Guarantor Current Employer is required');
+            }
+            if (!guarantor?.position?.trim()) {
+              errors.push('Guarantor Position/Title is required');
+            }
+            if (!guarantor?.income || guarantor?.income <= 0) {
+              errors.push('Guarantor Income is required');
+            }
+            if (!guarantor?.incomeFrequency?.trim()) {
+              errors.push('Guarantor Income Frequency is required');
+            }
+          }
+        }
+        break;
+
+      default:
+        // Steps 0, 4, 7, 11, 12 don't require validation
+        break;
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+
+  // --- Update nextStep and prevStep to use the helper ---
+  const nextStep = async (e?: React.MouseEvent) => {
+    console.log('🔄 Next step clicked - Current step:', currentStep);
+    // Prevent form submission
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Validate current step before proceeding
+    const validation = validateStep(currentStep);
+    if (!validation.isValid) {
       toast({
-        title: 'Missing or invalid fields',
-        description: `Please fill out: ${missingFields.join(', ')}`,
+        title: 'Required fields missing',
+        description: validation.errors.join(', '),
         variant: 'destructive',
       });
       return;
     }
-    try {
-      console.log("Submitting application:", { ...data, formData, signatures });
-      console.log("Uploaded files metadata:", uploadedFilesMetadata);
 
-      // Helper function to safely convert date to ISO string
-      const safeDateToISO = (dateValue: any): string | null => {
-        if (!dateValue) return null;
-        try {
-          const date = new Date(dateValue);
-          if (isNaN(date.getTime())) {
-            console.warn('Invalid date value:', dateValue);
+    try {
+      const nextPlannedStep = getNextAllowedStep(currentStep, 1);
+      // Log a safe snapshot of formData to avoid proxies/refs
+      const formDataSnapshot = JSON.parse(JSON.stringify(formData));
+      
+      // Enhanced FormData snapshot with webhook responses and application_id
+      const enhancedFormDataSnapshot = {
+        ...formDataSnapshot,
+        application_id: user?.zoneinfo || user?.applicantId || 'unknown',
+        webhookSummary: getWebhookSummary()
+      };
+      
+      console.log('🧾 === ENHANCED FORM DATA SNAPSHOT BEFORE ADVANCING ===');
+      console.log('📊 Form Data:', enhancedFormDataSnapshot);
+      console.log('🆔 Application ID:', enhancedFormDataSnapshot.application_id);
+      console.log('📈 Webhook Summary:', enhancedFormDataSnapshot.webhookSummary);
+      console.log('➡️ Moving to step:', nextPlannedStep);
+      console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
+
+      // Note: Draft saving is now manual - only when Save Draft button is clicked
+      console.log('➡️ Moving to step:', nextPlannedStep, '- Draft will be saved when Save Draft button is clicked');
+
+    } catch (err) {
+      console.warn('FormData logging failed:', err);
+    }
+
+    setCurrentStep((prev) => getNextAllowedStep(prev, 1));
+  };
+
+  const prevStep = async (e?: React.MouseEvent) => {
+    console.log('🔄 Previous step clicked - Current step:', currentStep);
+    // Prevent form submission
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    try {
+      // Log a safe snapshot of formData to avoid proxies/refs
+      const formDataSnapshot = JSON.parse(JSON.stringify(formData));
+      
+      // Enhanced FormData snapshot with webhook responses and application_id
+      const enhancedFormDataSnapshot = {
+        ...formDataSnapshot,
+        application_id: user?.zoneinfo || user?.applicantId || 'unknown',
+        webhookSummary: getWebhookSummary()
+      };
+      
+      console.log('🧾 === ENHANCED FORM DATA SNAPSHOT BEFORE GOING BACK ===');
+      console.log('📊 Form Data:', enhancedFormDataSnapshot);
+      console.log('🆔 Application ID:', enhancedFormDataSnapshot.application_id);
+      console.log('📈 Webhook Summary:', enhancedFormDataSnapshot.webhookSummary);
+      console.log('⬅️ Going back to step:', getNextAllowedStep(currentStep, -1));
+      console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
+
+      // Note: Draft saving is now manual - only when Save Draft button is clicked
+      console.log('⬅️ Going back to step:', getNextAllowedStep(currentStep, -1), '- Draft will be saved when Save Draft button is clicked');
+
+    } catch (err) {
+      console.warn('FormData logging failed:', err);
+    }
+    
+    setCurrentStep((prev) => getNextAllowedStep(prev, -1));
+  };
+
+  // --- Update goToStep to block manual access to co-applicant/guarantor docs if not allowed ---
+  const goToStep = async (step: number, e?: React.MouseEvent) => {
+    // Prevent form submission
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    // Validate all previous steps before allowing navigation to a step
+    if (step > currentStep) {
+      for (let i = 1; i < step; i++) {
+        const validation = validateStep(i);
+        if (!validation.isValid) {
+          toast({
+            title: 'Complete previous steps first',
+            description: `Please complete step ${i + 1} (${STEPS[i]?.title}) before proceeding. Missing: ${validation.errors.join(', ')}`,
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+    }
+    
+    // Check if primary applicant is a student
+    const isStudent = formData?.applicant?.employmentType === 'student';
+    
+    // Step 4 is Supporting Documents - skip for students
+    if (step === 4 && isStudent) {
+      toast({
+        title: 'Documents Step Skipped',
+        description: 'Document validation is not required for students. Moving to next step.',
+        variant: 'default',
+      });
+      // Automatically move to next step instead of blocking
+      setCurrentStep(5);
+      return;
+    }
+    
+    // Step 6 is Co-Applicant Financial Information
+    if (step === 6 && !hasCoApplicant) {
+      toast({
+        title: 'Co-Applicant Financial Information Unavailable',
+        description: 'Please check "Add Co-Applicant" to access financial information.',
+        variant: 'warning',
+      });
+      return;
+    }
+    // Step 7 is Co-Applicant Documents
+    if (step === 7 && !hasCoApplicant) {
+      toast({
+        title: 'Co-Applicant Documents Unavailable',
+        description: 'Please check "Add Co-Applicant" to upload documents.',
+        variant: 'warning',
+      });
+      return;
+    }
+    // Step 10 is Guarantor Financial Information
+    if (step === 10 && !hasGuarantor) {
+      toast({
+        title: 'Guarantor Financial Information Unavailable',
+        description: 'Please check "Add Guarantor" to access financial information.',
+        variant: 'warning',
+      });
+      return;
+    }
+    // Step 11 is Guarantor Documents
+    if (step === 11 && !hasGuarantor) {
+      toast({
+        title: 'Guarantor Documents Unavailable',
+        description: 'Please check "Add Guarantor" to upload documents.',
+        variant: 'warning',
+      });
+      return;
+    }
+    
+    try {
+      // Log a safe snapshot of formData to avoid proxies/refs
+      const formDataSnapshot = JSON.parse(JSON.stringify(formData));
+      
+      console.log('🧾 === FORM DATA SNAPSHOT BEFORE JUMPING TO STEP ===');
+      console.log('📊 Form Data:', formDataSnapshot);
+      console.log('🎯 Jumping to step:', step);
+      console.log('=== END FORM DATA SNAPSHOT ===');
+
+      // No draft saving - just navigate to step
+
+    } catch (err) {
+      console.warn('FormData logging failed:', err);
+    }
+    
+    setCurrentStep(step);
+  };
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [submissionReferenceId, setSubmissionReferenceId] = useState<string | null>(null);
+
+  // Enhanced occupants handling with document uploads
+  const addOccupant = async () => {
+    const newOccupant = {
+      name: '',
+      relationship: '',
+      dob: '',
+      ssn: '',
+      license: '',
+      age: '',
+      ssnDocument: null,
+      documents: {}
+    };
+    
+    setFormData((prev: any) => ({
+      ...prev,
+      occupants: [...(prev.occupants || []), newOccupant]
+    }));
+
+    // Note: Draft saving is now manual - only when Save Draft button is clicked
+    console.log('👤 Occupant added - Draft will be saved when Save Draft button is clicked');
+  };
+
+  const removeOccupant = async (index: number) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      occupants: prev.occupants.filter((_: any, i: number) => i !== index)
+    }));
+
+    // Note: Draft saving is now manual - only when Save Draft button is clicked
+    console.log('👤 Occupant removed - Draft will be saved when Save Draft button is clicked');
+  };
+
+  const updateOccupant = async (index: number, field: string, value: any) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      occupants: prev.occupants.map((occupant: any, i: number) => 
+        i === index ? { ...occupant, [field]: value } : occupant
+      )
+    }));
+
+    // Note: Draft saving is now manual - only when Save Draft button is clicked
+    console.log('👤 Occupant updated:', index, field, '- Draft will be saved when Save Draft button is clicked');
+  };
+
+  const handleOccupantDocumentChange = async (index: number, documentType: string, files: File[]) => {
+    console.log(`📁 Occupant ${index + 1} document change:`, { documentType, filesCount: files.length });
+    
+    setFormData((prev: any) => ({
+      ...prev,
+      occupants: prev.occupants.map((occupant: any, i: number) => 
+        i === index ? { 
+          ...occupant, 
+          documents: { 
+            ...occupant.documents, 
+            [documentType]: files 
+          } 
+        } : occupant
+      )
+    }));
+
+    // Note: Draft saving is now manual - only when Save Draft button is clicked
+    console.log('📁 Occupant document updated:', index, documentType, '- Draft will be saved when Save Draft button is clicked');
+  };
+
+  // Removed handleOccupantEncryptedDocumentChange - no longer needed
+
+  // Handle role-specific form submission (bypasses schema validation)
+  const handleRoleSpecificSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('🚀🚀🚀 ROLE-SPECIFIC SUBMIT BUTTON CLICKED!');
+    console.log('🔍 User role:', userRole, 'Specific index:', specificIndex);
+    
+    // Get current form values without validation
+    const formValues = form.getValues();
+    console.log('🔍 Current form values:', formValues);
+    
+    // Call the same onSubmit function with the form values
+    await onSubmit(formValues);
+  };
+
+  const onSubmit = async (data: ApplicationFormData) => {
+    console.log('🚀🚀🚀 FORM SUBMIT BUTTON CLICKED - onSubmit function called!');
+    console.log('🚀 Form submission started');
+    console.log('Form data (data):', data);
+    console.log('Form state (formData):', formData);
+    console.log('Has guarantor:', data.hasGuarantor);
+    console.log('Guarantors in data:', data.guarantors);
+    console.log('Guarantors in formData:', formData.guarantors);
+    console.log('🔍 ROLE DEBUG:');
+    console.log('  - userRole:', userRole);
+    console.log('  - specificIndex:', specificIndex);
+    console.log('  - userRole starts with guarantor:', userRole?.startsWith('guarantor'));
+    console.log('  - specificIndex is not null:', specificIndex !== null);
+    console.log('User role:', userRole);
+    console.log('Specific index:', specificIndex);
+    console.log('🔍 Form validation state before submission:', {
+      isValid: form.formState.isValid,
+      isDirty: form.formState.isDirty,
+      isSubmitting: form.formState.isSubmitting,
+      errors: form.formState.errors
+    });
+    setIsSubmitting(true);
+    
+    try {
+      // === Generate individual applicantId for specific roles ===
+      let individualApplicantId = user?.applicantId || user?.zoneinfo || 'unknown';
+      
+      if (userRole.startsWith('coapplicant') && specificIndex !== null) {
+        // Generate individual applicantId for specific co-applicant
+        individualApplicantId = `${user?.applicantId || user?.zoneinfo || 'unknown'}-coapplicant${specificIndex + 1}`;
+        console.log('🆔 Generated co-applicant applicantId:', individualApplicantId);
+      } else if (userRole.startsWith('guarantor') && specificIndex !== null) {
+        // Generate individual applicantId for specific guarantor
+        individualApplicantId = `${user?.applicantId || user?.zoneinfo || 'unknown'}-guarantor${specificIndex + 1}`;
+        console.log('🆔 Generated guarantor applicantId:', individualApplicantId);
+      }
+
+      // === Additional People in Application: minimal JSON + email POST ===
+      try {
+        if (userRole === 'applicant') {
+          const zoneinfo = user?.zoneinfo || user?.applicantId || 'unknown';
+          const applicantName = data.applicantName || formData.applicant?.name || '';
+          const coCount = Math.max(0, Number(formData.coApplicantCount || 0));
+          const guaCount = Math.max(0, Number(formData.guarantorCount || 0));
+
+          const summaryPayload: any = {
+            zoneinfo,
+            role: 'applicant',
+            applicant: applicantName,
+          };
+
+          // Add coApplicantsN
+          const coList = (formData.coApplicants || []).slice(0, coCount);
+          coList.forEach((co: any, idx: number) => {
+            summaryPayload[`coApplicants${idx + 1}`] = {
+              name: co?.name || '',
+              email: co?.email || ''
+            };
+          });
+
+          // Add guarantorN
+          const guaList = (formData.guarantors || []).slice(0, guaCount);
+          guaList.forEach((g: any, idx: number) => {
+            summaryPayload[`guarantor${idx + 1}`] = {
+              name: g?.name || '',
+              email: g?.email || ''
+            };
+          });
+
+          // Jest-style log (pretty JSON)
+          console.log('📨 Additional People in Application (email payload):');
+          console.log(JSON.stringify(summaryPayload, null, 2));
+
+          // Send to email API endpoint (ONLY this minimal payload)
+          try {
+            await fetch('https://5sdpaqwf0f.execute-api.us-east-1.amazonaws.com/dev/sendmail', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(summaryPayload)
+              
+            });
+          } catch (emailErr) {
+            console.warn('✉️ Email API call failed (non-blocking):', emailErr);
+          }
+        }
+      } catch (summaryErr) {
+        console.warn('⚠️ Failed to prepare/send Additional People summary (non-blocking):', summaryErr);
+      }
+
+      // Import signature utilities
+      const { validateSignatures, prepareSignaturesForSubmission } = await import('../lib/signature-utils');
+      
+      // Validate signatures before submission
+      console.log('🔍 Pre-signature validation - userRole:', userRole, 'specificIndex:', specificIndex);
+      console.log('🔍 Current signatures state:', signatures);
+      const signatureValidation = validateSignatures(signatures, userRole, specificIndex ?? undefined);
+      console.log('🔍 Signature validation result:', signatureValidation);
+      
+      if (!signatureValidation.isValid) {
+        const errorMessage = signatureValidation.errors.join(', ');
+        console.log('❌ Signature validation failed:', errorMessage);
+        toast({
+          title: "Signature Required",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      console.log('✅ Signature validation passed');
+      
+      // ✅ FIX: Trigger form validation before checking validity
+      console.log("🔍 Triggering form validation...");
+      console.log("🔍 Current form data before validation:", data);
+      console.log("🔍 User role:", userRole, "Specific index:", specificIndex);
+      const isValid = await form.trigger();
+      console.log("✅ Form validation result:", isValid);
+      console.log("✅ Updated form errors:", form.formState.errors);
+      
+      // For guarantor and co-applicant roles, we need to be more lenient with validation
+      // since they don't have all the applicant fields filled out
+      if (!isValid && (!userRole || userRole === 'applicant')) {
+        console.log("❌ Form validation failed for applicant role");
+        toast({
+          title: 'Form validation failed',
+          description: 'Please check the form for errors and try again.',
+          variant: 'destructive'
+        });
+        setIsSubmitting(false);
+        return;
+      } else if (!isValid && userRole && (userRole.startsWith('coapplicant') || userRole.startsWith('guarantor'))) {
+        console.log("⚠️ Form validation failed for role-specific submission, but continuing with role-specific validation");
+        // Continue with role-specific validation below
+      }
+      
+      // Ensure all required fields are present and valid based on user role
+      let missingFields = [];
+      
+      // Only validate applicant-specific fields for applicant role
+      if (!userRole || userRole === 'applicant') {
+        const requiredFields: (keyof ApplicationFormData)[] = [
+          'buildingAddress',
+          'apartmentNumber',
+          'moveInDate',
+          'monthlyRent',
+          'apartmentType',
+          'applicantName',
+          'applicantDob',
+          'applicantEmail',
+          'applicantAddress',
+          'applicantCity',
+          'applicantState',
+          'applicantZip',
+        ];
+        
+        for (const field of requiredFields) {
+          // Resolve value with fallbacks for nested application fields
+          let value = (data as any)[field];
+          if (field === 'monthlyRent') {
+            value = (data as any).monthlyRent ?? formData.application?.monthlyRent;
+          }
+          if (
+            value === undefined ||
+            value === null ||
+            (typeof value === 'string' && value.trim() === '') ||
+            (field === 'applicantDob' && !value) ||
+            (field === 'moveInDate' && !value)
+          ) {
+            missingFields.push(field);
+          }
+        }
+        
+        // Email format check for applicant
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(data.applicantEmail || '')) {
+          missingFields.push('applicantEmail');
+        }
+      }
+      
+      // For co-applicant and guarantor roles, validate role-specific fields
+      if (userRole && (userRole.startsWith('coapplicant') || userRole.startsWith('guarantor'))) {
+        const roleType = userRole.startsWith('coapplicant') ? 'coApplicant' : 'guarantor';
+        const roleData = formData[roleType + 's']?.[specificIndex || 0];
+        
+        console.log(`🔍 Validating ${roleType} ${(specificIndex || 0) + 1} fields:`, roleData);
+        
+        // Check required fields for the specific role
+        const requiredRoleFields = ['name', 'email', 'phone', 'address', 'city', 'state', 'zip'];
+        for (const field of requiredRoleFields) {
+          const value = roleData?.[field];
+          if (!value || (typeof value === 'string' && value.trim() === '')) {
+            missingFields.push(`${roleType}${(specificIndex || 0) + 1} ${field}`);
+          }
+        }
+        
+        // Email format check for role
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (roleData?.email && !emailRegex.test(roleData.email)) {
+          missingFields.push(`${roleType}${(specificIndex || 0) + 1} email format`);
+        }
+      }
+      
+      if (missingFields.length > 0) {
+        console.log('❌ Missing required fields:', missingFields);
+        toast({
+          title: 'Missing or invalid fields',
+          description: `Please fill in: ${missingFields.join(', ')}`,
+          variant: 'destructive'
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      console.log('✅ All validation passed, proceeding with submission');
+      
+      // ENSURE FULL METADATA IS AVAILABLE FOR WEBHOOK
+      
+      console.log('📊 Full uploadedFilesMetadata for webhook:', JSON.stringify(uploadedFilesMetadata, null, 2));
+      
+      console.log('🚀 === COMPLETE FORM SUBMISSION DATA ===' );
+      console.log("📋 FORM DATA (React Hook Form):");
+      console.log(JSON.stringify(data, null, 2));
+      
+      console.log("📊 FORM STATE:");
+      console.log("- Is Valid:", form.formState.isValid);
+      console.log("- Is Dirty:", form.formState.isDirty);
+      console.log("- Is Submitting:", form.formState.isSubmitting);
+      console.log("- Validation Errors:", form.formState.errors);
+      
+      console.log("🗂️ FORM DATA STATE (Internal State):");
+      console.log(JSON.stringify(formData, null, 2));
+      
+      console.log("📝 SIGNATURES:");
+      console.log(JSON.stringify(signatures, null, 2));
+      
+      console.log("�� UPLOADED DOCUMENTS:");
+      console.log(JSON.stringify(uploadedDocuments, null, 2));
+      
+      console.log("🔐 ENCRYPTED DOCUMENTS: (Removed from server request)");
+      console.log("Count:", Object.keys(encryptedDocuments).length);
+      console.log("Guarantor documents:", encryptedDocuments.guarantor);
+      console.log("Applicant documents:", encryptedDocuments.applicant);
+      console.log("Co-applicant documents:", encryptedDocuments.coApplicant);
+      
+      console.log("📋 UPLOADED FILES METADATA:");
+      console.log(JSON.stringify(uploadedFilesMetadata, null, 2));
+      
+      console.log("🏦 BANK RECORDS:");
+      console.log("- Applicant Bank Records:", formData.applicant?.bankRecords);
+      console.log("- Co-Applicant Bank Records:", formData.coApplicant?.bankRecords);
+      console.log("- Guarantor Bank Records:", formData.guarantor?.bankRecords);
+      
+      console.log("👥 OTHER OCCUPANTS:");
+      console.log("formData.occupants:", formData.occupants);
+      console.log("formData.otherOccupants:", formData.otherOccupants);
+      console.log("Final otherOccupants:", formData.occupants || formData.otherOccupants || []);
+      console.log("Occupants with SSN documents:", formData.occupants?.map((occ: any) => ({
+        name: occ.name,
+        ssnDocument: occ.ssnDocument ? 'UPLOADED' : 'NULL'
+      })));
+      
+      console.log("⚖️ LEGAL QUESTIONS:");
+      console.log("- Landlord Tenant Legal Action:", formData.legalQuestions?.landlordTenantLegalAction);
+      console.log("- Landlord Tenant Legal Action Explanation:", formData.legalQuestions?.landlordTenantLegalActionExplanation);
+      console.log("- Broken Lease:", formData.legalQuestions?.brokenLease);
+      console.log("- Broken Lease Explanation:", formData.legalQuestions?.brokenLeaseExplanation);
+      
+      console.log("📅 DATE FIELDS:");
+      console.log("- Move In Date (Form):", data.moveInDate);
+      console.log("- Move In Date (State):", formData.application?.moveInDate);
+      console.log("- Applicant DOB (Form):", data.applicantDob);
+      console.log("- Applicant DOB (State):", formData.applicant?.dob);
+      console.log("- Co-Applicant DOB (State):", formData.coApplicant?.dob);
+      console.log("- Guarantor DOB (State):", formData.guarantor?.dob);
+      
+      console.log("📞 PHONE NUMBERS:");
+      console.log("- Applicant Phone:", formData.applicant?.phone);
+      console.log("- Co-Applicant Phone:", formData.coApplicant?.phone);
+      console.log("- Guarantor Phone:", formData.guarantor?.phone);
+      
+      console.log("📧 EMAILS:");
+      console.log("- Applicant Email:", data.applicantEmail);
+      console.log("- Co-Applicant Email:", formData.coApplicant?.email);
+      console.log("- Guarantor Email:", formData.guarantor?.email);
+      
+      console.log("🏠 ADDRESSES:");
+      console.log("- Applicant Address:", {
+        address: data.applicantAddress,
+        city: data.applicantCity,
+        state: data.applicantState,
+        zip: data.applicantZip
+      });
+      console.log("- Co-Applicant Address:", {
+        address: formData.coApplicant?.address,
+        city: formData.coApplicant?.city,
+        state: formData.coApplicant?.state,
+        zip: formData.coApplicant?.zip
+      });
+      console.log("- Guarantor Address:", {
+        address: formData.guarantor?.address,
+        city: formData.guarantor?.city,
+        state: formData.guarantor?.state,
+        zip: formData.guarantor?.zip
+      });
+      
+      console.log("💼 EMPLOYMENT:");
+      console.log("- Applicant Employment:", {
+        type: formData.applicant?.employmentType,
+        employer: formData.applicant?.employerName,
+        address: formData.applicant?.employerAddress,
+        city: formData.applicant?.employerCity,
+        state: formData.applicant?.employerState,
+        zip: formData.applicant?.employerZip,
+        phone: formData.applicant?.employerPhone,
+        position: formData.applicant?.position,
+        startDate: formData.applicant?.startDate,
+        salary: formData.applicant?.salary
+      });
+      console.log("- Co-Applicant Employment:", {
+        type: formData.coApplicant?.employmentType,
+        employer: formData.coApplicant?.employerName,
+        address: formData.coApplicant?.employerAddress,
+        city: formData.coApplicant?.employerCity,
+        state: formData.coApplicant?.employerState,
+        zip: formData.coApplicant?.employerZip,
+        phone: formData.coApplicant?.employerPhone,
+        position: formData.coApplicant?.position,
+        startDate: formData.coApplicant?.startDate,
+        salary: formData.coApplicant?.salary
+      });
+      console.log("- Guarantor Employment:", {
+        type: formData.guarantor?.employmentType,
+        employer: formData.guarantor?.employerName,
+        address: formData.guarantor?.employerAddress,
+        city: formData.guarantor?.employerCity,
+        state: formData.guarantor?.employerState,
+        zip: formData.guarantor?.employerZip,
+        phone: formData.guarantor?.employerPhone,
+        position: formData.guarantor?.position,
+        startDate: formData.guarantor?.startDate,
+        salary: formData.guarantor?.salary
+      });
+      
+      console.log("🏠 LANDLORD INFO:");
+      console.log("- Applicant Landlord:", {
+        name: formData.applicant?.landlordName,
+        address1: formData.applicant?.landlordAddressLine1,
+        address2: formData.applicant?.landlordAddressLine2,
+        city: formData.applicant?.landlordCity,
+        state: formData.applicant?.landlordState,
+        zip: formData.applicant?.landlordZipCode,
+        phone: formData.applicant?.landlordPhone,
+        email: formData.applicant?.landlordEmail,
+        currentRent: formData.applicant?.currentRent,
+        reasonForMoving: formData.applicant?.reasonForMoving
+      });
+      console.log("- Co-Applicant Landlord:", {
+        name: formData.coApplicant?.landlordName,
+        address1: formData.coApplicant?.landlordAddressLine1,
+        address2: formData.coApplicant?.landlordAddressLine2,
+        city: formData.coApplicant?.landlordCity,
+        state: formData.coApplicant?.landlordState,
+        zip: formData.coApplicant?.landlordZipCode,
+        phone: formData.coApplicant?.landlordPhone,
+        email: formData.coApplicant?.landlordEmail,
+        currentRent: formData.coApplicant?.currentRent,
+        reasonForMoving: formData.coApplicant?.reasonForMoving
+      });
+      console.log("- Guarantor Landlord:", {
+        name: formData.guarantor?.landlordName,
+        address1: formData.guarantor?.landlordAddressLine1,
+        address2: formData.guarantor?.landlordAddressLine2,
+        city: formData.guarantor?.landlordCity,
+        state: formData.guarantor?.landlordState,
+        zip: formData.guarantor?.landlordZipCode,
+        phone: formData.guarantor?.landlordPhone,
+        email: formData.guarantor?.landlordEmail,
+        currentRent: formData.guarantor?.currentRent,
+        reasonForMoving: formData.guarantor?.reasonForMoving
+      });
+      
+      console.log("📊 DATA SUMMARY:");
+      console.log("- Application Info Fields:", Object.keys(data).filter(k => k.includes('building') || k.includes('apartment') || k.includes('moveIn') || k.includes('monthly') || k.includes('howDid')).length);
+      console.log("- Primary Applicant Fields:", Object.keys(data).filter(k => k.startsWith('applicant')).length);
+      console.log("- Co-Applicant Fields:", Object.keys(formData.coApplicant || {}).length);
+      console.log("- Guarantor Fields:", Object.keys(formData.guarantor || {}).length);
+      console.log("- Other Occupants Count:", formData.otherOccupants?.length || 0);
+      console.log("- Documents Count:", (uploadedDocuments || []).length);
+      console.log("- Encrypted Documents Count:", Object.keys(encryptedDocuments).length, "(Not sent to server)");
+      console.log("- Signatures Count:", Object.keys(signatures).length);
+      
+      console.log("=== END COMPLETE FORM DATA ===");
+      
+      // Check if user is authenticated and has applicantId
+      if (!user?.applicantId && !user?.zoneinfo) {
+        console.log("❌ User not authenticated or missing applicantId");
+        console.log("🔍 User object:", user);
+        console.log("🔍 User applicantId:", user?.applicantId);
+        toast({
+          title: 'Authentication Required',
+          description: 'Please sign in to submit your application. If you are already signed in, please try refreshing the page.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Use the individual applicantId (could be temporary for development)
+      console.log("✅ Using individual applicantId:", individualApplicantId);
+
+
+      
+      try {
+        console.log("Submitting application:", { ...data, formData, signatures });
+        console.log("Uploaded files metadata:", uploadedFilesMetadata);
+
+        // Helper function to safely convert date to ISO string (preserving local date)
+        const safeDateToISO = (dateValue: any): string | null => {
+          if (!dateValue) return null;
+          try {
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) {
+              console.warn('Invalid date value:', dateValue);
+              return null;
+            }
+            // For date-only fields, preserve the local date without timezone conversion
+            // This prevents dates from shifting due to timezone offsets
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}T00:00:00.000Z`;
+          } catch (error) {
+            console.warn('Error converting date to ISO:', dateValue, error);
             return null;
           }
-          return date.toISOString();
-        } catch (error) {
-          console.warn('Error converting date to ISO:', dateValue, error);
-          return null;
-        }
-      };
-
-      // Transform form data to match database schema
-      const transformedData: any = {
-        // Application Info
-        buildingAddress: data.buildingAddress,
-        apartmentNumber: data.apartmentNumber,
-        moveInDate: safeDateToISO(data.moveInDate || formData.application?.moveInDate),
-        monthlyRent: data.monthlyRent,
-        apartmentType: data.apartmentType,
-        howDidYouHear: data.howDidYouHear,
-        
-        // Primary Applicant
-        applicantName: data.applicantName,
-        applicantDob: safeDateToISO(data.applicantDob || formData.applicant?.dob),
-        applicantSsn: formData.applicant?.ssn && formData.applicant.ssn.trim() !== '' ? formData.applicant.ssn : null,
-        applicantPhone: formData.applicant?.phone && formData.applicant.phone.trim() !== '' ? formData.applicant.phone : null,
-        applicantEmail: data.applicantEmail,
-        applicantLicense: formData.applicant?.license || data.applicantLicense,
-        applicantLicenseState: formData.applicant?.licenseState || data.applicantLicenseState,
-        applicantAddress: data.applicantAddress,
-        applicantCity: data.applicantCity,
-        applicantState: data.applicantState,
-        applicantZip: data.applicantZip,
-        applicantLengthAtAddressYears: data.applicantLengthAtAddressYears,
-        applicantLengthAtAddressMonths: data.applicantLengthAtAddressMonths,
-        applicantLandlordName: data.applicantLandlordName,
-        applicantCurrentRent: formData.applicant?.currentRent || data.applicantCurrentRent,
-        applicantReasonForMoving: data.applicantReasonForMoving,
-        applicantGender: data.applicantGender,
-        
-        // Primary Applicant Financial (from formData)
-        applicantEmployer: formData.applicant?.employer || null,
-        applicantPosition: formData.applicant?.position || null,
-        applicantEmploymentStart: safeDateToISO(formData.applicant?.employmentStart),
-        applicantIncome: formData.applicant?.income ? parseFloat(formData.applicant.income) : null,
-        applicantOtherIncome: formData.applicant?.otherIncome ? parseFloat(formData.applicant.otherIncome) : null,
-        applicantOtherIncomeSource: formData.applicant?.otherIncomeSource || null,
-        applicantBankName: formData.applicant?.bankRecords?.[0]?.bankName || null,
-        applicantAccountType: formData.applicant?.bankRecords?.[0]?.accountType || null,
-        applicantBankRecords: formData.applicant?.bankRecords || [],
-        
-        // Co-Applicant
-        hasCoApplicant: hasCoApplicant,
-        coApplicantName: formData.coApplicant?.name || null,
-        coApplicantRelationship: formData.coApplicant?.relationship || null,
-        coApplicantDob: safeDateToISO(formData.coApplicant?.dob),
-        coApplicantSsn: formData.coApplicant?.ssn || null,
-        coApplicantPhone: formData.coApplicant?.phone || null,
-        coApplicantEmail: formData.coApplicant?.email || null,
-        coApplicantSameAddress: sameAddressCoApplicant,
-        coApplicantAddress: formData.coApplicant?.address || null,
-        coApplicantCity: formData.coApplicant?.city || null,
-        coApplicantState: formData.coApplicant?.state || null,
-        coApplicantZip: formData.coApplicant?.zip || null,
-        coApplicantLengthAtAddress: formData.coApplicant?.lengthAtAddress || null,
-        
-        // Co-Applicant Financial
-        coApplicantEmployer: formData.coApplicant?.employer || null,
-        coApplicantPosition: formData.coApplicant?.position || null,
-        coApplicantEmploymentStart: safeDateToISO(formData.coApplicant?.employmentStart),
-        coApplicantIncome: formData.coApplicant?.income ? parseFloat(formData.coApplicant.income) : null,
-        coApplicantOtherIncome: formData.coApplicant?.otherIncome ? parseFloat(formData.coApplicant.otherIncome) : null,
-        coApplicantBankName: formData.coApplicant?.bankRecords?.[0]?.bankName || null,
-        coApplicantAccountType: formData.coApplicant?.bankRecords?.[0]?.accountType || null,
-        coApplicantBankRecords: formData.coApplicant?.bankRecords || [],
-        
-        // Guarantor - only include if hasGuarantor is true
-        hasGuarantor: hasGuarantor,
-      };
-
-      // Only add guarantor fields if hasGuarantor is true
-      console.log('hasGuarantor value:', hasGuarantor);
-      if (hasGuarantor) {
-        console.log('Adding guarantor fields...');
-        transformedData.guarantorName = formData.guarantor?.name || null;
-        transformedData.guarantorRelationship = formData.guarantor?.relationship || null;
-        transformedData.guarantorDob = safeDateToISO(formData.guarantor?.dob);
-        transformedData.guarantorSsn = formData.guarantor?.ssn || null;
-        transformedData.guarantorPhone = formData.guarantor?.phone || null;
-        transformedData.guarantorEmail = formData.guarantor?.email || null;
-        transformedData.guarantorAddress = formData.guarantor?.address || null;
-        transformedData.guarantorCity = formData.guarantor?.city || null;
-        transformedData.guarantorState = formData.guarantor?.state || null;
-        transformedData.guarantorZip = formData.guarantor?.zip || null;
-        transformedData.guarantorLengthAtAddress = formData.guarantor?.lengthAtAddress || null;
-        
-        // Guarantor Financial
-        transformedData.guarantorEmployer = formData.guarantor?.employer || null;
-        transformedData.guarantorPosition = formData.guarantor?.position || null;
-        transformedData.guarantorEmploymentStart = safeDateToISO(formData.guarantor?.employmentStart);
-        transformedData.guarantorIncome = formData.guarantor?.income ? parseFloat(formData.guarantor.income) : null;
-        transformedData.guarantorOtherIncome = formData.guarantor?.otherIncome ? parseFloat(formData.guarantor.otherIncome) : null;
-        transformedData.guarantorBankName = formData.guarantor?.bankRecords?.[0]?.bankName || null;
-        transformedData.guarantorAccountType = formData.guarantor?.bankRecords?.[0]?.accountType || null;
-        transformedData.guarantorBankRecords = formData.guarantor?.bankRecords || [];
-        transformedData.guarantorSignature = signatures.guarantor || null;
-        transformedData.guarantorSignatureDate = signatureTimestamps.guarantor || null;
-      } else {
-        console.log('Skipping guarantor fields - hasGuarantor is false');
-      }
-
-      // Add signatures for applicant and co-applicant
-      transformedData.applicantSignature = signatures.applicant || null;
-      transformedData.applicantSignatureDate = signatureTimestamps.applicant || null;
-      transformedData.coApplicantSignature = signatures.coApplicant || null;
-      transformedData.coApplicantSignatureDate = signatureTimestamps.coApplicant || null;
-      
-      // Other Occupants - send as a list
-      transformedData.otherOccupants = formData.occupants || [];
-      
-      // Legal Questions
-      transformedData.landlordTenantLegalAction = data.landlordTenantLegalAction;
-      transformedData.brokenLease = data.brokenLease;
-      
-      // Note: Documents and encrypted data are now sent via webhooks, not included in server submission
-      console.log('Documents and encrypted data will be sent via webhooks');
-      
-      console.log('Transformed application data:', JSON.stringify(transformedData, null, 2));
-      console.log('SSN Debug:');
-      console.log('  - formData.applicant.ssn:', formData.applicant?.ssn);
-      console.log('  - data.applicantSsn:', data.applicantSsn);
-      console.log('  - transformedData.applicantSsn:', transformedData.applicantSsn);
-      console.log('Date fields debug:');
-      console.log('  - applicantDob (raw):', data.applicantDob);
-      console.log('  - applicantDob (raw type):', typeof data.applicantDob);
-      console.log('  - applicantDob (raw instanceof Date):', data.applicantDob instanceof Date);
-      console.log('  - applicantDob (transformed):', transformedData.applicantDob);
-      console.log('  - moveInDate (raw):', data.moveInDate);
-      console.log('  - moveInDate (raw type):', typeof data.moveInDate);
-      console.log('  - moveInDate (raw instanceof Date):', data.moveInDate instanceof Date);
-      console.log('  - moveInDate (transformed):', transformedData.moveInDate);
-      console.log('Current window location:', window.location.href);
-      
-      // Use the regular API endpoint for local development
-      const apiEndpoint = '/api';
-      console.log('Making request to:', window.location.origin + apiEndpoint + '/submit-application');
-      
-      const requestBody = {
-        applicationData: transformedData,
-        uploadedFilesMetadata: uploadedFilesMetadata
-      };
-      
-      console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
-      console.log('Request body uploadedFilesMetadata:', requestBody.uploadedFilesMetadata);
-      
-      // Validate required fields before submission
-      if (!transformedData.applicantDob) {
-        throw new Error('Date of birth is required. Please select your date of birth.');
-      }
-      if (!transformedData.moveInDate) {
-        throw new Error('Move-in date is required. Please select your move-in date.');
-      }
-      if (!transformedData.applicantName || transformedData.applicantName.trim() === '') {
-        throw new Error('Full name is required. Please enter your full name.');
-      }
-      
-      // Create AbortController for submission timeout
-      const submissionController = new AbortController();
-      const submissionTimeoutId = setTimeout(() => submissionController.abort(), 45000); // 45 second timeout
-      
-      const submissionResponse = await fetch(apiEndpoint + '/submit-application', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-        signal: submissionController.signal
-      });
-
-      clearTimeout(submissionTimeoutId);
-
-      if (!submissionResponse.ok) {
-        const errorText = await submissionResponse.text();
-        console.error('Submission response error:', submissionResponse.status, submissionResponse.statusText);
-        console.error('Error response body:', errorText);
-        
-        // Handle specific error cases
-        if (submissionResponse.status === 413) {
-          throw new Error('Application data is too large. Please reduce file sizes and try again.');
-        } else if (submissionResponse.status === 504) {
-          throw new Error('Submission timed out. Please try again with smaller files or fewer files at once.');
-        } else {
-          throw new Error(`Submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
-        }
-      }
-
-      const submissionResult = await submissionResponse.json();
-      console.log('Application submitted successfully:', submissionResult);
-
-      // Note: Encrypted data and files are now sent separately via webhooks
-      console.log('Application submitted successfully. Files and encrypted data sent via webhooks.');
-
-      // On form submit, send only form data, application_id, and uploadedDocuments to the webhook
-      try {
-        const webhookPayload = {
-          ...transformedData, // all form fields
-          application_id: applicationId,
-          uploaded_documents: uploadedDocuments.map(doc => ({
-            reference_id: doc.reference_id,
-            file_name: doc.file_name,
-            section_name: doc.section_name
-          }))
         };
 
-        console.log('=== WEBHOOK PAYLOAD DEBUG ===');
-        console.log('Applicant SSN in webhook:', webhookPayload.applicantSsn);
-        console.log('Other Occupants:', transformedData.otherOccupants);
-        console.log('Bank Records - Applicant:', transformedData.applicantBankRecords);
-        console.log('Bank Records - Co-Applicant:', transformedData.coApplicantBankRecords);
-        console.log('Bank Records - Guarantor:', transformedData.guarantorBankRecords);
-        console.log('Uploaded Documents Count:', uploadedDocuments.length);
-        console.log('=== END WEBHOOK PAYLOAD DEBUG ===');
+        // Create COMPLETE form data structure for server submission (new nested structure)
+        let completeServerData = {
+          // Application Info (nested object)
+          application: {
+            buildingAddress: data.buildingAddress || formData.application?.buildingAddress,
+            apartmentNumber: data.apartmentNumber || formData.application?.apartmentNumber,
+            apartmentType: data.apartmentType || formData.application?.apartmentType,
+            monthlyRent: data.monthlyRent || formData.application?.monthlyRent,
+            moveInDate: safeDateToISO(data.moveInDate || formData.application?.moveInDate),
+            howDidYouHear: data.howDidYouHear || formData.application?.howDidYouHear,
+            howDidYouHearOther: data.howDidYouHearOther || formData.application?.howDidYouHearOther,
+          },
+          
+          // Primary Applicant (nested object)
+          applicant: {
+            name: data.applicantName || formData.applicant?.name,
+            email: data.applicantEmail || formData.applicant?.email,
+            phone: formatPhoneForPayload(formData.applicant?.phone || data.applicantPhone),
+            address: data.applicantAddress || formData.applicant?.address,
+            city: data.applicantCity || formData.applicant?.city,
+            state: data.applicantState || formData.applicant?.state,
+            zip: data.applicantZip || formData.applicant?.zip,
+            dob: safeDateToISO(data.applicantDob || formData.applicant?.dob),
+            ssn: formData.applicant?.ssn || data.applicantSsn,
+            license: formData.applicant?.license || data.applicantLicense,
+            licenseState: formData.applicant?.licenseState || data.applicantLicenseState,
+            lengthAtAddressYears: formData.applicant?.lengthAtAddressYears || data.applicantLengthAtAddressYears,
+            lengthAtAddressMonths: formData.applicant?.lengthAtAddressMonths || data.applicantLengthAtAddressMonths,
+            landlordName: formData.applicant?.landlordName || data.applicantLandlordName,
+            landlordAddressLine1: formData.applicant?.landlordAddressLine1 || data.applicantLandlordAddressLine1,
+            landlordAddressLine2: formData.applicant?.landlordAddressLine2 || data.applicantLandlordAddressLine2,
+            landlordCity: formData.applicant?.landlordCity || data.applicantLandlordCity,
+            landlordState: formData.applicant?.landlordState || data.applicantLandlordState,
+            landlordZipCode: formData.applicant?.landlordZipCode || data.applicantLandlordZipCode,
+            landlordPhone: formData.applicant?.landlordPhone || data.applicantLandlordPhone,
+            landlordEmail: formData.applicant?.landlordEmail || data.applicantLandlordEmail,
+            currentRent: formData.applicant?.currentRent || data.applicantCurrentRent,
+            reasonForMoving: formData.applicant?.reasonForMoving || data.applicantReasonForMoving,
+            age: formData.applicant?.age || 0,
+            employmentType: formData.applicant?.employmentType,
+            employer: formData.applicant?.employer,
+            position: formData.applicant?.position,
+            employmentStart: safeDateToISO(formData.applicant?.employmentStart),
+            income: formData.applicant?.income,
+            incomeFrequency: formData.applicant?.incomeFrequency,
+            businessName: formData.applicant?.businessName,
+            businessType: formData.applicant?.businessType,
+            yearsInBusiness: formData.applicant?.yearsInBusiness,
+            otherIncome: formData.applicant?.otherIncome,
+            otherIncomeFrequency: formData.applicant?.otherIncomeFrequency,
+            otherIncomeSource: formData.applicant?.otherIncomeSource,
+            bankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
+              bankName: record.bankName,
+              accountType: record.accountType,
+              accountNumber: record.accountNumber || ""
+            })),
+          },
+          
+          // Co-Applicants (nested objects)
+          coApplicants: (formData.coApplicants || []).map((coApplicant: any, index: number) => ({
+            coApplicant: (index + 1).toString(), // Dynamic type field
+            email: coApplicant.email || formData.coApplicantEmail,
+            phone: formatPhoneForPayload(coApplicant.phone || formData.coApplicantPhone),
+            zip: coApplicant.zip || formData.coApplicantZip,
+            landlordZipCode: coApplicant.landlordZipCode || formData.coApplicantLandlordZipCode,
+            landlordPhone: coApplicant.landlordPhone || formData.coApplicantLandlordPhone,
+            landlordEmail: coApplicant.landlordEmail || formData.coApplicantLandlordEmail,
+            city: coApplicant.city,
+            landlordCity: coApplicant.landlordCity,
+            name: coApplicant.name,
+            licenseState: coApplicant.licenseState,
+            state: coApplicant.state,
+            relationship: coApplicant.relationship,
+            dob: safeDateToISO(coApplicant.dob),
+            age: coApplicant.age || 0,
+            ssn: coApplicant.ssn || formData.coApplicantSsn,
+            license: coApplicant.license || formData.coApplicantLicense,
+            lengthAtAddressYears: coApplicant.lengthAtAddressYears,
+            lengthAtAddressMonths: coApplicant.lengthAtAddressMonths,
+            landlordName: coApplicant.landlordName,
+            landlordAddressLine1: coApplicant.landlordAddressLine1,
+            landlordAddressLine2: coApplicant.landlordAddressLine2,
+            landlordState: coApplicant.landlordState,
+            currentRent: coApplicant.currentRent,
+            reasonForMoving: coApplicant.reasonForMoving,
+            employmentType: coApplicant.employmentType,
+            employer: coApplicant.employer,
+            position: coApplicant.position,
+            employmentStart: safeDateToISO(coApplicant.employmentStart),
+            income: coApplicant.income,
+            incomeFrequency: coApplicant.incomeFrequency,
+            otherIncome: coApplicant.otherIncome,
+            otherIncomeSource: coApplicant.otherIncomeSource,
+            bankRecords: (coApplicant.bankRecords || []).map((record: any) => ({
+                bankName: record.bankName,
+                accountType: record.accountType,
+                accountNumber: record.accountNumber || ""
+              })),
+          })),
+          
+          // Guarantors (nested objects)
+          guarantors: (formData.guarantors || []).map((guarantor: any, index: number) => ({
+            guarantor: (index + 1).toString(), // Dynamic type field
+            email: guarantor.email || formData.guarantorEmail,
+            phone: formatPhoneForPayload(guarantor.phone || formData.guarantorPhone),
+            zip: guarantor.zip || formData.guarantorZip,
+            city: guarantor.city,
+            name: guarantor.name,
+            licenseState: guarantor.licenseState,
+            address: guarantor.address,
+            state: guarantor.state,
+            relationship: guarantor.relationship,
+            dob: safeDateToISO(guarantor.dob),
+            age: guarantor.age || 0,
+            ssn: guarantor.ssn || formData.guarantorSsn,
+            license: guarantor.license || formData.guarantorLicense,
+            lengthAtAddressYears: guarantor.lengthAtAddressYears,
+            lengthAtAddressMonths: guarantor.lengthAtAddressMonths,
+            landlordName: guarantor.landlordName,
+            landlordAddressLine1: guarantor.landlordAddressLine1,
+            landlordAddressLine2: guarantor.landlordAddressLine2,
+            landlordCity: guarantor.landlordCity,
+            landlordState: guarantor.landlordState,
+            landlordZipCode: guarantor.landlordZipCode,
+            landlordPhone: guarantor.landlordPhone,
+            landlordEmail: guarantor.landlordEmail,
+            currentRent: guarantor.currentRent,
+            reasonForMoving: guarantor.reasonForMoving,
+            employmentType: guarantor.employmentType,
+            businessName: guarantor.businessName,
+            businessType: guarantor.businessType,
+            yearsInBusiness: guarantor.yearsInBusiness,
+            income: guarantor.income,
+            incomeFrequency: guarantor.incomeFrequency,
+            otherIncome: guarantor.otherIncome,
+            otherIncomeFrequency: guarantor.otherIncomeFrequency || "monthly",
+            otherIncomeSource: guarantor.otherIncomeSource,
+            bankRecords: (guarantor.bankRecords || []).map((record: any) => ({
+                bankName: record.bankName,
+                accountType: record.accountType,
+                accountNumber: record.accountNumber || ""
+              })),
 
-        console.log('Form submission webhook payload:', JSON.stringify(webhookPayload, null, 2));
-        console.log('Uploaded documents array:', JSON.stringify(uploadedDocuments, null, 2));
-        const webhookResult = await WebhookService.sendFormDataToWebhook(
-          webhookPayload,
-          referenceId,
-          applicationId,
-          uploadedFilesMetadata
-        );
+          })),
+          
+          // Occupants (array)
+          occupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any) => ({
+            name: occupant.name,
+            relationship: occupant.relationship,
+            dob: occupant.dob,
+            ssn: occupant.ssn,
+            license: occupant.license,
+            age: occupant.age || 0,
+            documents: occupant.documents || {}
+          })),
+          
+          // Core metadata fields
+          applicantName: data.applicantName || formData.applicant?.name,
+          applicantEmail: data.applicantEmail || formData.applicant?.email,
+          application_id: user.applicantId,
+          applicantId: user.applicantId,
+          zoneinfo: user.applicantId,
+          hasCoApplicant: hasCoApplicant,
+          hasGuarantor: hasGuarantor,
+          coApplicantCount: (formData.coApplicants || []).length,
+          guarantorCount: (formData.guarantors || []).length,
+          landlordTenantLegalAction: formData.landlordTenantLegalAction || "",
+          brokenLease: formData.brokenLease || "",
+          webhookSummary: getWebhookSummary(),
+        };
+
+        console.log("🔍 COMPLETE SERVER DATA BEING SENT:");
+        console.log(JSON.stringify(completeServerData, null, 2));
         
-        if (webhookResult.success) {
-          toast({
-            title: "Application Submitted & Sent",
-            description: "Your rental application has been submitted and sent to the webhook successfully.",
+        console.log('📊 Complete server data structure created (same as webhook)');
+          console.log('🔍 Debug - uploadedDocuments type:', typeof uploadedDocuments);
+          console.log('🔍 Debug - uploadedDocuments is array:', Array.isArray(uploadedDocuments));
+          console.log('🔍 Debug - uploadedDocuments value:', uploadedDocuments);
+        
+                 // Create a server-optimized version with only document metadata
+         const serverOptimizedData = {
+           ...completeServerData,
+           // Add applicantId from authenticated user
+           applicantId: user.applicantId,
+           // Completely remove encrypted documents from server request - they will be sent via webhook
+           encryptedDocuments: undefined,
+           // Remove uploadedFilesMetadata from server request - files are sent via webhook
+           uploadedFilesMetadata: undefined
+         };
+
+        // Filter data for specific co-applicant/guarantor roles
+        if (userRole.startsWith('coapplicant') && specificIndex !== null) {
+          // For specific co-applicant, only include that co-applicant's data
+          const specificCoApplicant = (formData.coApplicants || [])[specificIndex];
+          if (specificCoApplicant) {
+            completeServerData = {
+              ...completeServerData,
+              // Remove other co-applicants, keep only the specific one
+              coApplicants: [specificCoApplicant]
+            };
+            console.log(`🎯 Filtered data for co-applicant ${specificIndex + 1}:`, specificCoApplicant);
+          }
+        } else if (userRole.startsWith('guarantor') && specificIndex !== null) {
+          // For specific guarantor, only include that guarantor's data
+          const specificGuarantor = (formData.guarantors || [])[specificIndex];
+          if (specificGuarantor) {
+            completeServerData = {
+              ...completeServerData,
+              // Remove other guarantors, keep only the specific one
+              guarantors: [specificGuarantor]
+            };
+            console.log(`🎯 Filtered data for guarantor ${specificIndex + 1}:`, specificGuarantor);
+          }
+        }
+        
+        // Log payload size for debugging
+        const payloadSize = JSON.stringify(completeServerData).length;
+        const optimizedPayloadSize = JSON.stringify(serverOptimizedData).length;
+        console.log(`📊 Original server data size: ${Math.round(payloadSize/1024)}KB`);
+        console.log(`📊 Optimized server data size: ${Math.round(optimizedPayloadSize/1024)}KB`);
+        console.log(`📊 Size reduction: ${Math.round((payloadSize - optimizedPayloadSize)/1024)}KB`);
+        console.log(`📊 Size reduction percentage: ${Math.round(((payloadSize - optimizedPayloadSize) / payloadSize) * 100)}%`);
+        
+        // Debug: Check what's making the payload large
+        if (payloadSize > 100 * 1024) { // If larger than 100KB
+          console.log('🔍 Large payload detected, analyzing...');
+          console.log(`📊 Total payload size: ${Math.round(payloadSize/1024)}KB`);
+          
+          // Sort fields by size to identify the largest contributors
+          const fieldSizes: { key: string; size: number; sizeKB: number }[] = [];
+          
+          Object.keys(completeServerData).forEach(key => {
+            try {
+              const fieldValue = (completeServerData as any)[key];
+              if (fieldValue !== undefined && fieldValue !== null) {
+                const fieldSize = JSON.stringify(fieldValue).length;
+                if (fieldSize > 1024) { // If field is larger than 1KB
+                  fieldSizes.push({
+                    key,
+                    size: fieldSize,
+                    sizeKB: Math.round(fieldSize/1024)
+                  });
+                  console.log(`⚠️ Large field: ${key} = ${Math.round(fieldSize/1024)}KB`);
+                  
+                  // If it's an object, check its properties
+                  if (typeof fieldValue === 'object' && fieldValue !== null) {
+                    Object.keys(fieldValue).forEach(subKey => {
+                      try {
+                        const subValue = fieldValue[subKey];
+                        if (subValue !== undefined && subValue !== null) {
+                          const subSize = JSON.stringify(subValue).length;
+                          if (subSize > 100) { // If sub-field is larger than 100 bytes
+                            console.log(`  ⚠️ Large sub-field: ${key}.${subKey} = ${Math.round(subSize/1024)}KB`);
+                            // If it's a string and looks like base64, log its length
+                            if (typeof subValue === 'string' && subValue.length > 1000) {
+                              console.log(`    📝 Large string detected: ${subKey} length = ${subValue.length} characters`);
+                              if (subValue.startsWith('data:')) {
+                                console.log(`    📝 This appears to be a data URL (base64 encoded)`);
+                              }
+                            }
+                          }
+                        }
+                      } catch (subError) {
+                        console.log(`  ⚠️ Error analyzing sub-field ${key}.${subKey}:`, subError);
+                      }
+                    });
+                  }
+                }
+              }
+            } catch (error) {
+              console.log(`⚠️ Error analyzing field ${key}:`, error);
+            }
           });
-          } else {
-          toast({
-            title: "Application Submitted",
-            description: "Your rental application has been submitted, but webhook delivery failed.",
+          
+          // Sort and display the largest fields
+          fieldSizes.sort((a, b) => b.size - a.size);
+          console.log('📊 Top 5 largest fields:');
+          fieldSizes.slice(0, 5).forEach((field, index) => {
+            console.log(`  ${index + 1}. ${field.key}: ${field.sizeKB}KB`);
           });
         }
-      } catch (webhookError) {
-        console.error('Webhook error:', webhookError);
-      toast({
-        title: "Application Submitted",
-          description: "Your rental application has been submitted, but webhook delivery failed.",
-      });
-      }
+        
+        // Additional debugging for the optimized data
+        console.log('🔍 Optimized data analysis:');
+        console.log('  - documents: REMOVED (sent via webhook)');
+        console.log('  - signatures: REMOVED (sent via webhook)');
+        console.log('  - uploadedFilesMetadata: REMOVED (sent via webhook)');
+        
+        console.log('SSN Debug:');
+        console.log('  - formData.applicant.ssn:', formData.applicant?.ssn);
+        console.log('  - data.applicantSsn:', data.applicantSsn);
+        console.log('  - serverOptimizedData.applicant.ssn:', serverOptimizedData.applicant?.ssn);
+        console.log('Date fields debug:');
+        console.log('  - applicantDob (raw):', data.applicantDob);
+        console.log('  - applicantDob (raw type):', typeof data.applicantDob);
+        console.log('  - applicantDob (raw instanceof Date):', data.applicantDob instanceof Date);
+        console.log('  - applicantDob (optimized):', serverOptimizedData.applicant?.dob);
+        console.log('  - moveInDate (raw):', data.moveInDate);
+        console.log('  - moveInDate (raw type):', typeof data.moveInDate);
+        console.log('  - moveInDate (raw instanceof Date):', data.moveInDate instanceof Date);
+        console.log('  - moveInDate (optimized):', serverOptimizedData.application?.moveInDate);
+        console.log('Current window location:', window.location.href);
+        
+        // Check if submit-application endpoint exists, if not, skip server submission
+        // Use Netlify functions endpoint for local development, or AWS Lambda for production
+        const apiEndpoint = import.meta.env.DEV ? '/api' : 'https://your-aws-api-gateway-url.amazonaws.com/prod';
+        const submitEndpoint = apiEndpoint + '/submit-application';
+        
+        // Validate required fields before submission based on user role
+        console.log('🔍 VALIDATION DEBUG:');
+        console.log('  - userRole:', userRole);
+        console.log('  - specificIndex:', specificIndex);
+        console.log('  - window.location.href:', window.location.href);
+        
+        // Check if this is a guarantor submission by URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const roleFromUrl = urlParams.get('role');
+        console.log('  - roleFromUrl:', roleFromUrl);
+        
+        if (roleFromUrl && roleFromUrl.startsWith('guarantor')) {
+          // Extract guarantor index from URL (guarantor4 -> index 3)
+          const match = roleFromUrl.match(/guarantor(\d+)/);
+          const guarantorIndex = match ? parseInt(match[1], 10) - 1 : 0;
+          console.log('  - guarantorIndex from URL:', guarantorIndex);
+          
+          // For guarantor role, validate guarantor data from the original formData
+          const specificGuarantor = (formData.guarantors || [])[guarantorIndex];
+          console.log('  - specificGuarantor:', specificGuarantor);
+          
+          if (!specificGuarantor?.dob) {
+            console.log('❌ GUARANTOR DOB MISSING:', specificGuarantor);
+            throw new Error('Date of birth is required. Please select your date of birth.');
+          }
+          if (!specificGuarantor?.name || specificGuarantor.name.trim() === '') {
+            throw new Error('Full name is required. Please enter your full name.');
+          }
+          console.log('✅ GUARANTOR VALIDATION PASSED');
+        } else if (userRole && userRole.startsWith('coapplicant') && specificIndex !== null) {
+          // For co-applicant role, validate co-applicant data from the original formData
+          const specificCoApplicant = (formData.coApplicants || [])[specificIndex];
+          if (!specificCoApplicant?.dob) {
+            throw new Error('Date of birth is required. Please select your date of birth.');
+          }
+          if (!specificCoApplicant?.name || specificCoApplicant.name.trim() === '') {
+            throw new Error('Full name is required. Please enter your full name.');
+          }
+        } else {
+          // For primary applicant role, validate applicant data
+          if (!serverOptimizedData.applicant?.dob) {
+            throw new Error('Date of birth is required. Please select your date of birth.');
+          }
+          if (!serverOptimizedData.applicantName || serverOptimizedData.applicantName.trim() === '') {
+            throw new Error('Full name is required. Please enter your full name.');
+          }
+        }
+        
+        // Move-in date validation (only for primary applicant)
+        if (!userRole || (!userRole.startsWith('guarantor') && !userRole.startsWith('coapplicant'))) {
+          if (!serverOptimizedData.application?.moveInDate) {
+            throw new Error('Move-in date is required. Please select your move-in date.');
+          }
+        }
+        
+        let serverSubmissionOk = false;
+        let submissionResult: any = null;
+        
+        // Try server submission first, but fall back to webhook if it fails
+        try {
+          console.log('🔍 Attempting server submission...');
+          
+          // Extract basic user info for identification
+          const userInfo = {
+            name: serverOptimizedData.applicantName,
+            email: serverOptimizedData.applicantEmail,
+            phone: serverOptimizedData.applicant?.phone,
+            applicationType: 'rental'
+          };
 
-      generatePDF();
+          // Validate user info
+          if (!userInfo.name || !userInfo.email) {
+            throw new Error('Name and email are required for submission.');
+          }
+
+          // Prepare signatures for submission
+          const submissionSignatures = prepareSignaturesForSubmission(signatures);
+          
+          const requestBody = {
+            applicationData: {
+              ...serverOptimizedData,
+              signatures: submissionSignatures
+            },
+            userInfo: userInfo
+          };
+          
+          // Log request body size instead of full content
+          const requestBodySize = JSON.stringify(requestBody).length;
+          console.log(`📊 Request body size: ${Math.round(requestBodySize/1024)}KB`);
+          console.log(`📊 Request body size in MB: ${Math.round(requestBodySize/(1024*1024)*100)/100}MB`);
+          console.log('Request body structure:', Object.keys(requestBody));
+          
+          // Create AbortController for submission timeout
+          const submissionController = new AbortController();
+          const submissionTimeoutId = setTimeout(() => submissionController.abort(), 45000); // 45 second timeout
+          
+          const submissionResponse = await fetch(submitEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+            signal: submissionController.signal
+          });
+
+          clearTimeout(submissionTimeoutId);
+
+          if (!submissionResponse.ok) {
+            const errorText = await submissionResponse.text();
+            console.error('Submission response error:', submissionResponse.status, submissionResponse.statusText);
+            console.error('Error response body:', errorText);
+            
+            // Handle specific error cases
+            if (submissionResponse.status === 413) {
+              throw new Error('Application data is too large. Please reduce file sizes and try again.');
+            } else if (submissionResponse.status === 504) {
+              throw new Error('Submission timed out. Please try again with smaller files or fewer files at once.');
+            } else if (submissionResponse.status === 500) {
+              console.warn('⚠️ Server error (500). Proceeding with webhook fallback.');
+              serverSubmissionOk = false;
+              // Don't throw error, just continue to webhook fallback
+              console.log('🔄 500 error caught, will proceed with webhook submission');
+            } else {
+              throw new Error(`Submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
+            }
+          } else {
+            submissionResult = await submissionResponse.json();
+            serverSubmissionOk = true;
+            console.log('✅ === SERVER SUBMISSION RESULT ===');
+            console.log('📤 Data sent to server:', JSON.stringify(requestBody, null, 2));
+            console.log('📥 Server response:', JSON.stringify(submissionResult, null, 2));
+            if (submissionResult?.application_id) console.log('🔗 Application ID:', submissionResult.application_id);
+            if (submissionResult?.reference_id) console.log('🔗 Reference ID:', submissionResult.reference_id);
+            console.log('=== END SERVER SUBMISSION ===');
+          }
+        } catch (error) {
+          console.warn('⚠️ Server submission failed. Proceeding with webhook fallback:', error);
+          serverSubmissionOk = false;
+        }
+        
+        // If server submission failed or endpoint doesn't exist, inform user about webhook fallback
+        if (!serverSubmissionOk) {
+          console.log('📤 Proceeding with webhook submission fallback...');
+          toast({
+            title: "Application Submission",
+            description: "Submitting application via webhook system. This may take a moment.",
+          });
+          
+          // Skip the rest of the server submission logic and go directly to webhook
+          console.log('🔄 Bypassing server submission, proceeding with webhook submission...');
+        }
+
+        // Mark draft as submitted in DynamoDB
+        if (user?.applicantId) {
+          try {
+            const markSubmittedResult = await dynamoDBService.markAsSubmitted(user.applicantId, referenceId);
+            if (markSubmittedResult) {
+              console.log('✅ Draft marked as submitted in DynamoDB');
+            } else {
+              console.warn('⚠️ Failed to mark draft as submitted in DynamoDB');
+            }
+          } catch (error) {
+            console.error('❌ Error marking draft as submitted:', error);
+          }
+        }
+
+        // Note: Encrypted data and files are now sent separately via webhooks
+        if (serverSubmissionOk) {
+          console.log('✅ Server submission successful. Files and encrypted data sent via webhooks.');
+        } else {
+          console.log('📤 Server submission failed. Proceeding with webhook submission fallback.');
+          console.log('🔄 This is expected behavior when server endpoint is not available.');
+        }
+
+        // Disabled automatic PDF generation on submit
+        let pdfUrl: string | null = null;
+        console.log('🛑 Skipping PDF generation on submit for all roles');
+
+        // On form submit, send complete form data, application_id, and uploadedDocuments to the webhook
+        try {
+          // Create complete webhook payload with ALL data
+          const completeWebhookData = {
+            // Application Info
+            buildingAddress: data.buildingAddress,
+            apartmentNumber: data.apartmentNumber,
+            moveInDate: safeDateToISO(data.moveInDate || formData.application?.moveInDate),
+            monthlyRent: data.monthlyRent,
+            apartmentType: data.apartmentType,
+            howDidYouHear: data.howDidYouHear,
+            
+            // Primary Applicant - Complete data
+            applicantName: data.applicantName,
+            applicantDob: safeDateToISO(data.applicantDob || formData.applicant?.dob),
+            applicantSsn: formData.applicant?.ssn && formData.applicant.ssn.trim() !== '' ? formData.applicant.ssn : null,
+            applicantPhone: formatPhoneForPayload(formData.applicant?.phone),
+            applicantEmail: data.applicantEmail,
+            applicantLicense: formData.applicant?.license || data.applicantLicense,
+            applicantLicenseState: formData.applicant?.licenseState || data.applicantLicenseState,
+            applicantAddress: data.applicantAddress,
+            applicantCity: data.applicantCity,
+            applicantState: data.applicantState,
+            applicantZip: data.applicantZip,
+            applicantLengthAtAddressYears: formData.applicant?.lengthAtAddressYears,
+            applicantLengthAtAddressMonths: formData.applicant?.lengthAtAddressMonths,
+            applicantLandlordName: formData.applicant?.landlordName,
+            applicantLandlordAddressLine1: formData.applicant?.landlordAddressLine1,
+            applicantLandlordAddressLine2: formData.applicant?.landlordAddressLine2,
+            applicantLandlordCity: formData.applicant?.landlordCity,
+            applicantLandlordState: formData.applicant?.landlordState,
+            applicantLandlordZipCode: formData.applicant?.landlordZipCode,
+            applicantLandlordPhone: formData.applicant?.landlordPhone,
+            applicantLandlordEmail: formData.applicant?.landlordEmail,
+            applicantCurrentRent: formData.applicant?.currentRent,
+            applicantReasonForMoving: formData.applicant?.reasonForMoving,
+            
+            // Applicant Employment & Financial Info
+            applicantEmploymentType: formData.applicant?.employmentType,
+            applicantEmployerName: formData.applicant?.employerName,
+            applicantEmployerAddress: formData.applicant?.employerAddress,
+            applicantEmployerCity: formData.applicant?.employerCity,
+            applicantEmployerState: formData.applicant?.employerState,
+            applicantEmployerZip: formData.applicant?.employerZip,
+            applicantEmployerPhone: formData.applicant?.employerPhone,
+            applicantPosition: formData.applicant?.position,
+            applicantStartDate: safeDateToISO(formData.applicant?.startDate),
+            applicantSalary: formData.applicant?.income,
+            applicantIncomeFrequency: formData.applicant?.incomeFrequency,
+            applicantOtherIncome: formData.applicant?.otherIncome,
+            applicantOtherIncomeSource: formData.applicant?.otherIncomeSource,
+            applicantCreditScore: formData.applicant?.creditScore,
+            applicantBankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
+              bankName: record.bankName,
+              accountType: record.accountType
+            })),
+            
+            // Flags
+            hasCoApplicant: hasCoApplicant,
+            hasGuarantor: hasGuarantor,
+            
+            // Co-Applicants - Complete data (if exists)
+            ...(hasCoApplicant && (formData.coApplicants || []).length > 0 ? {
+              coApplicants: (formData.coApplicants || []).map((coApplicant: any) => ({
+                name: coApplicant.name,
+                relationship: coApplicant.relationship,
+                dob: coApplicant.dob,
+                ssn: coApplicant.ssn,
+                phone: coApplicant.phone,
+                email: coApplicant.email,
+                license: coApplicant.license,
+                licenseState: coApplicant.licenseState,
+                address: coApplicant.address,
+                city: coApplicant.city,
+                state: coApplicant.state,
+                zip: coApplicant.zip,
+                lengthAtAddressYears: coApplicant.lengthAtAddressYears,
+                lengthAtAddressMonths: coApplicant.lengthAtAddressMonths,
+                landlordName: coApplicant.landlordName,
+                landlordAddressLine1: coApplicant.landlordAddressLine1,
+                landlordAddressLine2: coApplicant.landlordAddressLine2,
+                landlordCity: coApplicant.landlordCity,
+                landlordState: coApplicant.landlordState,
+                landlordZipCode: coApplicant.landlordZipCode,
+                landlordPhone: coApplicant.landlordPhone,
+                landlordEmail: coApplicant.landlordEmail,
+                currentRent: coApplicant.currentRent,
+                reasonForMoving: coApplicant.reasonForMoving,
+                employmentType: coApplicant.employmentType,
+                employer: coApplicant.employer,
+                position: coApplicant.position,
+                employmentStart: safeDateToISO(coApplicant.employmentStart),
+                income: coApplicant.income,
+                incomeFrequency: coApplicant.incomeFrequency,
+                otherIncome: coApplicant.otherIncome,
+                otherIncomeFrequency: coApplicant.otherIncomeFrequency,
+                otherIncomeSource: coApplicant.otherIncomeSource,
+                bankRecords: (coApplicant.bankRecords || []).map((record: any) => ({
+                bankName: record.bankName,
+                accountType: record.accountType
+              })),
+                coApplicantPosition: coApplicant.position,
+                coApplicantStartDate: safeDateToISO(coApplicant.employmentStart),
+                coApplicantSalary: coApplicant.income,
+                // Add missing income frequency and other income fields for co-applicant
+                coApplicantIncomeFrequency: coApplicant.incomeFrequency,
+                coApplicantOtherIncome: coApplicant.otherIncome,
+                coApplicantOtherIncomeSource: coApplicant.otherIncomeSource,
+                coApplicantCreditScore: coApplicant.creditScore,
+                coApplicantBankRecords: (coApplicant.bankRecords || []).map((record: any) => ({
+                  bankName: record.bankName,
+                  accountType: record.accountType
+                }))
+              }))
+            } : {}),
+            
+            // Guarantors - Complete data (if exists)
+            ...(hasGuarantor && (formData.guarantors || []).length > 0 ? {
+              guarantors: (formData.guarantors || []).map((guarantor: any) => ({
+                name: guarantor.name,
+                relationship: guarantor.relationship,
+                dob: guarantor.dob,
+                ssn: guarantor.ssn,
+                phone: guarantor.phone,
+                email: guarantor.email,
+                license: guarantor.license,
+                licenseState: guarantor.licenseState,
+                address: guarantor.address,
+                city: guarantor.city,
+                state: guarantor.state,
+                zip: guarantor.zip,
+                lengthAtAddressYears: guarantor.lengthAtAddressYears,
+                lengthAtAddressMonths: guarantor.lengthAtAddressMonths,
+                landlordName: guarantor.landlordName,
+                landlordAddressLine1: guarantor.landlordAddressLine1,
+                landlordAddressLine2: guarantor.landlordAddressLine2,
+                landlordCity: guarantor.landlordCity,
+                landlordState: guarantor.landlordState,
+                landlordZipCode: guarantor.landlordZipCode,
+                landlordPhone: guarantor.landlordPhone,
+                landlordEmail: guarantor.landlordEmail,
+                currentRent: guarantor.currentRent,
+                reasonForMoving: guarantor.reasonForMoving,
+                employmentType: guarantor.employmentType,
+                businessName: guarantor.businessName,
+                businessType: guarantor.businessType,
+                yearsInBusiness: guarantor.yearsInBusiness,
+                income: guarantor.income,
+                incomeFrequency: guarantor.incomeFrequency,
+                otherIncome: guarantor.otherIncome,
+                otherIncomeFrequency: guarantor.otherIncomeFrequency,
+                otherIncomeSource: guarantor.otherIncomeSource,
+                bankRecords: (guarantor.bankRecords || []).map((record: any) => ({
+                bankName: record.bankName,
+                  accountType: record.accountType,
+                  accountNumber: record.accountNumber || ""
+                })),
+                guarantorPosition: guarantor.position,
+                guarantorStartDate: safeDateToISO(guarantor.employmentStart),
+                guarantorSalary: guarantor.salary,
+                // Add missing income frequency and other income fields for guarantor
+                guarantorIncomeFrequency: guarantor.incomeFrequency,
+                guarantorOtherIncome: guarantor.otherIncome,
+                guarantorOtherIncomeSource: guarantor.otherIncomeSource,
+                guarantorCreditScore: guarantor.creditScore,
+                guarantorBankRecords: (guarantor.bankRecords || []).map((record: any) => ({
+                  bankName: record.bankName,
+                  accountType: record.accountType
+                }))
+              }))
+            } : {}),
+            
+            // Other Occupants - Complete data (optimized to exclude large document data)
+            otherOccupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any) => ({
+              name: occupant.name,
+              relationship: occupant.relationship,
+              dob: occupant.dob,
+              ssn: occupant.ssn,
+              license: occupant.license,
+              age: occupant.age,
+              // Remove large document data - will be sent via webhook
+              ssnDocument: occupant.ssnDocument ? "UPLOADED" : null
+            })),
+            
+            // Legal Questions
+            landlordTenantLegalAction: formData.legalQuestions?.landlordTenantLegalAction,
+            landlordTenantLegalActionExplanation: formData.legalQuestions?.landlordTenantLegalActionExplanation,
+            brokenLease: formData.legalQuestions?.brokenLease,
+            brokenLeaseExplanation: formData.legalQuestions?.brokenLeaseExplanation,
+            
+            // Signatures (optimized to avoid large base64 data)
+            signatures: {
+              applicant: signatures.applicant ? "SIGNED" : null,
+              coApplicants: Object.keys(signatures.coApplicants || {}).length > 0 ? 
+                Object.entries(signatures.coApplicants).map(([index, signature]) => 
+                  signature ? `Co-Applicant ${parseInt(index) + 1} SIGNED` : null
+                ).filter(Boolean).join(', ') : null,
+              guarantors: Object.keys(signatures.guarantors || {}).length > 0 ? 
+                Object.entries(signatures.guarantors).map(([index, signature]) => 
+                  signature ? `Guarantor ${parseInt(index) + 1} SIGNED` : null
+                ).filter(Boolean).join(', ') : null,
+            },
+            signatureTimestamps: signatureTimestamps,
+            
+
+            
+            // Bank Information List
+            bankInformation: {
+              applicant: {
+                bankRecords: (formData.applicant?.bankRecords || []).map((record: any) => ({
+                  bankName: record.bankName,
+                  accountType: record.accountType
+                })),
+                totalBankRecords: formData.applicant?.bankRecords?.length || 0,
+                hasBankRecords: !!(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0)
+              },
+              coApplicants: hasCoApplicant ? {
+                bankRecords: (formData.coApplicants || []).map((coApplicant: any) => ({
+                  bankName: coApplicant.bankRecords?.[0]?.bankName || '',
+                  accountType: coApplicant.bankRecords?.[0]?.accountType || '',
+                  totalBankRecords: coApplicant.bankRecords?.length || 0,
+                  hasBankRecords: !!(coApplicant.bankRecords && coApplicant.bankRecords.length > 0)
+                })),
+                totalBankRecords: formData.coApplicants.reduce((total: number, coApplicant: any) => total + coApplicant.bankRecords.length, 0),
+                hasBankRecords: !!(formData.coApplicants?.[0]?.bankRecords?.length)
+              } : null,
+              guarantors: hasGuarantor ? {
+                bankRecords: (formData.guarantors || []).map((guarantor: any) => ({
+                  bankName: guarantor.bankRecords?.[0]?.bankName || '',
+                  accountType: guarantor.bankRecords?.[0]?.accountType || '',
+                  totalBankRecords: guarantor.bankRecords?.length || 0,
+                  hasBankRecords: !!(guarantor.bankRecords && guarantor.bankRecords.length > 0)
+                })),
+                totalBankRecords: formData.guarantors.reduce((total: number, guarantor: any) => total + guarantor.bankRecords.length, 0),
+                hasBankRecords: !!(formData.guarantors?.[0]?.bankRecords?.length)
+              } : null,
+              summary: {
+                totalPeople: 1 + (hasCoApplicant ? formData.coApplicants.length : 0) + (hasGuarantor ? formData.guarantors.length : 0),
+                totalBankRecords: (formData.applicant?.bankRecords?.length || 0) + 
+                                 (hasCoApplicant ? formData.coApplicants.reduce((total: number, coApplicant: any) => total + coApplicant.bankRecords.length, 0) : 0) + 
+                                 (hasGuarantor ? formData.guarantors.reduce((total: number, guarantor: any) => total + guarantor.bankRecords.length, 0) : 0),
+                peopleWithBankRecords: [
+                  ...(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0 ? ['applicant'] : []),
+                  ...(hasCoApplicant ? (formData.coApplicants || []).map((coApplicant: any) => `coApplicant_${coApplicant.name}`) : []),
+                  ...(hasGuarantor ? (formData.guarantors || []).map((guarantor: any) => `guarantor_${guarantor.name}`) : [])
+                ]
+              }
+            },
+            
+            // Application IDs
+            applicantId: individualApplicantId,
+            application_id: individualApplicantId,
+            reference_id: referenceId,
+            
+
+            
+            // Webhook responses for uploaded documents
+            webhookResponses: webhookResponses,
+            
+            // PDF URL from generated application PDF
+            pdfUrl: pdfUrl,
+
+            // Additional People in Application data - Always include this section
+            "Additional People": {
+              zoneinfo: user?.zoneinfo || 'unknown',
+              role: 'applicant',
+              applicant: data.applicantName || 'unknown',
+              // Include co-applicants if they exist
+              ...(formData.coApplicantCount > 0 && formData.coApplicants && formData.coApplicants.length > 0 ? {
+                coApplicants1: {
+                  coApplicants: 'coapplicants1',
+                  url: `http://localhost:3000/login?role=coapplicants1&zoneinfo=${user?.zoneinfo || 'unknown'}`,
+                  name: formData.coApplicants[0]?.name || '',
+                  email: formData.coApplicants[0]?.email || ''
+                }
+              } : {}),
+              ...(formData.coApplicantCount > 1 && formData.coApplicants && formData.coApplicants.length > 1 ? {
+                coApplicants2: {
+                  coApplicants: 'coapplicants2',
+                  url: `http://localhost:3000/login?role=coapplicants2&zoneinfo=${user?.zoneinfo || 'unknown'}`,
+                  name: formData.coApplicants[1]?.name || '',
+                  email: formData.coApplicants[1]?.email || ''
+                }
+              } : {}),
+              // Include guarantors if they exist
+              ...(formData.guarantorCount > 0 && formData.guarantors && formData.guarantors.length > 0 ? {
+                guarantor1: {
+                  guarantor: 'guarantor1',
+                  url: `http://localhost:3000/login?role=guarantor1&zoneinfo=${user?.zoneinfo || 'unknown'}`,
+                  name: formData.guarantors[0]?.name || '',
+                  email: formData.guarantors[0]?.email || ''
+                }
+              } : {})
+            }
+
+          };
+
+          const webhookPayload = completeWebhookData;
+
+          // Check payload size before sending
+          const payloadSize = JSON.stringify(webhookPayload).length;
+          const payloadSizeMB = Math.round(payloadSize / (1024 * 1024) * 100) / 100;
+          console.log(`📦 Raw webhook payload size: ${payloadSizeMB}MB`);
+          
+          // Debug income frequency values
+          console.log('🔍 === INCOME FREQUENCY DEBUG IN APPLICATION FORM ===');
+          console.log('📊 Applicant income frequency:', (webhookPayload as any).applicantIncomeFrequency);
+          console.log('📊 Co-Applicant income frequency:', (webhookPayload as any).coApplicantsIncomeFrequency);
+          console.log('📊 Guarantor income frequency:', (webhookPayload as any).guarantorsIncomeFrequency);
+          console.log('📊 Form data applicant income frequency:', formData.applicant?.incomeFrequency);
+          console.log('📊 Form data co-applicants income frequency:', (formData.coApplicants || []).map((coApplicant: any) => coApplicant.incomeFrequency).join(', '));
+          console.log('📊 Form data guarantors income frequency:', (formData.guarantors || []).map((guarantor: any) => guarantor.incomeFrequency).join(', '));
+          console.log('=== END INCOME FREQUENCY DEBUG ===');
+          
+          if (payloadSize > 50 * 1024 * 1024) { // 50MB limit
+            console.warn('⚠️ Raw webhook payload is very large:', payloadSizeMB, 'MB');
+            console.warn('⚠️ Large data will be cleaned by webhook service');
+          }
+
+          console.log('=== WEBHOOK PAYLOAD DEBUG ===');
+          console.log('✅ Complete Webhook Structure:');
+          console.log('  - reference_id:', webhookPayload.reference_id);
+          console.log('  - applicantId:', webhookPayload.applicantId);
+          console.log('  - application_id:', webhookPayload.application_id);
+          console.log('  - form_data: [Complete application data]');
+          console.log('  - uploaded_files: [Complete files metadata]');
+          console.log('  - submission_type: form_data');
+          console.log('');
+          console.log('📊 Data Verification:');
+          console.log('  - Applicant SSN:', webhookPayload.applicantSsn);
+          console.log('  - Other Occupants Count:', webhookPayload.otherOccupants?.length || 0);
+          console.log('  - Bank Records - Applicant:', webhookPayload.applicantBankRecords?.length || 0);
+          console.log('  - Bank Records - Co-Applicants:', webhookPayload.bankInformation?.coApplicants?.totalBankRecords || 0);
+          console.log('  - Bank Records - Guarantors:', webhookPayload.guarantors?.length ? webhookPayload.guarantors.reduce((total: number, guar: any) => total + (guar.bankRecords?.length || 0), 0) : 0);
+          console.log('  - Legal Questions:', {
+            landlordTenantLegalAction: webhookPayload.landlordTenantLegalAction,
+            brokenLease: webhookPayload.brokenLease
+          });
+          console.log('  - Signatures:', Object.keys(webhookPayload.signatures || {}));
+          console.log('  - Bank Information:', {
+            applicantBankRecords: webhookPayload.bankInformation?.applicant?.totalBankRecords || 0,
+            coApplicantsBankRecords: webhookPayload.bankInformation?.coApplicants?.totalBankRecords || 0,
+            guarantorsBankRecords: webhookPayload.bankInformation?.guarantors?.totalBankRecords || 0,
+            totalBankRecords: webhookPayload.bankInformation?.summary?.totalBankRecords || 0
+          });
+          console.log('  - Uploaded Documents Count:', (uploadedDocuments || []).length);
+          console.log('=== END WEBHOOK PAYLOAD DEBUG ===');
+
+
+          // Send role-specific webhook submissions
+          console.log('🌐 === ROLE-SPECIFIC WEBHOOK SUBMISSIONS ===');
+          console.log('📤 Sending role-specific webhook...');
+          console.log('🔗 Reference ID:', referenceId);
+          console.log('🔗 Application ID:', user?.applicantId);
+          console.log('🔗 User Role:', userRole, 'Specific Index:', specificIndex);
+          
+          let webhookResult;
+          
+          if (userRole && userRole.startsWith('coapplicant') && specificIndex !== null) {
+            // Send co-applicant-specific webhook
+            const coApplicant = formData.coApplicants?.[specificIndex];
+            if (coApplicant && coApplicant.name) {
+              console.log(`📤 Sending co-applicant ${specificIndex + 1} webhook...`);
+              // Create complete form data for webhook service
+              const completeFormData = {
+                ...formData,
+                ...webhookPayload,
+                coApplicants: formData.coApplicants || [],
+                guarantors: formData.guarantors || [],
+                coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+                guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+                hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+                hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0)
+              };
+              
+              webhookResult = await WebhookService.sendCoApplicantWebhook(
+                coApplicant,
+                specificIndex,
+                completeFormData,
+                referenceId,
+                individualApplicantId,
+                user?.zoneinfo,
+                uploadedFilesMetadata
+              );
+            } else {
+              webhookResult = { success: false, error: 'Co-applicant data not found' };
+            }
+          } else if (userRole && userRole.startsWith('guarantor') && specificIndex !== null) {
+            // Send guarantor-specific webhook
+            const guarantor = formData.guarantors?.[specificIndex];
+            if (guarantor && guarantor.name) {
+              console.log(`📤 Sending guarantor ${specificIndex + 1} webhook...`);
+              // Create complete form data for webhook service
+              const completeFormData = {
+                ...formData,
+                ...webhookPayload,
+                coApplicants: formData.coApplicants || [],
+                guarantors: formData.guarantors || [],
+                coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+                guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+                hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+                hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0)
+              };
+              
+              webhookResult = await WebhookService.sendGuarantorWebhook(
+                guarantor,
+                specificIndex,
+                completeFormData,
+                referenceId,
+                individualApplicantId,
+                user?.zoneinfo,
+                uploadedFilesMetadata
+              );
+            } else {
+              webhookResult = { success: false, error: 'Guarantor data not found' };
+            }
+          } else if (userRole === 'coapplicant') {
+            // Generic co-applicant role: send one webhook per co-applicant present
+            console.log('📤 Sending individual webhooks for all co-applicants...');
+            const results: any[] = [];
+            const coApplicantsArray = Array.isArray(formData.coApplicants) ? formData.coApplicants : [];
+            for (let idx = 0; idx < coApplicantsArray.length; idx++) {
+              const ca = coApplicantsArray[idx];
+              if (ca && ca.name) {
+                console.log(`📤 Sending co-applicant ${idx + 1} webhook...`);
+                // Create complete form data for webhook service
+                const completeFormData = {
+                  ...formData,
+                  ...webhookPayload,
+                  coApplicants: formData.coApplicants || [],
+                  guarantors: formData.guarantors || [],
+                  coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+                  guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+                  hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+                  hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0)
+                };
+                
+                const result = await WebhookService.sendCoApplicantWebhook(
+                  ca,
+                  idx,
+                  completeFormData,
+                  referenceId,
+                  `${user?.applicantId || user?.zoneinfo}-coapplicant${idx + 1}`,
+                  user?.zoneinfo,
+                  uploadedFilesMetadata
+                );
+                results.push({ index: idx, ...result });
+              }
+            }
+            const anySuccess = results.some(r => r.success);
+            webhookResult = anySuccess ? { success: true, results } : { success: false, error: 'No co-applicant webhooks sent' };
+          } else {
+            // Send separate webhooks for all roles (applicant role)
+            console.log('📤 Sending separate webhooks for all roles...');
+            // Create complete form data for webhook service with proper form field documents
+            const completeFormData = {
+              ...formData,
+              ...webhookPayload,
+              // Ensure co-applicants and guarantors are included
+              coApplicants: formData.coApplicants || [],
+              guarantors: formData.guarantors || [],
+              coApplicantCount: formData.coApplicantCount || (formData.coApplicants ? formData.coApplicants.length : 0),
+              guarantorCount: formData.guarantorCount || (formData.guarantors ? formData.guarantors.length : 0),
+              hasCoApplicant: formData.hasCoApplicant || (formData.coApplicants && formData.coApplicants.length > 0),
+              hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0),
+              // Ensure webhook responses are properly included for form field documents
+              webhookResponses: webhookResponses,
+              // Include uploaded files metadata for form field documents
+              uploadedFilesMetadata: uploadedFilesMetadata,
+              // Include encrypted documents for form field documents
+              encryptedDocuments: encryptedDocuments
+            };
+            
+            webhookResult = await WebhookService.sendSeparateWebhooks(
+              completeFormData,
+              referenceId,
+              individualApplicantId,
+              user?.zoneinfo,
+              uploadedFilesMetadata
+            );
+          }
+          
+          console.log('📥 Webhook result:', JSON.stringify(webhookResult, null, 2));
+          console.log('=== END ROLE-SPECIFIC WEBHOOK SUBMISSIONS ===');
+          
+          if (webhookResult.success) {
+            const roleDescription = userRole && userRole.startsWith('coapplicant') ? `Co-applicant ${(specificIndex || 0) + 1}` :
+                                  userRole && userRole.startsWith('guarantor') ? `Guarantor ${(specificIndex || 0) + 1}` :
+                                  'all roles';
+            
+            toast({
+              title: "Application Submitted & Sent",
+              description: `Your rental application has been submitted and sent to webhook successfully for ${roleDescription}.`,
+            });
+            setShowSuccessPopup(true);
+            setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
+          } else {
+            console.log('❌ Webhook submission failed:', webhookResult.error);
+            
+            toast({
+              title: "Application Submitted",
+              description: "Your rental application has been submitted, but webhook delivery failed. Check console for details.",
+            });
+            setShowSuccessPopup(true);
+            setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
+          }
+        } catch (webhookError) {
+          console.error('Webhook error:', webhookError);
+          toast({
+            title: "Application Submitted",
+              description: "Your rental application has been submitted, but webhook delivery failed.",
+          });
+          setShowSuccessPopup(true);
+          setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
+        }
+
+
+        // Save to DynamoDB with submitted status
+        try {
+          console.log('💾 Saving submitted application to DynamoDB...');
+          const { dynamoDBUtils } = await import('../lib/dynamodb-service');
+          
+          const submittedDraftData = {
+            zoneinfo: individualApplicantId,
+            applicantId: individualApplicantId,
+            reference_id: submissionResult?.reference_id || referenceId,
+            form_data: completeServerData,
+            current_step: 12, // Mark as completed
+            last_updated: new Date().toISOString(),
+            status: 'submitted' as const,
+            uploaded_files_metadata: (completeServerData as any).uploaded_files_metadata || {},
+            webhook_responses: (completeServerData as any).webhook_responses || {},
+            signatures: (completeServerData as any).signatures || {},
+            encrypted_documents: (completeServerData as any).encrypted_documents || {},
+            // Add flow type information for the new separate webhook system
+            flow_type: 'separate_webhooks', // Indicates this draft uses the new flow type
+            webhook_flow_version: '2.0' // Version of the webhook flow system
+          };
+
+          const saveResult = await dynamoDBUtils.saveDraftForCurrentUser(submittedDraftData);
+          if (saveResult) {
+            console.log('✅ Application saved to DynamoDB with submitted status');
+          } else {
+            console.warn('⚠️ Failed to save application to DynamoDB');
+          }
+        } catch (dbError) {
+          console.error('❌ Error saving to DynamoDB:', dbError);
+          // Don't show error to user as submission was successful
+        }
+      } catch (error) {
+        console.error('Failed to submit application:', error);
+        
+        let errorMessage = "Failed to submit application. Please try again.";
+        
+        // Handle specific error types
+        if (error instanceof Error) {
+          if (error.name === 'AbortError') {
+            errorMessage = "Submission timed out. Please try again with smaller files or fewer files at once.";
+          } else if (error.message.includes('413')) {
+            errorMessage = "Application data is too large. Please reduce file sizes and try again.";
+          } else if (error.message.includes('504')) {
+            errorMessage = "Submission timed out. Please try again with smaller files or fewer files at once.";
+          } else {
+            errorMessage = error.message;
+          }
+        }
+        
+        toast({
+          title: "Submission Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
     } catch (error) {
       console.error('Failed to submit application:', error);
       
@@ -832,75 +5430,328 @@ export function ApplicationForm() {
         variant: "destructive",
       });
     }
-  };
+  }; // end onSubmit
 
-  const copyAddressToCoApplicant = () => {
-    if (sameAddressCoApplicant) {
-      const applicantAddress = formData.applicant;
-      updateFormData('coApplicant', 'address', applicantAddress.address);
-      updateFormData('coApplicant', 'city', applicantAddress.city);
-      updateFormData('coApplicant', 'state', applicantAddress.state);
-      updateFormData('coApplicant', 'zip', applicantAddress.zip);
-      updateFormData('coApplicant', 'landlordName', applicantAddress.landlordName);
-      updateFormData('coApplicant', 'currentRent', applicantAddress.currentRent);
-      updateFormData('coApplicant', 'lengthAtAddress', applicantAddress.lengthAtAddress);
-    }
-  };
 
-  // Effect to copy address when checkbox is checked
+  // Clear phone validation errors for empty or valid phone numbers
   useEffect(() => {
-    if (sameAddressCoApplicant && hasCoApplicant) {
-      copyAddressToCoApplicant();
+    if (formData.guarantors) {
+      formData.guarantors.forEach((guarantor: any, index: number) => {
+        const phoneValue = guarantor?.phone;
+        const phoneError = form.formState.errors.guarantors?.[index]?.phone;
+        
+        // If there's a phone error but the phone is empty or valid, clear the error
+        if (phoneError && (!phoneValue || phoneValue.trim() === '' || validatePhoneNumber(phoneValue))) {
+          form.clearErrors(`guarantors.${index}.phone`);
+        }
+      });
     }
-  }, [sameAddressCoApplicant, hasCoApplicant, formData.applicant]);
+  }, [formData.guarantors, form.formState.errors.guarantors, form]);
 
-  // Debug effect for Date of Birth
+  // Clear phone validation errors for co-applicants
   useEffect(() => {
-    console.log('Form applicantDob value:', form.watch('applicantDob'));
-    console.log('FormData applicant dob:', formData.applicant?.dob);
-    console.log('Form errors:', form.formState.errors);
-  }, [form.watch('applicantDob'), formData.applicant?.dob, form.formState.errors]);
-
-  // Sync formData.applicant.dob with form.applicantDob
-  useEffect(() => {
-    if (formData.applicant?.dob && !form.watch('applicantDob')) {
-      form.setValue('applicantDob', formData.applicant.dob);
+    if (formData.coApplicants) {
+      formData.coApplicants.forEach((coApplicant: any, index: number) => {
+        const phoneValue = coApplicant?.phone;
+        const phoneError = form.formState.errors.coApplicants?.[index]?.phone;
+        
+        // If there's a phone error but the phone is empty or valid, clear the error
+        if (phoneError && (!phoneValue || phoneValue.trim() === '' || validatePhoneNumber(phoneValue))) {
+          form.clearErrors(`coApplicants.${index}.phone`);
+        }
+      });
     }
-  }, [formData.applicant?.dob, form]);
+  }, [formData.coApplicants, form.formState.errors.coApplicants, form]);
 
-  const copyAddressToGuarantor = () => {
-    if (sameAddressGuarantor) {
-      const applicantAddress = formData.applicant;
-      updateFormData('guarantor', 'address', applicantAddress.address);
-      updateFormData('guarantor', 'city', applicantAddress.city);
-      updateFormData('guarantor', 'state', applicantAddress.state);
-      updateFormData('guarantor', 'zip', applicantAddress.zip);
-      updateFormData('guarantor', 'landlordName', applicantAddress.landlordName);
-      updateFormData('guarantor', 'currentRent', applicantAddress.currentRent);
-      updateFormData('guarantor', 'lengthAtAddress', applicantAddress.lengthAtAddress);
-    }
-  };
-
-  // Ensure applicantDob in formData and react-hook-form stay in sync for DatePicker display
+  // Sync formData.applicant.dob with form.applicantDob (preserving local date)
   useEffect(() => {
     const formValue = form.watch('applicantDob');
     const stateValue = formData.applicant?.dob;
-    if (stateValue && (!formValue || (formValue instanceof Date && stateValue instanceof Date && formValue.getTime() !== stateValue.getTime()))) {
-      // Only set if different and stateValue is a valid Date
-      if (stateValue instanceof Date && !isNaN(stateValue.getTime())) {
-        form.setValue('applicantDob', stateValue);
-      } else if (typeof stateValue === 'string' || typeof stateValue === 'number') {
-        const parsed = new Date(stateValue);
-        if (!isNaN(parsed.getTime())) {
-          form.setValue('applicantDob', parsed);
-        }
+    let dateObj = toValidDate(stateValue);
+    if (dateObj) {
+      if (!formValue || !(formValue instanceof Date) || formValue.getTime() !== dateObj.getTime()) {
+        form.setValue('applicantDob', dateObj);
       }
     }
   }, [formData.applicant?.dob, form]);
 
+  const copyAddressToGuarantor = async () => {
+    if (sameAddressGuarantor) {
+      const applicantAddress = formData.applicant;
+      await updateFormData('guarantor', 'address', applicantAddress.address);
+      await updateFormData('guarantor', 'city', applicantAddress.city);
+      await updateFormData('guarantor', 'state', applicantAddress.state);
+      await updateFormData('guarantor', 'zip', applicantAddress.zip);
+      await updateFormData('guarantor', 'landlordName', applicantAddress.landlordName);
+      await updateFormData('guarantor', 'landlordAddressLine1', applicantAddress.landlordAddressLine1);
+      await updateFormData('guarantor', 'landlordAddressLine2', applicantAddress.landlordAddressLine2);
+      await updateFormData('guarantor', 'landlordCity', applicantAddress.landlordCity);
+      await updateFormData('guarantor', 'landlordState', applicantAddress.landlordState);
+      await updateFormData('guarantor', 'landlordZipCode', applicantAddress.landlordZipCode);
+      await updateFormData('guarantor', 'landlordPhone', applicantAddress.landlordPhone);
+      await updateFormData('guarantor', 'landlordEmail', applicantAddress.landlordEmail);
+      await updateFormData('guarantor', 'currentRent', applicantAddress.currentRent);
+      await updateFormData('guarantor', 'lengthAtAddress', applicantAddress.lengthAtAddress);
+    }
+  };
+
+
+
+  // Ensure applicantDob in formData and react-hook-form stay in sync for DatePicker display (preserving local date)
+  useEffect(() => {
+    const formValue = form.watch('applicantDob');
+    const stateValue = formData.applicant?.dob;
+    const dateObj = toValidDate(stateValue);
+    if (dateObj && (!formValue || (formValue instanceof Date && dateObj instanceof Date && formValue.getTime() !== dateObj.getTime()))) {
+      form.setValue('applicantDob', dateObj);
+    }
+  }, [formData.applicant?.dob, form]);
+
+  // Ensure moveInDate in formData and react-hook-form stay in sync for DatePicker display
+  useEffect(() => {
+    const formValue = form.watch('moveInDate');
+    const stateValue = formData.application?.moveInDate;
+    console.log('📅 moveInDate sync check - formValue:', formValue, 'stateValue:', stateValue);
+    if (stateValue && (!formValue || (formValue instanceof Date && stateValue instanceof Date && formValue.getTime() !== stateValue.getTime()))) {
+      // Only set if different and stateValue is a valid Date
+      if (stateValue instanceof Date && !isNaN(stateValue.getTime())) {
+        console.log('📅 Setting moveInDate from Date object:', stateValue);
+        form.setValue('moveInDate', stateValue);
+      } else if (typeof stateValue === 'string' || typeof stateValue === 'number') {
+        const parsed = new Date(stateValue);
+        if (!isNaN(parsed.getTime())) {
+          console.log('📅 Setting moveInDate from parsed string/number:', parsed);
+          form.setValue('moveInDate', parsed);
+        }
+      }
+    }
+  }, [formData.application?.moveInDate, form]);
+
+  // Ensure apartmentNumber in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('apartmentNumber');
+    const stateValue = formData.application?.apartmentNumber;
+    console.log('🏠 apartmentNumber sync check - formValue:', formValue, 'stateValue:', stateValue);
+    if (stateValue !== undefined && formValue !== stateValue) {
+      console.log('🏠 Setting apartmentNumber:', stateValue);
+      form.setValue('apartmentNumber', stateValue || '');
+    }
+  }, [formData.application?.apartmentNumber, form]);
+
+  // Ensure monthlyRent in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('monthlyRent');
+    const stateValue = formData.application?.monthlyRent;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('monthlyRent', stateValue);
+    }
+  }, [formData.application?.monthlyRent, form]);
+
+  // Ensure apartmentType in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('apartmentType');
+    const stateValue = formData.application?.apartmentType;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('apartmentType', stateValue || '');
+    }
+  }, [formData.application?.apartmentType, form]);
+
+  // Ensure apartmentNumber in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('apartmentNumber');
+    const stateValue = formData.application?.apartmentNumber;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('apartmentNumber', stateValue || '');
+    }
+  }, [formData.application?.apartmentNumber, form]);
+
+  // Ensure buildingAddress in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('buildingAddress');
+    const stateValue = formData.application?.buildingAddress;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('buildingAddress', stateValue || '');
+    }
+  }, [formData.application?.buildingAddress, form]);
+
+  // Ensure landlord fields in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordName');
+    const stateValue = formData.applicant?.landlordName;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordName', stateValue || '');
+    }
+  }, [formData.applicant?.landlordName, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordAddressLine1');
+    const stateValue = formData.applicant?.landlordAddressLine1;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordAddressLine1', stateValue || '');
+    }
+  }, [formData.applicant?.landlordAddressLine1, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordAddressLine2');
+    const stateValue = formData.applicant?.landlordAddressLine2;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordAddressLine2', stateValue || '');
+    }
+  }, [formData.applicant?.landlordAddressLine2, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordCity');
+    const stateValue = formData.applicant?.landlordCity;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordCity', stateValue || '');
+    }
+  }, [formData.applicant?.landlordCity, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordState');
+    const stateValue = formData.applicant?.landlordState;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordState', stateValue || '');
+    }
+  }, [formData.applicant?.landlordState, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordZipCode');
+    const stateValue = formData.applicant?.landlordZipCode;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordZipCode', stateValue || '');
+    }
+  }, [formData.applicant?.landlordZipCode, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordPhone');
+    const stateValue = formData.applicant?.landlordPhone;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordPhone', stateValue || '');
+    }
+  }, [formData.applicant?.landlordPhone, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLandlordEmail');
+    const stateValue = formData.applicant?.landlordEmail;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLandlordEmail', stateValue || '');
+    }
+  }, [formData.applicant?.landlordEmail, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantCurrentRent');
+    const stateValue = formData.applicant?.currentRent;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantCurrentRent', stateValue);
+    }
+  }, [formData.applicant?.currentRent, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantReasonForMoving');
+    const stateValue = formData.applicant?.reasonForMoving;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantReasonForMoving', stateValue || '');
+    }
+  }, [formData.applicant?.reasonForMoving, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLengthAtAddressYears');
+    const stateValue = formData.applicant?.lengthAtAddressYears;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLengthAtAddressYears', stateValue);
+    }
+  }, [formData.applicant?.lengthAtAddressYears, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantLengthAtAddressMonths');
+    const stateValue = formData.applicant?.lengthAtAddressMonths;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantLengthAtAddressMonths', stateValue);
+    }
+  }, [formData.applicant?.lengthAtAddressMonths, form]);
+
+  // Ensure city, state, and zip fields in formData and react-hook-form stay in sync
+  useEffect(() => {
+    const formValue = form.watch('applicantCity');
+    const stateValue = formData.applicant?.city;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantCity', stateValue || '');
+    }
+  }, [formData.applicant?.city, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantState');
+    const stateValue = formData.applicant?.state;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantState', stateValue || '');
+    }
+  }, [formData.applicant?.state, form]);
+
+  useEffect(() => {
+    const formValue = form.watch('applicantZip');
+    const stateValue = formData.applicant?.zip;
+    if (stateValue !== undefined && formValue !== stateValue) {
+      form.setValue('applicantZip', stateValue || '');
+    }
+  }, [formData.applicant?.zip, form]);
+
+  // Debug apartment, address, and landlord field values
+  useEffect(() => {
+    const apartmentNumberValue = form.watch('apartmentNumber');
+    const apartmentTypeValue = form.watch('apartmentType');
+    const monthlyRentValue = form.watch('monthlyRent');
+    const buildingAddressValue = form.watch('buildingAddress');
+    const cityValue = form.watch('applicantCity');
+    const stateValue = form.watch('applicantState');
+    const zipValue = form.watch('applicantZip');
+    const landlordCityValue = form.watch('applicantLandlordCity');
+    const landlordStateValue = form.watch('applicantLandlordState');
+    const landlordZipValue = form.watch('applicantLandlordZipCode');
+    
+    console.log('🔍 Apartment, address, and landlord field values in form:', {
+      apartmentNumber: apartmentNumberValue,
+      apartmentType: apartmentTypeValue,
+      buildingAddress: buildingAddressValue,
+      city: cityValue,
+      state: stateValue,
+      zip: zipValue,
+      landlordCity: landlordCityValue,
+      landlordState: landlordStateValue,
+      landlordZip: landlordZipValue
+    });
+
+    // Synchronize form values back to formData state
+    if (apartmentNumberValue !== formData.application?.apartmentNumber) {
+      updateFormData('application', 'apartmentNumber', apartmentNumberValue);
+    }
+    if (apartmentTypeValue !== formData.application?.apartmentType) {
+      updateFormData('application', 'apartmentType', apartmentTypeValue);
+    }
+    if (buildingAddressValue !== formData.application?.buildingAddress) {
+      updateFormData('application', 'buildingAddress', buildingAddressValue);
+    }
+    if (monthlyRentValue !== formData.application?.monthlyRent) {
+      updateFormData('application', 'monthlyRent', monthlyRentValue);
+    }
+    
+    console.log('🔍 Apartment, address, and landlord field values in formData:', {
+      apartmentNumber: formData.application?.apartmentNumber,
+      apartmentType: formData.application?.apartmentType,
+      buildingAddress: formData.application?.buildingAddress,
+      city: formData.applicant?.city,
+      state: formData.applicant?.state,
+      zip: formData.applicant?.zip,
+      landlordCity: formData.applicant?.landlordCity,
+      landlordState: formData.applicant?.landlordState,
+      landlordZipCode: formData.applicant?.landlordZipCode
+    });
+  }, [form.watch('apartmentNumber'), form.watch('apartmentType'), form.watch('buildingAddress'), form.watch('monthlyRent'), form.watch('applicantCity'), form.watch('applicantState'), form.watch('applicantZip'), form.watch('applicantLandlordCity'), form.watch('applicantLandlordState'), form.watch('applicantLandlordZipCode'), formData.application?.apartmentNumber, formData.application?.apartmentType, formData.application?.buildingAddress, formData.application?.monthlyRent, formData.applicant?.city, formData.applicant?.state, formData.applicant?.zip, formData.applicant?.landlordCity, formData.applicant?.landlordState, formData.applicant?.landlordZipCode]);
+
   // Refactor renderStep to accept a stepIdx argument
   const renderStep = (stepIdx = currentStep) => {
-    switch (stepIdx) {
+    const actualStepId = getActualStepId(stepIdx);
+    switch (actualStepId) {
       case 0:
         return <ApplicationInstructions onNext={nextStep} />;
       case 1:
@@ -922,12 +5773,13 @@ export function ApplicationForm() {
                       <FormLabel>Building Address</FormLabel>
                       <FormControl>
                         <Select 
-                          value={field.value}
+                          value={field.value || formData.application?.buildingAddress || ''}
                           onValueChange={(value) => {
                             field.onChange(value);
                             handleBuildingSelect(value);
                           }}
                           disabled={isLoadingUnits}
+                          key={`buildingAddress-${formData.application?.buildingAddress || 'empty'}`}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder={isLoadingUnits ? "Loading..." : "Select building address"} />
@@ -954,15 +5806,26 @@ export function ApplicationForm() {
                       <FormLabel>Apartment #</FormLabel>
                       <FormControl>
                         <Select 
-                          value={field.value}
+                          value={field.value || formData.application?.apartmentNumber || ''}
                           onValueChange={(value) => {
                             field.onChange(value);
                             handleApartmentSelect(value);
                           }}
                           disabled={!selectedBuilding || availableApartments.length === 0}
+                          key={`apartmentNumber-${formData.application?.apartmentNumber || 'empty'}`}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder={!selectedBuilding ? "Select building first" : availableApartments.length === 0 ? "No apartments available" : "Select apartment"} />
+                            <SelectValue 
+                              placeholder={
+                                field.value || formData.application?.apartmentNumber
+                                  ? (field.value || formData.application?.apartmentNumber)
+                                  : !selectedBuilding 
+                                    ? "Select building first" 
+                                    : availableApartments.length === 0 
+                                      ? "No apartments available" 
+                                      : "Select apartment"
+                              } 
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             {availableApartments.map((apartment) => (
@@ -988,9 +5851,6 @@ export function ApplicationForm() {
                         <DatePicker
                           value={field.value}
                           onChange={(date) => {
-                            console.log('DatePicker onChange - moveInDate:', date);
-                            console.log('DatePicker onChange - moveInDate type:', typeof date);
-                            console.log('DatePicker onChange - moveInDate instanceof Date:', date instanceof Date);
                             field.onChange(date);
                             updateFormData('application', 'moveInDate', date); // Store Date object, not string
                           }}
@@ -1002,6 +5862,8 @@ export function ApplicationForm() {
                     </FormItem>
                   )}
                 />
+
+
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1017,12 +5879,8 @@ export function ApplicationForm() {
                           placeholder="0.00"
                           {...field}
                           className="input-field"
-                          value={formData.application?.monthlyRent?.toString() || ''}
-                          onChange={(e) => {
-                            const numValue = parseFloat(e.target.value) || 0;
-                            field.onChange(numValue);
-                            updateFormData('application', 'monthlyRent', numValue);
-                          }}
+                          value={field.value?.toString() || formData.application?.monthlyRent?.toString() || selectedUnit?.monthlyRent?.toString() || ''}
+                          disabled
                         />
                       </FormControl>
                       <FormMessage />
@@ -1042,7 +5900,8 @@ export function ApplicationForm() {
                           {...field}
                           className="input-field bg-gray-50"
                           readOnly
-                          value={selectedUnit?.unitType || field.value}
+                          value={field.value || formData.application?.apartmentType || selectedUnit?.unitType || ''}
+                          key={`apartmentType-${formData.application?.apartmentType || 'empty'}`}
                         />
                       </FormControl>
                       <FormMessage />
@@ -1125,24 +5984,32 @@ export function ApplicationForm() {
                 Primary Applicant Information
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+            <CardContent className="p-4 sm:p-8">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div className="col-span-1 md:col-span-2">
                   <FormField
                     control={form.control}
                     name="applicantName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Full Name</FormLabel>
+                        <FormLabel className="mb-0.5">
+                          Full Name
+                        </FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Enter full name" 
-                            {...field}
-                            className="input-field"
+                            value={field.value || ''}
+                            className="input-field w-full mt-1"
                             onChange={(e) => {
                               field.onChange(e);
                               updateFormData('applicant', 'name', e.target.value);
+                              // Also update the top-level field for compatibility
+                              updateFormData('', 'applicantName', e.target.value);
                             }}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
                           />
                         </FormControl>
                         <FormMessage />
@@ -1150,48 +6017,480 @@ export function ApplicationForm() {
                     )}
                   />
                 </div>
-
                 <FormField
                   control={form.control}
                   name="applicantDob"
+                  render={({ field }) => {
+                    const dateVal = toValidDate(formData.applicant?.dob);
+                    const safeDate = (dateVal instanceof Date && !isNaN(dateVal.getTime())) ? dateVal : undefined;
+                    return (
+                      <FormItem>
+                        <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
+                        <FormControl>
+                          <DatePicker
+                            value={safeDate as Date | undefined}
+                            onChange={(date) => {
+                              field.onChange(date);
+                              // Store the date as a local date to prevent timezone conversion
+                              const localDate = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate()) : undefined;
+                              updateFormData('applicant', 'dob', localDate);
+                              // Auto-calculate age
+                              if (date) {
+                                const today = new Date();
+                                const birthDate = new Date(date);
+                                let age = today.getFullYear() - birthDate.getFullYear();
+                                const monthDiff = today.getMonth() - birthDate.getMonth();
+                                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                                  age--;
+                                }
+                                updateFormData('applicant', 'age', age);
+                              } else {
+                                updateFormData('applicant', 'age', '');
+                              }
+                            }}
+                            placeholder="Select date of birth"
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="applicantSsn"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Date of Birth *</FormLabel>
                       <FormControl>
-                        <DatePicker
-                          key={`applicantDob-${field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value.getTime() : 'empty'}`}
-                          value={field.value}
-                          onChange={(date) => {
-                            console.log('DatePicker onChange - applicantDob:', date);
-                            console.log('DatePicker onChange - applicantDob type:', typeof date);
-                            console.log('DatePicker onChange - applicantDob instanceof Date:', date instanceof Date);
-                            
-                            // Update form field
-                            field.onChange(date);
-                            
-                            // Update form data
-                            updateFormData('applicant', 'dob', date);
-                            
-                            // Auto-calculate age
-                            if (date) {
-                              const today = new Date();
-                              const birthDate = new Date(date);
-                              let age = today.getFullYear() - birthDate.getFullYear();
-                              const monthDiff = today.getMonth() - birthDate.getMonth();
-                              if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                                age--;
-                              }
-                              updateFormData('applicant', 'age', age);
-                            } else {
-                              // Clear age if no date selected
-                              updateFormData('applicant', 'age', '');
-                            }
-                            
-                            // Trigger form validation
-                            form.trigger('applicantDob');
+                        <SSNInput
+                          name="applicantSsn"
+                          label="Social Security Number"
+                          placeholder="XXX-XX-XXXX"
+                          value={formData.applicant?.ssn || field.value || ''}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'ssn', value);
                           }}
-                          placeholder="Select date of birth"
-                          disabled={(date) => date > new Date()}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <PhoneInput
+                          name="applicantPhone"
+                          label="Phone Number"
+                          placeholder="(555) 555-5555"
+                          value={formData.applicant?.phone || field.value || ''}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'phone', value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <EmailInput
+                          name="applicantEmail"
+                          label="Email Address"
+                          placeholder="you@email.com"
+                          value={formData.applicant?.email || field.value || ''}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'email', value);
+                            // Also update the top-level field for compatibility
+                            updateFormData('', 'applicantEmail', value);
+                          }}
+                          required={true}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLicense"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <LicenseInput
+                          name="applicantLicense"
+                          label="Driver's License Number"
+                          placeholder="Enter license number"
+                          value={formData.applicant?.license || field.value || ''}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'license', value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="space-y-2">
+                  
+                  <StateSelector
+                    selectedState={formData.applicant?.licenseState || ''}
+                    onStateChange={(state) => {
+                      updateFormData('applicant', 'licenseState', state);
+                      form.setValue('applicantLicenseState', state);
+                    }}
+                    label="License State"
+                    required={false}
+                    className="w-full mt-1"
+                  />
+                </div>
+                <h5>Current Address</h5>
+                <div className="space-y-2"></div>
+             
+                <div className="space-y-2">
+                <FormField
+                    control={form.control}
+                    name="applicantAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="mb-0.5">Street Address</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter street address" 
+                            {...field}
+                            className="input-field w-full mt-1"
+                            onChange={(e) => {
+                              field.onChange(e);
+                              updateFormData('applicant', 'address', e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                      <FormField
+                        control={form.control}
+                        name="applicantZip"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <ZIPInput
+                                name="applicantZip"
+                                label="ZIP Code*"
+                                placeholder="ZIP code"
+                                value={field.value || ''}
+                                onChange={(value: string) => {
+                                  field.onChange(value);
+                                  updateFormData('applicant', 'zip', value);
+                                }}
+                                required={true}
+                                className="w-full mt-1"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                </div>
+                
+                <div className="space-y-2">
+                  {/* Replace State* and City* text inputs with StateCitySelector */}
+                  <StateCitySelector
+                    selectedState={formData.applicant?.state || ''}
+                    selectedCity={formData.applicant?.city || ''}
+                    onStateChange={(state) => {
+                      updateFormData('applicant', 'state', state);
+                      form.setValue('applicantState', state);
+                      // Clear city if state changes
+                      updateFormData('applicant', 'city', '');
+                      form.setValue('applicantCity', '');
+                    }}
+                    onCityChange={(city) => {
+                      updateFormData('applicant', 'city', city);
+                      form.setValue('applicantCity', city);
+                    }}
+                    stateLabel="State*"
+                    cityLabel="City*"
+                    required={true}
+                    error={form.formState.errors.applicantState?.message || form.formState.errors.applicantCity?.message}
+                    className="mb-4"
+                  />
+                </div>
+            
+              </div>
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div className="col-span-1 md:col-span-2">
+                  
+                   </div>
+                <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
+                  <FormLabel className="mb-0.5 col-span-2">Length of Stay at Current Address</FormLabel>
+                  <FormField
+                    control={form.control}
+                    name="applicantLengthAtAddressYears"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={field.value ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? undefined : Number(e.target.value);
+                              field.onChange(val);
+                              updateFormData('applicant', 'lengthAtAddressYears', val);
+                            }}
+                            placeholder="e.g. 2 years"
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="applicantLengthAtAddressMonths"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={11}
+                            value={field.value ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? undefined : Number(e.target.value);
+                              field.onChange(val);
+                              updateFormData('applicant', 'lengthAtAddressMonths', val);
+                            }}
+                            placeholder="e.g. 4 months"
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Landlord Name</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter landlord's name" 
+                          {...field}
+                          className="input-field w-full mt-1 border-gray-300 bg-white"
+                          onChange={(e) => {
+                            field.onChange(e);
+                            updateFormData('applicant', 'landlordName', e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordAddressLine1"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Landlord Street Address</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter landlord's street address" 
+                          {...field}
+                          className="input-field w-full mt-1 border-gray-300 bg-white"
+                          onChange={(e) => {
+                            field.onChange(e);
+                            updateFormData('applicant', 'landlordAddressLine1', e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordAddressLine2"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Landlord Address Line 2 (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Apartment, suite, etc." 
+                          {...field}
+                          className="input-field w-full mt-1 border-gray-300 bg-white"
+                          onChange={(e) => {
+                            field.onChange(e);
+                            updateFormData('applicant', 'landlordAddressLine2', e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordState"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <StateSelector
+                          selectedState={field.value || ''}
+                          onStateChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'landlordState', value);
+                          }}
+                          label="Landlord State"
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordCity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <CitySelector
+                          selectedState={formData.applicant?.landlordState || ''}
+                          selectedCity={field.value || ''}
+                          onCityChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'landlordCity', value);
+                          }}
+                          label="Landlord City"
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordZipCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <ZIPInput
+                          name="applicantLandlordZipCode"
+                          label="Landlord ZIP Code"
+                          placeholder="Enter landlord's ZIP code"
+                          value={field.value || ''}
+                          onChange={(value: string) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'landlordZipCode', value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <PhoneInput
+                          name="applicantLandlordPhone"
+                          label="Landlord Phone Number"
+                          placeholder="Enter landlord's phone number"
+                          value={field.value || ''}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'landlordPhone', value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="applicantLandlordEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <EmailInput
+                          name="applicantLandlordEmail"
+                          label="Landlord Email Address (Optional)"
+                          placeholder="Enter landlord's email address"
+                          value={field.value || ''}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            updateFormData('applicant', 'landlordEmail', value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div>
+                  <Label htmlFor="applicantCurrentRent" className="mb-0.5">Monthly Rent</Label>
+                  <Input
+                    id="applicantCurrentRent"
+                    type="number"
+                    placeholder="0.00"
+                    value={formData.applicant?.currentRent?.toString() || ''}
+                    onChange={(e) => {
+                      const numValue = parseFloat(e.target.value) || 0;
+                      updateFormData('applicant', 'currentRent', numValue);
+                      form.setValue('applicantCurrentRent', numValue);
+                    }}
+                    className="input-field w-full mt-1"
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="applicantReasonForMoving"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Please explain your reason for moving" 
+                          {...field}
+                          className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
+                          onChange={(e) => {
+                            field.onChange(e);
+                            updateFormData('applicant', 'reasonForMoving', e.target.value);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -1200,294 +6499,347 @@ export function ApplicationForm() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <SSNInput
-                  name="applicantSsn"
-                  label="Social Security Number"
-                  value={formData.applicant?.ssn || ''}
-                  onChange={(value) => {
-                    updateFormData('applicant', 'ssn', value);
-                    form.setValue('applicantSsn', value);
-                  }}
-                  error={form.formState.errors.applicantSsn?.message}
-                />
+              {/* Co-Applicant and Guarantor Count Selectors - Only for applicant role */}
+              {userRole === 'applicant' && (
+                <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-4">Additional People in Application</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-blue-800">How many Co-Applicants?</Label>
+                      <Select
+                        value={formData.coApplicantCount?.toString() || '0'}
+                        onValueChange={(value) => {
+                          const count = parseInt(value, 10);
+                          updateFormData('', 'coApplicantCount', count);
+                          updateFormData('', 'hasCoApplicant', count > 0);
 
-                {/* Age field hidden from frontend, still auto-calculated in state */}
-
-                <PhoneInput
-                  name="applicantPhone"
-                  label="Phone Number"
-                  value={formData.applicant?.phone || ''}
-                  onChange={(value) => {
-                    updateFormData('applicant', 'phone', value);
-                    form.setValue('applicantPhone', value);
-                  }}
-                  error={form.formState.errors.applicantPhone?.message}
-                />
-
-                <EmailInput
-                  name="applicantEmail"
-                  label="Email Address"
-                  value={formData.applicant?.email || ''}
-                  onChange={(value) => {
-                    updateFormData('applicant', 'email', value);
-                    form.setValue('applicantEmail', value);
-                  }}
-                  error={form.formState.errors.applicantEmail?.message}
-                  required={true}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <LicenseInput
-                  name="applicantLicense"
-                  label="Driver's License Number"
-                  value={formData.applicant?.license || ''}
-                  onChange={(value) => {
-                    updateFormData('applicant', 'license', value);
-                    form.setValue('applicantLicense', value);
-                  }}
-                  error={form.formState.errors.applicantLicense?.message}
-                />
-
-                <StateSelector
-                  selectedState={formData.applicant?.licenseState || ''}
-                  onStateChange={(state) => {
-                    updateFormData('applicant', 'licenseState', state);
-                    form.setValue('applicantLicenseState', state);
-                  }}
-                  label="License State"
-                  error={form.formState.errors.applicantLicenseState?.message}
-                />
-                  <FormField
-                    control={form.control}
-                    name="applicantGender"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Gender</FormLabel>
-                        <FormControl>
-                          <Select
-                            value={formData.applicant?.gender || ''}
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                              updateFormData('applicant', 'gender', value);
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="male">Male</SelectItem>
-                              <SelectItem value="female">Female</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-              </div>
-
-              <div className="space-y-6">
-                <h4 className="text-lg font-medium text-gray-900 dark:text-white">Current Address</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="md:col-span-2">
-                    <FormField
-                      control={form.control}
-                      name="applicantAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Street Address</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Enter street address" 
-                              {...field}
-                              className="input-field"
-                              onChange={(e) => {
-                                field.onChange(e);
-                                updateFormData('applicant', 'address', e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <CitySelector
-                    selectedState={formData.applicant?.state || ''}
-                    selectedCity={formData.applicant?.city || ''}
-                    onCityChange={(city) => {
-                      updateFormData('applicant', 'city', city);
-                      form.setValue('applicantCity', city);
-                    }}
-                    label="City"
-                    required={true}
-                    error={form.formState.errors.applicantCity?.message}
-                  />
-
-                  <StateSelector
-                    selectedState={formData.applicant?.state || ''}
-                    onStateChange={(state) => {
-                      updateFormData('applicant', 'state', state);
-                      form.setValue('applicantState', state);
-                    }}
-                    label="State"
-                    required={true}
-                    error={form.formState.errors.applicantState?.message}
-                  />
-
-                  <ZIPInput
-                    name="applicantZip"
-                    label="ZIP Code"
-                    value={formData.applicant?.zip || ''}
-                    onChange={(value) => {
-                      updateFormData('applicant', 'zip', value);
-                      form.setValue('applicantZip', value);
-                    }}
-                    error={form.formState.errors.applicantZip?.message}
-                    required={true}
-                  />
-
-                  {/* CURRENT LANDLORDS NAME */}
-                  <div className="space-y-2">
-                    <FormLabel>CURRENT LANDLORDS NAME</FormLabel>
-                    <FormField
-                      control={form.control}
-                      name="applicantLandlordName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Input 
-                              placeholder="Enter landlord's name" 
-                              {...field}
-                              className="input-field border-gray-300 bg-white"
-                              onChange={(e) => {
-                                field.onChange(e);
-                                updateFormData('applicant', 'landlordName', e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-          
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="applicantLengthAtAddressYears"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Years at Address</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min={0}
-                                value={field.value ?? ''}
-                                onChange={(e) => {
-                                  const val = e.target.value === '' ? undefined : Number(e.target.value);
-                                  field.onChange(val);
-                                  updateFormData('applicant', 'lengthAtAddressYears', val);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="applicantLengthAtAddressMonths"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Months at Address</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min={0}
-                                max={11}
-                                value={field.value ?? ''}
-                                onChange={(e) => {
-                                  const val = e.target.value === '' ? undefined : Number(e.target.value);
-                                  field.onChange(val);
-                                  updateFormData('applicant', 'lengthAtAddressMonths', val);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="form-field">
-                      <Label htmlFor="applicantCurrentRent">MONTHLY RENT</Label>
-                      <Input
-                        id="applicantCurrentRent"
-                        type="number"
-                        placeholder="0.00"
-                        value={formData.applicant?.currentRent?.toString() || ''}
-                        onChange={(e) => {
-                          const numValue = parseFloat(e.target.value) || 0;
-                          updateFormData('applicant', 'currentRent', numValue);
-                          form.setValue('applicantCurrentRent', numValue);
+                          // Ensure coApplicants array is sized to count (extend or trim)
+                          const current = Array.isArray(formData.coApplicants) ? formData.coApplicants : [];
+                          let next = current.slice(0, Math.max(0, count));
+                          if (count > next.length) {
+                            const toAdd = count - next.length;
+                            const defaults = Array.from({ length: toAdd }, () => ({
+                              name: '',
+                              email: '',
+                              phone: '',
+                              zip: '',
+                              dob: undefined,
+                              ssn: '',
+                              license: '',
+                              licenseState: '',
+                              address: '',
+                              city: '',
+                              state: '',
+                              employmentType: '',
+                              employer: '',
+                              position: '',
+                              employmentStart: undefined,
+                              income: '',
+                              incomeFrequency: 'yearly',
+                              businessName: '',
+                              businessType: '',
+                              yearsInBusiness: '',
+                              otherIncome: '',
+                              otherIncomeFrequency: 'monthly',
+                              otherIncomeSource: '',
+                              creditScore: '',
+                              bankRecords: []
+                            }));
+                            next = next.concat(defaults);
+                          }
+                          updateFormData('', 'coApplicants', next);
                         }}
-                        className="input-field"
-                      />
+                      >
+                        <SelectTrigger className="w-64">
+                          <SelectValue placeholder="Select number of co-applicants" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">0 Co-Applicants</SelectItem>
+                          <SelectItem value="1">1 Co-Applicant</SelectItem>
+                          <SelectItem value="2">2 Co-Applicants</SelectItem>
+                          <SelectItem value="3">3 Co-Applicants</SelectItem>
+                          <SelectItem value="4">4 Co-Applicants</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-blue-800">How many Guarantors?</Label>
+                      <Select
+                        value={formData.guarantorCount?.toString() || '0'}
+                        onValueChange={(value) => {
+                          const count = parseInt(value, 10);
+                          updateFormData('', 'guarantorCount', count);
+                          updateFormData('', 'hasGuarantor', count > 0);
+
+                          // Ensure guarantors array is sized to count (extend or trim)
+                          const current = Array.isArray(formData.guarantors) ? formData.guarantors : [];
+                          let next = current.slice(0, Math.max(0, count));
+                          if (count > next.length) {
+                            const toAdd = count - next.length;
+                            const defaults = Array.from({ length: toAdd }, () => ({
+                              name: '',
+                              email: '',
+                              phone: '',
+                              zip: '',
+                              dob: undefined,
+                              ssn: '',
+                              license: '',
+                              licenseState: '',
+                              address: '',
+                              city: '',
+                              state: '',
+                              employmentType: '',
+                              employer: '',
+                              position: '',
+                              employmentStart: undefined,
+                              income: '',
+                              incomeFrequency: 'yearly',
+                              businessName: '',
+                              businessType: '',
+                              yearsInBusiness: '',
+                              otherIncome: '',
+                              otherIncomeFrequency: 'monthly',
+                              otherIncomeSource: '',
+                              creditScore: '',
+                              bankRecords: []
+                            }));
+                            next = next.concat(defaults);
+                          }
+                          updateFormData('', 'guarantors', next);
+                        }}
+                      >
+                        <SelectTrigger className="w-64">
+                          <SelectValue placeholder="Select number of guarantors" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">0 Guarantors</SelectItem>
+                          <SelectItem value="1">1 Guarantor</SelectItem>
+                          <SelectItem value="2">2 Guarantors</SelectItem>
+                          <SelectItem value="3">3 Guarantors</SelectItem>
+                          <SelectItem value="4">4 Guarantors</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                   {/* WHY ARE YOU MOVING */}
-                   <div className="space-y-2">
-                    <FormLabel>WHY ARE YOU MOVING</FormLabel>
-                    <FormField
-                      control={form.control}
-                      name="applicantReasonForMoving"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Please explain your reason for moving" 
-                              {...field}
-                              className="input-field border-gray-300 bg-white min-h-[80px]"
-                              onChange={(e) => {
-                                field.onChange(e);
-                                updateFormData('applicant', 'reasonForMoving', e.target.value);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <p className="text-xs text-blue-600 mt-3">
+                    Select the number of additional people who will be involved in this application. 
+                    You can add or remove people later if needed.
+                  </p>
 
-                
+                  {/* Quick-entry fields for Co-Applicants */}
+                  {formData.coApplicantCount > 0 && (
+                    <div className="mt-6">
+                      <h4 className="text-sm font-semibold text-blue-900 mb-3">Co-Applicants</h4>
+                      <div className="space-y-4">
+                        {Array.from({ length: formData.coApplicantCount || 0 }, (_, index) => (
+                          <div key={`coapplicant-quick-${index}`} className="p-4 bg-white border border-blue-200 rounded-lg">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                              <div>
+                                <Label className="text-sm">Co-Applicant {index + 1} Name</Label>
+                                <Input
+                                  value={formData.coApplicants?.[index]?.name || ''}
+                                  onChange={(e) => {
+                                    updateArrayItem('coApplicants', index, 'name', e.target.value);
+                                    form.setValue(`coApplicants.${index}.name`, e.target.value);
+                                  }}
+                                  placeholder="Full name"
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-sm">Co-Applicant {index + 1} Email</Label>
+                                <Input
+                                  type="email"
+                                  value={formData.coApplicants?.[index]?.email || ''}
+                                  onChange={(e) => {
+                                    updateArrayItem('coApplicants', index, 'email', e.target.value);
+                                    form.setValue(`coApplicants.${index}.email`, e.target.value);
+                                  }}
+                                  placeholder="email@example.com"
+                                  className="mt-1"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  // Open specific co-applicant form
+                                  const url = new URL(window.location.href);
+                                  url.searchParams.set('role', `coapplicant${index + 1}`);
+                                  window.open(url.toString(), '_blank');
+                                }}
+                                className="text-blue-600 hover:text-blue-700 border-blue-300"
+                              >
+                                Open Co-Applicant {index + 1} Form
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  // Remove this co-applicant
+                                  const newCount = Math.max(0, (formData.coApplicantCount || 0) - 1);
+                                  const newCoApplicants = (formData.coApplicants || []).filter((_: any, i: number) => i !== index);
+                                  updateFormData('', 'coApplicantCount', newCount);
+                                  updateFormData('', 'hasCoApplicant', newCount > 0);
+                                  updateFormData('', 'coApplicants', newCoApplicants);
+                                }}
+                                className="text-red-600 hover:text-red-700 border-red-300"
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
+                  {/* Quick-entry fields for Guarantors */}
+                  {formData.guarantorCount > 0 && (
+                    <div className="mt-6">
+                      <h4 className="text-sm font-semibold text-blue-900 mb-3">Guarantors</h4>
+                      <div className="space-y-4">
+                        {Array.from({ length: formData.guarantorCount || 0 }, (_, index) => (
+                          <div key={`guarantor-quick-${index}`} className="p-4 bg-white border border-blue-200 rounded-lg">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                              <div>
+                                <Label className="text-sm">Guarantor {index + 1} Name</Label>
+                                <Input
+                                  value={formData.guarantors?.[index]?.name || ''}
+                                  onChange={(e) => {
+                                    updateArrayItem('guarantors', index, 'name', e.target.value);
+                                    form.setValue(`guarantors.${index}.name`, e.target.value);
+                                  }}
+                                  placeholder="Full name"
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-sm">Guarantor {index + 1} Email</Label>
+                                <Input
+                                  type="email"
+                                  value={formData.guarantors?.[index]?.email || ''}
+                                  onChange={(e) => {
+                                    updateArrayItem('guarantors', index, 'email', e.target.value);
+                                    form.setValue(`guarantors.${index}.email`, e.target.value);
+                                  }}
+                                  placeholder="email@example.com"
+                                  className="mt-1"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  // Open specific guarantor form
+                                  const url = new URL(window.location.href);
+                                  url.searchParams.set('role', `guarantor${index + 1}`);
+                                  window.open(url.toString(), '_blank');
+                                }}
+                                className="text-blue-600 hover:text-blue-700 border-blue-300"
+                              >
+                                Open Guarantor {index + 1} Form
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  // Remove this guarantor
+                                  const newCount = Math.max(0, (formData.guarantorCount || 0) - 1);
+                                  const newGuarantors = (formData.guarantors || []).filter((_: any, i: number) => i !== index);
+                                  updateFormData('', 'guarantorCount', newCount);
+                                  updateFormData('', 'hasGuarantor', newCount > 0);
+                                  updateFormData('', 'guarantors', newGuarantors);
+                                }}
+                                className="text-red-600 hover:text-red-700 border-red-300"
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         );
 
       case 3:
         return (
-          <FinancialSection 
-            title="Primary Applicant Financial Information"
-            person="applicant"
-            formData={formData}
-            updateFormData={updateFormData}
-          />
+          <div className="space-y-6">
+            <Card className="form-section border-l-4 border-l-blue-500">
+              <CardHeader>
+                <CardTitle className="flex items-center text-blue-700 dark:text-blue-400">
+                  <CalendarDays className="w-5 h-5 mr-2" />
+                  Financial Information 1 - Primary Applicant
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FinancialSection 
+                  title="Primary Applicant Financial Information"
+                  person="applicant"
+                  formData={formData}
+                  updateFormData={updateFormData}
+                />
+              </CardContent>
+            </Card>
+          </div>
         );
 
       case 4:
+        if (!formData.applicant?.employmentType) {
+          console.log('🔍 Primary Applicant Documents - No employment type selected:', {
+            applicant_employmentType: formData.applicant?.employmentType,
+            applicant_data: formData.applicant,
+          });
+          return (
+            <Card className="form-section">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FolderOpen className="w-5 h-5 mr-2" />
+                  Supporting Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-gray-500 text-sm mb-4">Please select Employment Type in the Financial Information section to upload supporting documents.</div>
+                {/* Info blocks: Security Notice and Important Notes */}
+                <div className="flex flex-col space-y-1.5 p-6">
+                  <div className="tracking-tight text-lg font-medium">Supporting Documents</div>
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <p className="text-sm text-green-800">
+                      <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+                  <h4 className="font-medium text-yellow-900 mb-2">Important Notes:</h4>
+                  <ul className="text-sm text-yellow-800 space-y-1">
+                    <li>• Documents must be current and legible</li>
+                    <li>• Corporate applicants require additional documentation</li>
+                    <li>• Self-employed applicants need accountant verification</li>
+                    <li>• Incomplete applications will delay processing</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        }
+        console.log('🔍 Primary Applicant Documents - Employment type selected:', {
+          applicant_employmentType: formData.applicant?.employmentType,
+          applicant_data: formData.applicant,
+        });
         return (
           <Card className="form-section">
             <CardHeader>
@@ -1498,148 +6850,882 @@ export function ApplicationForm() {
             </CardHeader>
             <CardContent>
               <SupportingDocuments 
-                formData={formData}
+                formData={{
+                  ...formData,
+                  webhookResponses: Object.fromEntries(
+                    Object.entries(webhookResponses)
+                      .filter(([key]) => key.startsWith('applicant_'))
+                      .map(([key, value]) => [key.replace('applicant_', ''), value])
+                  )
+                }}
                 onDocumentChange={(documentType, files) => {
-                  setDocuments((prev: any) => ({
-                    ...prev,
-                    [documentType]: files,
-                  }));
+                  handleDocumentChange('applicant', documentType, files);
+                }}
+                onWebhookResponse={(documentType, response) => {
+                  handleWebhookResponse('applicant', documentType, response);
                 }}
                 onEncryptedDocumentChange={(documentType, encryptedFiles) => {
-                  setEncryptedDocuments((prev: any) => ({
-                    ...prev,
-                    [documentType]: encryptedFiles,
-                  }));
-                  const sectionKey = `supporting_${documentType}`;
-                  const docs = encryptedFiles.map(file => ({
-                    reference_id: file.uploadDate + '-' + file.filename,
-                    file_name: file.filename,
-                    section_name: sectionKey
-                  }));
-                  setUploadedDocuments(prev => {
-                    const filtered = prev.filter(doc => doc.section_name !== sectionKey);
-                    return [...filtered, ...docs];
-                  });
-                  const filesMetadata = encryptedFiles.map(file => ({
-                    file_name: file.filename,
-                    file_size: file.originalSize,
-                    mime_type: file.mimeType,
-                    upload_date: file.uploadDate
-                  }));
-                  setUploadedFilesMetadata(prev => ({
-                    ...prev,
-                    [sectionKey]: filesMetadata
-                  }));
+                  handleEncryptedDocumentChange('applicant', documentType, encryptedFiles);
                 }}
                 referenceId={referenceId}
                 enableWebhook={true}
-                applicationId={applicationId}
+                applicationId={user?.applicantId || 'unknown'}
+                applicantId={user?.id}
+                zoneinfo={user?.zoneinfo}
+                showOnlyApplicant={true}
               />
             </CardContent>
           </Card>
         );
 
       case 5:
-        // NEW: Co-Applicant Supporting Documents step
-        if (!hasCoApplicant) return null;
-        return (
-          <Card className="form-section">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <FolderOpen className="w-5 h-5 mr-2" />
-                Co-Applicant Supporting Documents
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SupportingDocuments
-                formData={{ coApplicant: formData.coApplicant }}
-                onDocumentChange={(documentType, files) => {
-                  setDocuments((prev: any) => ({
-                    ...prev,
-                    ["coApplicant_" + documentType]: files,
-                  }));
-                }}
-                onEncryptedDocumentChange={(documentType, encryptedFiles) => {
-                  setEncryptedDocuments((prev: any) => ({
-                    ...prev,
-                    ["coApplicant_" + documentType]: encryptedFiles,
-                  }));
-                  const sectionKey = `coApplicant_supporting_${documentType}`;
-                  const docs = encryptedFiles.map(file => ({
-                    reference_id: file.uploadDate + '-' + file.filename,
-                    file_name: file.filename,
-                    section_name: sectionKey
-                  }));
-                  setUploadedDocuments(prev => {
-                    const filtered = prev.filter(doc => doc.section_name !== sectionKey);
-                    return [...filtered, ...docs];
-                  });
-                  const filesMetadata = encryptedFiles.map(file => ({
-                    file_name: file.filename,
-                    file_size: file.originalSize,
-                    mime_type: file.mimeType,
-                    upload_date: file.uploadDate
-                  }));
-                  setUploadedFilesMetadata(prev => ({
-                    ...prev,
-                    [sectionKey]: filesMetadata
-                  }));
-                }}
-                referenceId={referenceId}
-                enableWebhook={true}
-                applicationId={applicationId}
-              />
-            </CardContent>
-          </Card>
-        );
 
-      case 6:
         return (
-          <div className="space-y-6">
-            {/* Guarantor Information Section */}
-            {hasGuarantor ? (
-              <Card className="form-section border-l-4 border-l-purple-500">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-purple-700 dark:text-purple-400">
-                    <UserCheck className="w-5 h-5 mr-2" />
-                    Guarantor Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Full Name</Label>
-                      <Input 
-                        placeholder="Enter full name"
-                        className="input-field"
-                        onChange={(e) => updateFormData('guarantor', 'name', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label>Relationship to Applicant(s) *</Label>
-                      <Select onValueChange={(value) => updateFormData('guarantor', 'relationship', value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select relationship" />
+          <div className="space-y-8">
+            <Card className="form-section border-l-4 border-l-green-500">
+              <CardHeader>
+                <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                  <Users className="w-5 h-5 mr-2" />
+                  {userRole.startsWith('coapplicant') && specificIndex !== null 
+                    ? `Co-Applicant ${specificIndex + 1} Information`
+                    : 'Co-Applicant Information'
+                  }
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Only show checkbox if not a specific co-applicant role */}
+                {!userRole.startsWith('coapplicant') && (
+                  <div className="flex items-center space-x-3">
+                    <Checkbox 
+                      id="hasCoApplicant"
+                      checked={hasCoApplicant}
+                      onCheckedChange={(checked) => {
+                        const isChecked = checked as boolean;
+                        console.log('🔘 Co-Applicant checkbox changed:', isChecked);
+                        setHasCoApplicant(isChecked);
+                        form.setValue('hasCoApplicant', isChecked);
+                        // Also update the formData state to keep everything in sync
+                      setFormData((prev: any) => {
+                        const updated = {
+                          ...prev,
+                          hasCoApplicant: isChecked
+                        };
+                        
+                        // Initialize coApplicants array if checking the checkbox
+                        if (isChecked && (!prev.coApplicants || !Array.isArray(prev.coApplicants))) {
+                          updated.coApplicantCount = 1;
+                          updated.coApplicants = [{
+                            name: '',
+                            relationship: '',
+                            dob: undefined,
+                            ssn: '',
+                            phone: '',
+                            email: '',
+                            license: '',
+                            licenseState: '',
+                            address: '',
+                            city: '',
+                            state: '',
+                            zip: '',
+                            lengthAtAddressYears: undefined,
+                            lengthAtAddressMonths: undefined,
+                            landlordName: '',
+                            landlordAddressLine1: '',
+                            landlordAddressLine2: '',
+                            landlordCity: '',
+                            landlordState: '',
+                            landlordZipCode: '',
+                            landlordPhone: '',
+                            landlordEmail: '',
+                            currentRent: undefined,
+                            reasonForMoving: '',
+                            employmentType: '',
+                            employer: '',
+                            position: '',
+                            employmentStart: undefined,
+                            income: '',
+                            incomeFrequency: 'yearly',
+                            businessName: '',
+                            businessType: '',
+                            yearsInBusiness: '',
+                            otherIncome: '',
+                            otherIncomeFrequency: 'monthly',
+                            otherIncomeSource: '',
+                            bankRecords: []
+                          }];
+                        }
+                        
+                        return updated;
+                      });
+                    }}
+                  />
+                  <Label htmlFor="hasCoApplicant" className="text-base font-medium">
+                    Add Co-Applicant
+                  </Label>
+                </div>
+                )}
+
+                {hasCoApplicant && (
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-4">
+                      <Label className="text-sm font-medium">How many Co-Applicants?</Label>
+                      <Select
+                        value={formData.coApplicantCount?.toString() || '1'}
+                        onValueChange={(value) => {
+                          const count = parseInt(value);
+                          setFormData((prev: any) => ({
+                            ...prev,
+                            coApplicantCount: count
+                          }));
+                          form.setValue('coApplicantCount', count);
+                          
+                          // Ensure coApplicants array has the right number of items
+                          setFormData((prev: any) => {
+                            const currentCoApplicants = prev.coApplicants || [];
+                            if (count > currentCoApplicants.length) {
+                              // Add new co-applicants
+                              const newCoApplicants = [...currentCoApplicants];
+                              for (let i = currentCoApplicants.length; i < count; i++) {
+                                newCoApplicants.push({
+                                  name: '',
+                                  relationship: '',
+                                  dob: undefined,
+                                  ssn: '',
+                                  phone: '',
+                                  email: '',
+                                  license: '',
+                                  licenseState: '',
+                                  address: '',
+                                  city: '',
+                                  state: '',
+                                  zip: '',
+                                  lengthAtAddressYears: undefined,
+                                  lengthAtAddressMonths: undefined,
+                                  landlordName: '',
+                                  landlordAddressLine1: '',
+                                  landlordAddressLine2: '',
+                                  landlordCity: '',
+                                  landlordState: '',
+                                  landlordZipCode: '',
+                                  landlordPhone: '',
+                                  landlordEmail: '',
+                                  currentRent: undefined,
+                                  reasonForMoving: '',
+                                  employmentType: '',
+                                  employer: '',
+                                  position: '',
+                                  employmentStart: undefined,
+                                  income: '',
+                                  incomeFrequency: 'yearly',
+                                  businessName: '',
+                                  businessType: '',
+                                  yearsInBusiness: '',
+                                  otherIncome: '',
+                                  otherIncomeFrequency: 'monthly',
+                                  otherIncomeSource: '',
+                                  bankRecords: []
+                                });
+                              }
+                              return {
+                                ...prev,
+                                coApplicants: newCoApplicants
+                              };
+                            } else if (count < currentCoApplicants.length) {
+                              // Remove excess co-applicants
+                              return {
+                                ...prev,
+                                coApplicants: currentCoApplicants.slice(0, count)
+                              };
+                            }
+                            return prev;
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="w-64">
+                          <SelectValue placeholder="Select number" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="parent">Parent</SelectItem>
-                          <SelectItem value="family">Family Member</SelectItem>
-                          <SelectItem value="friend">Friend</SelectItem>
-                          <SelectItem value="employer">Employer</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
+                          <SelectItem value="1">1 Co-Applicant</SelectItem>
+                          <SelectItem value="2">2 Co-Applicants</SelectItem>
+                          <SelectItem value="3">3 Co-Applicants</SelectItem>
+                          <SelectItem value="4">4 Co-Applicants</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
+                )}
+              </CardContent>
+            </Card>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {(hasCoApplicant || (userRole.startsWith('coapplicant') && specificIndex !== null)) && (
+                  <>
+                    {Array.from({ length: userRole.startsWith('coapplicant') && specificIndex !== null ? 1 : (formData.coApplicantCount || 1) }, (_, index) => {
+                      // For specific co-applicant roles, always show the specific index
+                      const actualIndex = userRole.startsWith('coapplicant') && specificIndex !== null ? specificIndex : index;
+                      return (
+                  <Card key={`co-applicant-${index}`} className="form-section border-l-4 border-l-green-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                    <UserCheck className="w-5 h-5 mr-2" />
+                        Co-Applicant Information {actualIndex + 1}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <div className="col-span-1 md:col-span-2">
+                          <FormItem>
+                            <FormLabel className="mb-0.5">Full Name</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter full name" 
+                                value={formData.coApplicants?.[actualIndex]?.name || ''}
+                                className="input-field w-full mt-1"
+                                onChange={(e) => {
+                           updateArrayItem('coApplicants', actualIndex, 'name', e.target.value);
+                           form.setValue(`coApplicants.${actualIndex}.name`, e.target.value);
+                                }}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        </div>
+                        <div className="col-span-1 md:col-span-2">
+                          <Label className="mb-0.5">Relationship</Label>
+                          <Select
+                            value={formData.coApplicants?.[actualIndex]?.relationship || ''}
+                     onValueChange={(value) => {
+                       updateArrayItem('coApplicants', actualIndex, 'relationship', value);
+                       form.setValue(`coApplicants.${actualIndex}.relationship`, value);
+                     }}
+                          >
+                            <SelectTrigger className="w-full mt-1">
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="spouse">Spouse</SelectItem>
+                              <SelectItem value="partner">Partner</SelectItem>
+                              <SelectItem value="parent">Parent</SelectItem>
+                              <SelectItem value="child">Child</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
+                          <FormControl>
+                            <DatePicker
+                              value={toValidDate(formData.coApplicants?.[actualIndex]?.dob)}
+                              onChange={(date) => {
+                        // Store the date as a local date to prevent timezone conversion
+                        const localDate = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate()) : undefined;
+                         updateArrayItem('coApplicants', actualIndex, 'dob', localDate);
+                         form.setValue(`coApplicants.${actualIndex}.dob`, localDate);
+                                // Auto-calculate age
+                                if (date) {
+                                  const today = new Date();
+                                  const birthDate = new Date(date);
+                                  let age = today.getFullYear() - birthDate.getFullYear();
+                                  const monthDiff = today.getMonth() - birthDate.getMonth();
+                                  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                                    age--;
+                                  }
+                           updateArrayItem('coApplicants', actualIndex, 'age', age);
+                                } else {
+                           updateArrayItem('coApplicants', actualIndex, 'age', '');
+                                }
+                              }}
+                              placeholder="Select date of birth"
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                        </FormItem>
+
+                        <FormItem>
+                          <FormControl>
+                            <SSNInput
+                       name={`coApplicants.${actualIndex}.ssn`}
+                              label="Social Security Number"
+                              placeholder="XXX-XX-XXXX"
+                              value={formData.coApplicants?.[actualIndex]?.ssn || ''}
+                              onChange={(value) => {
+                        updateArrayItem('coApplicants', actualIndex, 'ssn', value);
+                         form.setValue(`coApplicants.${actualIndex}.ssn`, value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                  {form.formState.errors.coApplicants?.[actualIndex]?.ssn?.message && (
+                     <span className="text-red-500 text-xs">{form.formState.errors.coApplicants[actualIndex].ssn.message}</span>
+                    )}
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <PhoneInput
+                      name={`coApplicants.${actualIndex}.phone`}
+                              label="Phone Number"
+                              placeholder="(555) 555-5555"
+                              value={formData.coApplicants?.[actualIndex]?.phone || ''}
+                              onChange={(value) => {
+                        updateArrayItem('coApplicants', actualIndex, 'phone', value);
+                         form.setValue(`coApplicants.${actualIndex}.phone`, value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                  {form.formState.errors.coApplicants?.[actualIndex]?.phone?.message && (
+                     <span className="text-red-500 text-xs">{form.formState.errors.coApplicants[actualIndex].phone.message}</span>
+                    )}
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <EmailInput
+                      name={`coApplicants.${actualIndex}.email`}
+                              label="Email Address"
+                              placeholder="you@email.com"
+                              value={formData.coApplicants?.[actualIndex]?.email || ''}
+                              onChange={(value) => {
+                        updateArrayItem('coApplicants', actualIndex, 'email', value);
+                         form.setValue(`coApplicants.${actualIndex}.email`, value);
+                              }}
+                              required={true}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                   {form.formState.errors[`coApplicants.${actualIndex}.email` as keyof typeof form.formState.errors]?.message && (
+                     <span className="text-red-500 text-xs">{(form.formState.errors[`coApplicants.${actualIndex}.email` as keyof typeof form.formState.errors] as any)?.message}</span>
+                    )}
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <LicenseInput
+                      name={`coApplicants.${actualIndex}.license`}
+                              label="Driver's License Number"
+                              placeholder="Enter license number"
+                              value={formData.coApplicants?.[actualIndex]?.license || ''}
+                              onChange={(value) => {
+                        updateArrayItem('coApplicants', actualIndex, 'license', value);
+                         form.setValue(`coApplicants.${actualIndex}.license`, value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                  {form.formState.errors[`coApplicants.${actualIndex}.license` as keyof typeof form.formState.errors]?.message && (
+                     <span className="text-red-500 text-xs">{(form.formState.errors[`coApplicants.${actualIndex}.license` as keyof typeof form.formState.errors] as any)?.message}</span>
+                    )}
+                        </FormItem>
+                <div className="space-y-2">
+                        
+                            <StateSelector
+                    selectedState={formData.coApplicants?.[actualIndex]?.licenseState || ''}
+                    onStateChange={(state) => {
+                      updateArrayItem('coApplicants', actualIndex, 'licenseState', state);
+                      form.setValue(`coApplicants.${actualIndex}.licenseState`, state);
+                    }}
+                    label="License State"
+                    required={false}
+                              className="w-full mt-1"
+                            />
+                </div>
+                <h5>Current Address</h5>
+                <div className="space-y-2"></div>
+             
+                <div className="space-y-2">
+                <FormField
+                    control={form.control}
+                     name={`coApplicants.${actualIndex}.address`}
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel className="mb-0.5">Street Address</FormLabel>
+                          <FormControl>
+                            <Input 
+                            placeholder="Enter street address" 
+                            {...field}
+                              className="input-field w-full mt-1"
+                              onChange={(e) => {
+                              field.onChange(e);
+                              updateArrayItem('coApplicants', actualIndex, 'address', e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                  />
+                        <FormItem>
+                          <FormControl>
+                            <ZIPInput
+                             name={`coApplicants.${actualIndex}.zip`}
+                            label="ZIP Code*"
+                            placeholder="ZIP code"
+                              value={formData.coApplicants?.[actualIndex]?.zip || ''}
+                              onChange={(value: string) => {
+                              updateArrayItem('coApplicants', actualIndex, 'zip', value);
+                               form.setValue(`coApplicants.${actualIndex}.zip`, value);
+                            }}
+                            required={true}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                         {form.formState.errors[`coApplicants.${actualIndex}.zip` as keyof typeof form.formState.errors]?.message && (
+                           <span className="text-red-500 text-xs">{(form.formState.errors[`coApplicants.${actualIndex}.zip` as keyof typeof form.formState.errors] as any)?.message}</span>
+                          )}
+                        </FormItem>
+                </div>
+                
+                <div className="space-y-2">
+                  {/* Replace State* and City* text inputs with StateCitySelector */}
+                  <StateCitySelector
+                    selectedState={formData.coApplicants?.[actualIndex]?.state || ''}
+                    selectedCity={formData.coApplicants?.[actualIndex]?.city || ''}
+                      onStateChange={(state) => {
+                       updateArrayItem('coApplicants', actualIndex, 'state', state);
+                       form.setValue(`coApplicants.${actualIndex}.state`, state);
+                        // Clear city if state changes
+                       updateArrayItem('coApplicants', actualIndex, 'city', '');
+                       form.setValue(`coApplicants.${actualIndex}.city`, '');
+                      }}
+                      onCityChange={(city) => {
+                       updateArrayItem('coApplicants', actualIndex, 'city', city);
+                       form.setValue(`coApplicants.${actualIndex}.city`, city);
+                      }}
+                    stateLabel="State*"
+                    cityLabel="City*"
+                    required={true}
+                    className="mb-4"
+                  />
+                        </div>
+                        
+              </div>
+                  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                    <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
+                      <FormLabel className="mb-0.5 col-span-2">Length of Stay at Current Address</FormLabel>
+                            <Input 
+                        type="number"
+                        min={0}
+                        value={formData.coApplicants?.[actualIndex]?.lengthAtAddressYears ?? ''}
+                         onChange={e => {
+                           const value = e.target.value === '' ? undefined : Number(e.target.value);
+                           updateArrayItem('coApplicants', actualIndex, 'lengthAtAddressYears', value);
+                           form.setValue(`coApplicants.${actualIndex}.lengthAtAddressYears`, value);
+                         }}
+                        placeholder="e.g. 2 years"
+                              className="w-full mt-1"
+                            />
+                            <Input 
+                              type="number"
+                        min={0}
+                        max={11}
+                        value={formData.coApplicants?.[actualIndex]?.lengthAtAddressMonths ?? ''}
+                         onChange={e => {
+                           const value = e.target.value === '' ? undefined : Number(e.target.value);
+                           updateArrayItem('coApplicants', actualIndex, 'lengthAtAddressMonths', value);
+                           form.setValue(`coApplicants.${actualIndex}.lengthAtAddressMonths`, value);
+                         }}
+                        placeholder="e.g. 4 months"
+                          className="w-full mt-1"
+                      />
+                    </div>
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Landlord Name</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter landlord's name" 
+                          value={formData.coApplicants?.[actualIndex]?.landlordName || ''}
+                          className="input-field w-full mt-1 border-gray-300 bg-white"
+                            onChange={(e) => {
+                             updateArrayItem('coApplicants', actualIndex, 'landlordName', e.target.value);
+                             form.setValue(`coApplicants.${actualIndex}.landlordName`, e.target.value);
+                            }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Landlord Street Address</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter landlord's street address" 
+                          value={formData.coApplicants?.[actualIndex]?.landlordAddressLine1 || ''}
+                          className="input-field w-full mt-1 border-gray-300 bg-white"
+                            onChange={(e) => {
+                             updateArrayItem('coApplicants', actualIndex, 'landlordAddressLine1', e.target.value);
+                             form.setValue(`coApplicants.${actualIndex}.landlordAddressLine1`, e.target.value);
+                            }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Landlord Address Line 2 (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Apartment, suite, etc." 
+                          value={formData.coApplicants?.[actualIndex]?.landlordAddressLine2 || ''}
+                          className="input-field w-full mt-1 border-gray-300 bg-white"
+                            onChange={(e) => {
+                             updateArrayItem('coApplicants', actualIndex, 'landlordAddressLine2', e.target.value);
+                             form.setValue(`coApplicants.${actualIndex}.landlordAddressLine2`, e.target.value);
+                            }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormControl>
+                        <StateSelector
+                          selectedState={formData.coApplicants?.[actualIndex]?.landlordState || ''}
+                            onStateChange={(value) => {
+                             updateArrayItem('coApplicants', actualIndex, 'landlordState', value);
+                             form.setValue(`coApplicants.${actualIndex}.landlordState`, value);
+                            }}
+                          label="Landlord State"
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormControl>
+                        <CitySelector
+                          selectedState={formData.coApplicants?.[actualIndex]?.landlordState || ''}
+                          selectedCity={formData.coApplicants?.[actualIndex]?.landlordCity || ''}
+                            onCityChange={(value) => {
+                             updateArrayItem('coApplicants', actualIndex, 'landlordCity', value);
+                             form.setValue(`coApplicants.${actualIndex}.landlordCity`, value);
+                            }}
+                          label="Landlord City"
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormControl>
+                        <ZIPInput
+                           name={`coApplicants.${actualIndex}.landlordZipCode`}
+                          label="Landlord ZIP Code"
+                          placeholder="Enter landlord's ZIP code"
+                          value={formData.coApplicants?.[actualIndex]?.landlordZipCode || ''}
+                          onChange={(value: string) => {
+                            updateArrayItem('coApplicants', actualIndex, 'landlordZipCode', value);
+                            form.setValue(`coApplicants.${actualIndex}.landlordZipCode`, value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormControl>
+                        <PhoneInput
+                           name={`coApplicants.${actualIndex}.landlordPhone`}
+                          label="Landlord Phone Number"
+                          placeholder="Enter landlord's phone number"
+                          value={formData.coApplicants?.[actualIndex]?.landlordPhone || ''}
+                          onChange={(value) => {
+                            updateArrayItem('coApplicants', actualIndex, 'landlordPhone', value);
+                            form.setValue(`coApplicants.${actualIndex}.landlordPhone`, value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormControl>
+                        <EmailInput
+                           name={`coApplicants.${actualIndex}.landlordEmail`}
+                          label="Landlord Email Address (Optional)"
+                          placeholder="Enter landlord's email address"
+                          value={formData.coApplicants?.[actualIndex]?.landlordEmail || ''}
+                          onChange={(value) => {
+                            updateArrayItem('coApplicants', actualIndex, 'landlordEmail', value);
+                            form.setValue(`coApplicants.${actualIndex}.landlordEmail`, value);
+                          }}
+                          className="w-full mt-1"
+                        />
+                      </FormControl>
+                    </FormItem>
                     <div>
-                      <Label>Date of Birth *</Label>
+                       <Label htmlFor={`coApplicants.${actualIndex}.currentRent`} className="mb-0.5">Monthly Rent</Label>
+                      <Input
+                        id={`coApplicants.${actualIndex}.currentRent`}
+                        type="number"
+                        placeholder="0.00"
+                        value={formData.coApplicants?.[actualIndex]?.currentRent?.toString() || ''}
+                        onChange={e => {
+                          const numValue = parseFloat(e.target.value) || 0;
+                           updateArrayItem('coApplicants', actualIndex, 'currentRent', numValue);
+                           form.setValue(`coApplicants.${actualIndex}.currentRent`, numValue);
+                        }}
+                        className="input-field w-full mt-1"
+                      />
+                    </div>
+                    <FormItem>
+                      <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Please explain your reason for moving" 
+                          value={formData.coApplicants?.[actualIndex]?.reasonForMoving || ''}
+                          className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
+                            onChange={(e) => {
+                             updateArrayItem('coApplicants', actualIndex, 'reasonForMoving', e.target.value);
+                             form.setValue(`coApplicants.${actualIndex}.reasonForMoving`, e.target.value);
+                            }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  </div>
+                </CardContent>
+              </Card>
+                      );
+                    })}
+              </>
+            )}
+          </div>
+        );
+
+      case 6:
+        if (!hasCoApplicant && !(userRole.startsWith('coapplicant') && specificIndex !== null)) {
+          return (
+            <Card className="form-section">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <CalendarDays className="w-5 h-5 mr-2" />
+                  Co-Applicant Financial Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-gray-500 text-sm mb-4">Please add a Co-Applicant in the previous step to access financial information.</div>
+              </CardContent>
+            </Card>
+          );
+        }
+        return (
+          <>
+            {Array.from({ length: (userRole.startsWith('coapplicant') && specificIndex !== null) ? 1 : (formData.coApplicantCount || 1) }, (_, index) => {
+              // For specific co-applicant roles, always show the specific index
+              const actualIndex = userRole.startsWith('coapplicant') && specificIndex !== null ? specificIndex : index;
+              return (
+              <Card key={`co-applicant-financial-${index}`} className="form-section border-l-4 border-l-green-500 mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                    <CalendarDays className="w-5 h-5 mr-2" />
+                    Financial Information - Co-Applicant {actualIndex + 1}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <FinancialSection 
+                    title={`Co-Applicant ${actualIndex + 1} Financial Information`}
+                    person={`coApplicants_${actualIndex}`}
+                    formData={formData}
+                    updateFormData={updateFormData}
+                  />
+                </CardContent>
+              </Card>
+                      );
+                    })}
+          </>
+        );
+
+      case 7:
+        
+        // Only show the fallback message if there are no co-applicants at all
+        if (!hasCoApplicant && !(userRole.startsWith('coapplicant') && specificIndex !== null)) {
+          return (
+            <Card className="form-section border-l-4 border-l-green-500">
+              <CardHeader>
+                <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                  <FolderOpen className="w-5 h-5 mr-2" />
+                  Co-Applicant Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-gray-500 text-sm mb-4">No co-applicants added. Please add co-applicants in the previous step to access document uploads.</div>
+                {/* Info blocks: Security Notice and Important Notes */}
+                <div className="flex flex-col space-y-1.5 p-6">
+                  <div className="tracking-tight text-lg font-medium">Supporting Documents</div>
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <p className="text-sm text-green-800">
+                      <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+                  <h4 className="font-medium text-yellow-900 mb-2">Important Notes:</h4>
+                  <ul className="text-sm text-yellow-800 space-y-1">
+                    <li>• Documents must be current and legible</li>
+                    <li>• Corporate applicants require additional documentation</li>
+                    <li>• Self-employed applicants need accountant verification</li>
+                    <li>• Incomplete applications will delay processing</li>
+                  </ul>
+                </div>
+
+              </CardContent>
+            </Card>
+          );
+        }
+        // Wrapper functions for SupportingDocuments to match expected signature
+        const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicants', documentType, files, 0);
+        const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicants', documentType, encryptedFiles, 0);
+        const coApplicantWebhookResponse = (documentType: string, response: any) => {
+          handleWebhookResponse('coApplicants', `0_${documentType}`, response);
+        };
+        return (
+          (hasCoApplicant || (userRole.startsWith('coapplicant') && specificIndex !== null)) ? (
+            <>
+              {Array.from({ length: (userRole.startsWith('coapplicant') && specificIndex !== null) ? 1 : (formData.coApplicantCount || 1) }, (_, index) => {
+                // For specific co-applicant roles, always show the specific index
+                const actualIndex = userRole.startsWith('coapplicant') && specificIndex !== null ? specificIndex : index;
+                return (
+                <Card key={`co-applicant-documents-${index}`} className="form-section border-l-4 border-l-green-500 mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                  <FolderOpen className="w-5 h-5 mr-2" />
+                      Co-Applicant Documents {actualIndex + 1}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Employment Type Selection for Co-Applicant Documents */}
+                {!formData.coApplicants?.[actualIndex]?.employmentType ? (
+                  <div className="space-y-4">
+                    <div className="text-gray-500 text-sm mb-4">Please select Employment Type to upload supporting documents for Co-Applicant {actualIndex + 1}.</div>
+                    
+                    <div className="form-field">
+                      <Label htmlFor={`coApplicant-${actualIndex}-employmentType`}>Employment Type *</Label>
+                      <Select
+                        value={formData.coApplicants?.[actualIndex]?.employmentType || ''}
+                        onValueChange={(value) => {
+                          updateFormData('coApplicants', actualIndex.toString(), 'employmentType', value);
+                        }}
+                      >
+                        <SelectTrigger className="input-field">
+                          <SelectValue placeholder="Select employment type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="student">Student</SelectItem>
+                          <SelectItem value="self-employed">Self-Employed</SelectItem>
+                          <SelectItem value="salaried">Salaried</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Info blocks: Security Notice and Important Notes */}
+                    <div className="flex flex-col space-y-1.5 p-6">
+                      <div className="tracking-tight text-lg font-medium">Supporting Documents</div>
+                      <div className="bg-green-50 p-3 rounded-lg">
+                        <p className="text-sm text-green-800">
+                          <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+                      <h4 className="font-medium text-yellow-900 mb-2">Important Notes:</h4>
+                      <ul className="text-sm text-yellow-800 space-y-1">
+                        <li>• Documents must be current and legible</li>
+                        <li>• Corporate applicants require additional documentation</li>
+                        <li>• Self-employed applicants need accountant verification</li>
+                        <li>• Incomplete applications will delay processing</li>
+                      </ul>
+                    </div>
+                  </div>
+                ) : (
+                  <SupportingDocuments
+                    formData={{
+                      ...formData,
+                      webhookResponses: Object.fromEntries(
+                        Object.entries(webhookResponses)
+                              .filter(([key]) => key.startsWith(`coApplicants_${actualIndex}_`))
+                              .map(([key, value]) => [key.replace(`coApplicants_${actualIndex}_`, ''), value])
+                          )
+                        }}
+                        originalWebhookResponses={webhookResponses}
+                        onDocumentChange={(documentType: string, files: File[]) => {
+                          console.log(`🔑 Co-Applicant ${actualIndex + 1} document change for ${documentType}:`, files.length, 'files');
+                          handleDocumentChange('coApplicants', documentType, files, actualIndex);
+                        }}
+                        onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => {
+                          console.log(`🔑 Co-Applicant ${actualIndex + 1} encrypted document change for ${documentType}:`, encryptedFiles.length, 'files');
+                          handleEncryptedDocumentChange('coApplicants', documentType, encryptedFiles, actualIndex);
+                        }}
+                        onWebhookResponse={(documentType: string, response: any) => {
+                          // Pass the document type and index to the function
+                          console.log(`🔑 Co-Applicant ${actualIndex + 1} webhook response for ${documentType}:`, response);
+                          handleWebhookResponse('coApplicants', documentType, response, actualIndex);
+                        }}
+                        referenceId={referenceId}
+                        enableWebhook={true}
+                        applicationId={user?.applicantId || 'unknown'}
+                        applicantId={user?.id}
+                        zoneinfo={user?.zoneinfo}
+                        showOnlyCoApplicant={true}
+                        index={actualIndex}
+                  />
+                )}
+              </CardContent>
+            </Card>
+                      );
+                    })}
+            </>
+          ) : null
+        );
+
+      case 8:
+        return (
+          <Card className="form-section border-l-4 border-l-blue-500">
+            <CardHeader>
+              <CardTitle className="flex items-center text-blue-700 dark:text-blue-400">
+                <Users className="w-5 h-5 mr-2" />
+                Other Occupants (Not Applicants)
+              </CardTitle>
+              <div className="text-sm text-muted-foreground mt-2">
+                List any other people who will be living in the apartment
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              {(formData.occupants || []).map((occupant: any, idx: number) => (
+                <div key={idx} className="border rounded-lg p-4 mb-4 bg-gray-50 relative">
+                  <div className="font-semibold mb-2">Occupant {idx + 1}</div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                    <div>
+                      <Label>Name</Label>
+                      <Input
+                        placeholder="Full name"
+                        value={occupant.name || ''}
+                        onChange={e => {
+                          const updated = [...formData.occupants];
+                          updated[idx] = { ...updated[idx], name: e.target.value };
+                          setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Relationship</Label>
+                      <Select
+                        value={occupant.relationship || ''}
+                        onValueChange={value => {
+                          const updated = [...formData.occupants];
+                          updated[idx] = { ...updated[idx], relationship: value };
+                          setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select relationship" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="spouse">Spouse</SelectItem>
+                          <SelectItem value="child">Child</SelectItem>
+                          <SelectItem value="parent">Parent</SelectItem>
+                          <SelectItem value="sibling">Sibling</SelectItem>
+                          <SelectItem value="roommate">Roommate</SelectItem>
+                          <SelectItem value="friend">Friend</SelectItem>
+                          <SelectItem value="relative">Relative</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label>Date of Birth</Label>
                       <DatePicker
-                        value={formData.guarantor?.dob || undefined}
-                        onChange={(date) => {
-                          updateFormData('guarantor', 'dob', date);
-                          // Auto-calculate age for guarantor
+                        value={occupant.dob || undefined}
+                        onChange={date => {
+                          const updated = [...formData.occupants];
+                          updated[idx] = { ...updated[idx], dob: date };
+                          // Auto-calculate age
                           if (date) {
                             const today = new Date();
                             const birthDate = new Date(date);
@@ -1648,182 +7734,945 @@ export function ApplicationForm() {
                             if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
                               age--;
                             }
-                            updateFormData('guarantor', 'age', age);
+                            updated[idx].age = age;
+                          } else {
+                            updated[idx].age = '';
                           }
+                          setFormData((prev: any) => ({ ...prev, occupants: updated }));
                         }}
-                        placeholder="Select date of birth"
-                        disabled={(date) => date > new Date()}
+                        placeholder="dd-mm-yyyy"
                       />
                     </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                     <div>
                       <SSNInput
-                        name="guarantorSsn"
-                        label="Social Security Number *"
-                        value={formData.guarantor?.ssn || ''}
-                        onChange={(value) => updateFormData('guarantor', 'ssn', value)}
-                        required={true}
+                        name={`occupantSsn${idx}`}
+                        label="Social Security #"
+                        value={occupant.ssn || ''}
+                        onChange={value => {
+                          const updated = [...formData.occupants];
+                          updated[idx] = { ...updated[idx], ssn: value };
+                          setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                        }}
                       />
                     </div>
                     <div>
-                      <PhoneInput
-                        name="guarantorPhone"
-                        label="Phone Number *"
-                        value={formData.guarantor?.phone || ''}
-                        onChange={(value) => updateFormData('guarantor', 'phone', value)}
-                        required={true}
+                      <Label>Driver's License #</Label>
+                      <Input
+                        placeholder="License number"
+                        value={occupant.license || ''}
+                        onChange={e => {
+                          const updated = [...formData.occupants];
+                          updated[idx] = { ...updated[idx], license: e.target.value };
+                          setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                        }}
                       />
                     </div>
-                    {/* Age field hidden from frontend, still auto-calculated in state */}
-                  
-                    <div>
-                      <Label>Gender</Label>
-                      <Select
-                        value={formData.guarantor?.gender || ''}
-                        onValueChange={(value) => updateFormData('guarantor', 'gender', value)}
+                  </div>
+                  <div className="mb-2">
+                    <FileUpload
+                      label={`Occupant ${idx + 1} - Social Security Card (Required)`}
+                      description="Upload SSN card (.pdf, .jpg, .jpeg, .png, max 50MB)"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      multiple={false}
+                      maxFiles={1}
+                      maxSize={50}
+                      enableEncryption={true}
+                      initialWebhookResponse={formData.webhookResponses?.[`occupants_ssn${idx + 1}`]}
+                      onFileChange={files => {
+                        console.log('🚀 OCCUPANT SSN DOCUMENT UPLOAD:', {
+                          occupantIndex: idx,
+                          occupantName: occupant.name,
+                          filesCount: files.length,
+                          fileName: files[0]?.name
+                        });
+                          handleOccupantDocumentChange(idx, `ssn${idx + 1}`, files);
+                      }}
+                      // Removed onEncryptedFilesChange - no longer handling encrypted documents for occupants
+                        onWebhookResponse={(response) => {
+                          console.log('🚀 OCCUPANT SSN WEBHOOK RESPONSE:', {
+                            occupantIndex: idx,
+                            occupantName: occupant.name,
+                            response
+                          });
+                          occupantWebhookResponse(`ssn${idx + 1}`, response);
+                      }}
+                      referenceId={`${referenceId}_occupant_${idx}`}
+                      sectionName={`occupants_ssn${idx + 1}`}
+                      documentName="ssn"
+                      enableWebhook={true}
+                      applicationId={user?.applicantId || 'unknown'}
+                      applicantId={user?.applicantId}
+                      zoneinfo={user?.zoneinfo}
+                    />
+                    
+                    {/* Document Status and Preview Section */}
+                    <div className="mt-3">
+                      {(() => {
+                        const documentStatus = getOccupantDocumentStatus(idx, `ssn${idx + 1}`);
+                        const uploadedDocs = getOccupantUploadedDocuments(idx, `ssn${idx + 1}`);
+                        
+                        if (documentStatus.status === "uploaded" && uploadedDocs.length > 0) {
+                          return (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1 text-green-700">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span className="text-sm font-medium">Document Uploaded</span>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handlePreviewOccupantDocument(uploadedDocs[0].filename, uploadedDocs[0].webhookbodyUrl, `Occupant ${idx + 1} SSN Document`)}
+                                    className="h-7 px-2 text-xs border-green-200 text-green-700 hover:bg-green-100"
+                                  >
+                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    Preview
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => window.open(uploadedDocs[0].webhookbodyUrl, '_blank')}
+                                    className="h-7 px-2 text-xs border-blue-200 text-blue-700 hover:bg-blue-100"
+                                  >
+                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                    Open
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="mt-2 text-xs text-green-600">
+                                File: {uploadedDocs[0].filename}
+                              </div>
+                            </div>
+                          );
+                        }
+                      })()}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => {
+                          const updated = [...formData.occupants];
+                          updated.splice(idx, 1);
+                          setFormData((prev: any) => ({ ...prev, occupants: updated }));
+                        }}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select" />
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setFormData((prev: any) => ({
+                    ...prev,
+                      occupants: [...(prev.occupants || []), { 
+                        name: '', 
+                        relationship: '', 
+                        dob: '', 
+                        ssn: '', 
+                        license: '', 
+                        age: '', 
+                        ssnDocument: null, 
+                        documents: {}
+                      }]
+                  }));
+                }}
+              >
+                Add Another Occupant
+              </Button>
+                
+             
+                
+                
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 9:
+
+        return (
+          <div className="space-y-6">
+            {/* Guarantor Section with Checkbox */}
+              <Card className="form-section border-l-4 border-l-green-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-green-700 dark:text-green-400">
+                    <Shield className="w-5 h-5 mr-2" />
+                    {userRole.startsWith('guarantor') && specificIndex !== null 
+                      ? `Guarantor ${specificIndex + 1} Information`
+                      : 'Guarantor Information'
+                    }
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                {/* Only show checkbox if not a specific guarantor role */}
+                {!userRole.startsWith('guarantor') && (
+                  <div className="flex items-center space-x-3 mb-4">
+                    <Checkbox 
+                      id="hasGuarantor"
+                      checked={hasGuarantor}
+                      onCheckedChange={(checked) => {
+                        const isChecked = checked as boolean;
+                        console.log('🔘 Guarantor checkbox changed:', isChecked);
+                        setHasGuarantor(isChecked);
+                        form.setValue('hasGuarantor', isChecked);
+                      // Also update the formData state to keep everything in sync
+                      setFormData((prev: any) => {
+                        const updated = {
+                          ...prev,
+                          hasGuarantor: isChecked
+                        };
+                        
+                        // Initialize guarantors array if checking the checkbox
+                        if (isChecked && (!prev.guarantors || !Array.isArray(prev.guarantors))) {
+                          updated.guarantorCount = 1;
+                          updated.guarantors = [{
+                            name: '',
+                            relationship: '',
+                            dob: undefined,
+                            ssn: '',
+                            phone: '',
+                            email: '',
+                            license: '',
+                            licenseState: '',
+                            address: '',
+                            city: '',
+                            state: '',
+                            zip: '',
+                            lengthAtAddressYears: undefined,
+                            lengthAtAddressMonths: undefined,
+                            landlordName: '',
+                            landlordAddressLine1: '',
+                            landlordAddressLine2: '',
+                            landlordCity: '',
+                            landlordState: '',
+                            landlordZipCode: '',
+                            landlordPhone: '',
+                            landlordEmail: '',
+                            currentRent: undefined,
+                            reasonForMoving: '',
+                            employmentType: '',
+                            employer: '',
+                            position: '',
+                            employmentStart: undefined,
+                            income: '',
+                            incomeFrequency: 'yearly',
+                            businessName: '',
+                            businessType: '',
+                            yearsInBusiness: '',
+                            otherIncome: '',
+                            otherIncomeFrequency: 'monthly',
+                            otherIncomeSource: '',
+                            bankRecords: []
+                          }];
+                        }
+                        
+                        return updated;
+                      });
+                    }}
+                  />
+                  <Label htmlFor="hasGuarantor" className="text-base font-medium">
+                    Add Guarantor
+                  </Label>
+                </div>
+                )}
+
+                {(hasGuarantor || (userRole.startsWith('guarantor') && specificIndex !== null)) && (
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-4">
+                      <Label className="text-sm font-medium">How many Guarantors?</Label>
+                      <Select
+                        value={formData.guarantorCount?.toString() || '1'}
+                        onValueChange={(value) => {
+                          const count = parseInt(value);
+                          setFormData((prev: any) => {
+                            const currentGuarantors = prev.guarantors || [];
+                            if (count > currentGuarantors.length) {
+                              // Add new guarantors
+                              const newGuarantors = [...currentGuarantors];
+                              for (let i = currentGuarantors.length; i < count; i++) {
+                                newGuarantors.push({
+                                  name: '',
+                                  relationship: '',
+                                  dob: undefined,
+                                  ssn: '',
+                                  phone: '',
+                                  email: '',
+                                  license: '',
+                                  licenseState: '',
+                                  address: '',
+                                  city: '',
+                                  state: '',
+                                  zip: '',
+                                  lengthAtAddressYears: undefined,
+                                  lengthAtAddressMonths: undefined,
+                                  landlordName: '',
+                                  landlordAddressLine1: '',
+                                  landlordAddressLine2: '',
+                                  landlordCity: '',
+                                  landlordState: '',
+                                  landlordZipCode: '',
+                                  landlordPhone: '',
+                                  landlordEmail: '',
+                                  currentRent: undefined,
+                                  reasonForMoving: '',
+                                  employmentType: '',
+                                  employer: '',
+                                  position: '',
+                                  employmentStart: undefined,
+                                  income: '',
+                                  incomeFrequency: 'yearly',
+                                  businessName: '',
+                                  businessType: '',
+                                  yearsInBusiness: '',
+                                  otherIncome: '',
+                                  otherIncomeFrequency: 'monthly',
+                                  otherIncomeSource: '',
+                                  bankRecords: []
+                                });
+                              }
+                              return {
+                                ...prev,
+                                guarantors: newGuarantors,
+                                guarantorCount: count
+                              };
+                            } else if (count < currentGuarantors.length) {
+                              // Remove excess guarantors
+                              return {
+                                ...prev,
+                                guarantors: currentGuarantors.slice(0, count),
+                                guarantorCount: count
+                              };
+                            }
+                            return prev;
+                          });
+                          form.setValue('guarantorCount', count);
+                        }}
+                      >
+                        <SelectTrigger className="w-64">
+                          <SelectValue placeholder="Select number" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
+                          <SelectItem value="1">1 Guarantor</SelectItem>
+                          <SelectItem value="2">2 Guarantors</SelectItem>
+                          <SelectItem value="3">3 Guarantors</SelectItem>
+                          <SelectItem value="4">4 Guarantors</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
 
-                  <div>
-                    <EmailInput
-                      name="guarantorEmail"
-                      label="Email Address *"
-                      value={formData.guarantor?.email || ''}
-                      onChange={(value) => updateFormData('guarantor', 'email', value)}
-                      required={true}
-                    />
-                  </div>
+                    {/* Render guarantor forms based on count */}
+                    {Array.from({ length: (userRole.startsWith('guarantor') && specificIndex !== null) ? 1 : Math.max(1, formData.guarantorCount || 1) }, (_, index) => {
+                      // For specific guarantor roles, always show the specific index
+                      const actualIndex = userRole.startsWith('guarantor') && specificIndex !== null ? specificIndex : index;
+                      return (
+                      <Card key={index} className="form-section border-l-4 border-l-orange-500">
+                        <CardHeader>
+                          <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
+                            <Shield className="w-5 h-5 mr-2" />
+                            Guarantor {actualIndex + 1}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 sm:p-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                      <div className="col-span-1 md:col-span-2">
+                        <FormItem>
+                                <FormLabel className="mb-0.5">Full Name *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter full name" 
+                                    value={formData.guarantors?.[actualIndex]?.name || ''}
+                              className="input-field w-full mt-1"
+                                onChange={(e) => {
+                                 updateArrayItem('guarantors', actualIndex, 'name', e.target.value);
+                                 form.setValue(`guarantors.${actualIndex}.name`, e.target.value);
+                                }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      </div>
+                      <div className="col-span-1 md:col-span-2">
+                        <Label className="mb-0.5">Relationship</Label>
+                        <Select
+                                value={formData.guarantors?.[actualIndex]?.relationship || ''}
+                                 onValueChange={(value) => {
+                                   updateArrayItem('guarantors', actualIndex, 'relationship', value);
+                                   form.setValue(`guarantors.${actualIndex}.relationship`, value);
+                                 }}
+                        >
+                          <SelectTrigger className="w-full mt-1">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="spouse">Spouse</SelectItem>
+                            <SelectItem value="partner">Partner</SelectItem>
+                            <SelectItem value="parent">Parent</SelectItem>
+                            <SelectItem value="child">Child</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <FormItem>
+                        <FormLabel className="mb-0.5">Date of Birth *</FormLabel>
+                        <FormControl>
+                          <DatePicker
+                                  value={toValidDate(formData.guarantors?.[actualIndex]?.dob)}
+                            onChange={(date) => {
+                                    // Store the date as a local date to prevent timezone conversion
+                                    const localDate = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate()) : undefined;
+                                     updateArrayItem('guarantors', actualIndex, 'dob', localDate);
+                                     form.setValue(`guarantors.${actualIndex}.dob`, localDate);
+                              // Auto-calculate age
+                              if (date) {
+                                const today = new Date();
+                                const birthDate = new Date(date);
+                                let age = today.getFullYear() - birthDate.getFullYear();
+                                const monthDiff = today.getMonth() - birthDate.getMonth();
+                                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                                  age--;
+                                }
+                                       updateArrayItem('guarantors', actualIndex, 'age', age);
+                               } else {
+                                       updateArrayItem('guarantors', actualIndex, 'age', '');
+                              }
+                            }}
+                            placeholder="Select date of birth"
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
 
-                  <div className="space-y-4">
-                    <h4 className="text-lg font-medium text-gray-900 dark:text-white">Address</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="md:col-span-2">
-                        <Label>Street Address *</Label>
-                        <Input 
-                          placeholder="Enter street address"
-                          className="input-field"
-                          onChange={(e) => updateFormData('guarantor', 'address', e.target.value)}
+                      <FormItem>
+                        <FormControl>
+                          <SSNInput
+                                   name={`guarantors.${actualIndex}.ssn`}
+                            label="Social Security Number"
+                            placeholder="XXX-XX-XXXX"
+                                  value={formData.guarantors?.[actualIndex]?.ssn || ''}
+                            onChange={(value) => {
+                                    updateArrayItem('guarantors', actualIndex, 'ssn', value);
+                                    form.setValue(`guarantors.${actualIndex}.ssn`, value);
+                            }}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <FormItem>
+                        <FormControl>
+                          <PhoneInput
+                                   name={`guarantors.${actualIndex}.phone`}
+                            label="Phone Number"
+                            placeholder="(555) 555-5555"
+                                  value={formData.guarantors?.[actualIndex]?.phone || ''}
+                            onChange={(value) => {
+                                    updateArrayItem('guarantors', actualIndex, 'phone', value);
+                                    form.setValue(`guarantors.${actualIndex}.phone`, value);
+                            }}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <FormItem>
+                        <FormControl>
+                          <EmailInput
+                                  name={`guarantors.${actualIndex}.email`}
+                            label="Email Address"
+                            placeholder="you@email.com"
+                                  value={formData.guarantors?.[actualIndex]?.email || ''}
+                            onChange={(value) => {
+                                    updateArrayItem('guarantors', actualIndex, 'email', value);
+                                    form.setValue(`guarantors.${actualIndex}.email`, value);
+                            }}
+                            required={true}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <FormItem>
+                        <FormControl>
+                          <LicenseInput
+                                   name={`guarantors.${actualIndex}.license`}
+                            label="Driver's License Number"
+                            placeholder="Enter license number"
+                                  value={formData.guarantors[actualIndex]?.license || ''}
+                            onChange={(value) => {
+                                    updateArrayItem('guarantors', actualIndex, 'license', value);
+                                    form.setValue(`guarantors.${actualIndex}.license`, value);
+                            }}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <div className="space-y-2">
+                        <StateSelector
+                           selectedState={formData.guarantors[actualIndex]?.licenseState || ''}
+                           onStateChange={(state) => {
+                             updateArrayItem('guarantors', actualIndex, 'licenseState', state);
+                             form.setValue(`guarantors.${actualIndex}.licenseState`, state);
+                           }}
+                          label="License State"
+                          required={false}
+                          className="w-full mt-1"
                         />
                       </div>
-                      <CitySelector
-                        selectedState={formData.guarantor?.state || ''}
-                        selectedCity={formData.guarantor?.city || ''}
-                        onCityChange={(city) => updateFormData('guarantor', 'city', city)}
-                        label="City *"
-                        required={true}
-                      />
-                      <StateSelector
-                        selectedState={formData.guarantor?.state || ''}
-                        onStateChange={(state) => updateFormData('guarantor', 'state', state)}
-                        label="State *"
-                        required={true}
-                      />
-                      <ZIPInput
-                        name="guarantorZip"
-                        label="ZIP Code *"
-                        value={formData.guarantor?.zip || ''}
-                        onChange={(value) => updateFormData('guarantor', 'zip', value)}
-                        required={true}
-                      />
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>Years at Address</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={formData.guarantor?.lengthAtAddressYears ?? ''}
-                            onChange={(e) => updateFormData('guarantor', 'lengthAtAddressYears', e.target.value === '' ? undefined : Number(e.target.value))}
-                            className="input-field"
-                          />
-                        </div>
-                        <div>
-                          <Label>Months at Address</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            max={11}
-                            value={formData.guarantor?.lengthAtAddressMonths ?? ''}
-                            onChange={(e) => updateFormData('guarantor', 'lengthAtAddressMonths', e.target.value === '' ? undefined : Number(e.target.value))}
-                            className="input-field"
-                          />
-                        </div>
-                      </div>
                     </div>
-                  </div>
+                    
+                    {/* Current Address Section - Outside the main grid */}
+                    <h5>Current Address</h5>
+                    <div className="space-y-2"></div>
+                 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                      <div className="col-span-2">
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Street Address</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter street address" 
+                               value={formData.guarantors[actualIndex]?.address || ''}
+                               className="input-field w-full mt-1"
+                               onChange={(e) => {
+                                 updateArrayItem('guarantors', actualIndex, 'address', e.target.value);
+                                 form.setValue(`guarantors.${actualIndex}.address`, e.target.value);
+                               }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      </div>
+                      <FormItem>
+                        <FormControl>
+                          <ZIPInput
+                             name={`guarantors.${actualIndex}.zip`}
+                            label="ZIP Code*"
+                            placeholder="ZIP code"
+                            value={formData.guarantors[actualIndex]?.zip || ''}
+                            onChange={(value: string) => {
+                              updateArrayItem('guarantors', actualIndex, 'zip', value);
+                              form.setValue(`guarantors.${actualIndex}.zip`, value);
+                            }}
+                            required={true}
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <FormItem>
+                        <FormControl>
+                          <StateSelector
+                             selectedState={formData.guarantors[actualIndex]?.state || ''}
+                             onStateChange={(state) => {
+                               updateArrayItem('guarantors', actualIndex, 'state', state);
+                               form.setValue(`guarantors.${actualIndex}.state`, state);
+                               // Clear city if state changes
+                               updateArrayItem('guarantors', actualIndex, 'city', '');
+                               form.setValue(`guarantors.${actualIndex}.city`, '');
+                             }}
+                            label="State*"
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
+                      <FormItem>
+                        <FormControl>
+                          <CitySelector
+                             selectedState={formData.guarantors[actualIndex]?.state || ''}
+                             selectedCity={formData.guarantors[actualIndex]?.city || ''}
+                             onCityChange={(city) => {
+                               updateArrayItem('guarantors', actualIndex, 'city', city);
+                               form.setValue(`guarantors.${actualIndex}.city`, city);
+                             }}
+                            label="City*"
+                            className="w-full mt-1"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    </div>
+                    
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                      <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
+                        <FormLabel className="mb-0.5 col-span-2">Length of Stay at Current Address</FormLabel>
+                        <Input 
+                          type="number"
+                          min={0}
+                           value={formData.guarantors[actualIndex]?.lengthAtAddressYears ?? ''}
+                           onChange={e => {
+                             const value = e.target.value === '' ? undefined : Number(e.target.value);
+                             updateArrayItem('guarantors', actualIndex, 'lengthAtAddressYears', value);
+                             form.setValue(`guarantors.${actualIndex}.lengthAtAddressYears`, value);
+                           }}
+                          placeholder="e.g. 2 years"
+                          className="w-full mt-1"
+                        />
+                        <Input 
+                          type="number"
+                          min={0}
+                          max={11}
+                           value={formData.guarantors[actualIndex]?.lengthAtAddressMonths ?? ''}
+                           onChange={e => {
+                             const value = e.target.value === '' ? undefined : Number(e.target.value);
+                             updateArrayItem('guarantors', actualIndex, 'lengthAtAddressMonths', value);
+                             form.setValue(`guarantors.${actualIndex}.lengthAtAddressMonths`, value);
+                           }}
+                          placeholder="e.g. 4 months"
+                          className="w-full mt-1"
+                        />
+                      </div>
 
-                  <FinancialSection 
-                    title="Guarantor Financial Information"
-                    person="guarantor"
-                    formData={formData}
-                    updateFormData={updateFormData}
-                  />
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="form-section border-l-4 border-l-gray-300">
+                      </div>
+                      
+                      {/* Landlord Information - Matching Co-Applicant layout */}
+                      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
+                          <FormLabel className="mb-0.5 col-span-2">Landlord Information</FormLabel>
+                        </div>
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Landlord Name</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter landlord's name" 
+                              value={formData.guarantors[actualIndex]?.landlordName || ''}
+                              className="input-field w-full mt-1 border-gray-300 bg-white"
+                              onChange={(e) => {
+                                updateArrayItem('guarantors', actualIndex, 'landlordName', e.target.value);
+                                form.setValue(`guarantors.${actualIndex}.landlordName`, e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Landlord Street Address</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter landlord's street address" 
+                              value={formData.guarantors[actualIndex]?.landlordAddressLine1 || ''}
+                              className="input-field w-full mt-1 border-gray-300 bg-white"
+                              onChange={(e) => {
+                                updateArrayItem('guarantors', actualIndex, 'landlordAddressLine1', e.target.value);
+                                form.setValue(`guarantors.${actualIndex}.landlordAddressLine1`, e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Landlord Address Line 2 (Optional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Apartment, suite, etc." 
+                              value={formData.guarantors[actualIndex]?.landlordAddressLine2 || ''}
+                              className="input-field w-full mt-1 border-gray-300 bg-white"
+                              onChange={(e) => {
+                                updateArrayItem('guarantors', actualIndex, 'landlordAddressLine2', e.target.value);
+                                form.setValue(`guarantors.${actualIndex}.landlordAddressLine2`, e.target.value);
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <StateSelector
+                              selectedState={formData.guarantors[actualIndex]?.landlordState || ''}
+                              onStateChange={(value) => {
+                                updateArrayItem('guarantors', actualIndex, 'landlordState', value);
+                                form.setValue(`guarantors.${actualIndex}.landlordState`, value);
+                              }}
+                              label="Landlord State"
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <CitySelector
+                              selectedState={formData.guarantors[actualIndex]?.landlordState || ''}
+                              selectedCity={formData.guarantors[actualIndex]?.landlordCity || ''}
+                              onCityChange={(value) => {
+                                updateArrayItem('guarantors', actualIndex, 'landlordCity', value);
+                                form.setValue(`guarantors.${actualIndex}.landlordCity`, value);
+                              }}
+                              label="Landlord City"
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <ZIPInput
+                              name={`guarantors.${actualIndex}.landlordZipCode`}
+                              label="Landlord ZIP Code"
+                              placeholder="Enter landlord's ZIP code"
+                              value={formData.guarantors[actualIndex]?.landlordZipCode || ''}
+                              onChange={(value: string) => {
+                                updateArrayItem('guarantors', actualIndex, 'landlordZipCode', value);
+                                form.setValue(`guarantors.${actualIndex}.landlordZipCode`, value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <PhoneInput
+                              name={`guarantors.${actualIndex}.landlordPhone`}
+                              label="Landlord Phone Number"
+                              placeholder="Enter landlord's phone number"
+                              value={formData.guarantors[actualIndex]?.landlordPhone || ''}
+                              onChange={(value) => {
+                                updateArrayItem('guarantors', actualIndex, 'landlordPhone', value);
+                                form.setValue(`guarantors.${actualIndex}.landlordPhone`, value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormControl>
+                            <EmailInput
+                              name={`guarantors.${actualIndex}.landlordEmail`}
+                              label="Landlord Email Address (Optional)"
+                              placeholder="Enter landlord's email address"
+                              value={formData.guarantors[actualIndex]?.landlordEmail || ''}
+                              onChange={(value) => {
+                                updateArrayItem('guarantors', actualIndex, 'landlordEmail', value);
+                                form.setValue(`guarantors.${actualIndex}.landlordEmail`, value);
+                              }}
+                              className="w-full mt-1"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <div>
+                          <Label htmlFor={`guarantors.${actualIndex}.currentRent`} className="mb-0.5">Monthly Rent</Label>
+                          <Input
+                            id={`guarantors.${actualIndex}.currentRent`}
+                            type="number"
+                            placeholder="0.00"
+                            value={formData.guarantors[actualIndex]?.currentRent?.toString() || ''}
+                            onChange={e => {
+                              const numValue = parseFloat(e.target.value) || 0;
+                              updateArrayItem('guarantors', actualIndex, 'currentRent', numValue);
+                              form.setValue(`guarantors.${actualIndex}.currentRent`, numValue);
+                            }}
+                            className="input-field w-full mt-1"
+                          />
+                        </div>
+                        <FormItem>
+                          <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Please explain your reason for moving" 
+                            value={formData.guarantors[actualIndex]?.reasonForMoving || ''}
+                            className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
+                            onChange={(e) => {
+                              updateArrayItem('guarantors', actualIndex, 'reasonForMoving', e.target.value);
+                              form.setValue(`guarantors.${actualIndex}.reasonForMoving`, e.target.value);
+                            }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      </div>
+                    </CardContent>
+                  </Card>
+                      );
+                    })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+        );
+
+      case 10:
+        return (
+          <div className="space-y-6">
+            {!hasGuarantor && !(userRole.startsWith('guarantor') && specificIndex !== null) ? (
+              <Card className="form-section border-l-4 border-l-orange-500">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-gray-600">
-                    <UserCheck className="w-5 h-5 mr-2" />
-                    Guarantor Information
+                  <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
+                    <CalendarDays className="w-5 h-5 mr-2" />
+                    Guarantor Financial Information
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-center py-8">
-                    <p className="text-gray-500 mb-4">No guarantor has been added to this application.</p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setHasGuarantor(true);
-                        form.setValue('hasGuarantor', true);
-                      }}
-                    >
-                      Add Guarantor
-                    </Button>
+                    <div className="text-gray-500 text-lg mb-2">Guarantor Financial Information Unavailable</div>
+                    <div className="text-gray-400 text-sm">Please check "Add Guarantor" to access financial information.</div>
                   </div>
                 </CardContent>
               </Card>
-            )}
-
-            {hasGuarantor && (
-              null
-            )}
-
-            {/* Guarantor Documents Section */}
-            {hasGuarantor && (
-              <Card className="form-section border-l-4 border-l-purple-500">
+            ) : (
+              <Card className="form-section border-l-4 border-l-orange-500">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-purple-700 dark:text-purple-400">
-                    <Shield className="w-5 h-5 mr-2" />
-                    Guarantor Documents
+                  <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
+                    <CalendarDays className="w-5 h-5 mr-2" />
+                    Guarantor Financial Information
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <DocumentSection 
-                    title="Guarantor Documents"
-                    person="guarantor"
-                    onDocumentChange={handleDocumentChange}
-                    onEncryptedDocumentChange={handleEncryptedDocumentChange}
-                    referenceId={referenceId}
-                    enableWebhook={true}
-                    applicationId={applicationId}
-                  />
+                  {Array.from({ length: (userRole.startsWith('guarantor') && specificIndex !== null) ? 1 : Math.max(1, formData.guarantorCount || 1) }, (_, index) => {
+                    // For specific guarantor roles, always show the specific index
+                    const actualIndex = userRole.startsWith('guarantor') && specificIndex !== null ? specificIndex : index;
+                    return (
+                    <div key={index} className="mb-8 last:mb-0">
+                      <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
+                        Financial Information 3 - Guarantor {actualIndex + 1}
+                      </h3>
+                      <FinancialSection
+                        title={`Guarantor ${actualIndex + 1} Financial Information`}
+                        person={`guarantors_${actualIndex}`}
+                        formData={formData}
+                        updateFormData={updateFormData}
+                      />
+                    </div>
+                      );
+                    })}
                 </CardContent>
               </Card>
             )}
           </div>
         );
 
-      case 7:
+      case 11:
+        return (
+          <div className="space-y-6">
+            {!hasGuarantor && !(userRole.startsWith('guarantor') && specificIndex !== null) ? (
+              <Card className="form-section border-l-4 border-l-orange-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
+                    <FolderOpen className="w-5 h-5 mr-2" />
+                    Guarantor Documents
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <div className="text-gray-500 text-lg mb-2">Guarantor Documents Unavailable</div>
+                    <div className="text-gray-400 text-sm">Please check "Add Guarantor" to upload documents.</div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="form-section border-l-4 border-l-orange-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-orange-700 dark:text-orange-400">
+                    <FolderOpen className="w-5 h-5 mr-2" />
+                    Guarantor Documents
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Wrapper functions for SupportingDocuments to match expected signature */}
+                  {Array.from({ length: (userRole.startsWith('guarantor') && specificIndex !== null) ? 1 : Math.max(1, formData.guarantorCount || 1) }, (_, index) => {
+                    // For specific guarantor roles, always show the specific index
+                    const actualIndex = userRole.startsWith('guarantor') && specificIndex !== null ? specificIndex : index;
+                    return (
+                    <div key={index} className="mb-8 last:mb-0">
+                      <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
+                        Guarantor {actualIndex + 1} Documents
+                      </h3>
+                      {/* Employment Type Selection for Guarantor Documents */}
+                      {!formData.guarantors?.[actualIndex]?.employmentType ? (
+                        <div className="space-y-4">
+                          <div className="text-gray-500 text-sm mb-4">Please select Employment Type to upload supporting documents for Guarantor {actualIndex + 1}.</div>
+                          
+                          <div className="form-field">
+                            <Label htmlFor={`guarantor-${actualIndex}-employmentType`}>Employment Type *</Label>
+                            <div className="text-sm text-amber-600 dark:text-amber-400 mb-2">
+                              Guarantor cannot be a student, only employment/ self-employment options
+                            </div>
+                            <Select
+                              value={formData.guarantors?.[actualIndex]?.employmentType || ''}
+                              onValueChange={(value) => {
+                                // Prevent guarantors from selecting student employment type
+                                if (value === 'student') {
+                                  return; // Don't allow this selection
+                                }
+                                updateFormData('guarantors', actualIndex.toString(), 'employmentType', value);
+                              }}
+                            >
+                              <SelectTrigger className="input-field">
+                                <SelectValue placeholder="Select employment type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {/* Students option NOT available for Guarantors */}
+                                <SelectItem value="self-employed">Self-Employed</SelectItem>
+                                <SelectItem value="salaried">Salaried</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          {/* Info blocks: Security Notice and Important Notes */}
+                          <div className="flex flex-col space-y-1.5 p-6">
+                            <div className="tracking-tight text-lg font-medium">Supporting Documents</div>
+                            <div className="bg-green-50 p-3 rounded-lg">
+                              <p className="text-sm text-green-800">
+                                <span className="font-medium">🔒 Security Notice:</span> All documents uploaded in this section will be encrypted before transmission to ensure your privacy and data security.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+                            <h4 className="font-medium text-yellow-900 mb-2">Important Notes:</h4>
+                            <ul className="text-sm text-yellow-800 space-y-1">
+                              <li>• Documents must be current and legible</li>
+                              <li>• Corporate applicants require additional documentation</li>
+                              <li>• Self-employed applicants need accountant verification</li>
+                              <li>• Incomplete applications will delay processing</li>
+                            </ul>
+                          </div>
+                        </div>
+                      ) : (
+                        <SupportingDocuments
+                          formData={{
+                            ...formData,
+                            webhookResponses: Object.fromEntries(
+                              Object.entries(webhookResponses)
+                                .filter(([key]) => key.startsWith(`guarantors_${actualIndex}_`))
+                                .map(([key, value]) => [key.replace(`guarantors_${actualIndex}_`, ''), value])
+                            )
+                          }}
+                          originalWebhookResponses={webhookResponses}
+                          onDocumentChange={(documentType: string, files: File[]) => 
+                            handleDocumentChange('guarantors', documentType, files, actualIndex)
+                          }
+                          onEncryptedDocumentChange={(documentType: string, encryptedFiles: EncryptedFile[]) => 
+                            handleEncryptedDocumentChange('guarantors', documentType, encryptedFiles, actualIndex)
+                          }
+                          onWebhookResponse={(documentType: string, response: any) => {
+                            // Pass the document type and index to the function
+                            handleWebhookResponse('guarantors', documentType, response, actualIndex);
+                          }}
+                          referenceId={referenceId}
+                          enableWebhook={true}
+                          applicationId={user?.applicantId || 'unknown'}
+                          applicantId={user?.id}
+                          zoneinfo={user?.zoneinfo}
+                          showOnlyGuarantor={true}
+                          index={actualIndex}
+                        />
+                      )}
+                    </div>
+                      );
+                    })}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        );
+
+      case 12:
         return (
           <div className="space-y-8">
             <Card className="form-section">
@@ -1834,36 +8683,55 @@ export function ApplicationForm() {
                 <div className="mb-6">
                   <h3 className="font-bold uppercase text-sm mb-2">PLEASE READ CAREFULLY BEFORE SIGNING</h3>
                   <p className="text-xs text-gray-700 whitespace-pre-line">
-                    The Landlord will in no event be bound, nor will possession be given, unless and until a lease executed by the Landlord has been delivered to the Tenant. The applicant and his/her references must be satisfactory to the Landlord. Please be advised that the date on page one of the lease is not your move-in date. Your move-in date will be arranged with you after you have been approved. No representations or agreements by agents, brokers or others are binding on the Landlord or Agent unless included in the written lease proposed to be executed. I hereby warrant that all my representations set forth herein are true. I recognize the truth of the information contained herein is essential. I further represent that I am not renting a room or an apartment under any other name, nor have I ever been dispossessed from any apartment, nor am I now being dispossessed. I represent that I am over 18 years of age. I have been advised that I have the right, under section 8068 of the Fair Credit Reporting Act, to make a written request, directed to the appropriate credit reporting agency, within reasonable time, for a complete and accurate disclosure of the nature and scope of any credit investigation. I understand that upon submission, this application and all related documents become the property of the Landlord, and will not be returned to me under any circumstances. I authorize the Landlord, Agent and credit reporting agency to obtain a consumer credit report on me and to verify any information on this application with regard to my employment history, current and prior tenancies, bank accounts, and all other information that the Landlord deems pertinent to my obtaining residency. I understand that I shall not be permitted to receive or review my application file or my credit consumer report. I authorize banks, financial institutions, landlords, business associates, credit bureaus, attorneys, accountants and other persons or institutions with whom I am acquainted to furnish any and all information regarding myself. This authorization also applies to any update reports which may be ordered as needed. A photocopy or fax of this authorization shall be accepted with the same authority as this original. I will present any other information required by the Landlord or Agent in connection with the lease contemplated herein. I understand that the application fee is non-refundable. The Civil Rights Act of 1968, as amended by the Fair Housing Amendments Act of 1988, prohibits discrimination in the rental of housing based on race, color, religion, gender, handicap, familial status or national origin. The Federal Agency, which administers compliance with this law, is the U.S. Department of Housing and Urban Development.
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-base font-medium">Primary Applicant Signature *</Label>
-                  <SignaturePad 
-                    onSignatureChange={(signature) => handleSignatureChange('applicant', signature)}
-                    className="mt-2"
-                  />
-                </div>
-
-                {hasCoApplicant && (
+                  The Landlord shall not be bound by any lease, nor will possession of the premises be delivered to the Tenant, until a written lease agreement is executed by the Landlord and delivered to the Tenant. Approval of this application remains at Landlord’s discretion until a lease agreement is fully executed. Please be advised that the date on page one of the lease is your move-in date and also denotes the lease commencement date. No representations or agreements by agents, brokers or others shall be binding upon the Landlord or its Agent unless those representations or agreements are set forth in the written lease agreement executed by both Landlord and Tenant.</p>
+                  <h3 className="font-bold uppercase text-sm mb-2">Certification & Consents</h3>
+                  <p className="text-xs text-gray-700 whitespace-pre-line">By signing this application electronically, I consent to the use of electronic records and digital signatures in connection with this application and any resulting lease agreement. I agree that my electronic signature is legally binding and has the same effect as a handwritten signature. <br/>I hereby warrant that all my representations and information provided in this application are true, accurate, and complete to the best of my knowledge. I recognize the truth of the information contained herein is essential and I acknowledge that any false or misleading information may result in the rejection of my application  or rescission of the offer prior to possession or, if a lease has been executed and/or possession delivered, may constitute a material breach and provide grounds to commence appropriate legal proceedings to terminate the tenancy, as permitted by law. I further represent that I am not renting a room or an apartment under any other name, nor have I ever been dispossessed or evicted from any residence, nor am I now being dispossessed nor currently being evicted. I represent that I am over at least 18 years of age. I acknowledge and consent that my Social Security number and any other personal identifying information collected in this application may be used for tenant screening and will be maintained in confidence and protected against unauthorized disclosure in accordance with New York General Business Law and related privacy laws. I have been advised that I have the right, under the Fair Credit Reporting Act, to make a written request, directed to the appropriate credit reporting agency, within reasonable time, for a complete and accurate disclosure of the nature and scope of any credit investigation. I understand that upon submission, this application and all related documents become the property of the Landlord, and will not be returned to me under any circumstances regardless of whether my application is approved or denied. I consent to and authorize the Landlord, Agent and any designated screening or credit reporting agency to obtain a consumer credit report on me and to conduct any necessary background checks, to the extent permitted by law. I further authorize the Landlord and Agent to verify any and all information provided in this application with regard to my employment history, current and prior tenancies, bank accounts, and all other information that the Landlord deems pertinent to evaluating my leasing application. I authorize the designated screening company to contact my current and previous landlords, employers and references, if necessary. I understand that I shall not be permitted to receive or review my application file or my credit consumer report, <br/>and the Landlord and Agent are not obligated to provide me with copies of my application file or any consumer report obtained in the screening process, and that I may obtain my credit report from the credit reporting agency or as otherwise provided by law. I authorize banks, financial institutions, landlords, employers, business associates, credit bureaus, attorneys, accountants and other persons or institutions with whom I am acquainted and that may have information about me to furnish any and all information regarding myself. This authorization also applies to any updated reports which may be ordered as needed. A photocopy or fax of this authorization or an electronic copy (including any electronic signature) shall be accepted with the same authority as this original. I will provide any additional information required by the Landlord or Agent in connection with this application or any prospective lease contemplated herein. I understand that the application fee is non-refundable. <br/>The Civil Rights Act of 1968, as amended by the Fair Housing Amendments Act of 1988, prohibits discrimination in the rental of housing based on race, color, religion, gender, disability, familial status, lawful source of income (including housing vouchers and public assistance) or national origin. The Federal Agency, which administers compliance with this law, is the U.S. Department of Housing and Urban Development.” </p> </div>
+                {/* Primary Applicant Signature - Show only for applicant role */}
+                {userRole === 'applicant' && (
                   <div>
-                    <Label className="text-base font-medium">Co-Applicant Signature *</Label>
+                    <Label className="text-base font-medium">Primary Applicant Signature *</Label>
                     <SignaturePad 
-                      onSignatureChange={(signature) => handleSignatureChange('coApplicant', signature)}
+                      onSignatureChange={(signature) => handleSignatureChange('applicant', signature)}
                       className="mt-2"
                     />
                   </div>
                 )}
 
-                {hasGuarantor && (
-                  <div>
-                    <Label className="text-base font-medium">Guarantor Signature *</Label>
-                    <SignaturePad 
-                      onSignatureChange={(signature) => handleSignatureChange('guarantor', signature)}
-                      className="mt-2"
-                    />
-                  </div>
-                )}
+                {/* Co-Applicant Signatures - Hide for guarantor role */}
+                {userRole !== 'guarantor' && (hasCoApplicant || userRole.startsWith('coapplicant')) && Array.from({ 
+                  length: userRole.startsWith('coapplicant') && specificIndex !== null ? 1 : (formData.coApplicantCount || 1) 
+                }, (_, index) => {
+                  // For specific co-applicant roles, show the specific number
+                  const displayNumber = userRole.startsWith('coapplicant') && specificIndex !== null ? specificIndex + 1 : index + 1;
+                  const actualIndex = userRole.startsWith('coapplicant') && specificIndex !== null ? specificIndex : index;
+                  return (
+                    <div key={`co-applicant-signature-${actualIndex}`}>
+                      <Label className="text-base font-medium">Co-Applicant {displayNumber} Signature *</Label>
+                      <SignaturePad 
+                        onSignatureChange={(signature) => handleSignatureChange('coApplicants', actualIndex.toString(), signature)}
+                        className="mt-2"
+                      />
+                    </div>
+                  );
+                })}
+
+                {/* Guarantor Signatures - Hide for coapplicant role, show for guarantor role */}
+                {userRole !== 'coapplicant' && (hasGuarantor || userRole.startsWith('guarantor')) && Array.from({ 
+                  length: userRole.startsWith('guarantor') && specificIndex !== null ? 1 : Math.max(1, formData.guarantorCount || 1) 
+                }, (_, index) => {
+                  // For specific guarantor roles, show the specific number
+                  const displayNumber = userRole.startsWith('guarantor') && specificIndex !== null ? specificIndex + 1 : index + 1;
+                  const actualIndex = userRole.startsWith('guarantor') && specificIndex !== null ? specificIndex : index;
+                  return (
+                    <div key={`guarantor-signature-${actualIndex}`}>
+                      <Label className="text-base font-medium">Guarantor {displayNumber} Signature *</Label>
+                      <SignaturePad 
+                        onSignatureChange={(signature) => handleSignatureChange('guarantors', actualIndex.toString(), signature)}
+                        className="mt-2"
+                      />
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           </div>
@@ -1872,132 +8740,435 @@ export function ApplicationForm() {
       default:
         return null;
     }
+  }; // end renderStep
+
+  // Enhanced sync effect for applicantDob
+  useEffect(() => {
+    const formValue = form.watch('applicantDob');
+    const stateValue = formData.applicant?.dob;
+    let dateObj = toValidDate(stateValue);
+    console.log('DOB sync effect - formValue:', formValue, 'stateValue:', stateValue, 'dateObj:', dateObj);
+    if (dateObj) {
+      if (!formValue || !(formValue instanceof Date) || formValue.getTime() !== dateObj.getTime()) {
+        form.setValue('applicantDob', dateObj);
+      }
+    } else if (formValue) {
+      // If invalid, clear by setting to a default date or handling differently
+      // Don't set undefined for required date field
+    }
+  }, [formData.applicant?.dob, form]);
+
+  // Helper to robustly convert to Date or undefined (preserving local date)
+  const toValidDate = (val: any): Date | undefined => {
+    if (!val) return undefined;
+    if (val instanceof Date && !isNaN(val.getTime())) return val;
+    if (typeof val === 'string' || typeof val === 'number') {
+      const d = new Date(val);
+      if (d instanceof Date && !isNaN(d.getTime())) {
+        // For date-only fields, create a new date with local date components
+        // This prevents timezone-related date shifts
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      }
+    }
+    return undefined;
+  };
+
+  // Step navigation handlers
+  const handlePrevious = () => {
+    setCurrentStep((prev: number) => {
+      let prevStep = prev - 1;
+      
+      // If coming back from Other Occupants (step 8) and no co-applicant is selected, go back to Add Co-Applicant step (step 5)
+      if (!hasCoApplicant && prev === 8) {
+        prevStep = 5; // Go back to Add Co-Applicant step
+      }
+      
+      // If coming back from Digital Signatures (step 12) and no guarantor is selected, go back to Add Guarantor step (step 9)
+      if (!hasGuarantor && prev === 12) {
+        prevStep = 9; // Go back to Add Guarantor step
+      }
+      
+      return Math.max(prevStep, 0);
+    });
+  };
+
+  const handleNext = () => {
+    // Validate current step before proceeding
+    const validation = validateStep(currentStep);
+    if (!validation.isValid) {
+      toast({
+        title: 'Required fields missing',
+        description: validation.errors.join(', '),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setCurrentStep((prev: number) => {
+      let nextStep = prev + 1;
+      
+      // If moving to co-applicant steps (step 6, 7) and no co-applicant is selected, skip to Other Occupants (step 8)
+      if (!hasCoApplicant && (nextStep === 6 || nextStep === 7)) {
+        nextStep = 8; // Skip to Other Occupants
+      }
+      
+      // Only skip guarantor steps if user is not already on them and trying to navigate TO them
+      // If user is already on step 10 or 11, allow them to proceed normally
+      if (!hasGuarantor && nextStep === 10 && prev < 10) {
+        nextStep = 12; // Skip to Digital Signatures only when navigating TO step 10
+      }
+      if (!hasGuarantor && nextStep === 11 && prev < 11) {
+        nextStep = 12; // Skip to Digital Signatures only when navigating TO step 11
+      }
+      
+      return Math.min(nextStep, filteredSteps.length - 1);
+    });
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 sm:bg-gradient-to-br sm:from-blue-50 sm:to-gray-100 sm:dark:from-gray-900 sm:dark:to-gray-800">
-      {/* Header - Hidden */}
-      {/* <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
-          <div className="text-center">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Liberty Place Property Management</h1>
-            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 space-y-1">
-              <p className="break-words">122 East 42nd Street, Suite 1903, New York, NY 10168</p>
-              <p className="break-words">Tel: (646) 545-6700 | Fax: (646) 304-2255</p>
-              <p className="text-blue-600 dark:text-blue-400 font-medium">Rental Application Form</p>
+    <div className="min-h-screen bg-white">
+      {/* Welcome Message */}
+      {showWelcomeMessage && user && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 font-semibold text-lg">
+                  {user.name?.[0] || user.given_name?.[0] || user.email?.[0]?.toUpperCase() || 'U'}
+                </span>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Welcome back, {user.name || user.given_name || 'User'}!
+                </h2>
+                <p className="text-sm text-gray-600">Continue with your rental application</p>
+              </div>
             </div>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setShowWelcomeMessage(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </Button>
           </div>
         </div>
-      </header> */}
+      )}
 
-      <div className="w-full max-w-4xl mx-auto px-3 py-4 sm:px-4 sm:py-8">
-        {/* Header with Navigation */}
-        <div className="mb-4 sm:mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-              Rental Application
-            </h1>
-            {/* Hidden Missing Documents Button
-            <Button
-              variant="outline"
-              onClick={() => setLocation('/missing-documents')}
-              className="flex items-center gap-2"
-            >
-              <Search className="w-4 h-4" />
-              <span className="hidden sm:inline">Missing Documents</span>
-              <span className="sm:hidden">Documents</span>
-            </Button>
-            */}
+      <Form {...form}>
+        <form onSubmit={userRole && (userRole.startsWith('coapplicant') || userRole.startsWith('guarantor')) ? handleRoleSpecificSubmit : form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* Progress Bar - Hidden */}
+          {/* <div className="mb-8">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Step {currentStep + 1} of {filteredSteps.length}: {filteredSteps[currentStep]?.title}
+              </h2>
+              <span className="text-sm text-gray-500">
+                {Math.round(((currentStep + 1) / filteredSteps.length) * 100)}% Complete
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-in-out"
+                style={{ width: `${((currentStep + 1) / filteredSteps.length) * 100}%` }}
+              ></div>
           </div>
           
-          {/* Progress Steps */}
-          <div className="flex items-center justify-between mb-2 sm:mb-4 overflow-x-auto">
-            {STEPS.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = currentStep === step.id;
-              const isCompleted = currentStep > step.id;
-
+            <div className="flex flex-wrap gap-2 mt-4">
+            {filteredSteps.map((step, index) => {
+              const stepValidation = validateStep(index);
+              const isCompleted = index < currentStep && stepValidation.isValid;
+              const hasErrors = index < currentStep && !stepValidation.isValid;
+              
               return (
                 <div key={step.id} className="flex items-center">
                   <button
-                    onClick={() => goToStep(step.id)}
-                    className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-colors flex-shrink-0 ${
-                      isActive
-                        ? 'bg-blue-600 border-blue-600 text-white'
-                        : isCompleted
-                        ? 'bg-green-600 border-green-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-500'
-                    }`}
-                  >
-                    {isCompleted ? (
-                      <Check className="w-4 h-4 sm:w-5 sm:h-5" />
-                    ) : (
-                      step.icon ? React.createElement(step.icon, { className: "w-4 h-4 sm:w-5 sm:h-5" }) : step.title[0]
-                    )}
+                    type="button"
+                      onClick={() => goToStep(index)}
+                      className={`flex items-center px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                        index === currentStep
+                          ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
+                          : isCompleted
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          : hasErrors
+                          ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-300'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}
+                    >
+                      {step.icon && <step.icon className="w-3 h-3 mr-1" />}
+                      {step.title}
+                      {isCompleted && <Check className="w-3 h-3 ml-1" />}
+                      {hasErrors && <X className="w-3 h-3 ml-1" />}
                   </button>
-                  {index < STEPS.length - 1 && (
-                    <div className={`flex-1 h-1 mx-1 sm:mx-2 ${isCompleted ? 'bg-green-600' : 'bg-gray-300'}`} />
+                  {index < filteredSteps.length - 1 && (
+                      <ChevronRight className="w-3 h-3 text-gray-400 mx-1" />
                   )}
                 </div>
               );
             })}
           </div>
-          {/* Step title and progress indicator removed */}
-        </div>
+        </div> */}
+
+          {/* Form Content */}
+              {/* Validation Error Display - HIDDEN */}
+              {/* {(() => {
+                const validation = validateStep(currentStep);
+                if (!validation.isValid && currentStep > 0) {
+                  return (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <X className="h-5 w-5 text-red-400" />
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-red-800">
+                            Required fields missing
+                          </h3>
+                          <div className="mt-2 text-sm text-red-700">
+                            <ul className="list-disc list-inside space-y-1">
+                              {validation.errors.map((error, index) => (
+                                <li key={index}>{error}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()} */}
+              
 
 
 
-        {/* Action Buttons - Removed */}
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-8">
-            {/* Current Step Content */}
-            <div className="form-container">
+              
               {renderStep()}
-            </div>
+              
+              {/* Student Documents Skip Notice */}
+              {formData?.applicant?.employmentType === 'student' && currentStep === 3 && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-blue-800">
+                        Documents Step Skipped for Students
+                      </h3>
+                      <div className="mt-2 text-sm text-blue-700">
+                        <p>As a student, document validation is not required. You can proceed directly to the next step.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+
 
             {/* Navigation Buttons */}
-            <div className="flex justify-between items-center pt-4 sm:pt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={prevStep}
-                disabled={currentStep === 0}
-                className="flex items-center text-xs sm:text-sm px-2 sm:px-4 py-2"
-              >
-                <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Previous</span>
-                <span className="sm:hidden">Prev</span>
-              </Button>
-
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                Step {currentStep + 1} of {STEPS.length}
-              </div>
-
-              {currentStep === STEPS.length - 1 ? (
+          <div className="flex justify-between pt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+              onClick={handlePrevious}
+              disabled={currentStep === 0}
+              className="flex items-center"
+                  >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Previous
+                  </Button>
+              
+            <div className="flex space-x-3">
                 <Button
                   type="button"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold"
-                  onClick={() => onSubmit(form.getValues())}
+                  variant="outline"
+                  onClick={saveDraftToDynamoDB}
+                  disabled={isSavingDraft}
+                className="flex items-center"
                 >
-                  <span className="hidden sm:inline">Submit Application</span>
-                  <span className="sm:hidden">Submit</span>
+                  {isSavingDraft ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                  ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                  )}
+                Save Draft
+                </Button>
+                
+              {currentStep === filteredSteps.length - 1 ? (
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                  className="flex items-center"
+                  >
+                    {isSubmitting ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  Submit Application
                 </Button>
               ) : (
                 <Button
                   type="button"
-                  onClick={nextStep}
-                  className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 sm:px-6 py-2"
+                  onClick={handleNext}
+                  className="flex items-center"
                 >
-                  <span className="hidden sm:inline">Next</span>
-                  <span className="sm:hidden">Next</span>
-                  <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
-                </Button>
-              )}
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                  </Button>
+                )}
+              </div>
             </div>
           </form>
         </Form>
+
+        {/* Success Popup */}
+        {showSuccessPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-8 max-w-lg mx-4 text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Application Submitted Successfully!
+              </h3>
+              <div className="text-gray-600 mb-6 space-y-3">
+                <p>
+                  Your rental application has been submitted and is being processed.
+                </p>
+                {(userRole !== 'applicant' && userRole !== 'coapplicant') && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                    <div className="flex items-center justify-center mb-2">
+                      <FileText className="w-4 h-4 text-blue-600 mr-2" />
+                      <span className="font-semibold text-blue-800">PDF Generated & Downloaded</span>
+                    </div>
+                    <p className="text-blue-700">
+                      Your application PDF has been automatically generated and downloaded to your device.
+                    </p>
+                  </div>
+                )}
+
+                {/* Additional People Summary - Only for applicant role */}
+                {userRole === 'applicant' && (formData.coApplicantCount > 0 || formData.guarantorCount > 0) && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-left">
+                    <div className="flex items-center mb-3">
+                      <Users className="w-4 h-4 text-green-600 mr-2" />
+                      <span className="font-semibold text-green-800">Additional People in Application</span>
+                    </div>
+                    
+                    {/* Co-Applicants Summary */}
+                    {formData.coApplicantCount > 0 && formData.coApplicants && (
+                      <div className="mb-3">
+                        <h4 className="font-medium text-green-700 mb-2">Co-Applicants ({formData.coApplicantCount}):</h4>
+                        <div className="space-y-1">
+                          {formData.coApplicants.slice(0, formData.coApplicantCount).map((coApplicant: any, index: number) => (
+                            <div key={index} className="text-green-600">
+                              <span className="font-medium">{coApplicant.name || `Co-Applicant ${index + 1}`}</span>
+                              {coApplicant.email && (
+                                <span className="text-gray-500 ml-2">({coApplicant.email})</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Guarantors Summary */}
+                    {formData.guarantorCount > 0 && formData.guarantors && (
+                      <div>
+                        <h4 className="font-medium text-green-700 mb-2">Guarantors ({formData.guarantorCount}):</h4>
+                        <div className="space-y-1">
+                          {formData.guarantors.slice(0, formData.guarantorCount).map((guarantor: any, index: number) => (
+                            <div key={index} className="text-green-600">
+                              <span className="font-medium">{guarantor.name || `Guarantor ${index + 1}`}</span>
+                              {guarantor.email && (
+                                <span className="text-gray-500 ml-2">({guarantor.email})</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Co-Applicant Submission Preview - Only show relevant co-applicant data */}
+                {userRole && userRole.startsWith('coapplicant') && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-left">
+                    <div className="flex items-center mb-3">
+                      <Users className="w-4 h-4 text-green-600 mr-2" />
+                      <span className="font-semibold text-green-800">Co-Applicant Submission Preview</span>
+                    </div>
+                    <div className="space-y-2">
+                      {(() => {
+                        const indices = (specificIndex !== null)
+                          ? [specificIndex]
+                          : (formData.coApplicants || []).map((_: any, idx: number) => idx);
+                        return indices.map((idx: number) => {
+                          const ca = (formData.coApplicants || [])[idx];
+                          if (!ca || (!ca.name && !ca.email && !ca.phone)) return null;
+                          return (
+                            <div key={`coapp-preview-${idx}`} className="p-3 bg-white border border-green-200 rounded-md">
+                              <div className="font-medium text-green-700 mb-1">Co-Applicant {idx + 1}</div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-gray-700">
+                                <div><span className="text-gray-500">Name:</span> {ca.name || '—'}</div>
+                                <div><span className="text-gray-500">Email:</span> {ca.email || '—'}</div>
+                                <div><span className="text-gray-500">Phone:</span> {ca.phone || '—'}</div>
+                                <div><span className="text-gray-500">Relationship:</span> {ca.relationship || '—'}</div>
+                                <div><span className="text-gray-500">Address:</span> {ca.address || '—'}</div>
+                                <div><span className="text-gray-500">City:</span> {ca.city || '—'}</div>
+                                <div><span className="text-gray-500">State:</span> {ca.state || '—'}</div>
+                                <div><span className="text-gray-500">Zip:</span> {ca.zip || '—'}</div>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex space-x-3">
+                <Button
+                  onClick={() => {
+                    setShowSuccessPopup(false);
+                    setLocation('/drafts');
+                  }}
+                  className="flex-1"
+                >
+                  Close
+                </Button>
+                
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Dashboard */}
+        {showDashboard && (
+          <RentalDashboard 
+            onBackToForm={() => setShowDashboard(false)}
+            currentApplication={{
+              id: submissionReferenceId || "APP-" + Date.now(),
+              applicantName: formData.applicantName || "Current Applicant",
+              propertyAddress: `${formData.buildingAddress || ""} ${formData.apartmentNumber || ""}`.trim() || "Property Address",
+              status: "pending_documents",
+              submittedDate: new Date().toISOString().split('T')[0],
+              progress: 25,
+              // Add default values for missing fields to prevent errors
+              creditScore: undefined,
+              monthlyIncome: undefined,
+              creditCardType: undefined,
+              creditCardLast4: undefined,
+              creditCardValid: undefined,
+              missingDocuments: [],
+            }}
+          />
+        )}
       </div>
-    </div>
-  );
-}
+    );
+  }
