@@ -388,9 +388,39 @@ const STEPS = [
   { id: 12, title: "Digital Signatures", icon: Check },
 ];
 
-// Function to get filtered steps - now shows all steps regardless of role
+// Function to get filtered steps based on role
 const getFilteredSteps = (role: string) => {
-  // Always return all steps - role-based filtering removed
+  if (role === 'applicant') {
+    // For applicant role, exclude Co-Applicant and Guarantor steps
+    return STEPS.filter(step => 
+      ![5, 6, 7, 9, 10, 11].includes(step.id) // Exclude Co-Applicant and Guarantor steps
+    );
+  }
+  if (role === 'coapplicant') {
+    // For coapplicant role, show only: Instructions, Co-Applicant, Co-Applicant Financial, Co-Applicant Documents, Digital Signatures
+    return STEPS.filter(step => 
+      [0, 5, 6, 7, 12].includes(step.id) // Only include specific steps for co-applicant
+    );
+  }
+  if (role.startsWith('coapplicant') && /coapplicant\d+/.test(role)) {
+    // For specific co-applicant role (coapplicant1, coapplicant2, etc.), show only: Instructions, Co-Applicant, Co-Applicant Financial, Co-Applicant Documents, Digital Signatures
+    return STEPS.filter(step => 
+      [0, 5, 6, 7, 12].includes(step.id) // Only include specific steps for co-applicant
+    );
+  }
+  if (role === 'guarantor') {
+    // For guarantor role, show only: Instructions, Guarantor, Guarantor Financial, Guarantor Documents, Digital Signatures
+    return STEPS.filter(step => 
+      [0, 9, 10, 11, 12].includes(step.id) // Only include specific steps for guarantor
+    );
+  }
+  if (role.startsWith('guarantor') && /guarantor\d+/.test(role)) {
+    // For specific guarantor role (guarantor1, guarantor2, etc.), show only: Instructions, Guarantor, Guarantor Financial, Guarantor Documents, Digital Signatures
+    return STEPS.filter(step => 
+      [0, 9, 10, 11, 12].includes(step.id) // Only include specific steps for guarantor
+    );
+  }
+  // For other roles or 'all', return all steps
   return STEPS;
 };
 
@@ -411,11 +441,11 @@ export function ApplicationForm() {
   const { user } = useAuth();
   
   // Parse role from URL query parameters
-  const [userRole, setUserRole] = useState<string>('all');
+  const [userRole, setUserRole] = useState<string>('applicant');
   const [specificIndex, setSpecificIndex] = useState<number | null>(null);
   
   // Get filtered steps based on role
-  const [filteredSteps, setFilteredSteps] = useState(getFilteredSteps('all'));
+  const [filteredSteps, setFilteredSteps] = useState(getFilteredSteps('applicant'));
   
   // Helper function to get actual step ID from filtered step index
   const getActualStepId = (filteredIndex: number) => {
@@ -3317,8 +3347,60 @@ export function ApplicationForm() {
     const currentStepId = getActualStepId(current);
     const nextStepId = getActualStepId(next);
     
-    // Role-based filtering removed - all users can access all steps
-    // Only basic bounds checking remains
+    // Check if primary applicant is a student
+    const isStudent = formData?.applicant?.employmentType === 'student';
+    
+    // If moving forward and primary applicant is student, skip Documents step (step 4)
+    if (direction === 1 && nextStepId === 4 && isStudent) {
+      // Find the next step that has ID 5 or higher
+      const nextStepIndex = filteredSteps.findIndex(step => step.id >= 5);
+      if (nextStepIndex !== -1) {
+        next = nextStepIndex;
+      }
+    }
+    // If moving backward and primary applicant is student, skip Documents step (step 4)
+    if (direction === -1 && nextStepId === 4 && isStudent) {
+      // Find the previous step that has ID 3 or lower
+      const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 3);
+      if (prevStepIndex !== -1) {
+        next = prevStepIndex;
+      }
+    }
+    
+    // If moving forward and co-applicant is not checked, skip co-applicant financial and docs
+    if (direction === 1 && (nextStepId === 6 || nextStepId === 7) && !hasCoApplicant) {
+      // Find the next step that has ID 8 or higher
+      const nextStepIndex = filteredSteps.findIndex(step => step.id >= 8);
+      if (nextStepIndex !== -1) {
+        next = nextStepIndex;
+      }
+    }
+    // If moving backward and co-applicant is not checked, skip co-applicant financial and docs
+    if (direction === -1 && (nextStepId === 6 || nextStepId === 7) && !hasCoApplicant) {
+      // Find the previous step that has ID 5 or lower
+      const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 5);
+      if (prevStepIndex !== -1) {
+        next = prevStepIndex;
+      }
+    }
+    // If moving forward and guarantor is not checked, skip guarantor financial and docs
+    if (direction === 1 && (nextStepId === 10 || nextStepId === 11) && !hasGuarantor) {
+      // Find the next step that has ID 12 or higher
+      const nextStepIndex = filteredSteps.findIndex(step => step.id >= 12);
+      if (nextStepIndex !== -1) {
+        next = nextStepIndex;
+      }
+    }
+    // If moving backward and guarantor is not checked, skip guarantor financial and docs
+    if (direction === -1 && (nextStepId === 10 || nextStepId === 11) && !hasGuarantor) {
+      // Find the previous step that has ID 9 or lower
+      const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 9);
+      if (prevStepIndex !== -1) {
+        next = prevStepIndex;
+      }
+    }
+    
+    // For role-based filtering, ensure we stay within filtered steps
     const maxStep = filteredSteps.length - 1;
     return Math.max(0, Math.min(maxStep, next));
   };
@@ -3663,7 +3745,20 @@ export function ApplicationForm() {
       }
     }
     
-    // Role-based step skipping removed - all users can access all steps
+    // Check if primary applicant is a student
+    const isStudent = formData?.applicant?.employmentType === 'student';
+    
+    // Step 4 is Supporting Documents - skip for students
+    if (step === 4 && isStudent) {
+      toast({
+        title: 'Documents Step Skipped',
+        description: 'Document validation is not required for students. Moving to next step.',
+        variant: 'default',
+      });
+      // Automatically move to next step instead of blocking
+      setCurrentStep(5);
+      return;
+    }
     
     // Step 6 is Co-Applicant Financial Information
     if (step === 6 && !hasCoApplicant) {
@@ -8864,6 +8959,8 @@ export function ApplicationForm() {
                   </div>
                 </div>
               )}
+
+
 
             {/* Navigation Buttons */}
           <div className="flex justify-between pt-6">
