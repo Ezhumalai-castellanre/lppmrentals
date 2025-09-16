@@ -2592,6 +2592,70 @@ export function ApplicationForm() {
     return summary;
   };
 
+  // Build role-scoped copies of form data and signatures for saving
+  const buildRoleScopedFormData = useCallback((data: any, role: string, coGuarIndex?: number): any => {
+    if (!role) return data;
+    // Applicant saves full dataset
+    if (role === 'applicant') {
+      return data;
+    }
+
+    // Co-applicant specific role: coapplicant or coapplicantN
+    if (role === 'coapplicant' || /^coapplicant\d+$/.test(role)) {
+      const index = typeof coGuarIndex === 'number' ? coGuarIndex : 0;
+      const coApplicant = (data.coApplicants || [])[index] || {};
+      return {
+        application: data.application,
+        zoneinfo: data.zoneinfo,
+        applicantId: data.applicantId,
+        application_id: data.application_id,
+        hasCoApplicant: true,
+        hasGuarantor: !!(data.guarantors && data.guarantors.length > 0),
+        coApplicantCount: 1,
+        guarantorCount: 0,
+        coApplicants: [coApplicant],
+      };
+    }
+
+    // Guarantor specific role: guarantor or guarantorN
+    if (role === 'guarantor' || /^guarantor\d+$/.test(role)) {
+      const index = typeof coGuarIndex === 'number' ? coGuarIndex : 0;
+      const guarantor = (data.guarantors || [])[index] || {};
+      return {
+        application: data.application,
+        zoneinfo: data.zoneinfo,
+        applicantId: data.applicantId,
+        application_id: data.application_id,
+        hasCoApplicant: !!(data.coApplicants && data.coApplicants.length > 0),
+        hasGuarantor: true,
+        coApplicantCount: 0,
+        guarantorCount: 1,
+        guarantors: [guarantor],
+      };
+    }
+
+    // Default: return full data
+    return data;
+  }, []);
+
+  const buildRoleScopedSignatures = useCallback((rawSignatures: any, role: string, coGuarIndex?: number): any => {
+    const safe = rawSignatures || {};
+    if (role === 'applicant') {
+      return { applicant: safe.applicant ?? null };
+    }
+    if (role === 'coapplicant' || /^coapplicant\d+$/.test(role)) {
+      const index = typeof coGuarIndex === 'number' ? coGuarIndex : 0;
+      const co = (safe.coApplicants || {})[index] || null;
+      return { coApplicants: { [index]: co } };
+    }
+    if (role === 'guarantor' || /^guarantor\d+$/.test(role)) {
+      const index = typeof coGuarIndex === 'number' ? coGuarIndex : 0;
+      const g = (safe.guarantors || {})[index] || null;
+      return { guarantors: { [index]: g } };
+    }
+    return safe;
+  }, []);
+
   // Save draft to DynamoDB function with updated flow type
   const saveDraftToDynamoDB = useCallback(async () => {
     const currentUserZoneinfo = getCurrentUserZoneinfo();
@@ -2658,9 +2722,13 @@ export function ApplicationForm() {
       console.log('📊 cleanedFormData.hasGuarantor:', cleanedFormData.hasGuarantor);
       console.log('=== END DEBUG ===');
       
+      // Build role-scoped data to avoid overwriting unrelated sections
+      const roleScopedForm = buildRoleScopedFormData(cleanedFormData, userRole || '', specificIndex ?? undefined);
+      const roleScopedSign = buildRoleScopedSignatures(signatures, userRole || '', specificIndex ?? undefined);
+
       // ALWAYS use the current user's zoneinfo for both fields
       const enhancedFormDataSnapshot = {
-        ...cleanedFormData,
+        ...roleScopedForm,
         application_id: currentUserZoneinfo, // Use zoneinfo as application_id
         applicantId: currentUserZoneinfo,    // Use zoneinfo as applicantId
         webhookSummary: getWebhookSummary()
@@ -2684,7 +2752,7 @@ export function ApplicationForm() {
         status: 'draft',
         uploaded_files_metadata: uploadedFilesMetadata,
         webhook_responses: webhookResponses,
-        signatures: signatures,
+        signatures: roleScopedSign,
         encrypted_documents: encryptedDocuments,
         // Add flow type information for the new separate webhook system
         flow_type: 'separate_webhooks', // Indicates this draft uses the new flow type
@@ -2717,7 +2785,7 @@ export function ApplicationForm() {
     } finally {
       setIsSavingDraft(false);
     }
-  }, [getCurrentUserZoneinfo, formData, referenceId, currentStep, uploadedFilesMetadata, webhookResponses, signatures, encryptedDocuments, getWebhookSummary]);
+  }, [getCurrentUserZoneinfo, formData, referenceId, currentStep, uploadedFilesMetadata, webhookResponses, signatures, encryptedDocuments, getWebhookSummary, userRole, specificIndex, buildRoleScopedFormData, buildRoleScopedSignatures]);
 
   // Function to log current webhook state (useful for debugging)
   const logCurrentWebhookState = () => {
@@ -5341,17 +5409,21 @@ export function ApplicationForm() {
           console.log('💾 Saving submitted application to DynamoDB...');
           const { dynamoDBUtils } = await import('../lib/dynamodb-service');
           
+          // Persist role-scoped data and signatures on submit
+          const submittedFormRoleScoped = buildRoleScopedFormData(completeServerData, userRole || '', specificIndex ?? undefined);
+          const submittedSigsRoleScoped = buildRoleScopedSignatures((completeServerData as any).signatures || signatures, userRole || '', specificIndex ?? undefined);
+
           const submittedDraftData = {
             zoneinfo: individualApplicantId,
             applicantId: individualApplicantId,
             reference_id: submissionResult?.reference_id || referenceId,
-            form_data: completeServerData,
+            form_data: submittedFormRoleScoped,
             current_step: 12, // Mark as completed
             last_updated: new Date().toISOString(),
             status: 'submitted' as const,
             uploaded_files_metadata: (completeServerData as any).uploaded_files_metadata || {},
             webhook_responses: (completeServerData as any).webhook_responses || {},
-            signatures: (completeServerData as any).signatures || {},
+            signatures: submittedSigsRoleScoped,
             encrypted_documents: (completeServerData as any).encrypted_documents || {},
             // Add flow type information for the new separate webhook system
             flow_type: 'separate_webhooks', // Indicates this draft uses the new flow type
@@ -9078,6 +9150,49 @@ export function ApplicationForm() {
                     )}
                   </div>
                 )}
+
+                {/* Draft Preview - Role-based */}
+                {(() => {
+                  const role = userRole || 'applicant';
+                  const idx = specificIndex ?? undefined;
+                  const previewForm: any = buildRoleScopedFormData(form.getValues(), role, idx);
+                  const previewSigs = buildRoleScopedSignatures(signatures, role, idx);
+                  const roleLabel = role.startsWith('coapplicant') ? `Co-Applicant${typeof idx === 'number' ? ` ${idx + 1}` : ''}`
+                    : role.startsWith('guarantor') ? `Guarantor${typeof idx === 'number' ? ` ${idx + 1}` : ''}`
+                    : 'Applicant';
+                  return (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-left mt-4">
+                      <div className="flex items-center mb-3">
+                        <Users className="w-4 h-4 text-blue-600 mr-2" />
+                        <span className="font-semibold text-blue-800">Draft Preview ({roleLabel})</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-gray-700">
+                        <div>
+                          <div className="text-xs text-gray-500">Application</div>
+                          <div className="text-sm break-words">
+                            {(form.getValues() as any).application?.buildingAddress || '-'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500">People Included</div>
+                          <div className="text-sm">
+                            Applicant: {(previewForm as any).applicant ? 'Yes' : 'No'}; Co-Applicants: {Array.isArray((previewForm as any).coApplicants) ? (previewForm as any).coApplicants.length : 0}; Guarantors: {Array.isArray((previewForm as any).guarantors) ? (previewForm as any).guarantors.length : 0}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500">Signatures</div>
+                          <div className="text-sm">
+                            Applicant: {previewSigs.applicant ? 'Signed' : '—'}; Co-App: {previewSigs.coApplicants ? Object.values(previewSigs.coApplicants).filter(Boolean).length : 0}; Guarantor: {previewSigs.guarantors ? Object.values(previewSigs.guarantors).filter(Boolean).length : 0}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500">Reference ID</div>
+                          <div className="text-sm">{referenceId}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Co-Applicant Submission Preview - Only show relevant co-applicant data */}
                 {userRole && userRole.startsWith('coapplicant') && (
