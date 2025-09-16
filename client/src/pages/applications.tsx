@@ -22,6 +22,8 @@ interface Application {
   submittedAt?: string;
 }
 
+
+
 const fetchApplications = async (applicantId: string): Promise<Application[]> => {
   const response = await fetch(`/api/applications/user/${applicantId}`);
   if (!response.ok) {
