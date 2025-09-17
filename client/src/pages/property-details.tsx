@@ -327,42 +327,6 @@ export default function PropertyDetailsPage() {
               </div>
             </div>
 
-            {/* Property Details */}
-            <Card className="mb-6">
-              <CardContent className="p-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="flex items-center gap-2">
-                    <Home className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <div className="font-medium">{rental.unitType || 'STD'}</div>
-                      <div className="text-sm text-gray-500">Type</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <div className="font-medium">{rental.monthlyRent || 'Contact'}</div>
-                      <div className="text-sm text-gray-500">Monthly Rent</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Square className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <div className="font-medium">Contact</div>
-                      <div className="text-sm text-gray-500">Sq Ft</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Car className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <div className="font-medium">Yes</div>
-                      <div className="text-sm text-gray-500">Parking</div>
-                    </div>
-                  </div>
-
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Description */}
             <div className="mb-6">

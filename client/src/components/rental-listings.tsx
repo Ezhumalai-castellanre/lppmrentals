@@ -361,44 +361,43 @@ export function RentalListings() {
                   </div>
                 </div>
 
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-serif text-xl font-semibold text-gray-900 group-hover:text-cyan-600 transition-colors">
+                <CardContent className="p-6" style={{
+                  display: 'flex',
+                  flexFlow: 'column wrap',
+                  placeContent: 'stretch space-between',
+                  alignItems: 'stretch'
+                }}>
+                  <div className="flex items-start justify-between mb-2">
+                    <span className="text-sm" style={{
+                      fontWeight: '900',
+                      color: 'rgb(10 145 177)',
+                      display: 'flex',
+                      fontSize: '18px'
+                    }}>
+                      <MapPin className="h-4 w-4 mr-1" />
+                      {rental.propertyName}
+                    </span>
+                    <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80 text-xs ml-2">
+                      {rental.unitType || '4BR'}
+                    </div>
+                  </div>
+
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className=" text-xl font-semibold text-gray-900 group-hover:text-cyan-600 transition-colors">
                       {rental.name}
                     </h3>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-cyan-600">
-                        {rental.monthlyRent || 'Contact'}
+                        {rental.monthlyRent || 'Contact'}<span className="text-sm text-gray-500">/month</span>
                       </div>
-                      <div className="text-sm text-gray-500">/month</div>
                     </div>
                   </div>
 
-                  <div className="flex items-center text-gray-600 mb-3">
-                    <MapPin className="h-4 w-4 mr-1" />
-                    <span className="text-sm">{rental.propertyName}</span>
-                  </div>
+                  <div className="flex flex-wrap gap-2 mb-4"></div>
 
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {rental.amenities ? 
-                      rental.amenities.split('\n').slice(0, 2).join(' ') : 
-                      'Beautiful property with modern amenities. Contact us for more details.'
-                    }
-                  </p>
-
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <Badge variant="secondary" className="text-xs">
-                      {rental.unitType || 'STD'}
-                    </Badge>
-                    {rental.mediaFiles && rental.mediaFiles.length > 0 && (
-                      <Badge variant="secondary" className="text-xs">
-                        {rental.mediaFiles.length} Photos
-                      </Badge>
-                    )}
-                  </div>
                 </CardContent>
 
-                <CardFooter className="p-6 pt-0 flex gap-3">
+                <div className="items-center p-6 pt-0 flex gap-3">
                   <Button 
                     className="flex-1 bg-cyan-600 hover:bg-cyan-700"
                     onClick={() => window.open('https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1&color_mktgkr4e=East+30th+Street&short_text800omovg=6B', '_blank')}
@@ -411,7 +410,7 @@ export function RentalListings() {
                   >
                     View
                   </Button>
-                </CardFooter>
+                </div>
               </Card>
             ))}
           </div>
