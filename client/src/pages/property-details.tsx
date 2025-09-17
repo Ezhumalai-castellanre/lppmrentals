@@ -21,7 +21,9 @@ import {
   GraduationCap,
   Bus,
   TreePine,
-  Building2
+  Building2,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { PropertyAmenitiesMap } from '../components/property-amenities-map'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog'
@@ -34,6 +36,7 @@ export default function PropertyDetailsPage() {
   const [selectedAmenityFilter, setSelectedAmenityFilter] = useState<string | null>(null);
   const [openGalleryDialog, setOpenGalleryDialog] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Generate nearby amenities data based on property location
   const generateNearbyAmenities = () => {
@@ -188,37 +191,72 @@ export default function PropertyDetailsPage() {
         </div>
       </div>
 
-      {/* Image Gallery */}
+      {/* Image Slider */}
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-          <div className="aspect-[4/3] rounded-lg overflow-hidden">
-            <img
-              src={images[0] || "/placeholder.svg"}
-              alt={rental.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="aspect-[4/3] rounded-lg overflow-hidden">
-              <img
-                src={images[1] || "/placeholder.svg?height=300&width=400"}
-                alt={`${rental.name} - Image 2`}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="aspect-[4/3] rounded-lg overflow-hidden">
-              <img
-                src={images[2] || "/placeholder.svg?height=300&width=400"}
-                alt={`${rental.name} - Image 3`}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="col-span-2">
-              <Button variant="outline" className="w-full h-20 bg-transparent" onClick={() => setOpenGalleryDialog(true)}>
-                View All Photos
+        <div className="relative aspect-[4/3] rounded-lg overflow-hidden mb-4">
+          <img
+            src={images[currentImageIndex] || "/placeholder.svg"}
+            alt={rental.name}
+            className="w-full h-full object-cover"
+          />
+          
+          {/* Navigation Buttons */}
+          {images.length > 1 && (
+            <>
+              <Button
+                variant="outline"
+                size="icon"
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-gray-600 hover:text-cyan-600"
+                onClick={() => setCurrentImageIndex((prev) => prev === 0 ? images.length - 1 : prev - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
               </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-gray-600 hover:text-cyan-600"
+                onClick={() => setCurrentImageIndex((prev) => prev === images.length - 1 ? 0 : prev + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          
+          {/* Image Counter */}
+          {images.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+              {images.map((_, index) => (
+                <button
+                  key={index}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    index === currentImageIndex 
+                      ? 'bg-white scale-125' 
+                      : 'bg-white/50 hover:bg-white/75'
+                  }`}
+                  onClick={() => setCurrentImageIndex(index)}
+                />
+              ))}
             </div>
+          )}
+          
+          {/* View All Photos Button */}
+          <div className="absolute top-4 right-4">
+            <Button
+              variant="outline"
+              size="icon"
+              className="bg-white/80 hover:bg-white text-gray-600 hover:text-red-500"
+              onClick={() => setOpenGalleryDialog(true)}
+            >
+              <Heart className="h-4 w-4" />
+            </Button>
           </div>
+        </div>
+        
+        {/* View All Photos Button */}
+        <div className="text-center">
+          <Button variant="outline" className="bg-transparent" onClick={() => setOpenGalleryDialog(true)}>
+            View All Photos ({images.length})
+          </Button>
         </div>
         <Dialog open={openGalleryDialog} onOpenChange={setOpenGalleryDialog}>
           <DialogContent className="max-w-5xl">
@@ -426,6 +464,32 @@ export default function PropertyDetailsPage() {
                     </div>
                   ))
                 }
+              </div>
+            </div>
+
+            {/* Required Documents */}
+            <div className="mb-6">
+              <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-4">Required Documents (Auto-Generated)</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{
+                display: 'flex',
+                flexWrap: 'wrap'
+              }}>
+                {[
+                  'Government-issued photo ID (Driver\'s License, Passport, or State ID)',
+                  'Proof of Income (Pay stubs, W-2, or tax returns)',
+                  'Bank statements (last 3 months)',
+                  'Employment verification letter',
+                  'Credit report (within 30 days)',
+                  'Rental application form',
+                  'Security deposit',
+                  'First month\'s rent',
+                  'Pet deposit (if applicable)',
+                  'Renter\'s insurance certificate'
+                ].map((document, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <span className="text-gray-600">• {document}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
