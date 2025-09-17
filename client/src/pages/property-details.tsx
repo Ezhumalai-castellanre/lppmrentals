@@ -410,18 +410,19 @@ export default function PropertyDetailsPage() {
             {/* Amenities */}
             <div className="mb-6">
               <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-4">Amenities</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4" style={{
+                display: 'flex',
+                flexWrap: 'wrap'
+              }}>
                 {rental.amenities ? 
                   rental.amenities.split('\n').slice(0, 6).map((amenity, index) => (
                     <div key={index} className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-cyan-600 rounded-full"></div>
-                      <span className="text-gray-600">{amenity.trim()}</span>
+                      <span className="text-gray-600">{amenity.trim().startsWith('•') ? amenity.trim() : `• ${amenity.trim()}`}</span>
                     </div>
                   )) : 
                   ['WiFi', 'Air Conditioning', 'Modern Kitchen', 'Balcony', 'Elevator', 'Security'].map((amenity, index) => (
                     <div key={index} className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-cyan-600 rounded-full"></div>
-                      <span className="text-gray-600">{amenity}</span>
+                      <span className="text-gray-600">• {amenity}</span>
                     </div>
                   ))
                 }
