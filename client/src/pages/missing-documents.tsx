@@ -4,8 +4,7 @@ import { useAuth } from '../hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
+// Removed Input and Label imports as filters/search UI are removed
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Loader2, Search, ArrowLeft, AlertTriangle, CheckCircle, Clock, Share2, Link, X, Upload, ArrowDownToLine, FileText } from 'lucide-react';
 import { FileUpload } from '../components/ui/file-upload';
@@ -97,14 +96,8 @@ export default function MissingDocumentsPage() {
   const [modalUrl, setModalUrl] = useState<string | null>(null);
   const [modalTitle, setModalTitle] = useState<string | null>(null);
   const [iframeError, setIframeError] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterApplicantType, setFilterApplicantType] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'status' | 'applicantType' | 'priority'>('priority');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  // Removed filter/sort/export states to simplify UI and show all documents
   const [documentHistory, setDocumentHistory] = useState<{[key: string]: any[]}>({});
-  const [exportLoading, setExportLoading] = useState(false);
 
   // Split items by status
   const uploadedItems = missingItems.filter(item => item.status === 'Received');
@@ -121,26 +114,14 @@ export default function MissingDocumentsPage() {
 
       // Parse applicant ID from URL query parameters and auto-load
     useEffect(() => {
+      // Always load all documents regardless of URL or saved state
       const urlParams = new URLSearchParams(window.location.search);
       const applicantIdFromUrl = urlParams.get('applicantId');
-      
       if (applicantIdFromUrl) {
         setApplicantId(applicantIdFromUrl);
         setLoadedFromUrl(true);
-        // Automatically search for the applicant if ID is provided in URL
-        fetchMissingSubitems(applicantIdFromUrl);
-      } else if (user?.zoneinfo) {
-        setApplicantId(user.zoneinfo);
-        // Pass the zoneinfo to fetchMissingSubitems, but it will use user.zoneinfo for API call
-        fetchMissingSubitems(user.zoneinfo);
-      } else {
-        // If no applicant ID in URL or user zoneinfo, try to load from localStorage
-        const savedApplicantId = localStorage.getItem('lastApplicantId');
-        if (savedApplicantId) {
-          setApplicantId(savedApplicantId);
-          fetchMissingSubitems(savedApplicantId);
-        }
       }
+      fetchMissingSubitems('');
     }, [user]);
 
   const fetchMissingSubitems = async (id: string) => {
@@ -149,13 +130,8 @@ export default function MissingDocumentsPage() {
     setSuccessMessage(null);
     
     try {
-      // Always prioritize user's zoneinfo for the API call
-      if (!user?.zoneinfo) {
-        setError('User zoneinfo not found. Please ensure you are properly authenticated.');
-        return;
-      }
-      
-      const apiId = user.zoneinfo;
+      // Always show all documents; ignore provided applicantId
+      const apiId = '';
       console.log('Searching for applicant ID:', apiId);
 
       const MONDAY_API_TOKEN = environment.monday.apiToken;
@@ -236,74 +212,20 @@ export default function MissingDocumentsPage() {
       });
 
       // Find items matching the applicant ID (check both new Lppm format and old formats)
-      const searchApplicantIds = [apiId];
+      const searchApplicantIds: string[] = [];
       
-      // If the requested ID is in new Lppm format, also search for old format equivalents
-      if (apiId.startsWith('Lppm-')) {
-        // Extract date and number from Lppm format
-        const match = apiId.match(/^Lppm-(\d{8})-(\d{5})$/);
-        if (match) {
-          const [, dateStr, numberStr] = match;
-          const timestamp = new Date(
-            parseInt(dateStr.substring(0, 4)),
-            parseInt(dateStr.substring(4, 6)) - 1,
-            parseInt(dateStr.substring(6, 8))
-          ).getTime();
-          
-          // Create old format equivalents
-          const oldZoneFormat = `zone_${timestamp}_${numberStr}`;
-          const oldTempFormat = `temp_${timestamp}_${numberStr}`;
-          
-          searchApplicantIds.push(oldZoneFormat, oldTempFormat);
-          console.log(`🔍 Also searching for old format equivalents: ${oldZoneFormat}, ${oldTempFormat}`);
-        }
-      }
+      // Applicant format cross-mapping removed when showing all
       
-      // If the requested ID is in old format, also search for new Lppm format
-      if (apiId.startsWith('zone_') || apiId.startsWith('temp_')) {
-        // Extract timestamp and number from old format
-        const match = apiId.match(/^(zone_|temp_)(\d+)_(.+)$/);
-        if (match) {
-          const [, prefix, timestamp, numberStr] = match;
-          const date = new Date(parseInt(timestamp));
-          const dateStr = date.getFullYear().toString() + 
-                         String(date.getMonth() + 1).padStart(2, '0') + 
-                         String(date.getDate()).padStart(2, '0');
-          
-          const newLppmFormat = `Lppm-${dateStr}-${numberStr.padStart(5, '0')}`;
-          searchApplicantIds.push(newLppmFormat);
-          console.log(`🔍 Also searching for new Lppm format: ${newLppmFormat}`);
-        }
-      }
+      // Applicant format cross-mapping removed when showing all
       
-      console.log(`🔍 Searching for applicant IDs: ${searchApplicantIds.join(', ')}`);
+      console.log('🔍 Showing all documents (no applicant filter)');
       
       // Find items that have subitems matching any of the possible applicant IDs
-      const matchingItems = items.filter((item: MondayItem) => {
-        const subitems = item.subitems || [];
-        
-        // Check if any subitem has the matching applicant ID
-        const hasMatchingSubitem = subitems.some((sub: MondaySubitem) => {
-          const subitemApplicantId = sub.column_values.find((cv: MondayColumnValue) => cv.id === "text_mkt9gepz")?.text;
-          const matches = subitemApplicantId && searchApplicantIds.includes(subitemApplicantId);
-          
-          if (matches) {
-            console.log(`🔍 Found matching subitem in ${item.name}: ${sub.name} with applicant ID: "${subitemApplicantId}"`);
-          }
-          
-          return matches;
-        });
-        
-        if (hasMatchingSubitem) {
-          console.log(`✅ Found matching item: ${item.name} with matching subitems`);
-        }
-        
-        return hasMatchingSubitem;
-      });
+      const matchingItems = items;
 
       console.log('📊 Found', matchingItems.length, 'items matching applicant ID', `"${apiId}"`);
 
-      // Process the matching items to extract missing subitems
+      // Process the items to extract subitems
       const missingSubitems: MissingSubitem[] = [];
       
       matchingItems.forEach((item: MondayItem) => {
@@ -311,9 +233,8 @@ export default function MissingDocumentsPage() {
         
         subitems.forEach((subitem: MondaySubitem) => {
           const subitemApplicantId = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mkt9gepz")?.text;
-          
-          // Only include subitems that match the applicant ID
-          if (subitemApplicantId && searchApplicantIds.includes(subitemApplicantId)) {
+          // Always include all subitems
+          {
             const status = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "status")?.label || "Missing";
             const applicantType = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mkt9x4qd")?.text || "Applicant";
             const coApplicantName = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mktanfxj")?.text || undefined;
@@ -342,17 +263,36 @@ export default function MissingDocumentsPage() {
 
       console.log('📄 Processed missing subitems:', missingSubitems);
       
-      setMissingItems(missingSubitems);
+      // Role-based filtering using Monday column "color_mksyqx5h" (mapped to guarantorName)
+      const normalizeRole = (value?: string | null) => {
+        if (!value) return null;
+        const v = String(value).trim().toLowerCase();
+        if (v.includes('co')) return 'co-applicant';
+        if (v.includes('guarantor')) return 'guarantor';
+        if (v.includes('applicant')) return 'applicant';
+        return null;
+      };
+      const userRoleCandidate = normalizeRole(
+        (user as any)?.role ||
+        (user as any)?.profile ||
+        (user as any)?.['custom:role'] ||
+        (Array.isArray((user as any)?.['cognito:groups']) ? (user as any)['cognito:groups'][0] : null)
+      );
+      const itemsForUser = userRoleCandidate
+        ? missingSubitems.filter(item => normalizeRole(item.guarantorName) === userRoleCandidate)
+        : missingSubitems;
+
+      setMissingItems(itemsForUser);
       setSearched(true);
       
-      // Save applicant ID to localStorage for future use
-      localStorage.setItem('lastApplicantId', id);
+      // Save applicant ID to localStorage for future use (only if provided)
+      // Do not persist applicant filter when showing all
       
-      // Provide feedback about the search
-      if (missingSubitems.length === 0) {
-        setSuccessMessage(`No supporting documents found for applicant ID: ${apiId}. The system searched for multiple formats including: ${searchApplicantIds.join(', ')}`);
+      // Provide feedback about the search (respecting role-based filtering if applied)
+      if (itemsForUser.length === 0) {
+        setSuccessMessage('No supporting documents found.');
       } else {
-        setSuccessMessage(`Found ${missingSubitems.length} document(s) for applicant ID: ${apiId}`);
+        setSuccessMessage(`Found ${itemsForUser.length} document(s)`);
       }
     } catch (err) {
       console.error('Error fetching missing subitems:', err);
@@ -520,54 +460,7 @@ export default function MissingDocumentsPage() {
   };
 
   // Enhanced filtering and sorting functions
-  const getFilteredAndSortedItems = (items: MissingSubitem[]) => {
-    let filtered = items.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.parentItemName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.coApplicantName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.guarantorName?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
-      const matchesApplicantType = filterApplicantType === 'all' || item.applicantType === filterApplicantType;
-      
-      return matchesSearch && matchesStatus && matchesApplicantType;
-    });
-
-    // Sort items
-    filtered.sort((a, b) => {
-      let aValue: any, bValue: any;
-      
-      switch (sortBy) {
-        case 'name':
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
-          break;
-        case 'status':
-          aValue = a.status.toLowerCase();
-          bValue = b.status.toLowerCase();
-          break;
-        case 'applicantType':
-          aValue = a.applicantType.toLowerCase();
-          bValue = b.applicantType.toLowerCase();
-          break;
-        case 'priority':
-        default:
-          // Priority: Missing > Rejected > Received
-          const priorityMap = { 'Missing': 3, 'Rejected': 2, 'Received': 1 };
-          aValue = priorityMap[a.status as keyof typeof priorityMap] || 0;
-          bValue = priorityMap[b.status as keyof typeof priorityMap] || 0;
-          break;
-      }
-      
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-
-    return filtered;
-  };
+  const getFilteredAndSortedItems = (items: MissingSubitem[]) => items;
 
   // Get document priority level
   const getDocumentPriority = (documentName: string, status: string) => {
@@ -582,42 +475,7 @@ export default function MissingDocumentsPage() {
   };
 
   // Export documents data
-  const exportDocumentsData = async () => {
-    setExportLoading(true);
-    try {
-      const data = {
-        applicantId,
-        exportDate: new Date().toISOString(),
-        totalDocuments: missingItems.length,
-        pendingDocuments: pendingItems.length,
-        uploadedDocuments: uploadedItems.length,
-        documents: missingItems.map(item => ({
-          name: item.name,
-          status: item.status,
-          applicantType: item.applicantType,
-          parentItem: item.parentItemName,
-          priority: getDocumentPriority(item.name, item.status),
-          lastUpdated: new Date().toISOString()
-        }))
-      };
-
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `missing-documents-${applicantId}-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      setSuccessMessage('Documents data exported successfully!');
-    } catch (error) {
-      setError('Failed to export documents data');
-    } finally {
-      setExportLoading(false);
-    }
-  };
+  // Removed export functionality per simplified UI
 
   const getApplicantIdInfo = (id: string) => {
     const formats = getAllApplicantIdFormats(id);
@@ -631,27 +489,7 @@ export default function MissingDocumentsPage() {
     };
   };
 
-  // Check if user is authenticated
-  
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Supporting Documents Tracker
-            </h1>
-            <p className="text-gray-600 mb-4">
-              Please log in to view your supporting documents
-            </p>
-            <Button onClick={() => setLocation('/login')}>
-              Go to Login
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Authentication gating removed to allow viewing by anyone
 
 
 
@@ -810,101 +648,7 @@ export default function MissingDocumentsPage() {
               </CardContent>
             </Card>
 
-            {/* Enhanced Controls */}
-            <Card className="mb-6">
-              <CardContent className="p-4">
-                <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-                  {/* Search and Basic Filters */}
-                  <div className="flex flex-col sm:flex-row gap-3 flex-1">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        placeholder="Search documents..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    >
-                      <option value="all">All Statuses</option>
-                      <option value="Missing">Missing</option>
-                      <option value="Rejected">Rejected</option>
-                      <option value="Received">Received</option>
-                    </select>
-                    <select
-                      value={filterApplicantType}
-                      onChange={(e) => setFilterApplicantType(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    >
-                      <option value="all">All Types</option>
-                      <option value="Applicant">Applicant</option>
-                      <option value="Co-Applicant">Co-Applicant</option>
-                      <option value="Guarantor">Guarantor</option>
-                    </select>
-                  </div>
-                  
-                  {/* Advanced Controls */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                    >
-                      {showAdvancedFilters ? 'Hide' : 'Show'} Advanced
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={exportDocumentsData}
-                      disabled={exportLoading}
-                    >
-                      {exportLoading ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <ArrowDownToLine className="w-4 h-4 mr-2" />
-                      )}
-                      Export
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Advanced Filters */}
-                {showAdvancedFilters && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex flex-col sm:flex-row gap-4 items-center">
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm font-medium">Sort by:</Label>
-                        <select
-                          value={sortBy}
-                          onChange={(e) => setSortBy(e.target.value as any)}
-                          className="px-3 py-1 border border-gray-300 rounded text-sm"
-                        >
-                          <option value="priority">Priority</option>
-                          <option value="name">Name</option>
-                          <option value="status">Status</option>
-                          <option value="applicantType">Applicant Type</option>
-                        </select>
-                        <select
-                          value={sortOrder}
-                          onChange={(e) => setSortOrder(e.target.value as any)}
-                          className="px-3 py-1 border border-gray-300 rounded text-sm"
-                        >
-                          <option value="desc">Descending</option>
-                          <option value="asc">Ascending</option>
-                        </select>
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        Showing {getFilteredAndSortedItems(activeTab === 'pending' ? pendingItems : uploadedItems).length} of {activeTab === 'pending' ? pendingItems.length : uploadedItems.length} documents
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {/* Filters and advanced controls removed */}
 
             {/* Tabs */}
             <div className="flex gap-2 mb-4">

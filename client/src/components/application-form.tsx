@@ -3550,8 +3550,12 @@ export function ApplicationForm() {
         break;
 
       case 5: // Co-Applicant Information - conditional based on checkbox
-        if (formData.hasCoApplicant) {
-          const coApplicant = formData.coApplicants?.[0]; // Get first co-applicant
+        if (formData.hasCoApplicant && ((formData.coApplicantCount || 0) > 0)) {
+          // Determine which co-applicant to validate
+          const coApplicantIndex = (userRole?.startsWith('coapplicant') && specificIndex !== null)
+            ? specificIndex
+            : 0;
+          const coApplicant = formData.coApplicants?.[coApplicantIndex];
           if (!coApplicant?.name?.trim()) {
             errors.push('Co-Applicant Full Name is required');
           }
@@ -3586,8 +3590,12 @@ export function ApplicationForm() {
         break;
 
       case 6: // Co-Applicant Financial Information - conditional based on employment type
-        if (formData.hasCoApplicant) {
-          const coApplicant = formData.coApplicants?.[0]; // Get first co-applicant
+        if (formData.hasCoApplicant && ((formData.coApplicantCount || 0) > 0)) {
+          // Determine which co-applicant to validate
+          const coApplicantIndex = (userRole?.startsWith('coapplicant') && specificIndex !== null)
+            ? specificIndex
+            : 0;
+          const coApplicant = formData.coApplicants?.[coApplicantIndex];
           if (!coApplicant?.employmentType?.trim()) {
             errors.push('Co-Applicant Employment Type is required');
           }
@@ -6018,6 +6026,7 @@ export function ApplicationForm() {
                               placeholder="Please specify..." 
                               {...field}
                               className="input-field"
+                              value={field.value || ''}
                               onChange={(e) => {
                                 field.onChange(e);
                                 updateFormData('application', 'howDidYouHearOther', e.target.value);
@@ -6236,6 +6245,7 @@ export function ApplicationForm() {
                             placeholder="Enter street address" 
                             {...field}
                             className="input-field w-full mt-1"
+                            value={field.value || ''}
                             onChange={(e) => {
                               field.onChange(e);
                               updateFormData('applicant', 'address', e.target.value);
@@ -6361,6 +6371,7 @@ export function ApplicationForm() {
                           placeholder="Enter landlord's name" 
                           {...field}
                           className="input-field w-full mt-1 border-gray-300 bg-white"
+                            value={field.value || ''}
                           onChange={(e) => {
                             field.onChange(e);
                             updateFormData('applicant', 'landlordName', e.target.value);
@@ -6382,6 +6393,7 @@ export function ApplicationForm() {
                           placeholder="Enter landlord's street address" 
                           {...field}
                           className="input-field w-full mt-1 border-gray-300 bg-white"
+                            value={field.value || ''}
                           onChange={(e) => {
                             field.onChange(e);
                             updateFormData('applicant', 'landlordAddressLine1', e.target.value);
@@ -6403,6 +6415,7 @@ export function ApplicationForm() {
                           placeholder="Apartment, suite, etc." 
                           {...field}
                           className="input-field w-full mt-1 border-gray-300 bg-white"
+                            value={field.value || ''}
                           onChange={(e) => {
                             field.onChange(e);
                             updateFormData('applicant', 'landlordAddressLine2', e.target.value);
@@ -6546,6 +6559,7 @@ export function ApplicationForm() {
                           placeholder="Please explain your reason for moving" 
                           {...field}
                           className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
+                          value={field.value || ''}
                           onChange={(e) => {
                             field.onChange(e);
                             updateFormData('applicant', 'reasonForMoving', e.target.value);
@@ -7298,6 +7312,7 @@ export function ApplicationForm() {
                             placeholder="Enter street address" 
                             {...field}
                               className="input-field w-full mt-1"
+                              value={field.value || ''}
                               onChange={(e) => {
                               field.onChange(e);
                               updateArrayItem('coApplicants', actualIndex, 'address', e.target.value);
