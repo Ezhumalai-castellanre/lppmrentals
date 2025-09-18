@@ -49,6 +49,7 @@ export function RentalListings() {
 
   const applyFilterAndSetInitial = (rentalsData: RentalItem[], filter: string, search: string = '') => {
     let filteredRentals = rentalsData
+      .filter(r => (r.name?.trim() || '').toLowerCase() !== 'unknown unit' && (r.name?.trim() || '') !== '')
     
     // Apply search filter first
     if (search.trim()) {
@@ -118,6 +119,7 @@ export function RentalListings() {
     
     // Get filtered rentals based on current search and filter
     let filteredRentals = rentals
+      .filter(r => (r.name?.trim() || '').toLowerCase() !== 'unknown unit' && (r.name?.trim() || '') !== '')
     
     // Apply search filter
     if (searchQuery.trim()) {

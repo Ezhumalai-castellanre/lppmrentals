@@ -354,21 +354,20 @@ export default function PropertyDetailsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
-            {/* Title and Rating */}
+            {/* Title and Location */}
             <div className="mb-6">
-              <h1 className="font-serif text-3xl font-bold text-gray-900 mb-2">{rental.name}</h1>
+              <h1 className=" text-3xl font-bold text-gray-900 mb-2" style={{ fontSize: '0.875rem' }}>{rental.name}</h1>
               <div className="flex items-center gap-4 mb-4">
-                <div className="flex items-center text-gray-600">
-                  <MapPin className="h-4 w-4 mr-1" />
-                  <span>{rental.propertyName}</span>
+                <div className="flex items-center">
+                  <span className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '1.575rem' }}>{rental.propertyName}</span>
                 </div>
               </div>
             </div>
 
 
-            {/* Description */}
+            {/* About */}
             <div className="mb-6">
-              <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-4">About This Property</h2>
+              <h2 className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '0.875rem' }}>About</h2>
               <p className="text-gray-600 leading-relaxed mb-4">
                 {rental.amenities ? 
                   rental.amenities.split('\n').slice(0, 3).join(' ') : 
@@ -382,72 +381,34 @@ export default function PropertyDetailsPage() {
               </p>
             </div>
 
-            {/* Features */}
+            {/* Apartment Features */}
             <div className="mb-6">
-              <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-4">Features</h2>
+              <h2 className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '0.875rem' }}>Apartment Features</h2>
               <div className="flex flex-wrap gap-2">
                 <Badge variant="secondary" className="px-3 py-1">
                   {rental.unitType || 'Standard'}
                 </Badge>
-                {rental.mediaFiles && rental.mediaFiles.length > 0 && (
-                  <Badge variant="secondary" className="px-3 py-1">
-                    {rental.mediaFiles.length} Photos
-                  </Badge>
-                )}
                 <Badge variant="secondary" className="px-3 py-1">
                   Available Now
                 </Badge>
               </div>
             </div>
 
-            {/* Contact Information */}
+            {/* Building Details */}
             <div className="mb-6">
-              <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-4">Contact Information</h2>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-3">Property Manager</h3>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-600">📞 Phone:</span>
-                          <a href="tel:+1234567890" className="text-cyan-600 hover:text-cyan-700 font-medium">
-                            +1 (234) 567-8900
-                          </a>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-600">✉️ Email:</span>
-                          <a href="mailto:info@lppmrentals.com" className="text-cyan-600 hover:text-cyan-700 font-medium">
-                            info@lppmrentals.com
-                          </a>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-600">🏢 Office:</span>
-                          <span className="text-gray-900">123 Main Street, Suite 100</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-3">Office Hours</h3>
-                      <div className="space-y-1 text-gray-600">
-                        <div>Monday - Friday: 9:00 AM - 6:00 PM</div>
-                        <div>Saturday: 10:00 AM - 4:00 PM</div>
-                        <div>Sunday: Closed</div>
-                      </div>
-                      <div className="mt-4 p-3 bg-cyan-50 rounded-lg">
-                        <p className="text-sm text-cyan-800">
-                          💡 <strong>Tip:</strong> For immediate assistance, call us during business hours or send us an email anytime!
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <h2 className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '0.875rem' }}>Building Details</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="text-gray-600">Elevator building</div>
+                <div className="text-gray-600">Laundry in building</div>
+                <div className="text-gray-600">Secure entry</div>
+                <div className="text-gray-600">On-site maintenance</div>
+              </div>
             </div>
 
-            {/* Amenities */}
+
+            {/* Neighborhood & Transit */}
             <div className="mb-6">
-              <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-4">Amenities</h2>
+              <h2 className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '0.875rem' }}>Neighborhood & Transit</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4" style={{
                 display: 'flex',
                 flexWrap: 'wrap'
@@ -467,34 +428,18 @@ export default function PropertyDetailsPage() {
               </div>
             </div>
 
-            {/* Required Documents */}
+            {/* Why You’ll Love It */}
             <div className="mb-6">
-              <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-4">Required Documents (Auto-Generated)</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{
-                display: 'flex',
-                flexWrap: 'wrap'
-              }}>
-                {[
-                  'Government-issued photo ID (Driver\'s License, Passport, or State ID)',
-                  'Proof of Income (Pay stubs, W-2, or tax returns)',
-                  'Bank statements (last 3 months)',
-                  'Employment verification letter',
-                  'Credit report (within 30 days)',
-                  'Rental application form',
-                  'Security deposit',
-                  'First month\'s rent',
-                  'Pet deposit (if applicable)',
-                  'Renter\'s insurance certificate'
-                ].map((document, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <span className="text-gray-600">• {document}</span>
-                  </div>
-                ))}
-              </div>
+              <h2 className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '0.875rem' }}>Why You’ll Love It</h2>
+              <ul className="list-disc list-inside text-gray-600 space-y-1">
+                <li>Bright, modern design with functional layout</li>
+                <li>Close to dining, parks, and transit</li>
+                <li>Professional management and responsive maintenance</li>
+              </ul>
             </div>
 
             <div className="mb-6">
-              <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-4">Location & Nearby</h2>
+              <h2 className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '0.875rem' }}>Map</h2>
               <Card className="mb-6">
                 <CardContent className="p-0">
                   <PropertyAmenitiesMap
@@ -505,50 +450,11 @@ export default function PropertyDetailsPage() {
                 </CardContent>
               </Card>
             </div>
+
+           
           </div>
 
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-24">
-              <CardContent className="p-6">
-                <div className="text-center mb-6">
-                  <div className="text-3xl font-bold text-cyan-600 mb-1">
-                    {rental.monthlyRent || 'Contact'}
-                  </div>
-                  <div className="text-gray-500">per month</div>
-                </div>
-
-                {/* Contact Section */}
-                <div className="space-y-4 mb-6">
-                  <Button 
-                    className="w-full bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => window.open('tel:+1234567890', '_self')}
-                  >
-                    📞 Call Now
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => setShowEmailForm(true)}
-                  >
-                    ✉️ Send Email
-                  </Button>
-
-                  <Button 
-                    className="w-full bg-cyan-600 hover:bg-cyan-700 text-white"
-                    onClick={() => window.open('https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1&color_mktgkr4e=East+30th+Street&short_text800omovg=6B', '_blank')}
-                  >
-                    📝 Apply Now
-                  </Button>
-                </div>
-
-                <div className="text-center text-sm text-gray-500">
-                  <p>Response time: Usually within 2 hours</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          
         </div>
       </div>
 
