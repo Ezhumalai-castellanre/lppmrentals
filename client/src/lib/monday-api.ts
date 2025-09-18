@@ -31,6 +31,12 @@ export type RentalItem = {
   monthlyRent?: string; // Monthly Rent
   amenities?: string; // Amenities from long_text_mktjp2nj column
   mediaFiles?: MediaFile[]; // Media files from subitems
+  // Enriched content for details page
+  about?: string;
+  apartmentFeatures?: string; // newline-separated
+  buildingDetails?: string; // newline-separated
+  neighborhood?: string; // newline-separated
+  whyYoullLoveIt?: string; // newline-separated
 };
 
 export type UnitItem = {
@@ -145,22 +151,54 @@ export class MondayApiService {
           
           // Check if we have items array
           if (bodyData.items && Array.isArray(bodyData.items)) {
-            rentals = bodyData.items.map((item: any) => ({
-              id: item.id || String(Math.random()),
-              name: item.name || 'Unknown Unit',
-              propertyName: item.address || 'Unknown Property',
-              unitType: item.unit_type || 'Unknown',
-              status: item.Stage || 'Available',
-              monthlyRent: item.price ? `$${item.price}` : 'Contact',
-              amenities: item.description || item.short_description || '',
-              mediaFiles: (item.subitems || []).map((subitem: any) => ({
-                id: subitem.id || String(Math.random()),
-                name: subitem.name || 'Media',
-                url: subitem.url || '',
-                type: 'Media',
-                isVideo: false
-              }))
-            }));
+            rentals = bodyData.items.map((item: any) => {
+              const id = item?.id?.S || item?.id || String(Math.random());
+              const name = item?.name?.S || item?.unit?.S || item?.name || 'Unknown Unit';
+              const address = item?.address?.S || item?.propertyName?.S || item?.address || 'Unknown Property';
+              const unitType = item?.unit_type?.S || item?.unit_type || 'Unknown';
+              const priceN = item?.price?.N || item?.price;
+              const monthlyRent = priceN ? `$${priceN}` : 'Contact';
+              const amenities = item?.description?.S || item?.short_description?.S || item?.description || item?.short_description || '';
+
+              // Build images from multiple possible sources
+              const subitemsL = Array.isArray(item?.subitems?.L) ? item.subitems.L : [];
+              const imagesFromSubitems = subitemsL
+                .map((e: any) => e?.M?.url?.S)
+                .filter((u: any) => !!u);
+              const imagesL = Array.isArray(item?.images?.L) ? item.images.L : [];
+              const imagesFromImages = imagesL
+                .map((e: any) => e?.S)
+                .filter((u: any) => !!u);
+              const flatSubitems = Array.isArray(item?.subitems) ? item.subitems : [];
+              const imagesFromFlat = flatSubitems
+                .map((s: any) => s?.url)
+                .filter((u: any) => !!u);
+              const allImages: string[] = imagesFromSubitems.length || imagesFromImages.length
+                ? [...imagesFromImages, ...imagesFromSubitems]
+                : imagesFromFlat;
+
+              return {
+                id,
+                name,
+                propertyName: address,
+                unitType,
+                status: item?.Stage?.S || item?.Stage || 'Available',
+                monthlyRent,
+                amenities,
+                about: item?.about?.S || item?.about,
+                apartmentFeatures: item?.apartment_feature?.S || item?.apartment_feature,
+                buildingDetails: item?.building_details?.S || item?.building_details || item?.description?.S || item?.description,
+                neighborhood: item?.neighbor?.S || item?.neighbor,
+                whyYoullLoveIt: item?.why_love?.S || item?.why_love,
+                mediaFiles: allImages.map((url, idx) => ({
+                  id: String(idx),
+                  name: 'Media',
+                  url,
+                  type: 'Media',
+                  isVideo: false,
+                })),
+              } as RentalItem;
+            });
           }
         } catch (parseError) {
           console.error('Error parsing API response body:', parseError);
@@ -172,22 +210,53 @@ export class MondayApiService {
         if (result.rentals && Array.isArray(result.rentals)) {
           rentals = result.rentals;
         } else if (result.items && Array.isArray(result.items)) {
-          rentals = result.items.map((item: any) => ({
-            id: item.id || String(Math.random()),
-            name: item.name || 'Unknown Unit',
-            propertyName: item.address || 'Unknown Property',
-            unitType: item.unit_type || 'Unknown',
-            status: item.Stage || 'Available',
-            monthlyRent: item.price ? `$${item.price}` : 'Contact',
-            amenities: item.description || item.short_description || '',
-            mediaFiles: (item.subitems || []).map((subitem: any) => ({
-              id: subitem.id || String(Math.random()),
-              name: subitem.name || 'Media',
-              url: subitem.url || '',
-              type: 'Media',
-              isVideo: false
-            }))
-          }));
+          rentals = result.items.map((item: any) => {
+            const id = item?.id?.S || item?.id || String(Math.random());
+            const name = item?.name?.S || item?.unit?.S || item?.name || 'Unknown Unit';
+            const address = item?.address?.S || item?.propertyName?.S || item?.address || 'Unknown Property';
+            const unitType = item?.unit_type?.S || item?.unitType || 'Unknown';
+            const priceN = item?.price?.N || item?.price;
+            const monthlyRent = priceN ? `$${priceN}` : 'Contact';
+            const amenities = item?.description?.S || item?.short_description?.S || item?.description || item?.short_description || '';
+
+            const subitemsL = Array.isArray(item?.subitems?.L) ? item.subitems.L : [];
+            const imagesFromSubitems = subitemsL
+              .map((e: any) => e?.M?.url?.S)
+              .filter((u: any) => !!u);
+            const imagesL = Array.isArray(item?.images?.L) ? item.images.L : [];
+            const imagesFromImages = imagesL
+              .map((e: any) => e?.S)
+              .filter((u: any) => !!u);
+            const flatSubitems = Array.isArray(item?.subitems) ? item.subitems : [];
+            const imagesFromFlat = flatSubitems
+              .map((s: any) => s?.url)
+              .filter((u: any) => !!u);
+            const allImages: string[] = imagesFromSubitems.length || imagesFromImages.length
+              ? [...imagesFromImages, ...imagesFromSubitems]
+              : imagesFromFlat;
+
+            return {
+              id,
+              name,
+              propertyName: address,
+              unitType,
+              status: item?.Stage?.S || item?.Stage || 'Available',
+              monthlyRent,
+              amenities,
+              about: item?.about?.S || item?.about,
+              apartmentFeatures: item?.apartment_feature?.S || item?.apartment_feature,
+              buildingDetails: item?.building_details?.S || item?.building_details || item?.description?.S || item?.description,
+              neighborhood: item?.neighbor?.S || item?.neighbor,
+              whyYoullLoveIt: item?.why_love?.S || item?.why_love,
+              mediaFiles: allImages.map((url, idx) => ({
+                id: String(idx),
+                name: 'Media',
+                url,
+                type: 'Media',
+                isVideo: false,
+              })),
+            } as RentalItem;
+          });
         }
       }
       

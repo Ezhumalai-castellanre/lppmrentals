@@ -156,9 +156,24 @@ export default function PropertyDetailsPage() {
     );
   }
 
-  const images = rental.mediaFiles?.map(file => file.url) || [];
-  const hasImages = images.length > 0;
-  
+  // Prefer enriched fields from processed rentals
+  const displayPropertyName: string = rental.propertyName || '';
+  const displayUnitName: string = rental.name || '';
+  const displayMonthlyRent: string = rental.monthlyRent || '';
+  const unitTypeText: string = rental.unitType || '';
+
+  const aboutText: string | undefined = rental.about || undefined;
+  const apartmentFeaturesText: string | undefined = rental.apartmentFeatures || undefined;
+  const buildingDetailsText: string | undefined = rental.buildingDetails || undefined;
+  const neighborText: string | undefined = rental.neighborhood || undefined;
+  const whyLoveText: string | undefined = rental.whyYoullLoveIt || undefined;
+
+  const effectiveImages: string[] = (rental.mediaFiles?.map(f => f.url) || []) as string[];
+
+  const neighborhoodItems: string[] = neighborText
+    ? neighborText.split('\n').map(s => s.trim()).filter(Boolean)
+    : [];
+
   const getPropertyCoordinates = (propertyName: string): [number, number] => {
     const hash = propertyName.split('').reduce((acc, ch) => {
       acc = ((acc << 5) - acc) + ch.charCodeAt(0);
@@ -195,19 +210,43 @@ export default function PropertyDetailsPage() {
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="relative aspect-[4/3] rounded-lg overflow-hidden mb-4">
           <img
-            src={images[currentImageIndex] || "/placeholder.svg"}
-            alt={rental.name}
+            src={(effectiveImages[currentImageIndex] || "/placeholder.svg") as string}
+            alt={displayUnitName || rental.name}
             className="w-full h-full object-cover"
           />
+
+          {/* Overlay summary card (desktop) */}
+          <div className="hidden lg:block absolute right-6 bottom-6">
+            <Card className="shadow-xl">
+              <CardContent className="p-6 w-[360px]">
+                <div className="mb-3">
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1 border border-emerald-200">Available Now</span>
+                </div>
+                <div className="flex items-baseline gap-3 mb-4">
+                  <div className="text-4xl font-bold tracking-tight text-gray-900">{displayMonthlyRent || 'Contact'}</div>
+                  <div className="text-gray-500">per month</div>
+                </div>
+                <div className="space-y-3">
+                  <Button 
+                    className="w-full bg-cyan-600 hover:bg-cyan-700 text-white"
+                    onClick={() => window.open('https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1&color_mktgkr4e=East+30th+Street&short_text800omovg=6B', '_blank')}
+                  >
+                    Apply Now
+                  </Button>
+                  <div className="text-[13px] text-gray-500 text-center">{displayPropertyName}</div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
           
           {/* Navigation Buttons */}
-          {images.length > 1 && (
+          {effectiveImages.length > 1 && (
             <>
               <Button
                 variant="outline"
                 size="icon"
                 className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-gray-600 hover:text-cyan-600"
-                onClick={() => setCurrentImageIndex((prev) => prev === 0 ? images.length - 1 : prev - 1)}
+                onClick={() => setCurrentImageIndex((prev) => prev === 0 ? effectiveImages.length - 1 : prev - 1)}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -215,7 +254,7 @@ export default function PropertyDetailsPage() {
                 variant="outline"
                 size="icon"
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-gray-600 hover:text-cyan-600"
-                onClick={() => setCurrentImageIndex((prev) => prev === images.length - 1 ? 0 : prev + 1)}
+                onClick={() => setCurrentImageIndex((prev) => prev === effectiveImages.length - 1 ? 0 : prev + 1)}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -223,9 +262,9 @@ export default function PropertyDetailsPage() {
           )}
           
           {/* Image Counter */}
-          {images.length > 1 && (
+          {effectiveImages.length > 1 && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-              {images.map((_, index) => (
+              {effectiveImages.map((_, index) => (
                 <button
                   key={index}
                   className={`w-2 h-2 rounded-full transition-all ${
@@ -255,19 +294,19 @@ export default function PropertyDetailsPage() {
         {/* View All Photos Button */}
         <div className="text-center">
           <Button variant="outline" className="bg-transparent" onClick={() => setOpenGalleryDialog(true)}>
-            View All Photos ({images.length})
+            View All Photos ({effectiveImages.length})
           </Button>
         </div>
         <Dialog open={openGalleryDialog} onOpenChange={setOpenGalleryDialog}>
           <DialogContent className="max-w-5xl">
             <DialogHeader>
-              <DialogTitle>Photos — {rental.name}</DialogTitle>
+              <DialogTitle>Photos — {displayUnitName || rental.name}</DialogTitle>
             </DialogHeader>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {images.length > 0 ? (
-                images.map((src, idx) => (
+              {effectiveImages.length > 0 ? (
+                effectiveImages.map((src, idx) => (
                   <div key={idx} className="aspect-[4/3] rounded-lg overflow-hidden bg-gray-100">
-                    <img src={src} alt={`${rental.name} - Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                    <img src={src} alt={`${displayUnitName || rental.name} - Photo ${idx + 1}`} className="w-full h-full object-cover" />
                   </div>
                 ))
               ) : (
@@ -356,10 +395,13 @@ export default function PropertyDetailsPage() {
           <div className="lg:col-span-2">
             {/* Title and Location */}
             <div className="mb-6">
-              <h1 className=" text-3xl font-bold text-gray-900 mb-2" style={{ fontSize: '0.875rem' }}>{rental.name}</h1>
+              <div className="flex items-center gap-2 mb-2">
+                <Building2 className="w-5 h-5 text-gray-700" />
+                <h1 className="text-3xl font-bold text-gray-900" style={{ fontSize: '0.875rem' }}>{displayUnitName || rental.name}</h1>
+              </div>
               <div className="flex items-center gap-4 mb-4">
                 <div className="flex items-center">
-                  <span className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '1.575rem' }}>{rental.propertyName}</span>
+                  <span className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '1.575rem' }}>{displayPropertyName || rental.propertyName}</span>
                 </div>
               </div>
             </div>
@@ -369,10 +411,7 @@ export default function PropertyDetailsPage() {
             <div className="mb-6">
               <h2 className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '0.875rem' }}>About</h2>
               <p className="text-gray-600 leading-relaxed mb-4">
-                {rental.amenities ? 
-                  rental.amenities.split('\n').slice(0, 3).join(' ') : 
-                  'Beautiful property with modern amenities. Contact us for more details.'
-                }
+                {aboutText || (rental.amenities ? rental.amenities.split('\n').slice(0, 3).join(' ') : 'Beautiful property with modern amenities. Contact us for more details.')}
               </p>
               <p className="text-gray-600 leading-relaxed">
                 This stunning property offers the perfect blend of comfort and convenience. 
@@ -386,22 +425,35 @@ export default function PropertyDetailsPage() {
               <h2 className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '0.875rem' }}>Apartment Features</h2>
               <div className="flex flex-wrap gap-2">
                 <Badge variant="secondary" className="px-3 py-1">
-                  {rental.unitType || 'Standard'}
-                </Badge>
-                <Badge variant="secondary" className="px-3 py-1">
-                  Available Now
+                  {unitTypeText || rental.unitType || 'Standard'}
                 </Badge>
               </div>
+              {apartmentFeaturesText && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                  {apartmentFeaturesText
+                    .split('\n')
+                    .map(s => s.trim())
+                    .filter(s => s.length > 0)
+                    .map((line, i) => (
+                      <div key={i} className="text-gray-600">{line.startsWith('•') ? line : `• ${line}`}</div>
+                    ))}
+                </div>
+              )}
             </div>
 
             {/* Building Details */}
             <div className="mb-6">
-              <h2 className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '0.875rem' }}>Building Details</h2>
+              <h2 className="text-3xl font-bold text-cyan-600 mb-1 flex items-center gap-2" style={{ fontSize: '0.875rem' }}>
+              
+                Building Details
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="text-gray-600">Elevator building</div>
-                <div className="text-gray-600">Laundry in building</div>
-                <div className="text-gray-600">Secure entry</div>
-                <div className="text-gray-600">On-site maintenance</div>
+                {(buildingDetailsText ? buildingDetailsText.split('\n') : ['Elevator building', 'Laundry in building', 'Secure entry', 'On-site maintenance'])
+                  .map(s => s.trim())
+                  .filter(s => s.length > 0)
+                  .map((line, i) => (
+                    <div key={i} className="text-gray-600">{line.startsWith('•') ? line : `• ${line}`}</div>
+                  ))}
               </div>
             </div>
 
@@ -413,18 +465,13 @@ export default function PropertyDetailsPage() {
                 display: 'flex',
                 flexWrap: 'wrap'
               }}>
-                {rental.amenities ? 
-                  rental.amenities.split('\n').slice(0, 6).map((amenity, index) => (
+                {(neighborhoodItems.length ? neighborhoodItems : (rental.amenities ? rental.amenities.split('\n') : ['WiFi','Air Conditioning','Modern Kitchen','Balcony','Elevator','Security']))
+                  .slice(0, 6)
+                  .map((amenity, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <span className="text-gray-600">{amenity.trim().startsWith('•') ? amenity.trim() : `• ${amenity.trim()}`}</span>
                     </div>
-                  )) : 
-                  ['WiFi', 'Air Conditioning', 'Modern Kitchen', 'Balcony', 'Elevator', 'Security'].map((amenity, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <span className="text-gray-600">• {amenity}</span>
-                    </div>
-                  ))
-                }
+                  ))}
               </div>
             </div>
 
@@ -432,29 +479,62 @@ export default function PropertyDetailsPage() {
             <div className="mb-6">
               <h2 className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '0.875rem' }}>Why You’ll Love It</h2>
               <ul className="list-disc list-inside text-gray-600 space-y-1">
-                <li>Bright, modern design with functional layout</li>
-                <li>Close to dining, parks, and transit</li>
-                <li>Professional management and responsive maintenance</li>
+                {(whyLoveText ? whyLoveText.split('\n') : [
+                  'Bright, modern design with functional layout',
+                  'Close to dining, parks, and transit',
+                  'Professional management and responsive maintenance'
+                ]).filter(Boolean).map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
               </ul>
             </div>
 
-            <div className="mb-6">
-              <h2 className="text-3xl font-bold text-cyan-600 mb-1" style={{ fontSize: '0.875rem' }}>Map</h2>
-              <Card className="mb-6">
-                <CardContent className="p-0">
-                  <PropertyAmenitiesMap
-                    propertyName={rental.propertyName || rental.name}
-                    propertyCoordinates={getPropertyCoordinates(rental.propertyName || rental.name)}
-                    className="w-full"
-                  />
-                </CardContent>
-              </Card>
-            </div>
+            {/* Map moved to sidebar in Location card */}
 
            
           </div>
 
-          
+          {/* Sidebar (Location + Contact) */}
+          <div className="hidden lg:block">
+            <div className="space-y-6 sticky top-24">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-gray-300 text-gray-600">◎</span>
+                    <h3 className="font-semibold text-gray-900">Location</h3>
+                  </div>
+                  <div className="h-64 rounded-lg overflow-hidden border">
+                    <PropertyAmenitiesMap
+                      propertyName={displayPropertyName}
+                      propertyCoordinates={getPropertyCoordinates(displayPropertyName)}
+                      className="w-full h-full"
+                    />
+                  </div>
+                  <div className="text-xs text-gray-500 mt-3">{displayPropertyName}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="font-semibold text-gray-900 mb-3">Contact Information</h3>
+                  <div className="space-y-3 text-sm text-gray-700">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500">Phone:</span>
+                      <a href="tel:+16465456731" className="text-cyan-600 hover:text-cyan-700 font-medium">(646) 545-6731</a>
+                    </div>
+                    <div className="flex items-center gap-2 break-all">
+                      <span className="text-gray-500">Email:</span>
+                      <a href="mailto:libertyleasing@libertyplacepm.com" className="text-cyan-600 hover:text-cyan-700 font-medium">libertyleasing@libertyplacepm.com</a>
+                    </div>
+                    <div>
+                   
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
         </div>
       </div>
 

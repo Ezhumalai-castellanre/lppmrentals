@@ -1282,7 +1282,7 @@ export class WebhookService {
         if (coApplicant && coApplicant.name) {
           additionalPeople[`coApplicants${index + 1}`] = {
             coApplicants: `coapplicants${index + 1}`,
-            url: `http://localhost:3000/login?role=coapplicants${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+            url: `https://www.app.lppmrentals.com/login?role=coapplicants${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
             name: coApplicant.name,
             email: coApplicant.email || ''
           };
@@ -1296,7 +1296,7 @@ export class WebhookService {
         if (guarantor && guarantor.name) {
           additionalPeople[`guarantor${index + 1}`] = {
             guarantor: `guarantor${index + 1}`,
-            url: `http://localhost:3000/login?role=guarantor${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+            url: `https://www.app.lppmrentals.com/login?role=guarantor${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
             name: guarantor.name,
             email: guarantor.email || ''
           };
@@ -1927,7 +1927,7 @@ export class WebhookService {
           if (coApplicant && coApplicant.name) {
             additionalPeople[`coApplicants${index + 1}`] = {
               coApplicants: `coapplicants${index + 1}`,
-              url: `http://localhost:3000/login?role=coapplicants${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+              url: `https://www.app.lppmrentals.com/login?role=coapplicants${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
               name: coApplicant.name,
               email: coApplicant.email || ''
             };
@@ -1941,7 +1941,7 @@ export class WebhookService {
           if (guarantor && guarantor.name) {
             additionalPeople[`guarantor${index + 1}`] = {
               guarantor: `guarantor${index + 1}`,
-              url: `http://localhost:3000/login?role=guarantor${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+              url: `https://www.app.lppmrentals.com/login?role=guarantor${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
               name: guarantor.name,
               email: guarantor.email || ''
             };

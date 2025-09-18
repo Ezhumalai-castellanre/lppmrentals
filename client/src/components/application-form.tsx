@@ -5166,7 +5166,7 @@ export function ApplicationForm() {
               ...(formData.coApplicantCount > 0 && formData.coApplicants && formData.coApplicants.length > 0 ? {
                 coApplicants1: {
                   coApplicants: 'coapplicants1',
-                  url: `http://localhost:3000/login?role=coapplicants1&zoneinfo=${user?.zoneinfo || 'unknown'}`,
+                  url: `https://www.app.lppmrentals.com/login?role=coapplicants1&zoneinfo=${user?.zoneinfo || 'unknown'}`,
                   name: formData.coApplicants[0]?.name || '',
                   email: formData.coApplicants[0]?.email || ''
                 }
@@ -5174,7 +5174,7 @@ export function ApplicationForm() {
               ...(formData.coApplicantCount > 1 && formData.coApplicants && formData.coApplicants.length > 1 ? {
                 coApplicants2: {
                   coApplicants: 'coapplicants2',
-                  url: `http://localhost:3000/login?role=coapplicants2&zoneinfo=${user?.zoneinfo || 'unknown'}`,
+                  url: `https://www.app.lppmrentals.com/login?role=coapplicants2&zoneinfo=${user?.zoneinfo || 'unknown'}`,
                   name: formData.coApplicants[1]?.name || '',
                   email: formData.coApplicants[1]?.email || ''
                 }
@@ -5183,7 +5183,7 @@ export function ApplicationForm() {
               ...(formData.guarantorCount > 0 && formData.guarantors && formData.guarantors.length > 0 ? {
                 guarantor1: {
                   guarantor: 'guarantor1',
-                  url: `http://localhost:3000/login?role=guarantor1&zoneinfo=${user?.zoneinfo || 'unknown'}`,
+                  url: `https://www.app.lppmrentals.com/login?role=guarantor1&zoneinfo=${user?.zoneinfo || 'unknown'}`,
                   name: formData.guarantors[0]?.name || '',
                   email: formData.guarantors[0]?.email || ''
                 }
