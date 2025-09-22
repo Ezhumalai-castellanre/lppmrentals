@@ -556,9 +556,7 @@ export function InterestForm({ className }: InterestFormProps) {
 
             {/* Household Income + Frequency (bilingual prompt) */}
             <div className="space-y-2">
-              <Label className="text-sm text-gray-700">
-                Por favor indique el ingreso total del hogar (incluyendo su ingreso y el de todos los miembros del hogar).
-              </Label>
+           
               <Label className="text-sm text-gray-700">
                 Please provide your total household income (including your income and that of all household members).
               </Label>
@@ -570,10 +568,11 @@ export function InterestForm({ className }: InterestFormProps) {
                 name="householdIncome"
                 render={({ field }) => (
                   <FormItem>
-                  
+                   
                     <IncomeWithFrequencyInput
                       name="household-income"
-                      label="Please provide your total household income (including your income and that of all household members)."
+                      label="  Por favor indique el ingreso total del hogar (incluyendo su ingreso y el de todos los miembros del hogar).
+              "
                       value={field.value}
                       frequency={form.watch('incomeFrequency') || 'monthly'}
                       onValueChange={(val) => form.setValue('householdIncome', val, { shouldValidate: true, shouldDirty: true })}
@@ -587,8 +586,7 @@ export function InterestForm({ className }: InterestFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm text-gray-700">¿Cuál es la frecuencia de sus ingresos?</Label>
-              <Label className="text-sm text-gray-700">What is your income frequency?</Label>
+        
             </div>
 
             {/* Annual Income */}
