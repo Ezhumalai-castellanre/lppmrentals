@@ -375,7 +375,7 @@ export class DynamoDBSeparateTablesService {
     }
   }
 
-  // Get application data by userId (scan since app_nyc uses appid as partition key)
+  // Get application data by zoneinfo (scan since app_nyc uses appid as partition key)
   async getApplicationData(): Promise<ApplicationData | null> {
     if (!this.client) {
       console.error('❌ DynamoDB client not initialized');
@@ -383,24 +383,18 @@ export class DynamoDBSeparateTablesService {
     }
 
     try {
-      const userId = await this.getCurrentUserId();
-      if (!userId) {
-        console.error('❌ No userId available for current user');
-        return null;
-      }
-
       const zoneinfo = await this.getCurrentUserZoneinfo();
       if (!zoneinfo) {
         console.error('❌ No zoneinfo available for current user');
         return null;
       }
 
-      // Since app_nyc uses appid as partition key, we need to scan by userId
+      // Since app_nyc uses appid as partition key, we need to scan by zoneinfo
       const command = new ScanCommand({
         TableName: this.tables.app_nyc,
-        FilterExpression: 'userId = :userId',
+        FilterExpression: 'zoneinfo = :zoneinfo',
         ExpressionAttributeValues: marshall({
-          ':userId': userId
+          ':zoneinfo': zoneinfo
         }, { convertClassInstanceToMap: true })
       });
 
@@ -726,7 +720,7 @@ export class DynamoDBSeparateTablesService {
 
   // UTILITY METHODS
 
-  // Get application data by userId (scan since app_nyc uses appid as partition key)
+  // Get application data by zoneinfo (scan since app_nyc uses appid as partition key)
   async getApplicationDataByUserId(): Promise<ApplicationData | null> {
     if (!this.client) {
       console.error('❌ DynamoDB client not initialized');
@@ -734,18 +728,18 @@ export class DynamoDBSeparateTablesService {
     }
 
     try {
-      const userId = await this.getCurrentUserId();
-      if (!userId) {
-        console.log('❌ No userId available for current user');
+      const zoneinfo = await this.getCurrentUserZoneinfo();
+      if (!zoneinfo) {
+        console.log('❌ No zoneinfo available for current user');
         return null;
       }
 
-      // Since app_nyc uses appid as partition key, we need to scan by userId
+      // Since app_nyc uses appid as partition key, we need to scan by zoneinfo
       const command = new ScanCommand({
         TableName: this.tables.app_nyc,
-        FilterExpression: 'userId = :userId',
+        FilterExpression: 'zoneinfo = :zoneinfo',
         ExpressionAttributeValues: marshall({
-          ':userId': userId
+          ':zoneinfo': zoneinfo
         }, { convertClassInstanceToMap: true })
       });
 

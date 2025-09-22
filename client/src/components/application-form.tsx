@@ -29,8 +29,8 @@ import { useRef } from "react";
 import { useLocation } from "wouter";
 import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "../lib/file-encryption";
 import { WebhookService } from "../lib/webhook-service";
+import { dynamoDBSeparateTablesUtils } from "../lib/dynamodb-separate-tables-service";
 import { MondayApiService, type UnitItem } from "../lib/monday-api";
-import { dynamoDBSeparateTablesUtils, type ApplicationData, type ApplicantData, type CoApplicantData, type GuarantorData } from "../lib/dynamodb-separate-tables-service";
 
 
 import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "./ui/validated-input";
@@ -441,6 +441,9 @@ export function ApplicationForm() {
   // Parse role from URL query parameters
   const [userRole, setUserRole] = useState<string>('applicant');
   const [specificIndex, setSpecificIndex] = useState<number | null>(null);
+  // Step 1 helpers
+  const [appOptions, setAppOptions] = useState<Array<{ appid: string; apartmentNumber?: string; buildingAddress?: string; zoneinfo: string }>>([]);
+  const [selectedAppId, setSelectedAppId] = useState<string>("");
   
   // Get filtered steps based on role
   const [filteredSteps, setFilteredSteps] = useState(getFilteredSteps('applicant'));
@@ -607,6 +610,49 @@ export function ApplicationForm() {
 
   // Fetch units from NYC listings API
   useEffect(() => {
+    // Load existing application from app_nyc to populate Step 1 dropdown (zoneinfo must match current user)
+    (async () => {
+      try {
+        const existing = await dynamoDBSeparateTablesUtils.getApplicationDataByUserId?.()
+          ?? await dynamoDBSeparateTablesUtils.getApplicationData?.();
+        const zone = (user as any)?.zoneinfo;
+        if (existing && zone && existing.zoneinfo === zone) {
+          const appid = existing.appid;
+          const apartmentNumber = existing.application_info?.apartmentNumber;
+          const buildingAddress = existing.application_info?.buildingAddress;
+          setAppOptions([{ appid, apartmentNumber, buildingAddress, zoneinfo: existing.zoneinfo }]);
+          setSelectedAppId(appid);
+        }
+      } catch (e) {
+        // noop
+      }
+    })();
+  }, [user]);
+
+  const handleRoleChange = (value: string) => {
+    setUserRole(value);
+    setFilteredSteps(getFilteredSteps(value));
+    // Update specific index for coapplicantN/guarantorN
+    if (/^coapplicant\d+$/.test(value)) {
+      const match = value.match(/coapplicant(\d+)/);
+      const idx = match ? parseInt(match[1], 10) - 1 : null;
+      setSpecificIndex(idx);
+    } else if (/^guarantor\d+$/.test(value)) {
+      const match = value.match(/guarantor(\d+)/);
+      const idx = match ? parseInt(match[1], 10) - 1 : null;
+      setSpecificIndex(idx);
+    } else {
+      setSpecificIndex(null);
+    }
+    // Reflect in URL for consistency with existing logic
+    setLocation(`/application?role=${encodeURIComponent(value)}`);
+  };
+
+  const handleAppSelect = (appid: string) => {
+    setSelectedAppId(appid);
+  };
+
+  useEffect(() => {
     const fetchUnits = async () => {
       setIsLoadingUnits(true);
       try {
@@ -708,7 +754,7 @@ export function ApplicationForm() {
     };
 
     fetchUnits();
-  }, []); // ✅ Add empty dependency array to run only once on mount
+  }, []);
 
   // Restore building selection once units are loaded
   useEffect(() => {
@@ -2775,7 +2821,7 @@ export function ApplicationForm() {
 
         // Get the appid from the application data to link co-applicant to application
         const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
-        const appid = existingApp?.appid || referenceId;
+        const appid = selectedAppId || existingApp?.appid || referenceId;
         console.log('🔗 Linking co-applicant draft to appid:', appid);
 
         const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantData(coApplicantSaveData, appid);
@@ -2802,7 +2848,7 @@ export function ApplicationForm() {
 
         // Get the appid from the application data to link guarantor to application
         const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
-        const appid = existingApp?.appid || referenceId;
+        const appid = selectedAppId || existingApp?.appid || referenceId;
         console.log('🔗 Linking guarantor draft to appid:', appid);
 
         const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorData(guarantorSaveData, appid);
@@ -5585,7 +5631,7 @@ export function ApplicationForm() {
 
             // Get the appid from the application data to link co-applicant to application
             const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
-            const appid = existingApp?.appid || submissionResult?.reference_id || referenceId;
+            const appid = selectedAppId || existingApp?.appid || submissionResult?.reference_id || referenceId;
             console.log('🔗 Linking co-applicant to appid:', appid);
 
             const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantData(submittedCoApplicantData, appid);
@@ -5612,7 +5658,7 @@ export function ApplicationForm() {
 
             // Get the appid from the application data to link guarantor to application
             const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
-            const appid = existingApp?.appid || submissionResult?.reference_id || referenceId;
+            const appid = selectedAppId || existingApp?.appid || submissionResult?.reference_id || referenceId;
             console.log('🔗 Linking guarantor to appid:', appid);
 
             const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorData(submittedGuarantorData, appid);
@@ -6028,7 +6074,114 @@ export function ApplicationForm() {
     const actualStepId = getActualStepId(stepIdx);
     switch (actualStepId) {
       case 0:
-        return <ApplicationInstructions onNext={nextStep} />;
+        return (
+          <div className="space-y-6">
+            {/* Role selector (Step 1) */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Choose Your Role</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700">Role</label>
+                <select
+                  className="w-full border rounded px-3 py-2"
+                  value={userRole}
+                  onChange={(e) => handleRoleChange(e.target.value)}
+                >
+                  <option value="applicant">applicant</option>
+                  <option value="coapplicant1">coapplicant1</option>
+                  <option value="coapplicant2">coapplicant2</option>
+                  <option value="coapplicant3">coapplicant3</option>
+                  <option value="coapplicant4">coapplicant4</option>
+                  <option value="guarantor1">guarantor1</option>
+                  <option value="guarantor2">guarantor2</option>
+                  <option value="guarantor3">guarantor3</option>
+                  <option value="guarantor4">guarantor4</option>
+                </select>
+              </CardContent>
+            </Card>
+
+            {/* Application (app_nyc) selector if zoneinfo matches */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Select Application (from app_nyc)</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700">Application</label>
+                <select
+                  className="w-full border rounded px-3 py-2"
+                  value={selectedAppId}
+                  onChange={(e) => handleAppSelect(e.target.value)}
+                >
+                  {appOptions.length === 0 && (
+                    <option value="">No matching application found</option>
+                  )}
+                  {appOptions.map(opt => (
+                    <option key={opt.appid} value={opt.appid}>
+                      {opt.appid} — {opt.apartmentNumber || '-'} — {opt.buildingAddress || '-'}
+                    </option>
+                  ))}
+                </select>
+              </CardContent>
+            </Card>
+
+            {/* Instructional content block */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Instructions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-gray-900 space-y-4">
+                  <p>Thank you for choosing a Liberty Place Property Management apartment.</p>
+                  <ol className="list-decimal pl-5 space-y-2">
+                    <li>Applicants must show income of <span style={{ fontSize: 18, fontWeight: 500 }}>40 TIMES THE MONTHLY RENT.</span> (may be combined among applicants)</li>
+                    <li>Guarantors must show income of <span style={{ fontSize: 18, fontWeight: 500 }}>80 TIMES THE MONTHLY RENT.</span> (may NOT be combined with applicants)</li>
+                    <li>Application packages must be submitted in full as detailed below. Only complete applications will be reviewed and considered for tenancy.</li>
+                    <li>Applications will not remove apartments from the market.</li>
+                    <li>Lease signings must be scheduled within three (3) days of approval or the backup applicant will be considered.</li>
+                  </ol>
+                  <p>We look forward to servicing your residential needs.</p>
+                  <div className="font-bold">YOUR APPLICATION PACKAGE MUST INCLUDE:</div>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Completed and Signed application by applicants and guarantors.</li>
+                    <li>Driver's License or Photo ID (18 &amp; over)</li>
+                    <li>Social Security Card </li>
+                    <li>Financial Statement First Page (Checking, Savings and/or other assets)</li>
+                    <li>Previous year tax returns First Page</li>
+                  </ul>
+                  <div className="font-bold">Proof of Employment if you work for a company:</div>
+                  <ol className="list-decimal pl-5 space-y-1">
+                    <li>Letter on company letterhead From current employerincluding length of employment, salary &amp; position</li>
+                    <li>Last 4 paystubs (If paid weekly) - or - Last 2 paystubs (if paid every weeks or semi-monthly)</li>
+                  </ol>
+                  <div className="font-bold">Proof of Employment if you are self-employed:</div>
+                  <ol className="list-decimal pl-5 space-y-1">
+                    <li>Previous year 1099</li>
+                    <li>Notarized Letter from your accountant on his/her company letterhead verifying:</li>
+                  </ol>
+                  <ul className="list-disc pl-8 space-y-1">
+                    <li>A. Nature of the business</li>
+                    <li>B. Length of employment</li>
+                    <li>C. Income holdings</li>
+                    <li>D. Projected annual income expected for the current year and upcoming year.</li>
+                  </ul>
+                  <div className="font-bold">CORPORATE APPLICANTS MUST SUBMIT A SEPARATE APPLICATION ALONG WITH:</div>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>$150.00 Non-refundable application fee</li>
+                    <li>Corporate officer as a guarantor</li>
+                    <li>Information of the company employee that will occupy the apartment</li>
+                    <li>Certified Financial Statements</li>
+                    <li>Corporate Tax Returns (two (2) most recent consecutive returns)</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end">
+              <Button onClick={nextStep}>Next</Button>
+            </div>
+          </div>
+        );
       case 1:
         return (
           <Card className="form-section">
