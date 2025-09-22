@@ -27,6 +27,7 @@ import RentalDashboard from "./components/rental-dashboard";
 import { Button } from "./components/ui/button";
 import { Save } from "lucide-react";
 import { DebugAuth } from "./components/debug-auth";
+import DebugDynamoPage from "./pages/debug-dynamodb";
 import "./lib/aws-config";
 
 function AppLayout({ children, hideSidebar = false }: { children: React.ReactNode; hideSidebar?: boolean }) {
@@ -169,6 +170,15 @@ function Router() {
             <div className="container mx-auto py-8">
               <DebugAuth />
             </div>
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+
+      {/* Debug DynamoDB route */}
+      <Route path="/debug/dynamodb">
+        <ProtectedRoute>
+          <AppLayout>
+            <DebugDynamoPage />
           </AppLayout>
         </ProtectedRoute>
       </Route>

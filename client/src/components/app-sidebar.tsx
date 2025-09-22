@@ -7,7 +7,7 @@ import {
   Clock
   // LayoutDashboard - removed (verification hidden)
 } from 'lucide-react';
-import { dynamoDBService } from '../lib/dynamodb-service';
+import { dynamoDBSeparateTablesUtils } from '../lib/dynamodb-separate-tables-service';
 
 import {
   Sidebar,
@@ -38,28 +38,36 @@ export function AppSidebar() {
       
       try {
         setIsLoading(true);
-        let applications: any[] = [];
         
-        // Check for drafts and submitted applications
-        if (user?.applicantId) {
-          applications = await dynamoDBService.getAllDrafts(user.applicantId);
-        } else if (user?.zoneinfo) {
-          applications = await dynamoDBService.getAllDrafts(user.zoneinfo);
-        }
+        // Get all user data from separate tables
+        const allData = await dynamoDBSeparateTablesUtils.getAllUserData();
         
-        // Set hasApplications to true if there are any applications (draft or submitted)
-        const hasAnyApplications = applications && applications.length > 0;
+        // Check if user has any data in any table
+        const hasApplicationData = allData.application !== null;
+        const hasApplicantData = allData.applicant !== null;
+        const hasCoApplicantData = allData.coApplicant !== null;
+        const hasGuarantorData = allData.guarantor !== null;
+        
+        const hasAnyApplications = hasApplicationData || hasApplicantData || hasCoApplicantData || hasGuarantorData;
         setHasApplications(hasAnyApplications);
         
-        // Set hasSubmittedApplications to true only if there are submitted applications
-        const submittedApps = applications?.filter(app => app.status === 'submitted') || [];
+        // Check for submitted applications
+        const submittedApps = [];
+        if (allData.application?.status === 'submitted') submittedApps.push(allData.application);
+        if (allData.applicant?.status === 'submitted') submittedApps.push(allData.applicant);
+        if (allData.coApplicant?.status === 'submitted') submittedApps.push(allData.coApplicant);
+        if (allData.guarantor?.status === 'submitted') submittedApps.push(allData.guarantor);
+        
         setHasSubmittedApplications(submittedApps.length > 0);
         
-        console.log('🔍 App Sidebar - Application Check:', {
-          totalApplications: applications?.length || 0,
+        console.log('🔍 App Sidebar - Application Check (Separate Tables):', {
+          hasApplicationData,
+          hasApplicantData,
+          hasCoApplicantData,
+          hasGuarantorData,
           hasApplications: hasAnyApplications,
           hasSubmittedApplications: submittedApps.length > 0,
-          applications: applications?.map(app => ({ id: app.reference_id, status: app.status }))
+          submittedApps: submittedApps.map(app => ({ id: app.appid || app.userId, status: app.status }))
         });
       } catch (err) {
         console.error('Error checking applications:', err);

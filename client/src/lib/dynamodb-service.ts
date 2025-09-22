@@ -21,6 +21,12 @@ export interface DraftData {
   s3_references?: string[]; // S3 URLs for hybrid storage
   flow_type?: 'legacy' | 'separate_webhooks'; // Indicates the webhook flow type used
   webhook_flow_version?: string; // Version of the webhook flow system
+  table_data?: { // Additional metadata for separate tables display
+    application?: any;
+    applicant?: any;
+    coApplicant?: any;
+    guarantor?: any;
+  };
 }
 
 // Interface for form data that uses application_id

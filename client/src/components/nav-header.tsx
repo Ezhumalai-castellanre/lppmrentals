@@ -7,7 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { LogOut, Home, Lock, FileText, TestTube, Wrench } from 'lucide-react';
 import LogoutButton from './logout-button';
 import { useLocation } from 'wouter';
-import { dynamoDBService } from '../lib/dynamodb-service';
+import { dynamoDBSeparateTablesUtils } from '../lib/dynamodb-separate-tables-service';
 
 const NavHeader: React.FC = () => {
   const { user } = useAuth();
@@ -21,21 +21,25 @@ const NavHeader: React.FC = () => {
       if (!user) return;
       
       try {
-        let applications: any[] = [];
+        // Get all user data from separate tables
+        const allData = await dynamoDBSeparateTablesUtils.getAllUserData();
         
-        // Check for drafts and submitted applications
-        if (user?.applicantId) {
-          applications = await dynamoDBService.getAllDrafts(user.applicantId);
-        } else if (user?.zoneinfo) {
-          applications = await dynamoDBService.getAllDrafts(user.zoneinfo);
-        }
+        // Check if user has any data in any table
+        const hasApplicationData = allData.application !== null;
+        const hasApplicantData = allData.applicant !== null;
+        const hasCoApplicantData = allData.coApplicant !== null;
+        const hasGuarantorData = allData.guarantor !== null;
         
-        // Set hasApplications to true if there are any applications (draft or submitted)
-        const hasAnyApplications = applications && applications.length > 0;
+        const hasAnyApplications = hasApplicationData || hasApplicantData || hasCoApplicantData || hasGuarantorData;
         setHasApplications(hasAnyApplications);
         
-        // Set hasSubmittedApplications to true only if there are submitted applications
-        const submittedApps = applications?.filter(app => app.status === 'submitted') || [];
+        // Check for submitted applications
+        const submittedApps = [];
+        if (allData.application?.status === 'submitted') submittedApps.push(allData.application);
+        if (allData.applicant?.status === 'submitted') submittedApps.push(allData.applicant);
+        if (allData.coApplicant?.status === 'submitted') submittedApps.push(allData.coApplicant);
+        if (allData.guarantor?.status === 'submitted') submittedApps.push(allData.guarantor);
+        
         setHasSubmittedApplications(submittedApps.length > 0);
       } catch (err) {
         console.error('Error checking applications:', err);

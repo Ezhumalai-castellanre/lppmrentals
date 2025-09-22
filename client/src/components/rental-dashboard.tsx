@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress"
 import { CheckCircle, Clock, AlertCircle, FileText, DollarSign, CreditCard, ChevronLeft, Users, RefreshCw, Shield } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "../hooks/use-auth"
-import { dynamoDBService } from "../lib/dynamodb-service"
+import { dynamoDBSeparateTablesUtils } from "../lib/dynamodb-separate-tables-service"
 // import { VerificationCard } from "./ui/verification-card" // Hidden
 
 type ApplicationCardProps = {
@@ -369,13 +369,47 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
         
         let userApplications: any[] = [];
         
-        // Try to get applications using applicantId first, then zoneinfo
-        if (user?.applicantId) {
-          console.log('🔍 Fetching applications using applicantId:', user.applicantId);
-          userApplications = await dynamoDBService.getAllDrafts(user.applicantId);
-        } else if (user?.zoneinfo) {
-          console.log('🔍 Fetching applications using zoneinfo:', user.zoneinfo);
-          userApplications = await dynamoDBService.getAllDrafts(user.zoneinfo);
+        // Get all user data from separate tables
+        console.log('🔍 Fetching applications from separate tables...');
+        const allData = await dynamoDBSeparateTablesUtils.getAllUserData();
+        
+        // Convert separate table data to application format
+        userApplications = [];
+        if (allData.application) {
+          userApplications.push({
+            reference_id: allData.application.appid,
+            status: allData.application.status,
+            current_step: allData.application.current_step,
+            last_updated: allData.application.last_updated,
+            form_data: allData.application.application_info
+          });
+        }
+        if (allData.applicant) {
+          userApplications.push({
+            reference_id: allData.applicant.userId,
+            status: allData.applicant.status,
+            current_step: allData.applicant.current_step || 0,
+            last_updated: allData.applicant.last_updated,
+            form_data: allData.applicant.applicant_info
+          });
+        }
+        if (allData.coApplicant) {
+          userApplications.push({
+            reference_id: allData.coApplicant.userId,
+            status: allData.coApplicant.status,
+            current_step: allData.coApplicant.current_step || 0,
+            last_updated: allData.coApplicant.last_updated,
+            form_data: allData.coApplicant.coapplicant_info
+          });
+        }
+        if (allData.guarantor) {
+          userApplications.push({
+            reference_id: allData.guarantor.userId,
+            status: allData.guarantor.status,
+            current_step: allData.guarantor.current_step || 0,
+            last_updated: allData.guarantor.last_updated,
+            form_data: allData.guarantor.guarantor_info
+          });
         }
         
         console.log('📋 Raw applications from database:', userApplications);
@@ -555,10 +589,10 @@ export default function RentalDashboard({ onBackToForm, currentApplication }: Re
                                       <div key={appData.id} className="space-y-6">
                       {/* Application Header */}
                       <ApplicationCard
-                        appId="app_1756224999898_sqkk94dgn"
-                        property="East 30th Street 11A"
-                        lastUpdated="29/08/2025"
-                        status="not_started"
+                        appId={appData.id || app.reference_id || 'Unknown'}
+                        property={appData.propertyAddress || app.form_data?.application?.buildingAddress || 'Not specified'}
+                        lastUpdated={appData.submittedDate || app.last_updated || 'Unknown'}
+                        status={appData.status || app.status || 'unknown'}
                       />
 
                     {/* Verification Grid - Hidden */}

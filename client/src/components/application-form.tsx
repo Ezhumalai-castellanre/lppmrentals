@@ -30,7 +30,7 @@ import { useLocation } from "wouter";
 import { type EncryptedFile, validateEncryptedData, createEncryptedDataSummary } from "../lib/file-encryption";
 import { WebhookService } from "../lib/webhook-service";
 import { MondayApiService, type UnitItem } from "../lib/monday-api";
-import { dynamoDBService, type DraftData } from "../lib/dynamodb-service";
+import { dynamoDBSeparateTablesUtils, type ApplicationData, type ApplicantData, type CoApplicantData, type GuarantorData } from "../lib/dynamodb-separate-tables-service";
 
 
 import { ValidatedInput, PhoneInput, SSNInput, ZIPInput, EmailInput, LicenseInput, IncomeInput, IncomeWithFrequencyInput } from "./ui/validated-input";
@@ -1034,48 +1034,74 @@ export function ApplicationForm() {
       console.log('🔗 Merged webhook responses from webhookSummary in useEffect:', mergedWebhookResponses);
     }
   }, [formData.webhookSummary?.webhookResponses]);
-  // Load draft data from DynamoDB
+  // Load draft data from separate DynamoDB tables
   const loadDraftData = useCallback(async (applicationId: string) => {
     try {
-      // Loading draft data from DynamoDB for application ID
+      console.log('🔄 Loading draft data from separate tables for application ID:', applicationId);
       
-      // Try to load the most recent draft for this application
-      const draftData = await dynamoDBService.getDraft(applicationId, referenceId);
+      // Load data from all separate tables
+      const allData = await dynamoDBSeparateTablesUtils.getAllUserData();
       
-      if (draftData && draftData.status === 'draft') {
-        // Draft data loaded from DynamoDB
+      if (allData.application || allData.applicant || allData.coApplicant || allData.guarantor) {
+        console.log('📊 Draft data loaded from separate tables');
         
-        // Restore form data
-        if (draftData.form_data) {
-          // Parse the form data if it's a string (from DynamoDB)
-          let parsedFormData = draftData.form_data;
-          if (typeof draftData.form_data === 'string') {
-            try {
-              parsedFormData = JSON.parse(draftData.form_data);
-              // Parsed form data from JSON string
-              
-              // Clean up the parsed data to ensure consistency
-              // Always use the current user's zoneinfo/applicantId, not the stored draft data
-              const currentUserZoneinfo = getCurrentUserZoneinfo();
-              
-              // Form data cleaning - Current user zoneinfo
-              // Form data before cleaning
-              
-              // ALWAYS update application_id to current user's zoneinfo (overwrite any draft data)
-              if (currentUserZoneinfo) {
-                const oldApplicationId = parsedFormData.application_id;
-                parsedFormData.application_id = currentUserZoneinfo;
-                // FORCED UPDATE: application_id changed
-              }
-              
-              // ALWAYS update applicantId to current user's zoneinfo (overwrite any draft data)
-              if (currentUserZoneinfo) {
-                const oldApplicantId = parsedFormData.applicantId;
-                parsedFormData.applicantId = currentUserZoneinfo;
-                // FORCED UPDATE: applicantId changed
-              }
-              
-              // Form data after cleaning
+        // Reconstruct the form data from separate table data
+        let parsedFormData: any = {
+          application: {},
+          applicant: {},
+          coApplicant: {},
+          guarantor: {}
+        };
+        
+        // Restore application data
+        if (allData.application) {
+          parsedFormData.application = allData.application.application_info || {};
+          parsedFormData.current_step = allData.application.current_step;
+          parsedFormData.status = allData.application.status;
+          parsedFormData.uploaded_files_metadata = allData.application.uploaded_files_metadata || {};
+          parsedFormData.webhook_responses = allData.application.webhook_responses || {};
+          parsedFormData.signatures = allData.application.signatures || {};
+          parsedFormData.encrypted_documents = allData.application.encrypted_documents || {};
+        }
+        
+        // Restore applicant data
+        if (allData.applicant) {
+          parsedFormData.applicant = allData.applicant.applicant_info || {};
+          parsedFormData.occupants = allData.applicant.occupants || [];
+          parsedFormData.webhookSummary = allData.applicant.webhookSummary || {};
+          parsedFormData.signatures = {
+            ...parsedFormData.signatures,
+            applicant: allData.applicant.signature || {}
+          };
+        }
+        
+        // Restore co-applicant data
+        if (allData.coApplicant) {
+          parsedFormData.coApplicant = allData.coApplicant.coapplicant_info || {};
+          parsedFormData.coApplicantOccupants = allData.coApplicant.occupants || [];
+          parsedFormData.webhookSummary = {
+            ...parsedFormData.webhookSummary,
+            coapplicant: allData.coApplicant.webhookSummary || {}
+          };
+          parsedFormData.signatures = {
+            ...parsedFormData.signatures,
+            coapplicant: allData.coApplicant.signature || {}
+          };
+        }
+        
+        // Restore guarantor data
+        if (allData.guarantor) {
+          parsedFormData.guarantor = allData.guarantor.guarantor_info || {};
+          parsedFormData.guarantorOccupants = allData.guarantor.occupants || [];
+          parsedFormData.webhookSummary = {
+            ...parsedFormData.webhookSummary,
+            guarantor: allData.guarantor.webhookSummary || {}
+          };
+          parsedFormData.signatures = {
+            ...parsedFormData.signatures,
+            guarantor: allData.guarantor.signature || {}
+          };
+        }
               
               // Ensure all required sections exist
               parsedFormData.application = parsedFormData.application || {};
@@ -1083,19 +1109,6 @@ export function ApplicationForm() {
               parsedFormData.coApplicant = parsedFormData.coApplicant || {};
               parsedFormData.guarantor = parsedFormData.guarantor || {};
               parsedFormData.occupants = parsedFormData.occupants || [];
-              
-              // Cleaned and normalized form data
-            } catch (parseError) {
-              // Error parsing form data JSON
-              parsedFormData = {
-                application: {},
-                applicant: {},
-                coApplicant: {},
-                guarantor: {},
-                occupants: []
-              };
-            }
-          }
           
           // Merge webhookSummary.webhookResponses into the main formData.webhookResponses
           if (parsedFormData.webhookSummary?.webhookResponses) {
@@ -1108,73 +1121,30 @@ export function ApplicationForm() {
           
           setFormData(parsedFormData);
           
-          // Draft data loaded successfully
-          
           // Restore current step
-          if (draftData.current_step !== undefined) {
-            setCurrentStep(draftData.current_step);
+        if (allData.application?.current_step !== undefined) {
+          setCurrentStep(allData.application.current_step);
           }
           
           // Restore signatures
-          if (draftData.signatures) {
-            let parsedSignatures = draftData.signatures;
-            if (typeof draftData.signatures === 'string') {
-              try {
-                parsedSignatures = JSON.parse(draftData.signatures);
-              } catch (parseError) {
-                // Error parsing signatures JSON
-                parsedSignatures = {};
-              }
-            }
-            setSignatures(parsedSignatures);
+        if (parsedFormData.signatures) {
+          setSignatures(parsedFormData.signatures);
           }
           
           // Restore webhook responses
-          if (draftData.webhook_responses) {
-            let parsedWebhookResponses = draftData.webhook_responses;
-            if (typeof draftData.webhook_responses === 'string') {
-              try {
-                parsedWebhookResponses = JSON.parse(draftData.webhook_responses);
-              } catch (parseError) {
-                // Error parsing webhook responses JSON
-                parsedWebhookResponses = {};
-              }
-            }
-            setWebhookResponses(parsedWebhookResponses);
-          }
-          
-          // Also set webhook responses from the merged formData
           if (parsedFormData.webhookResponses) {
             setWebhookResponses(parsedFormData.webhookResponses);
             console.log('🔗 Set webhook responses state from formData:', parsedFormData.webhookResponses);
           }
           
           // Restore uploaded files metadata
-          if (draftData.uploaded_files_metadata) {
-            let parsedUploadedFiles = draftData.uploaded_files_metadata;
-            if (typeof draftData.uploaded_files_metadata === 'string') {
-              try {
-                parsedUploadedFiles = JSON.parse(draftData.uploaded_files_metadata);
-              } catch (parseError) {
-                // Error parsing uploaded files JSON
-                parsedUploadedFiles = {};
-              }
-            }
-            setUploadedFilesMetadata(parsedUploadedFiles);
+        if (allData.application?.uploaded_files_metadata) {
+          setUploadedFilesMetadata(allData.application.uploaded_files_metadata);
           }
           
           // Restore encrypted documents
-          if (draftData.encrypted_documents) {
-            let parsedEncryptedDocuments = draftData.encrypted_documents;
-            if (typeof draftData.encrypted_documents === 'string') {
-              try {
-                parsedEncryptedDocuments = JSON.parse(draftData.encrypted_documents);
-              } catch (parseError) {
-                // Error parsing encrypted documents JSON
-                parsedEncryptedDocuments = {};
-              }
-            }
-            setEncryptedDocuments(parsedEncryptedDocuments);
+        if (allData.application?.encrypted_documents) {
+          setEncryptedDocuments(allData.application.encrypted_documents);
           }
           
           // Restore form values for React Hook Form
@@ -1687,7 +1657,6 @@ export function ApplicationForm() {
             title: "Draft Loaded",
             description: "Your previous draft has been restored. You can continue from where you left off.",
           });
-        }
       } else {
         console.log('📭 No draft data found or draft already submitted');
       }
@@ -1699,7 +1668,7 @@ export function ApplicationForm() {
         variant: "destructive",
       });
     }
-  }, [referenceId]);
+  }, []);
   // Set up welcome message and load draft data
   useEffect(() => {
     if (user) {
@@ -2741,37 +2710,144 @@ export function ApplicationForm() {
         userApplicantId: user?.applicantId
       });
 
-      // Create draft data with updated flow type support
-      const draftData: DraftData = {
-        zoneinfo: currentUserZoneinfo, // Source of truth - user's zoneinfo value
-        applicantId: currentUserZoneinfo, // Use zoneinfo for DynamoDB partition key
-        reference_id: referenceId,
-        form_data: enhancedFormDataSnapshot,
+      // Save data to separate tables
+      console.log('💾 Role-based draft saving to separate DynamoDB tables...');
+      console.log('🔍 User role:', userRole, 'Specific index:', specificIndex);
+      
+      let saveResults: boolean[] = [];
+
+      // Role-based draft saving logic
+      if (userRole === 'applicant') {
+        console.log('👤 Primary Applicant saving draft to app_nyc and applicant_nyc tables...');
+        
+        // Save Application Information to app_nyc table
+        const applicationData = {
+          application_info: {
+            ...enhancedFormDataSnapshot.application,
+            reference_id: referenceId
+          },
         current_step: currentStep,
-        last_updated: new Date().toISOString(),
-        status: 'draft',
+          status: 'draft' as const,
         uploaded_files_metadata: uploadedFilesMetadata,
         webhook_responses: webhookResponses,
         signatures: roleScopedSign,
         encrypted_documents: encryptedDocuments,
-        // Add flow type information for the new separate webhook system
-        flow_type: 'separate_webhooks', // Indicates this draft uses the new flow type
-        webhook_flow_version: '2.0' // Version of the webhook flow system
-      };
+          storage_mode: 'direct' as const,
+          flow_type: 'separate_webhooks' as const,
+          webhook_flow_version: '2.0',
+          last_updated: new Date().toISOString()
+        };
 
-      const saveResult = await dynamoDBService.saveDraft(draftData, draftData.applicantId);
-      if (saveResult) {
-        console.log('💾 Draft saved to DynamoDB successfully with updated flow type');
+        const appSaveResult = await dynamoDBSeparateTablesUtils.saveApplicationData(applicationData);
+        saveResults.push(appSaveResult);
+        
+        // Save Primary Applicant data to applicant_nyc table
+        const applicantData = {
+          applicant_info: enhancedFormDataSnapshot.applicant || {},
+          occupants: enhancedFormDataSnapshot.occupants || [],
+          webhookSummary: getWebhookSummary(),
+          signature: roleScopedSign.applicant || {},
+          status: 'draft' as const,
+          last_updated: new Date().toISOString()
+        };
+
+        const applicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicantData(applicantData);
+        saveResults.push(applicantSaveResult);
+        
+        console.log('✅ Primary Applicant draft saved to app_nyc and applicant_nyc tables');
+
+      } else if (userRole && userRole.startsWith('coapplicant')) {
+        console.log('👥 Co-Applicant saving draft to Co-Applicants table...');
+        
+        // Get the specific co-applicant data from the form data
+        const coApplicantData = enhancedFormDataSnapshot.coApplicants?.[0] || {};
+        console.log('📊 Co-Applicant draft data to save:', coApplicantData);
+        
+        // Save Co-Applicant data to Co-Applicants table
+        const coApplicantSaveData = {
+          coapplicant_info: coApplicantData,
+          occupants: [],
+          webhookSummary: getWebhookSummary(),
+          signature: roleScopedSign.coapplicant || {},
+          status: 'draft' as const,
+          last_updated: new Date().toISOString()
+        };
+
+        // Get the appid from the application data to link co-applicant to application
+        const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
+        const appid = existingApp?.appid || referenceId;
+        console.log('🔗 Linking co-applicant draft to appid:', appid);
+
+        const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantData(coApplicantSaveData, appid);
+        saveResults.push(coApplicantSaveResult);
+        
+        console.log('✅ Co-Applicant draft saved to Co-Applicants table');
+
+      } else if (userRole && userRole.startsWith('guarantor')) {
+        console.log('🛡️ Guarantor saving draft to Guarantors_nyc table...');
+        
+        // Get the specific guarantor data from the form data
+        const guarantorData = enhancedFormDataSnapshot.guarantors?.[0] || {};
+        console.log('📊 Guarantor draft data to save:', guarantorData);
+        
+        // Save Guarantor data to Guarantors_nyc table
+        const guarantorSaveData = {
+          guarantor_info: guarantorData,
+          occupants: [],
+          webhookSummary: getWebhookSummary(),
+          signature: roleScopedSign.guarantor || {},
+          status: 'draft' as const,
+          last_updated: new Date().toISOString()
+        };
+
+        // Get the appid from the application data to link guarantor to application
+        const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
+        const appid = existingApp?.appid || referenceId;
+        console.log('🔗 Linking guarantor draft to appid:', appid);
+
+        const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorData(guarantorSaveData, appid);
+        saveResults.push(guarantorSaveResult);
+        
+        console.log('✅ Guarantor draft saved to Guarantors_nyc table');
+
+      } else {
+        console.log('❓ Unknown role, saving to all tables as fallback...');
+        
+        // Fallback: save to all tables if role is unknown
+        const applicationData = {
+          application_info: {
+            ...enhancedFormDataSnapshot.application,
+            reference_id: referenceId
+          },
+          current_step: currentStep,
+          status: 'draft' as const,
+          uploaded_files_metadata: uploadedFilesMetadata,
+          webhook_responses: webhookResponses,
+          signatures: roleScopedSign,
+          encrypted_documents: encryptedDocuments,
+          storage_mode: 'direct' as const,
+          flow_type: 'separate_webhooks' as const,
+          webhook_flow_version: '2.0',
+          last_updated: new Date().toISOString()
+        };
+
+        const appSaveResult = await dynamoDBSeparateTablesUtils.saveApplicationData(applicationData);
+        saveResults.push(appSaveResult);
+      }
+
+      const allSaved = saveResults.every(result => result);
+      if (allSaved) {
+        console.log('💾 Role-based draft saved successfully');
         toast({
           title: 'Draft Saved Successfully',
-          description: 'Your application draft has been saved with the updated flow type. You can continue working on it later.',
+          description: 'Your application draft has been saved to the appropriate table. You can continue working on it later.',
           variant: 'default',
         });
       } else {
-        console.warn('⚠️ Failed to save draft to DynamoDB');
+        console.warn('⚠️ Failed to save some parts of role-based draft');
         toast({
-          title: 'Failed to Save Draft',
-          description: 'There was an error saving your draft. This may be due to an expired session. Please try refreshing the page and signing in again.',
+          title: 'Partially Saved Draft',
+          description: 'Some parts of your draft were saved, but there may have been issues. Please try saving again.',
           variant: 'destructive',
         });
       }
@@ -4724,19 +4800,10 @@ export function ApplicationForm() {
         console.log('  - specificIndex:', specificIndex);
         console.log('  - window.location.href:', window.location.href);
         
-        // Check if this is a guarantor submission by URL parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const roleFromUrl = urlParams.get('role');
-        console.log('  - roleFromUrl:', roleFromUrl);
-        
-        if (roleFromUrl && roleFromUrl.startsWith('guarantor')) {
-          // Extract guarantor index from URL (guarantor4 -> index 3)
-          const match = roleFromUrl.match(/guarantor(\d+)/);
-          const guarantorIndex = match ? parseInt(match[1], 10) - 1 : 0;
-          console.log('  - guarantorIndex from URL:', guarantorIndex);
-          
+        // Check if this is a guarantor submission
+        if (userRole && userRole.startsWith('guarantor') && specificIndex !== null) {
           // For guarantor role, validate guarantor data from the original formData
-          const specificGuarantor = (formData.guarantors || [])[guarantorIndex];
+          const specificGuarantor = (formData.guarantors || [])[specificIndex];
           console.log('  - specificGuarantor:', specificGuarantor);
           
           if (!specificGuarantor?.dob) {
@@ -4870,18 +4937,54 @@ export function ApplicationForm() {
           console.log('🔄 Bypassing server submission, proceeding with webhook submission...');
         }
 
-        // Mark draft as submitted in DynamoDB
-        if (user?.applicantId) {
-          try {
-            const markSubmittedResult = await dynamoDBService.markAsSubmitted(user.applicantId, referenceId);
-            if (markSubmittedResult) {
-              console.log('✅ Draft marked as submitted in DynamoDB');
-            } else {
-              console.warn('⚠️ Failed to mark draft as submitted in DynamoDB');
-            }
-          } catch (error) {
-            console.error('❌ Error marking draft as submitted:', error);
+        // Mark all data as submitted in separate DynamoDB tables
+        try {
+          console.log('🔄 Marking all data as submitted in separate tables...');
+          
+          // Update application data status
+          const applicationData = await dynamoDBSeparateTablesUtils.getApplicationData();
+          if (applicationData) {
+            const updatedAppData = {
+              ...applicationData,
+              status: 'submitted' as const,
+              current_step: 12
+            };
+            await dynamoDBSeparateTablesUtils.saveApplicationData(updatedAppData);
           }
+          
+          // Update applicant data status
+          const applicantData = await dynamoDBSeparateTablesUtils.getApplicantData();
+          if (applicantData) {
+            const updatedApplicantData = {
+              ...applicantData,
+              status: 'submitted' as const
+            };
+            await dynamoDBSeparateTablesUtils.saveApplicantData(updatedApplicantData);
+          }
+          
+          // Update co-applicant data status
+          const coApplicantData = await dynamoDBSeparateTablesUtils.getCoApplicantData();
+          if (coApplicantData) {
+            const updatedCoApplicantData = {
+              ...coApplicantData,
+              status: 'submitted' as const
+            };
+            await dynamoDBSeparateTablesUtils.saveCoApplicantData(updatedCoApplicantData);
+          }
+          
+          // Update guarantor data status
+          const guarantorData = await dynamoDBSeparateTablesUtils.getGuarantorData();
+          if (guarantorData) {
+            const updatedGuarantorData = {
+              ...guarantorData,
+              status: 'submitted' as const
+            };
+            await dynamoDBSeparateTablesUtils.saveGuarantorData(updatedGuarantorData);
+          }
+          
+          console.log('✅ All data marked as submitted in separate tables');
+        } catch (error) {
+          console.error('❌ Error marking data as submitted:', error);
         }
 
         // Note: Encrypted data and files are now sent separately via webhooks
@@ -5412,40 +5515,144 @@ export function ApplicationForm() {
         }
 
 
-        // Save to DynamoDB with submitted status
+        // Role-based submission to separate DynamoDB tables
         try {
-          console.log('💾 Saving submitted application to DynamoDB...');
-          const { dynamoDBUtils } = await import('../lib/dynamodb-service');
+          console.log('💾 Role-based submission to separate DynamoDB tables...');
+          console.log('🔍 User role:', userRole, 'Specific index:', specificIndex);
           
           // Persist role-scoped data and signatures on submit
           const submittedFormRoleScoped = buildRoleScopedFormData(completeServerData, userRole || '', specificIndex ?? undefined);
           const submittedSigsRoleScoped = buildRoleScopedSignatures((completeServerData as any).signatures || signatures, userRole || '', specificIndex ?? undefined);
 
-          const submittedDraftData = {
-            zoneinfo: individualApplicantId,
-            applicantId: individualApplicantId,
-            reference_id: submissionResult?.reference_id || referenceId,
-            form_data: submittedFormRoleScoped,
+          let saveResults: boolean[] = [];
+
+          // Role-based submission logic
+          if (userRole === 'applicant') {
+            console.log('👤 Primary Applicant submitting to app_nyc and applicant_nyc tables...');
+            
+            // Save Application Information to app_nyc table
+            const submittedApplicationData = {
+              application_info: {
+                ...submittedFormRoleScoped.application,
+                reference_id: submissionResult?.reference_id || referenceId
+              },
             current_step: 12, // Mark as completed
-            last_updated: new Date().toISOString(),
             status: 'submitted' as const,
             uploaded_files_metadata: (completeServerData as any).uploaded_files_metadata || {},
             webhook_responses: (completeServerData as any).webhook_responses || {},
             signatures: submittedSigsRoleScoped,
             encrypted_documents: (completeServerData as any).encrypted_documents || {},
-            // Add flow type information for the new separate webhook system
-            flow_type: 'separate_webhooks', // Indicates this draft uses the new flow type
-            webhook_flow_version: '2.0' // Version of the webhook flow system
-          };
+              storage_mode: 'direct' as const,
+              flow_type: 'separate_webhooks' as const,
+              webhook_flow_version: '2.0',
+              last_updated: new Date().toISOString()
+            };
 
-          const saveResult = await dynamoDBUtils.saveDraftForCurrentUser(submittedDraftData);
-          if (saveResult) {
-            console.log('✅ Application saved to DynamoDB with submitted status');
+            const appSaveResult = await dynamoDBSeparateTablesUtils.saveApplicationData(submittedApplicationData);
+            saveResults.push(appSaveResult);
+            
+            // Save Primary Applicant data to applicant_nyc table
+            const submittedApplicantData = {
+              applicant_info: submittedFormRoleScoped.applicant || {},
+              occupants: submittedFormRoleScoped.occupants || [],
+              webhookSummary: getWebhookSummary(),
+              signature: submittedSigsRoleScoped.applicant || {},
+              status: 'submitted' as const,
+              last_updated: new Date().toISOString()
+            };
+
+            const applicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicantData(submittedApplicantData);
+            saveResults.push(applicantSaveResult);
+            
+            console.log('✅ Primary Applicant data saved to app_nyc and applicant_nyc tables');
+
+          } else if (userRole && userRole.startsWith('coapplicant')) {
+            console.log('👥 Co-Applicant submitting to Co-Applicants table...');
+            
+            // Get the specific co-applicant data from the role-scoped form
+            const coApplicantData = submittedFormRoleScoped.coApplicants?.[0] || {};
+            console.log('📊 Co-Applicant data to save:', coApplicantData);
+            
+            // Save Co-Applicant data to Co-Applicants table
+            const submittedCoApplicantData = {
+              coapplicant_info: coApplicantData,
+              occupants: submittedFormRoleScoped.occupants || [],
+              webhookSummary: getWebhookSummary(),
+              signature: submittedSigsRoleScoped.coapplicant || {},
+              status: 'submitted' as const,
+              last_updated: new Date().toISOString()
+            };
+
+            // Get the appid from the application data to link co-applicant to application
+            const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
+            const appid = existingApp?.appid || submissionResult?.reference_id || referenceId;
+            console.log('🔗 Linking co-applicant to appid:', appid);
+
+            const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantData(submittedCoApplicantData, appid);
+            saveResults.push(coApplicantSaveResult);
+            
+            console.log('✅ Co-Applicant data saved to Co-Applicants table');
+
+          } else if (userRole && userRole.startsWith('guarantor')) {
+            console.log('🛡️ Guarantor submitting to Guarantors_nyc table...');
+            
+            // Get the specific guarantor data from the role-scoped form
+            const guarantorData = submittedFormRoleScoped.guarantors?.[0] || {};
+            console.log('📊 Guarantor data to save:', guarantorData);
+            
+            // Save Guarantor data to Guarantors_nyc table
+            const submittedGuarantorData = {
+              guarantor_info: guarantorData,
+              occupants: submittedFormRoleScoped.occupants || [],
+              webhookSummary: getWebhookSummary(),
+              signature: submittedSigsRoleScoped.guarantor || {},
+              status: 'submitted' as const,
+              last_updated: new Date().toISOString()
+            };
+
+            // Get the appid from the application data to link guarantor to application
+            const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
+            const appid = existingApp?.appid || submissionResult?.reference_id || referenceId;
+            console.log('🔗 Linking guarantor to appid:', appid);
+
+            const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorData(submittedGuarantorData, appid);
+            saveResults.push(guarantorSaveResult);
+            
+            console.log('✅ Guarantor data saved to Guarantors_nyc table');
+
           } else {
-            console.warn('⚠️ Failed to save application to DynamoDB');
+            console.log('❓ Unknown role, saving to all tables as fallback...');
+            
+            // Fallback: save to all tables if role is unknown
+            const submittedApplicationData = {
+              application_info: {
+                ...submittedFormRoleScoped.application,
+                reference_id: submissionResult?.reference_id || referenceId
+              },
+              current_step: 12,
+              status: 'submitted' as const,
+              uploaded_files_metadata: (completeServerData as any).uploaded_files_metadata || {},
+              webhook_responses: (completeServerData as any).webhook_responses || {},
+              signatures: submittedSigsRoleScoped,
+              encrypted_documents: (completeServerData as any).encrypted_documents || {},
+              storage_mode: 'direct' as const,
+              flow_type: 'separate_webhooks' as const,
+              webhook_flow_version: '2.0',
+              last_updated: new Date().toISOString()
+            };
+
+            const appSaveResult = await dynamoDBSeparateTablesUtils.saveApplicationData(submittedApplicationData);
+            saveResults.push(appSaveResult);
+          }
+
+          const allSaved = saveResults.every(result => result);
+          if (allSaved) {
+            console.log('✅ Role-based submission completed successfully');
+          } else {
+            console.warn('⚠️ Some parts of role-based submission failed');
           }
         } catch (dbError) {
-          console.error('❌ Error saving to DynamoDB:', dbError);
+          console.error('❌ Error in role-based submission:', dbError);
           // Don't show error to user as submission was successful
         }
       } catch (error) {

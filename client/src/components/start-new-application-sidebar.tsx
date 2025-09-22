@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '../hooks/use-auth';
-import { dynamoDBService } from '../lib/dynamodb-service';
+import { dynamoDBSeparateTablesUtils } from '../lib/dynamodb-separate-tables-service';
 import { 
   FileText, 
   UserCheck, 
@@ -71,37 +71,47 @@ export function StartNewApplicationSidebar() {
       
       setIsCheckingDrafts(true);
       try {
-        // Check if user has existing drafts
-        const userZoneinfo = user.zoneinfo || user.applicantId;
-        if (userZoneinfo) {
-          const drafts = await dynamoDBService.getAllDrafts(userZoneinfo);
-          const hasDraft = drafts && drafts.length > 0 && drafts.some(draft => draft.status === 'draft');
-          setHasExistingDraft(hasDraft);
+        // Get all user data from separate tables
+        const allData = await dynamoDBSeparateTablesUtils.getAllUserData();
+        
+        // Check if user has any data in any table
+        const hasApplicationData = allData.application !== null;
+        const hasApplicantData = allData.applicant !== null;
+        const hasCoApplicantData = allData.coApplicant !== null;
+        const hasGuarantorData = allData.guarantor !== null;
+        
+        const hasAnyApplications = hasApplicationData || hasApplicantData || hasCoApplicantData || hasGuarantorData;
+        setHasApplications(hasAnyApplications);
+        
+        // Check for draft applications
+        const hasDraft = (allData.application?.status === 'draft') || 
+                        (allData.applicant?.status === 'draft') || 
+                        (allData.coApplicant?.status === 'draft') || 
+                        (allData.guarantor?.status === 'draft');
+        setHasExistingDraft(hasDraft);
+        
+        // Check for submitted applications
+        const submittedApps = [];
+        if (allData.application?.status === 'submitted') submittedApps.push(allData.application);
+        if (allData.applicant?.status === 'submitted') submittedApps.push(allData.applicant);
+        if (allData.coApplicant?.status === 'submitted') submittedApps.push(allData.coApplicant);
+        if (allData.guarantor?.status === 'submitted') submittedApps.push(allData.guarantor);
+        
+        setHasSubmittedApplications(submittedApps.length > 0);
+        
+        // Get the current step from the most recent draft
+        if (hasDraft) {
+          const draftSteps = [];
+          if (allData.application?.status === 'draft') draftSteps.push(allData.application.current_step || 0);
+          if (allData.applicant?.status === 'draft') draftSteps.push(allData.applicant.current_step || 0);
+          if (allData.coApplicant?.status === 'draft') draftSteps.push(allData.coApplicant.current_step || 0);
+          if (allData.guarantor?.status === 'draft') draftSteps.push(allData.guarantor.current_step || 0);
           
-          // Set hasApplications to true if there are any applications (draft or submitted)
-          const hasAnyApplications = drafts && drafts.length > 0;
-          setHasApplications(hasAnyApplications);
-          
-          // Set hasSubmittedApplications to true only if there are submitted applications
-          const submittedApps = drafts?.filter(draft => draft.status === 'submitted') || [];
-          setHasSubmittedApplications(submittedApps.length > 0);
-          
-          // Get the current step from the most recent draft
-          if (hasDraft) {
-            const draftDrafts = drafts.filter(draft => draft.status === 'draft');
-            
-            if (draftDrafts.length > 0) {
-              const mostRecentDraft = draftDrafts
-                .sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime())[0];
-              
-              if (mostRecentDraft && mostRecentDraft.current_step !== undefined) {
-                setCurrentDraftStep(mostRecentDraft.current_step);
-              } else {
-                setCurrentDraftStep(null);
-              }
-            } else {
-              setCurrentDraftStep(null);
-            }
+          if (draftSteps.length > 0) {
+            const maxStep = Math.max(...draftSteps);
+            setCurrentDraftStep(maxStep);
+          } else {
+            setCurrentDraftStep(null);
           }
         }
       } catch (error) {
