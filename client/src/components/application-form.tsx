@@ -610,18 +610,22 @@ export function ApplicationForm() {
 
   // Fetch units from NYC listings API
   useEffect(() => {
-    // Load existing application from app_nyc to populate Step 1 dropdown (zoneinfo must match current user)
+    // Load all applications from app_nyc to populate Step 1 dropdown (zoneinfo must match current user)
     (async () => {
       try {
-        const existing = await dynamoDBSeparateTablesUtils.getApplicationDataByUserId?.()
-          ?? await dynamoDBSeparateTablesUtils.getApplicationData?.();
         const zone = (user as any)?.zoneinfo;
-        if (existing && zone && existing.zoneinfo === zone) {
-          const appid = existing.appid;
-          const apartmentNumber = existing.application_info?.apartmentNumber;
-          const buildingAddress = existing.application_info?.buildingAddress;
-          setAppOptions([{ appid, apartmentNumber, buildingAddress, zoneinfo: existing.zoneinfo }]);
-          setSelectedAppId(appid);
+        const apps = await dynamoDBSeparateTablesUtils.getApplicationsByZoneinfo();
+        const options = (apps || [])
+          .filter(a => !zone || a.zoneinfo === zone)
+          .map(a => ({
+            appid: a.appid,
+            apartmentNumber: a.application_info?.apartmentNumber,
+            buildingAddress: a.application_info?.buildingAddress,
+            zoneinfo: a.zoneinfo
+          }));
+        setAppOptions(options);
+        if (options.length > 0) {
+          setSelectedAppId(options[0].appid);
         }
       } catch (e) {
         // noop
@@ -6076,56 +6080,7 @@ export function ApplicationForm() {
       case 0:
         return (
           <div className="space-y-6">
-            {/* Role selector (Step 1) */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Choose Your Role</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">Role</label>
-                <select
-                  className="w-full border rounded px-3 py-2"
-                  value={userRole}
-                  onChange={(e) => handleRoleChange(e.target.value)}
-                >
-                  <option value="applicant">applicant</option>
-                  <option value="coapplicant1">coapplicant1</option>
-                  <option value="coapplicant2">coapplicant2</option>
-                  <option value="coapplicant3">coapplicant3</option>
-                  <option value="coapplicant4">coapplicant4</option>
-                  <option value="guarantor1">guarantor1</option>
-                  <option value="guarantor2">guarantor2</option>
-                  <option value="guarantor3">guarantor3</option>
-                  <option value="guarantor4">guarantor4</option>
-                </select>
-              </CardContent>
-            </Card>
-
-            {/* Application (app_nyc) selector if zoneinfo matches */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Select Application (from app_nyc)</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">Application</label>
-                <select
-                  className="w-full border rounded px-3 py-2"
-                  value={selectedAppId}
-                  onChange={(e) => handleAppSelect(e.target.value)}
-                >
-                  {appOptions.length === 0 && (
-                    <option value="">No matching application found</option>
-                  )}
-                  {appOptions.map(opt => (
-                    <option key={opt.appid} value={opt.appid}>
-                      {opt.appid} — {opt.apartmentNumber || '-'} — {opt.buildingAddress || '-'}
-                    </option>
-                  ))}
-                </select>
-              </CardContent>
-            </Card>
-
-            {/* Instructional content block */}
+           
             <Card>
               <CardHeader>
                 <CardTitle>Instructions</CardTitle>
@@ -6173,6 +6128,30 @@ export function ApplicationForm() {
                     <li>Certified Financial Statements</li>
                     <li>Corporate Tax Returns (two (2) most recent consecutive returns)</li>
                   </ul>
+                   {/* Role selector removed as requested */}
+
+            {/* Application (app_nyc) selector if zoneinfo matches (hidden for applicant role) */}
+            {userRole !== 'applicant' && (
+              <div className="mt-4 space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Application</label>
+                <select
+                  className="w-full border rounded px-3 py-2"
+                  value={selectedAppId}
+                  onChange={(e) => handleAppSelect(e.target.value)}
+                >
+                  {appOptions.length === 0 && (
+                    <option value="">No matching application found</option>
+                  )}
+                  {appOptions.map(opt => (
+                    <option key={opt.appid} value={opt.appid}>
+                      {opt.appid} — {opt.apartmentNumber || '-'} — {opt.buildingAddress || '-'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Instructional content block */}
                 </div>
               </CardContent>
             </Card>

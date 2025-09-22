@@ -412,6 +412,38 @@ export class DynamoDBSeparateTablesService {
     }
   }
 
+  // Get ALL applications for current user's zoneinfo
+  async getApplicationsByZoneinfo(): Promise<ApplicationData[]> {
+    if (!this.client) {
+      console.error('❌ DynamoDB client not initialized');
+      return [];
+    }
+
+    try {
+      const zoneinfo = await this.getCurrentUserZoneinfo();
+      if (!zoneinfo) {
+        console.error('❌ No zoneinfo available for current user');
+        return [];
+      }
+
+      const command = new ScanCommand({
+        TableName: this.tables.app_nyc,
+        FilterExpression: 'zoneinfo = :zoneinfo',
+        ExpressionAttributeValues: marshall({
+          ':zoneinfo': zoneinfo
+        }, { convertClassInstanceToMap: true })
+      });
+
+      const result = await this.client.send(command);
+      if (result.Items && result.Items.length > 0) {
+        return result.Items.map(item => unmarshall(item) as ApplicationData);
+      }
+      return [];
+    } catch (error) {
+      console.error('❌ Error getting applications by zoneinfo:', error);
+      return [];
+    }
+  }
   // APPLICANT DATA METHODS
 
   // Save applicant data
@@ -855,6 +887,10 @@ export const dynamoDBSeparateTablesUtils = {
   
   async getApplicationDataByUserId(): Promise<ApplicationData | null> {
     return dynamoDBSeparateTablesService.getApplicationDataByUserId();
+  },
+
+  async getApplicationsByZoneinfo(): Promise<ApplicationData[]> {
+    return dynamoDBSeparateTablesService.getApplicationsByZoneinfo();
   },
   
   async getApplicationDataByZoneinfo(): Promise<ApplicationData | null> {
