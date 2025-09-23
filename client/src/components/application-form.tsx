@@ -4987,55 +4987,7 @@ export function ApplicationForm() {
           console.log('🔄 Bypassing server submission, proceeding with webhook submission...');
         }
 
-        // Mark all data as submitted in separate DynamoDB tables
-        try {
-          console.log('🔄 Marking all data as submitted in separate tables...');
-          
-          // Update application data status
-          const applicationData = await dynamoDBSeparateTablesUtils.getApplicationData();
-          if (applicationData) {
-            const updatedAppData = {
-              ...applicationData,
-              status: 'submitted' as const,
-              current_step: 12
-            };
-            await dynamoDBSeparateTablesUtils.saveApplicationData(updatedAppData);
-          }
-          
-          // Update applicant data status
-          const applicantData = await dynamoDBSeparateTablesUtils.getApplicantData();
-          if (applicantData) {
-            const updatedApplicantData = {
-              ...applicantData,
-              status: 'submitted' as const
-            };
-            await dynamoDBSeparateTablesUtils.saveApplicantData(updatedApplicantData);
-          }
-          
-          // Update co-applicant data status
-          const coApplicantData = await dynamoDBSeparateTablesUtils.getCoApplicantData();
-          if (coApplicantData) {
-            const updatedCoApplicantData = {
-              ...coApplicantData,
-              status: 'submitted' as const
-            };
-            await dynamoDBSeparateTablesUtils.saveCoApplicantData(updatedCoApplicantData);
-          }
-          
-          // Update guarantor data status
-          const guarantorData = await dynamoDBSeparateTablesUtils.getGuarantorData();
-          if (guarantorData) {
-            const updatedGuarantorData = {
-              ...guarantorData,
-              status: 'submitted' as const
-            };
-            await dynamoDBSeparateTablesUtils.saveGuarantorData(updatedGuarantorData);
-          }
-          
-          console.log('✅ All data marked as submitted in separate tables');
-        } catch (error) {
-          console.error('❌ Error marking data as submitted:', error);
-        }
+        // Removed: do not update existing records' status on submit; create a new application only
 
         // Note: Encrypted data and files are now sent separately via webhooks
         if (serverSubmissionOk) {

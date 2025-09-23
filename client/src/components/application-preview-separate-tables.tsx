@@ -15,6 +15,9 @@ export const ApplicationPreviewSeparateTables: React.FC<ApplicationPreviewProps>
   const [applicantData, setApplicantData] = useState<any>(null);
   const [coApplicantData, setCoApplicantData] = useState<any>(null);
   const [guarantorData, setGuarantorData] = useState<any>(null);
+  // New: arrays to support multi applicants
+  const [coApplicants, setCoApplicants] = useState<any[]>([]);
+  const [guarantors, setGuarantors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,17 +31,32 @@ export const ApplicationPreviewSeparateTables: React.FC<ApplicationPreviewProps>
         
         // Get all data from separate tables
         const allData = await dynamoDBSeparateTablesUtils.getAllUserData();
-        
+
         setApplicationData(allData.application);
         setApplicantData(allData.applicant);
         setCoApplicantData(allData.coApplicant);
         setGuarantorData(allData.guarantor);
+
+        // Multi: fetch arrays by appid if available
+        if (allData.application?.appid) {
+          const [coApps, guarans] = await Promise.all([
+            dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(allData.application.appid),
+            dynamoDBSeparateTablesUtils.getGuarantorsByAppId(allData.application.appid),
+          ]);
+          setCoApplicants(coApps || []);
+          setGuarantors(guarans || []);
+        } else {
+          setCoApplicants([]);
+          setGuarantors([]);
+        }
         
         console.log('📊 Application Preview Data Loaded:', {
           application: allData.application,
           applicant: allData.applicant,
           coApplicant: allData.coApplicant,
-          guarantor: allData.guarantor
+          guarantor: allData.guarantor,
+          coApplicants,
+          guarantors,
         });
       } catch (err) {
         console.error('❌ Error loading preview data:', err);
@@ -200,7 +218,7 @@ export const ApplicationPreviewSeparateTables: React.FC<ApplicationPreviewProps>
             </CardContent>
           </Card>
 
-          {/* Co-Applicants (Co-Applicants) */}
+          {/* Co-Applicants (supports multiple) */}
           <Card>
             <CardHeader className="bg-purple-50">
               <CardTitle className="flex items-center text-purple-900">
@@ -210,42 +228,74 @@ export const ApplicationPreviewSeparateTables: React.FC<ApplicationPreviewProps>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {coApplicantData ? (
-                <>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-600">Name:</span>
-                      <p className="text-gray-900">{coApplicantData.coapplicant_info?.name || 'Not specified'}</p>
+              {coApplicants.length > 0 ? (
+                <div className="space-y-4">
+                  {coApplicants.map((co, idx) => (
+                    <div key={idx} className="rounded border p-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-600">Name:</span>
+                          <p className="text-gray-900">{co.coapplicant_info?.name || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Email:</span>
+                          <p className="text-gray-900">{co.coapplicant_info?.email || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Phone:</span>
+                          <p className="text-gray-900">{co.coapplicant_info?.phone || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Status:</span>
+                          <div className="mt-1">{getStatusBadge(co.status)}</div>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Occupants:</span>
+                          <p className="text-gray-900">{co.occupants?.length || 0}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Last Updated:</span>
+                          <p className="text-gray-900">{formatDate(co.last_updated)}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Email:</span>
-                      <p className="text-gray-900">{coApplicantData.coapplicant_info?.email || 'Not specified'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Phone:</span>
-                      <p className="text-gray-900">{coApplicantData.coapplicant_info?.phone || 'Not specified'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Status:</span>
-                      <div className="mt-1">{getStatusBadge(coApplicantData.status)}</div>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Occupants:</span>
-                      <p className="text-gray-900">{coApplicantData.occupants?.length || 0}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Last Updated:</span>
-                      <p className="text-gray-900">{formatDate(coApplicantData.last_updated)}</p>
-                    </div>
+                  ))}
+                </div>
+              ) : coApplicantData ? (
+                // Backward compatibility: show single if arrays not populated
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-600">Name:</span>
+                    <p className="text-gray-900">{coApplicantData.coapplicant_info?.name || 'Not specified'}</p>
                   </div>
-                </>
+                  <div>
+                    <span className="font-medium text-gray-600">Email:</span>
+                    <p className="text-gray-900">{coApplicantData.coapplicant_info?.email || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Phone:</span>
+                    <p className="text-gray-900">{coApplicantData.coapplicant_info?.phone || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Status:</span>
+                    <div className="mt-1">{getStatusBadge(coApplicantData.status)}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Occupants:</span>
+                    <p className="text-gray-900">{coApplicantData.occupants?.length || 0}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Last Updated:</span>
+                    <p className="text-gray-900">{formatDate(coApplicantData.last_updated)}</p>
+                  </div>
+                </div>
               ) : (
                 <p className="text-gray-500 italic">No co-applicant data found</p>
               )}
             </CardContent>
           </Card>
 
-          {/* Guarantors (Guarantors_nyc) */}
+          {/* Guarantors (supports multiple) */}
           <Card>
             <CardHeader className="bg-orange-50">
               <CardTitle className="flex items-center text-orange-900">
@@ -255,35 +305,67 @@ export const ApplicationPreviewSeparateTables: React.FC<ApplicationPreviewProps>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {guarantorData ? (
-                <>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-600">Name:</span>
-                      <p className="text-gray-900">{guarantorData.guarantor_info?.name || 'Not specified'}</p>
+              {guarantors.length > 0 ? (
+                <div className="space-y-4">
+                  {guarantors.map((g, idx) => (
+                    <div key={idx} className="rounded border p-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-600">Name:</span>
+                          <p className="text-gray-900">{g.guarantor_info?.name || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Email:</span>
+                          <p className="text-gray-900">{g.guarantor_info?.email || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Phone:</span>
+                          <p className="text-gray-900">{g.guarantor_info?.phone || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Status:</span>
+                          <div className="mt-1">{getStatusBadge(g.status)}</div>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Occupants:</span>
+                          <p className="text-gray-900">{g.occupants?.length || 0}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Last Updated:</span>
+                          <p className="text-gray-900">{formatDate(g.last_updated)}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Email:</span>
-                      <p className="text-gray-900">{guarantorData.guarantor_info?.email || 'Not specified'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Phone:</span>
-                      <p className="text-gray-900">{guarantorData.guarantor_info?.phone || 'Not specified'}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Status:</span>
-                      <div className="mt-1">{getStatusBadge(guarantorData.status)}</div>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Occupants:</span>
-                      <p className="text-gray-900">{guarantorData.occupants?.length || 0}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Last Updated:</span>
-                      <p className="text-gray-900">{formatDate(guarantorData.last_updated)}</p>
-                    </div>
+                  ))}
+                </div>
+              ) : guarantorData ? (
+                // Backward compatibility: show single if arrays not populated
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-600">Name:</span>
+                    <p className="text-gray-900">{guarantorData.guarantor_info?.name || 'Not specified'}</p>
                   </div>
-                </>
+                  <div>
+                    <span className="font-medium text-gray-600">Email:</span>
+                    <p className="text-gray-900">{guarantorData.guarantor_info?.email || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Phone:</span>
+                    <p className="text-gray-900">{guarantorData.guarantor_info?.phone || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Status:</span>
+                    <div className="mt-1">{getStatusBadge(guarantorData.status)}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Occupants:</span>
+                    <p className="text-gray-900">{guarantorData.occupants?.length || 0}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Last Updated:</span>
+                    <p className="text-gray-900">{formatDate(guarantorData.last_updated)}</p>
+                  </div>
+                </div>
               ) : (
                 <p className="text-gray-500 italic">No guarantor data found</p>
               )}
@@ -313,13 +395,13 @@ export const ApplicationPreviewSeparateTables: React.FC<ApplicationPreviewProps>
               </div>
               <div className="text-center p-4 bg-purple-50 rounded-lg">
                 <div className="font-semibold text-purple-900">Co-Applicants</div>
-                <div className="text-2xl font-bold text-purple-600">{coApplicantData ? '✓' : '✗'}</div>
-                <div className="text-purple-700">{coApplicantData ? 'Present' : 'Missing'}</div>
+                <div className="text-2xl font-bold text-purple-600">{(coApplicants?.length || 0) > 0 || coApplicantData ? '✓' : '✗'}</div>
+                <div className="text-purple-700">{(coApplicants?.length || 0) > 0 || coApplicantData ? 'Present' : 'Missing'}</div>
               </div>
               <div className="text-center p-4 bg-orange-50 rounded-lg">
                 <div className="font-semibold text-orange-900">Guarantors</div>
-                <div className="text-2xl font-bold text-orange-600">{guarantorData ? '✓' : '✗'}</div>
-                <div className="text-orange-700">{guarantorData ? 'Present' : 'Missing'}</div>
+                <div className="text-2xl font-bold text-orange-600">{(guarantors?.length || 0) > 0 || guarantorData ? '✓' : '✗'}</div>
+                <div className="text-orange-700">{(guarantors?.length || 0) > 0 || guarantorData ? 'Present' : 'Missing'}</div>
               </div>
             </div>
           </CardContent>

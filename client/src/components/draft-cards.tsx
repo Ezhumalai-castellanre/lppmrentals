@@ -3,7 +3,6 @@ import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from './ui/button';
-import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { FileText, Clock, Edit, Trash2, Building, User, Calendar, DollarSign, CheckCircle, File, Eye, Users, Shield, LayoutDashboard, CreditCard, Home, Briefcase, FileCheck } from "lucide-react";
 import { useAuth } from "../hooks/use-auth";
@@ -353,7 +352,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
   const formSummary = getFormDataSummary(normalizedFormData);
   const webhookSummary = getWebhookDataSummary(draft.webhook_responses);
   
-  const progressPercentage = Math.round((draft.current_step / 12) * 100); // Assuming 8 total steps
+  // Progress removed
 
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this draft? This action cannot be undone.')) {
@@ -406,17 +405,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
       </CardHeader>
       
       <CardContent className="space-y-3">
-        {/* Progress Bar */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs sm:text-sm">
-            <span className="text-gray-600">Progress</span>
-            <span className="text-gray-900 font-medium">{progressPercentage}%</span>
-          </div>
-          <Progress value={progressPercentage} className="h-2" />
-          <p className="text-xs text-gray-500">
-            Step {draft.current_step} of 12 sections completed
-          </p>
-        </div>
+        {/* Progress removed as requested */}
 
         {/* Tabbed Interface */}
         {
@@ -1121,17 +1110,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 {isDeleting ? 'Deleting...' : 'Delete'}
           </Button>
             </>
-          ) : (
-            <Button 
-              onClick={() => onEdit(draft)}
-              variant="outline" 
-              size="sm" 
-              className="flex-1"
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              Show Form
-            </Button>
-          )}
+          ) : null}
         </div>
       </CardContent>
     </Card>
@@ -1165,44 +1144,47 @@ export const DraftCards = () => {
         
         // Role-based data retrieval
         if (userRole === 'applicant') {
-          // Primary Applicant: Show data from app_nyc and applicant_nyc
-          if (allData.application) {
-            const applicantFormData = {
-              // Application Information (from app_nyc)
-              application: allData.application.application_info || {},
-              
-              // Primary Applicant (from applicant_nyc)
-              applicant: allData.applicant?.applicant_info || {},
-              applicant_occupants: allData.applicant?.occupants || [],
-              
-              // Reference data
-              application_id: allData.application.appid,
-              zoneinfo: allData.application.zoneinfo
-            };
-            
-            drafts.push({
-              zoneinfo: allData.application.zoneinfo,
-              applicantId: allData.application.appid,
-              reference_id: allData.application.appid,
-              form_data: applicantFormData,
-              current_step: allData.application.current_step || 0,
-              last_updated: allData.application.last_updated,
-              status: allData.application.status,
-              uploaded_files_metadata: allData.application.uploaded_files_metadata || {},
-              webhook_responses: allData.application.webhook_responses || {},
-              signatures: allData.application.signatures || {},
-              encrypted_documents: allData.application.encrypted_documents || {},
-              flow_type: allData.application.flow_type || 'separate_webhooks',
-              webhook_flow_version: allData.application.webhook_flow_version || '2.0',
-              
-              // Role-specific table data
-              table_data: {
-                application: allData.application,
-                applicant: allData.applicant
-              }
-            });
+          // Primary Applicant: list ALL applications in this zone
+          const applications = await dynamoDBSeparateTablesUtils.getApplicationsByZoneinfo();
+          if (applications && applications.length > 0) {
+            for (const application of applications) {
+              const applicantFormData = {
+                // Application Information (from app_nyc)
+                application: application.application_info || {},
+                
+                // Primary Applicant (from applicant_nyc) - optional current user data
+                applicant: allData.applicant?.applicant_info || {},
+                applicant_occupants: allData.applicant?.occupants || [],
+                
+                // Reference data
+                application_id: application.appid,
+                zoneinfo: application.zoneinfo
+              };
+
+              drafts.push({
+                zoneinfo: application.zoneinfo,
+                applicantId: application.appid,
+                reference_id: application.appid,
+                form_data: applicantFormData,
+                current_step: application.current_step || 0,
+                last_updated: application.last_updated,
+                status: application.status,
+                uploaded_files_metadata: application.uploaded_files_metadata || {},
+                webhook_responses: application.webhook_responses || {},
+                signatures: application.signatures || {},
+                encrypted_documents: application.encrypted_documents || {},
+                flow_type: application.flow_type || 'separate_webhooks',
+                webhook_flow_version: application.webhook_flow_version || '2.0',
+                
+                // Role-specific table data
+                table_data: {
+                  application: application,
+                  applicant: allData.applicant
+                }
+              });
+            }
           }
-          
+
         } else if (userRole.startsWith('coapplicant')) {
           // Co-Applicant: Show data from Co-Applicants table only
           if (allData.coApplicant) {
@@ -1477,6 +1459,16 @@ export const DraftCards = () => {
               <div className="hidden lg:block">
                 <FileText className="w-48 h-32 text-white/20" />
               </div>
+            </div>
+
+            {/* Add Application Button */}
+            <div className="relative mt-6">
+              <Button
+                onClick={() => (window as any).location.href = '/application'}
+                className="bg-white text-blue-700 hover:bg-blue-50"
+              >
+                Start Another Application
+              </Button>
             </div>
           </div>
         </div>

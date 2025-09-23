@@ -644,6 +644,49 @@ export class DynamoDBSeparateTablesService {
     }
   }
 
+  // List all co-applicants for the current application (by appid within same zone)
+  async getCoApplicantsByAppId(appid?: string): Promise<CoApplicantData[]> {
+    if (!this.client) {
+      console.error('❌ DynamoDB client not initialized');
+      return [];
+    }
+
+    try {
+      const zoneinfo = await this.getCurrentUserZoneinfo();
+      if (!zoneinfo) {
+        console.error('❌ No zoneinfo available for current user');
+        return [];
+      }
+
+      let targetAppId = appid;
+      if (!targetAppId) {
+        const app = await this.getApplicationData();
+        targetAppId = app?.appid;
+      }
+      if (!targetAppId) {
+        console.warn('⚠️ No appid available to list co-applicants');
+        return [];
+      }
+
+      // Table primary key appears to be { userId, zoneinfo }. Since we need by appid, use Scan with filter
+      const command = new ScanCommand({
+        TableName: this.tables.coapplicants,
+        FilterExpression: 'appid = :appid AND zoneinfo = :zoneinfo',
+        ExpressionAttributeValues: marshall({
+          ':appid': targetAppId,
+          ':zoneinfo': zoneinfo,
+        }, { convertClassInstanceToMap: true })
+      });
+
+      const result = await this.client.send(command);
+      const items = (result.Items || []).map(item => unmarshall(item) as CoApplicantData);
+      return items;
+    } catch (error) {
+      console.error('❌ Error listing co-applicants by appid:', error);
+      return [];
+    }
+  }
+
   // GUARANTOR DATA METHODS
 
   // Save guarantor data
@@ -747,6 +790,48 @@ export class DynamoDBSeparateTablesService {
     } catch (error) {
       console.error('❌ Error getting guarantor data:', error);
       return null;
+    }
+  }
+
+  // List all guarantors for the current application (by appid within same zone)
+  async getGuarantorsByAppId(appid?: string): Promise<GuarantorData[]> {
+    if (!this.client) {
+      console.error('❌ DynamoDB client not initialized');
+      return [];
+    }
+
+    try {
+      const zoneinfo = await this.getCurrentUserZoneinfo();
+      if (!zoneinfo) {
+        console.error('❌ No zoneinfo available for current user');
+        return [];
+      }
+
+      let targetAppId = appid;
+      if (!targetAppId) {
+        const app = await this.getApplicationData();
+        targetAppId = app?.appid;
+      }
+      if (!targetAppId) {
+        console.warn('⚠️ No appid available to list guarantors');
+        return [];
+      }
+
+      const command = new ScanCommand({
+        TableName: this.tables.guarantors,
+        FilterExpression: 'appid = :appid AND zoneinfo = :zoneinfo',
+        ExpressionAttributeValues: marshall({
+          ':appid': targetAppId,
+          ':zoneinfo': zoneinfo,
+        }, { convertClassInstanceToMap: true })
+      });
+
+      const result = await this.client.send(command);
+      const items = (result.Items || []).map(item => unmarshall(item) as GuarantorData);
+      return items;
+    } catch (error) {
+      console.error('❌ Error listing guarantors by appid:', error);
+      return [];
     }
   }
 
@@ -913,12 +998,20 @@ export const dynamoDBSeparateTablesUtils = {
     return dynamoDBSeparateTablesService.getCoApplicantData();
   },
   
+  async getCoApplicantsByAppId(appid?: string): Promise<CoApplicantData[]> {
+    return dynamoDBSeparateTablesService.getCoApplicantsByAppId(appid);
+  },
+  
   async saveGuarantorData(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
     return dynamoDBSeparateTablesService.saveGuarantorData(data, appid);
   },
   
   async getGuarantorData(): Promise<GuarantorData | null> {
     return dynamoDBSeparateTablesService.getGuarantorData();
+  },
+  
+  async getGuarantorsByAppId(appid?: string): Promise<GuarantorData[]> {
+    return dynamoDBSeparateTablesService.getGuarantorsByAppId(appid);
   },
   
   async getAllUserData() {

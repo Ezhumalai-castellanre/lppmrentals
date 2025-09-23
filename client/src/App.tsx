@@ -24,6 +24,7 @@ import PropertyDetailsPage from "./pages/property-details";
 import InterestFormDemo from "./pages/interest-form-demo";
 import InterestFormSuccess from "./pages/interest-form-success";
 import RentalDashboard from "./components/rental-dashboard";
+import { ApplicationPreviewSeparateTables } from "./components/application-preview-separate-tables";
 import { Button } from "./components/ui/button";
 import { Save } from "lucide-react";
 import { DebugAuth } from "./components/debug-auth";
@@ -135,6 +136,15 @@ function Router() {
         <ProtectedRoute>
           <AppLayout>
             <ApplicationsPage />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Application Preview route */}
+      <Route path="/application-preview">
+        <ProtectedRoute>
+          <AppLayout>
+            <ApplicationPreviewSeparateTables />
           </AppLayout>
         </ProtectedRoute>
       </Route>
