@@ -26,6 +26,10 @@ export default function InterestFormDemo() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Meta Pixel noscript fallback */}
+      <noscript>
+        <img height="1" width="1" style={{ display: 'none' }} src="https://www.facebook.com/tr?id=730476173284501&ev=PageView&noscript=1" alt="" />
+      </noscript>
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">

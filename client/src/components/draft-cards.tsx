@@ -1104,6 +1104,11 @@ export const DraftCards = () => {
               try {
                 matchedApplicant = await dynamoDBSeparateTablesUtils.getApplicantByAppId(application.appid);
               } catch {}
+              // Load ALL co-applicants for this appid
+              let coApplicantsForApp: any[] = [];
+              try {
+                coApplicantsForApp = await dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(application.appid);
+              } catch {}
             const applicantFormData = {
               // Application Information (from app_nyc)
                 application: application.application_info || {},
@@ -1112,6 +1117,10 @@ export const DraftCards = () => {
                 applicant: matchedApplicant?.applicant_info || allData.applicant?.applicant_info || {},
                 applicant_occupants: matchedApplicant?.occupants || allData.applicant?.occupants || [],
               
+                // Co-Applicants (from Co-Applicants table) - all records for this app
+                coApplicants: (coApplicantsForApp || []).map((c: any) => c?.coapplicant_info).filter(Boolean),
+                coApplicant_occupants: (coApplicantsForApp || []).flatMap((c: any) => c?.occupants || []),
+
               // Reference data
                 application_id: application.appid,
                 zoneinfo: application.zoneinfo
@@ -1126,8 +1135,18 @@ export const DraftCards = () => {
                 last_updated: application.last_updated,
                 status: application.status,
                 uploaded_files_metadata: application.uploaded_files_metadata || {},
-                webhook_responses: application.webhook_responses || {},
-                signatures: application.signatures || {},
+                // Combine webhook responses and signatures from co-applicants for a fuller preview
+                webhook_responses: {
+                  ...(application.webhook_responses || {}),
+                  ...(coApplicantsForApp || []).reduce((acc: any, c: any) => ({
+                    ...acc,
+                    ...(c?.webhookSummary || {})
+                  }), {})
+                },
+                signatures: {
+                  ...(application.signatures || {}),
+                  coApplicants: (coApplicantsForApp || []).map((c: any) => c?.signature).filter(Boolean)
+                },
                 encrypted_documents: application.encrypted_documents || {},
                 flow_type: application.flow_type || 'separate_webhooks',
                 webhook_flow_version: application.webhook_flow_version || '2.0',
@@ -1135,7 +1154,8 @@ export const DraftCards = () => {
               // Role-specific table data
               table_data: {
                   application: application,
-                applicant: allData.applicant
+                  applicant: allData.applicant,
+                  coApplicant: coApplicantsForApp
               }
             });
             }

@@ -28,6 +28,10 @@ export default function InterestFormSuccess() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      {/* Meta Pixel noscript fallback */}
+      <noscript>
+        <img height="1" width="1" style={{ display: 'none' }} src="https://www.facebook.com/tr?id=730476173284501&ev=PageView&noscript=1" alt="" />
+      </noscript>
       <div className="max-w-md mx-auto px-4">
         <Card className="shadow-lg">
           <CardContent className="p-8 text-center">
