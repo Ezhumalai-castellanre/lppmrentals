@@ -532,9 +532,6 @@ export class DynamoDBSeparateTablesService {
         return false;
       }
 
-      // Generate a unique synthetic userId to avoid overwriting existing applicant_nyc record
-      const uniqueUserId = `${baseUserId}-${Date.now()}`;
-
       // Attach current application appid if available
       let applicationAppid: string | undefined = appid;
       if (!applicationAppid) {
@@ -543,6 +540,9 @@ export class DynamoDBSeparateTablesService {
           applicationAppid = existingApp?.appid;
         } catch {}
       }
+
+      // Use appid (if available) as userId to avoid suffixes; fallback to base userId
+      const uniqueUserId = applicationAppid || baseUserId;
 
       const applicantData: ApplicantData = {
         ...data,
