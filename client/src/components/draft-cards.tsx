@@ -505,8 +505,22 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                   <h6 className="font-semibold text-purple-900">Co-Applicants</h6>
                 </div>
                 <div className="space-y-2 text-sm">
-                  <div><span className="font-medium">Count:</span> {formSummary.coApplicants?.length || 0}</div>
-                  <div><span className="font-medium">Status:</span> {formSummary.coApplicants?.length > 0 ? 'Added' : 'None'}</div>
+                  {(() => {
+                    const coApps = Array.isArray(formSummary.coApplicants) ? formSummary.coApplicants : [];
+                    const keys = new Set<string>();
+                    const count = coApps.reduce((acc: number, x: any) => {
+                      const k = `${x?.name || ''}|${x?.email || ''}|${x?.phone || ''}`;
+                      if (keys.has(k)) return acc;
+                      keys.add(k);
+                      return acc + 1;
+                    }, 0);
+                    return (
+                      <>
+                        <div><span className="font-medium">Count:</span> {count}</div>
+                        <div><span className="font-medium">Status:</span> {count > 0 ? 'Added' : 'None'}</div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -517,8 +531,22 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                   <h6 className="font-semibold text-orange-900">Guarantors</h6>
                 </div>
                 <div className="space-y-2 text-sm">
-                  <div><span className="font-medium">Count:</span> {formSummary.guarantors?.length || 0}</div>
-                  <div><span className="font-medium">Status:</span> {formSummary.guarantors?.length > 0 ? 'Added' : 'None'}</div>
+                  {(() => {
+                    const guar = Array.isArray(formSummary.guarantors) ? formSummary.guarantors : [];
+                    const keys = new Set<string>();
+                    const count = guar.reduce((acc: number, x: any) => {
+                      const k = `${x?.name || ''}|${x?.email || ''}|${x?.phone || ''}`;
+                      if (keys.has(k)) return acc;
+                      keys.add(k);
+                      return acc + 1;
+                    }, 0);
+                    return (
+                      <>
+                        <div><span className="font-medium">Count:</span> {count}</div>
+                        <div><span className="font-medium">Status:</span> {count > 0 ? 'Added' : 'None'}</div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -547,118 +575,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
               </div>
             </div>
 
-            {/* Comprehensive Data from Separate Tables */}
-            <div className="mt-6">
-              <h5 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <FileText className="w-5 h-5 mr-2" />
-                Complete Data from Separate Tables
-              </h5>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Application Data (app_nyc) */}
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Building className="w-5 h-5 text-blue-600" />
-                    <h6 className="font-semibold text-blue-900">Application Data (app_nyc)</h6>
-                    <Badge className="ml-auto bg-blue-100 text-blue-800 text-xs">app_nyc</Badge>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">App ID:</span> {draft.table_data?.application?.appid || 'N/A'}</div>
-                    <div><span className="font-medium">Zone Info:</span> {draft.table_data?.application?.zoneinfo || 'N/A'}</div>
-                    <div><span className="font-medium">Status:</span> {draft.table_data?.application?.status || 'N/A'}</div>
-                    <div><span className="font-medium">Current Step:</span> {draft.table_data?.application?.current_step || 0}</div>
-                    <div><span className="font-medium">Last Updated:</span> {draft.table_data?.application?.last_updated ? new Date(draft.table_data.application.last_updated).toLocaleDateString() : 'N/A'}</div>
-                    <div><span className="font-medium">Flow Type:</span> {draft.table_data?.application?.flow_type || 'N/A'}</div>
-                  </div>
-                </div>
-
-                {/* Applicant Data (applicant_nyc) */}
-                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <User className="w-5 h-5 text-green-600" />
-                    <h6 className="font-semibold text-green-900">Applicant Data (applicant_nyc)</h6>
-                    <Badge className="ml-auto bg-green-100 text-green-800 text-xs">applicant_nyc</Badge>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">User ID:</span> {draft.table_data?.applicant?.userId || 'N/A'}</div>
-                    <div><span className="font-medium">Zone Info:</span> {draft.table_data?.applicant?.zoneinfo || 'N/A'}</div>
-                    <div><span className="font-medium">Status:</span> {draft.table_data?.applicant?.status || 'N/A'}</div>
-                    <div><span className="font-medium">Current Step:</span> {draft.table_data?.applicant?.current_step || 0}</div>
-                    <div><span className="font-medium">Last Updated:</span> {draft.table_data?.applicant?.last_updated ? new Date(draft.table_data.applicant.last_updated).toLocaleDateString() : 'N/A'}</div>
-                    <div><span className="font-medium">Occupants:</span> {draft.table_data?.applicant?.occupants?.length || 0}</div>
-                  </div>
-                </div>
-
-                {/* Co-Applicant Data (Co-Applicants) */}
-                <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Users className="w-5 h-5 text-purple-600" />
-                    <h6 className="font-semibold text-purple-900">Co-Applicant Data (Co-Applicants)</h6>
-                    <Badge className="ml-auto bg-purple-100 text-purple-800 text-xs">Co-Applicants</Badge>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">User ID:</span> {draft.table_data?.coApplicant?.userId || 'N/A'}</div>
-                    <div><span className="font-medium">Zone Info:</span> {draft.table_data?.coApplicant?.zoneinfo || 'N/A'}</div>
-                    <div><span className="font-medium">Status:</span> {draft.table_data?.coApplicant?.status || 'N/A'}</div>
-                    <div><span className="font-medium">Current Step:</span> {draft.table_data?.coApplicant?.current_step || 0}</div>
-                    <div><span className="font-medium">Last Updated:</span> {draft.table_data?.coApplicant?.last_updated ? new Date(draft.table_data.coApplicant.last_updated).toLocaleDateString() : 'N/A'}</div>
-                    <div><span className="font-medium">Occupants:</span> {draft.table_data?.coApplicant?.occupants?.length || 0}</div>
-                  </div>
-                </div>
-
-                {/* Guarantor Data (Guarantors_nyc) */}
-                <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Shield className="w-5 h-5 text-orange-600" />
-                    <h6 className="font-semibold text-orange-900">Guarantor Data (Guarantors_nyc)</h6>
-                    <Badge className="ml-auto bg-orange-100 text-orange-800 text-xs">Guarantors_nyc</Badge>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">User ID:</span> {draft.table_data?.guarantor?.userId || 'N/A'}</div>
-                    <div><span className="font-medium">Zone Info:</span> {draft.table_data?.guarantor?.zoneinfo || 'N/A'}</div>
-                    <div><span className="font-medium">Status:</span> {draft.table_data?.guarantor?.status || 'N/A'}</div>
-                    <div><span className="font-medium">Current Step:</span> {draft.table_data?.guarantor?.current_step || 0}</div>
-                    <div><span className="font-medium">Last Updated:</span> {draft.table_data?.guarantor?.last_updated ? new Date(draft.table_data.guarantor.last_updated).toLocaleDateString() : 'N/A'}</div>
-                    <div><span className="font-medium">Occupants:</span> {draft.table_data?.guarantor?.occupants?.length || 0}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Data Summary */}
-              <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <h6 className="font-semibold text-gray-900 mb-3">Data Summary</h6>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div className="text-center">
-                    <div className="font-medium text-blue-900">Application</div>
-                    <div className={`text-2xl font-bold ${draft.table_data?.application ? 'text-green-600' : 'text-red-600'}`}>
-                      {draft.table_data?.application ? '✓' : '✗'}
-                    </div>
-                    <div className="text-gray-600">{draft.table_data?.application ? 'Present' : 'Missing'}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-medium text-green-900">Applicant</div>
-                    <div className={`text-2xl font-bold ${draft.table_data?.applicant ? 'text-green-600' : 'text-red-600'}`}>
-                      {draft.table_data?.applicant ? '✓' : '✗'}
-                    </div>
-                    <div className="text-gray-600">{draft.table_data?.applicant ? 'Present' : 'Missing'}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-medium text-purple-900">Co-Applicant</div>
-                    <div className={`text-2xl font-bold ${draft.table_data?.coApplicant ? 'text-green-600' : 'text-red-600'}`}>
-                      {draft.table_data?.coApplicant ? '✓' : '✗'}
-                    </div>
-                    <div className="text-gray-600">{draft.table_data?.coApplicant ? 'Present' : 'Missing'}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-medium text-orange-900">Guarantor</div>
-                    <div className={`text-2xl font-bold ${draft.table_data?.guarantor ? 'text-green-600' : 'text-red-600'}`}>
-                      {draft.table_data?.guarantor ? '✓' : '✗'}
-                    </div>
-                    <div className="text-gray-600">{draft.table_data?.guarantor ? 'Present' : 'Missing'}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Removed: Complete Data from Separate Tables and Data Summary */}
           </TabsContent>
 
           {/* Main Application Tab */}
@@ -851,9 +768,18 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 Co-Applicants Information
               </h5>
               
-              {formSummary.coApplicants && Array.isArray(formSummary.coApplicants) && formSummary.coApplicants.length > 0 ? (
+              {(() => {
+                const coApps = Array.isArray(formSummary.coApplicants) ? formSummary.coApplicants : [];
+                const seen = new Set<string>();
+                const uniqueList = coApps.filter((x: any) => {
+                  const k = `${x?.name || ''}|${x?.email || ''}|${x?.phone || ''}`;
+                  if (seen.has(k)) return false;
+                  seen.add(k);
+                  return true;
+                });
+                return uniqueList.length > 0 ? (
                 <div className="space-y-4">
-                  {formSummary.coApplicants.map((coApp: any, index: number) => (
+                  {uniqueList.map((coApp: any, index: number) => (
                     <div key={index} className="bg-white rounded-lg p-4 border border-purple-300 border-l-4 border-l-purple-500">
                       <div className="flex items-center justify-between mb-3">
                         <h6 className="font-semibold text-purple-900">Co-Applicant {index + 1}</h6>
@@ -911,7 +837,8 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                     Add Co-Applicants
                   </Button>
                 </div>
-              )}
+              )
+              })()}
             </div>
           </TabsContent>
 
@@ -923,9 +850,18 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 Guarantors Information
               </h5>
               
-              {formSummary.guarantors && Array.isArray(formSummary.guarantors) && formSummary.guarantors.length > 0 ? (
+              {(() => {
+                const guar = Array.isArray(formSummary.guarantors) ? formSummary.guarantors : [];
+                const seen = new Set<string>();
+                const uniqueList = guar.filter((x: any) => {
+                  const k = `${x?.name || ''}|${x?.email || ''}|${x?.phone || ''}`;
+                  if (seen.has(k)) return false;
+                  seen.add(k);
+                  return true;
+                });
+                return uniqueList.length > 0 ? (
                 <div className="space-y-4">
-                  {formSummary.guarantors.map((guar: any, index: number) => (
+                  {uniqueList.map((guar: any, index: number) => (
                     <div key={index} className="bg-white rounded-lg p-4 border border-orange-300 border-l-4 border-l-orange-500">
                       <div className="flex items-center justify-between mb-3">
                         <h6 className="font-semibold text-orange-900">Guarantor {index + 1}</h6>
@@ -1024,7 +960,8 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                     Add Guarantors
                   </Button>
                 </div>
-              )}
+              )
+              })()}
             </div>
           </TabsContent>
 
@@ -1036,10 +973,18 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 Occupants Information
               </h5>
               
-              {(formSummary.occupants && Array.isArray(formSummary.occupants) && formSummary.occupants.length > 0) || 
-               (formSummary.occupantsList && Array.isArray(formSummary.occupantsList) && formSummary.occupantsList.length > 0) ? (
+              {(() => {
+                const occ = (formSummary.occupants || formSummary.occupantsList || []) as any[];
+                const seen = new Set<string>();
+                const uniqueList = occ.filter((x: any) => {
+                  const k = `${x?.name || ''}|${x?.relationship || ''}|${x?.dob || ''}`;
+                  if (seen.has(k)) return false;
+                  seen.add(k);
+                  return true;
+                });
+                return uniqueList.length > 0 ? (
                 <div className="space-y-4">
-                  {(formSummary.occupants || formSummary.occupantsList || []).map((occupant: any, index: number) => (
+                  {uniqueList.map((occupant: any, index: number) => (
                     <div key={index} className="bg-white rounded-lg p-4 border border-indigo-300 border-l-4 border-l-indigo-500">
                       <div className="flex items-center justify-between mb-3">
                         <h6 className="font-semibold text-indigo-900">Occupant {index + 1}</h6>
@@ -1072,7 +1017,8 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                     Add Occupants
                   </Button>
                 </div>
-              )}
+              )
+              })()}
             </div>
           </TabsContent>
         </Tabs>
@@ -1144,28 +1090,33 @@ export const DraftCards = () => {
         
         // Role-based data retrieval
         if (userRole === 'applicant') {
-          // Primary Applicant: list ALL applications in this zone
+          // Primary Applicant: list ALL applications in this zone, but show only those created by this user
           const applications = await dynamoDBSeparateTablesUtils.getApplicationsByZoneinfo();
+          const currentUserId = await dynamoDBSeparateTablesUtils.getCurrentUserId();
           if (applications && applications.length > 0) {
             for (const application of applications) {
-              const applicantFormData = {
-                // Application Information (from app_nyc)
+              // Filter: match userId if present
+              if (currentUserId && application.userId && application.userId !== currentUserId) {
+                continue;
+              }
+            const applicantFormData = {
+              // Application Information (from app_nyc)
                 application: application.application_info || {},
-                
+              
                 // Primary Applicant (from applicant_nyc) - optional current user data
-                applicant: allData.applicant?.applicant_info || {},
-                applicant_occupants: allData.applicant?.occupants || [],
-                
-                // Reference data
+              applicant: allData.applicant?.applicant_info || {},
+              applicant_occupants: allData.applicant?.occupants || [],
+              
+              // Reference data
                 application_id: application.appid,
                 zoneinfo: application.zoneinfo
-              };
-
-              drafts.push({
+            };
+            
+            drafts.push({
                 zoneinfo: application.zoneinfo,
                 applicantId: application.appid,
                 reference_id: application.appid,
-                form_data: applicantFormData,
+              form_data: applicantFormData,
                 current_step: application.current_step || 0,
                 last_updated: application.last_updated,
                 status: application.status,
@@ -1175,16 +1126,16 @@ export const DraftCards = () => {
                 encrypted_documents: application.encrypted_documents || {},
                 flow_type: application.flow_type || 'separate_webhooks',
                 webhook_flow_version: application.webhook_flow_version || '2.0',
-                
-                // Role-specific table data
-                table_data: {
+              
+              // Role-specific table data
+              table_data: {
                   application: application,
-                  applicant: allData.applicant
-                }
-              });
+                applicant: allData.applicant
+              }
+            });
             }
           }
-
+          
         } else if (userRole.startsWith('coapplicant')) {
           // Co-Applicant: Show data from Co-Applicants table only
           if (allData.coApplicant) {
@@ -1334,17 +1285,32 @@ export const DraftCards = () => {
           }
         }
         
-        console.log('📋 Loaded role-based draft data:', drafts);
+        // Deduplicate by reference_id/appid, keep most recent by last_updated
+        const dedupMap = new Map<string, DraftData>();
+        for (const d of drafts) {
+          const key = d.reference_id || d.applicantId || `${d.zoneinfo}:${d.form_data?.application_id || ''}`;
+          const existing = dedupMap.get(key);
+          if (!existing) {
+            dedupMap.set(key, d);
+          } else {
+            const a = new Date(existing.last_updated || 0).getTime();
+            const b = new Date(d.last_updated || 0).getTime();
+            if (b > a) dedupMap.set(key, d);
+          }
+        }
+        const uniqueDrafts = Array.from(dedupMap.values());
+
+        console.log('📋 Loaded role-based draft data (deduped):', uniqueDrafts);
         console.log('📊 Role-based data summary:', {
           userRole,
           application: !!allData.application,
           applicant: !!allData.applicant,
           coApplicant: !!allData.coApplicant,
           guarantor: !!allData.guarantor,
-          draftsCount: drafts.length
+          draftsCount: uniqueDrafts.length
         });
         
-        setDrafts(drafts);
+        setDrafts(uniqueDrafts);
       } catch (err) {
         console.error('❌ Error loading drafts:', err);
         setError('Failed to load drafts');
@@ -1453,6 +1419,12 @@ export const DraftCards = () => {
                 <p className="text-xl text-blue-100 max-w-2xl leading-relaxed">
                   Manage and track all your rental applications in one place
                 </p>
+                {/* Logged-in user info */}
+                <div className="text-sm text-blue-100/90">
+                  <span className="font-semibold">Role:</span> {(user as any)?.role || 'unknown'}
+                  <span className="mx-2">|</span>
+                  <span className="font-semibold">User ID:</span> {(user as any)?.userId || (user as any)?.sub || 'unknown'}
+                </div>
               </div>
               
               {/* Applications Icon */}

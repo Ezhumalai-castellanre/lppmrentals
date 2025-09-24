@@ -497,6 +497,60 @@ export class DynamoDBSeparateTablesService {
     }
   }
 
+  // Save applicant data as a NEW record by generating a unique userId suffix
+  async saveApplicantDataNew(data: Omit<ApplicantData, 'userId' | 'role' | 'zoneinfo'>): Promise<boolean> {
+    if (!this.client) {
+      console.error('❌ DynamoDB client not initialized');
+      return false;
+    }
+
+    try {
+      const baseUserId = await this.getCurrentUserId();
+      if (!baseUserId) {
+        console.error('❌ No userId available for current user');
+        return false;
+      }
+
+      const role = await this.getCurrentUserRole();
+      if (!role) {
+        console.error('❌ No role available for current user');
+        return false;
+      }
+
+      const zoneinfo = await this.getCurrentUserZoneinfo();
+      if (!zoneinfo) {
+        console.error('❌ No zoneinfo available for current user');
+        return false;
+      }
+
+      // Generate a unique synthetic userId to avoid overwriting existing applicant_nyc record
+      const uniqueUserId = `${baseUserId}-${Date.now()}`;
+
+      const applicantData: ApplicantData = {
+        ...data,
+        userId: uniqueUserId,
+        role,
+        zoneinfo,
+        last_updated: new Date().toISOString()
+      };
+
+      const command = new PutItemCommand({
+        TableName: this.tables.applicant_nyc,
+        Item: marshall(applicantData, { 
+          removeUndefinedValues: true,
+          convertClassInstanceToMap: true 
+        })
+      });
+
+      await this.client.send(command);
+      console.log('✅ Applicant data saved as NEW record with unique userId:', uniqueUserId);
+      return true;
+    } catch (error) {
+      console.error('❌ Error saving applicant data as new record:', error);
+      return false;
+    }
+  }
+
   // Get applicant data
   async getApplicantData(): Promise<ApplicantData | null> {
     if (!this.client) {
@@ -641,6 +695,67 @@ export class DynamoDBSeparateTablesService {
     } catch (error) {
       console.error('❌ Error getting co-applicant data:', error);
       return null;
+    }
+  }
+
+  // Save co-applicant as NEW record by generating unique userId suffix
+  async saveCoApplicantDataNew(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
+    if (!this.client) {
+      console.error('❌ DynamoDB client not initialized');
+      return false;
+    }
+
+    try {
+      const baseUserId = await this.getCurrentUserId();
+      if (!baseUserId) {
+        console.error('❌ No userId available for current user');
+        return false;
+      }
+
+      const role = await this.getCurrentUserRole();
+      if (!role) {
+        console.error('❌ No role available for current user');
+        return false;
+      }
+
+      const zoneinfo = await this.getCurrentUserZoneinfo();
+      if (!zoneinfo) {
+        console.error('❌ No zoneinfo available for current user');
+        return false;
+      }
+
+      let applicationAppid = appid;
+      if (!applicationAppid) {
+        const existingApp = await this.getApplicationData();
+        applicationAppid = existingApp?.appid;
+        if (!applicationAppid) {
+          console.error('❌ No appid available for co-applicant data');
+          return false;
+        }
+      }
+
+      const uniqueUserId = `${baseUserId}-co-${Date.now()}`;
+
+      const coApplicantData: CoApplicantData = {
+        ...data,
+        userId: uniqueUserId,
+        role,
+        zoneinfo,
+        appid: applicationAppid,
+        last_updated: new Date().toISOString()
+      };
+
+      const command = new PutItemCommand({
+        TableName: this.tables.coapplicants,
+        Item: marshall(coApplicantData, { removeUndefinedValues: true, convertClassInstanceToMap: true })
+      });
+
+      await this.client.send(command);
+      console.log('✅ Co-applicant saved as NEW record with unique userId:', uniqueUserId);
+      return true;
+    } catch (error) {
+      console.error('❌ Error saving co-applicant as new record:', error);
+      return false;
     }
   }
 
@@ -790,6 +905,67 @@ export class DynamoDBSeparateTablesService {
     } catch (error) {
       console.error('❌ Error getting guarantor data:', error);
       return null;
+    }
+  }
+
+  // Save guarantor as NEW record by generating unique userId suffix
+  async saveGuarantorDataNew(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
+    if (!this.client) {
+      console.error('❌ DynamoDB client not initialized');
+      return false;
+    }
+
+    try {
+      const baseUserId = await this.getCurrentUserId();
+      if (!baseUserId) {
+        console.error('❌ No userId available for current user');
+        return false;
+      }
+
+      const role = await this.getCurrentUserRole();
+      if (!role) {
+        console.error('❌ No role available for current user');
+        return false;
+      }
+
+      const zoneinfo = await this.getCurrentUserZoneinfo();
+      if (!zoneinfo) {
+        console.error('❌ No zoneinfo available for current user');
+        return false;
+      }
+
+      let applicationAppid = appid;
+      if (!applicationAppid) {
+        const existingApp = await this.getApplicationData();
+        applicationAppid = existingApp?.appid;
+        if (!applicationAppid) {
+          console.error('❌ No appid available for guarantor data');
+          return false;
+        }
+      }
+
+      const uniqueUserId = `${baseUserId}-guar-${Date.now()}`;
+
+      const guarantorData: GuarantorData = {
+        ...data,
+        userId: uniqueUserId,
+        role,
+        zoneinfo,
+        appid: applicationAppid,
+        last_updated: new Date().toISOString()
+      };
+
+      const command = new PutItemCommand({
+        TableName: this.tables.guarantors,
+        Item: marshall(guarantorData, { removeUndefinedValues: true, convertClassInstanceToMap: true })
+      });
+
+      await this.client.send(command);
+      console.log('✅ Guarantor saved as NEW record with unique userId:', uniqueUserId);
+      return true;
+    } catch (error) {
+      console.error('❌ Error saving guarantor as new record:', error);
+      return false;
     }
   }
 
@@ -990,6 +1166,10 @@ export const dynamoDBSeparateTablesUtils = {
     return dynamoDBSeparateTablesService.getApplicantData();
   },
   
+  async saveApplicantDataNew(data: Omit<ApplicantData, 'userId' | 'role' | 'zoneinfo'>): Promise<boolean> {
+    return dynamoDBSeparateTablesService.saveApplicantDataNew(data);
+  },
+  
   async saveCoApplicantData(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
     return dynamoDBSeparateTablesService.saveCoApplicantData(data, appid);
   },
@@ -1010,6 +1190,14 @@ export const dynamoDBSeparateTablesUtils = {
     return dynamoDBSeparateTablesService.getGuarantorData();
   },
   
+  async saveCoApplicantDataNew(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
+    return dynamoDBSeparateTablesService.saveCoApplicantDataNew(data, appid);
+  },
+  
+  async saveGuarantorDataNew(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
+    return dynamoDBSeparateTablesService.saveGuarantorDataNew(data, appid);
+  },
+  
   async getGuarantorsByAppId(appid?: string): Promise<GuarantorData[]> {
     return dynamoDBSeparateTablesService.getGuarantorsByAppId(appid);
   },
@@ -1020,5 +1208,10 @@ export const dynamoDBSeparateTablesUtils = {
   
   async deleteAllUserData(): Promise<boolean> {
     return dynamoDBSeparateTablesService.deleteAllUserData();
+  },
+  
+  // Expose current userId for client filtering/diagnostics
+  async getCurrentUserId(): Promise<string | null> {
+    return dynamoDBSeparateTablesService.getCurrentUserId();
   }
 };

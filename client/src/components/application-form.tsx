@@ -2801,7 +2801,7 @@ export function ApplicationForm() {
           last_updated: new Date().toISOString()
         };
 
-        const applicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicantData(applicantData);
+        const applicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicantDataNew(applicantData);
         saveResults.push(applicantSaveResult);
         
         console.log('✅ Primary Applicant draft saved to app_nyc and applicant_nyc tables');
@@ -2828,7 +2828,7 @@ export function ApplicationForm() {
         const appid = selectedAppId || existingApp?.appid || referenceId;
         console.log('🔗 Linking co-applicant draft to appid:', appid);
 
-        const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantData(coApplicantSaveData, appid);
+        const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantDataNew(coApplicantSaveData, appid);
         saveResults.push(coApplicantSaveResult);
         
         console.log('✅ Co-Applicant draft saved to Co-Applicants table');
@@ -2855,7 +2855,7 @@ export function ApplicationForm() {
         const appid = selectedAppId || existingApp?.appid || referenceId;
         console.log('🔗 Linking guarantor draft to appid:', appid);
 
-        const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorData(guarantorSaveData, appid);
+        const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorDataNew(guarantorSaveData, appid);
         saveResults.push(guarantorSaveResult);
         
         console.log('✅ Guarantor draft saved to Guarantors_nyc table');
@@ -5563,7 +5563,7 @@ export function ApplicationForm() {
               last_updated: new Date().toISOString()
             };
 
-            const applicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicantData(submittedApplicantData);
+            const applicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicantDataNew(submittedApplicantData);
             saveResults.push(applicantSaveResult);
             
             console.log('✅ Primary Applicant data saved to app_nyc and applicant_nyc tables');
@@ -5590,7 +5590,7 @@ export function ApplicationForm() {
             const appid = selectedAppId || existingApp?.appid || submissionResult?.reference_id || referenceId;
             console.log('🔗 Linking co-applicant to appid:', appid);
 
-            const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantData(submittedCoApplicantData, appid);
+            const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantDataNew(submittedCoApplicantData, appid);
             saveResults.push(coApplicantSaveResult);
             
             console.log('✅ Co-Applicant data saved to Co-Applicants table');
@@ -5617,7 +5617,7 @@ export function ApplicationForm() {
             const appid = selectedAppId || existingApp?.appid || submissionResult?.reference_id || referenceId;
             console.log('🔗 Linking guarantor to appid:', appid);
 
-            const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorData(submittedGuarantorData, appid);
+            const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorDataNew(submittedGuarantorData, appid);
             saveResults.push(guarantorSaveResult);
             
             console.log('✅ Guarantor data saved to Guarantors_nyc table');
