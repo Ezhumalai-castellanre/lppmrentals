@@ -1099,13 +1099,18 @@ export const DraftCards = () => {
               if (currentUserId && application.userId && application.userId !== currentUserId) {
                 continue;
               }
+              // Load matching applicant_nyc by appid for preview
+              let matchedApplicant: any = undefined;
+              try {
+                matchedApplicant = await dynamoDBSeparateTablesUtils.getApplicantByAppId(application.appid);
+              } catch {}
             const applicantFormData = {
               // Application Information (from app_nyc)
                 application: application.application_info || {},
               
                 // Primary Applicant (from applicant_nyc) - optional current user data
-              applicant: allData.applicant?.applicant_info || {},
-              applicant_occupants: allData.applicant?.occupants || [],
+                applicant: matchedApplicant?.applicant_info || allData.applicant?.applicant_info || {},
+                applicant_occupants: matchedApplicant?.occupants || allData.applicant?.occupants || [],
               
               // Reference data
                 application_id: application.appid,

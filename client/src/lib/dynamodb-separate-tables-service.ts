@@ -30,6 +30,7 @@ export interface ApplicantData {
   userId: string; // User's ID
   role: string; // User's role (applicant, coapplicant, guarantor, etc.)
   zoneinfo: string; // User's zoneinfo
+  appid?: string; // Link to main application
   applicant_info: any; // Primary applicant form data
   occupants: any; // Occupants data
   webhookSummary: any; // Webhook summary
@@ -472,11 +473,19 @@ export class DynamoDBSeparateTablesService {
         return false;
       }
 
+      // Attach current application appid if available
+      let applicationAppid: string | undefined;
+      try {
+        const existingApp = await this.getApplicationData();
+        applicationAppid = existingApp?.appid;
+      } catch {}
+
       const applicantData: ApplicantData = {
         ...data,
         userId,
         role,
         zoneinfo,
+        appid: applicationAppid,
         last_updated: new Date().toISOString()
       };
 
@@ -498,7 +507,7 @@ export class DynamoDBSeparateTablesService {
   }
 
   // Save applicant data as a NEW record by generating a unique userId suffix
-  async saveApplicantDataNew(data: Omit<ApplicantData, 'userId' | 'role' | 'zoneinfo'>): Promise<boolean> {
+  async saveApplicantDataNew(data: Omit<ApplicantData, 'userId' | 'role' | 'zoneinfo'>, appid?: string): Promise<boolean> {
     if (!this.client) {
       console.error('❌ DynamoDB client not initialized');
       return false;
@@ -526,11 +535,21 @@ export class DynamoDBSeparateTablesService {
       // Generate a unique synthetic userId to avoid overwriting existing applicant_nyc record
       const uniqueUserId = `${baseUserId}-${Date.now()}`;
 
+      // Attach current application appid if available
+      let applicationAppid: string | undefined = appid;
+      if (!applicationAppid) {
+        try {
+          const existingApp = await this.getApplicationData();
+          applicationAppid = existingApp?.appid;
+        } catch {}
+      }
+
       const applicantData: ApplicantData = {
         ...data,
         userId: uniqueUserId,
         role,
         zoneinfo,
+        appid: applicationAppid,
         last_updated: new Date().toISOString()
       };
 
@@ -588,6 +607,43 @@ export class DynamoDBSeparateTablesService {
       return null;
     } catch (error) {
       console.error('❌ Error getting applicant data:', error);
+      return null;
+    }
+  }
+
+  // Get applicant_nyc record by appid (scan by zoneinfo + appid)
+  async getApplicantByAppId(appid: string): Promise<ApplicantData | null> {
+    if (!this.client) {
+      console.error('❌ DynamoDB client not initialized');
+      return null;
+    }
+
+    try {
+      const zoneinfo = await this.getCurrentUserZoneinfo();
+      if (!zoneinfo) {
+        console.error('❌ No zoneinfo available for current user');
+        return null;
+      }
+
+      const command = new ScanCommand({
+        TableName: this.tables.applicant_nyc,
+        FilterExpression: 'zoneinfo = :zoneinfo AND appid = :appid',
+        ExpressionAttributeValues: marshall({
+          ':zoneinfo': zoneinfo,
+          ':appid': appid,
+        }, { convertClassInstanceToMap: true })
+      });
+
+      const result = await this.client.send(command);
+      if (result.Items && result.Items.length > 0) {
+        // If multiple, pick the most recent by last_updated
+        const items = result.Items.map(i => unmarshall(i) as ApplicantData);
+        items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
+        return items[0];
+      }
+      return null;
+    } catch (error) {
+      console.error('❌ Error getting applicant by appid:', error);
       return null;
     }
   }
@@ -1166,8 +1222,12 @@ export const dynamoDBSeparateTablesUtils = {
     return dynamoDBSeparateTablesService.getApplicantData();
   },
   
-  async saveApplicantDataNew(data: Omit<ApplicantData, 'userId' | 'role' | 'zoneinfo'>): Promise<boolean> {
-    return dynamoDBSeparateTablesService.saveApplicantDataNew(data);
+  async getApplicantByAppId(appid: string): Promise<ApplicantData | null> {
+    return dynamoDBSeparateTablesService.getApplicantByAppId(appid);
+  },
+  
+  async saveApplicantDataNew(data: Omit<ApplicantData, 'userId' | 'role' | 'zoneinfo'>, appid?: string): Promise<boolean> {
+    return dynamoDBSeparateTablesService.saveApplicantDataNew(data, appid);
   },
   
   async saveCoApplicantData(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {

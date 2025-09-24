@@ -2801,7 +2801,10 @@ export function ApplicationForm() {
           last_updated: new Date().toISOString()
         };
 
-        const applicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicantDataNew(applicantData);
+        // Get the appid we just created for app_nyc and pass it to applicant_nyc
+        const createdApp = await dynamoDBSeparateTablesUtils.getApplicationDataByUserId();
+        const newAppId = createdApp?.appid || undefined;
+        const applicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicantDataNew(applicantData, newAppId);
         saveResults.push(applicantSaveResult);
         
         console.log('✅ Primary Applicant draft saved to app_nyc and applicant_nyc tables');
@@ -5563,7 +5566,9 @@ export function ApplicationForm() {
               last_updated: new Date().toISOString()
             };
 
-            const applicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicantDataNew(submittedApplicantData);
+            const createdAppFinal = await dynamoDBSeparateTablesUtils.getApplicationDataByUserId();
+            const finalAppId = createdAppFinal?.appid || undefined;
+            const applicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicantDataNew(submittedApplicantData, finalAppId);
             saveResults.push(applicantSaveResult);
             
             console.log('✅ Primary Applicant data saved to app_nyc and applicant_nyc tables');
