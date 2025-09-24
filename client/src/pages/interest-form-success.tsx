@@ -13,7 +13,10 @@ export default function InterestFormSuccess() {
     const win = window as any
 
     if (win.fbq && typeof win.fbq === 'function') {
-      try { win.fbq('track', 'Lead') } catch {}
+      try { 
+        win.fbq('track', 'PageView')
+        win.fbq('track', 'Lead') 
+      } catch {}
     } else {
       const bootstrap = document.createElement('script')
       bootstrap.type = 'text/javascript'
