@@ -1162,38 +1162,36 @@ export const DraftCards = () => {
           }
           
         } else if (userRole.startsWith('coapplicant')) {
-          // Co-Applicant: Show data from Co-Applicants table only
-          if (allData.coApplicant) {
-            const coApplicantFormData = {
-              // Co-Applicant data (from Co-Applicants)
-              coApplicants: [allData.coApplicant.coapplicant_info],
-              coApplicant_occupants: allData.coApplicant.occupants || [],
-              
-              // Reference data
-              application_id: allData.coApplicant.userId,
-              zoneinfo: allData.coApplicant.zoneinfo
-            };
-            
-            drafts.push({
-              zoneinfo: allData.coApplicant.zoneinfo,
-              applicantId: allData.coApplicant.userId,
-              reference_id: allData.coApplicant.userId,
-              form_data: coApplicantFormData,
-              current_step: 0, // Co-applicants don't have current_step in their interface
-              last_updated: allData.coApplicant.last_updated,
-              status: allData.coApplicant.status,
-              uploaded_files_metadata: {},
-              webhook_responses: allData.coApplicant.webhookSummary || {},
-              signatures: { coApplicants: allData.coApplicant.signature },
-              encrypted_documents: {},
-              flow_type: 'separate_webhooks',
-              webhook_flow_version: '2.0',
-              
-              // Role-specific table data
-              table_data: {
-                coApplicant: allData.coApplicant
-              }
-            });
+          // Co-Applicant: Show ALL co-applicant records for this user (including suffixed IDs)
+          const allCoApplicants = await dynamoDBSeparateTablesUtils.getAllCoApplicantsForCurrentUser();
+          if (allCoApplicants && allCoApplicants.length > 0) {
+            for (const coApp of allCoApplicants) {
+              const coApplicantFormData = {
+                coApplicants: [coApp.coapplicant_info],
+                coApplicant_occupants: coApp.occupants || [],
+                application_id: coApp.appid,
+                zoneinfo: coApp.zoneinfo
+              };
+
+              drafts.push({
+                zoneinfo: coApp.zoneinfo,
+                applicantId: coApp.userId,
+                reference_id: coApp.userId,
+                form_data: coApplicantFormData,
+                current_step: 0,
+                last_updated: coApp.last_updated,
+                status: coApp.status,
+                uploaded_files_metadata: {},
+                webhook_responses: coApp.webhookSummary || {},
+                signatures: { coApplicants: coApp.signature },
+                encrypted_documents: {},
+                flow_type: 'separate_webhooks',
+                webhook_flow_version: '2.0',
+                table_data: {
+                  coApplicant: coApp
+                }
+              });
+            }
           }
           
         } else if (userRole.startsWith('guarantor')) {

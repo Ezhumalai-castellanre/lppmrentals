@@ -19,6 +19,7 @@ export function RentalListings() {
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [imageIndices, setImageIndices] = useState<{ [key: string]: number }>({})
+  const [exactPropertyMode, setExactPropertyMode] = useState(false)
   
   const ITEMS_PER_PAGE = 6
   const INITIAL_ITEMS = 9
@@ -27,6 +28,21 @@ export function RentalListings() {
 
   useEffect(() => {
     fetchRentals()
+  }, [])
+
+  // Initialize search from URL query parameter `property`
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const propertyParam = params.get('property') || params.get('q')
+      if (propertyParam) {
+        const decoded = decodeURIComponent(propertyParam)
+        setSearchQuery(decoded)
+        setExactPropertyMode(true)
+      }
+    } catch (e) {
+      // ignore URL parse errors
+    }
   }, [])
 
   const fetchRentals = async () => {
@@ -54,15 +70,22 @@ export function RentalListings() {
     // Apply search filter first
     if (search.trim()) {
       const searchLower = search.toLowerCase().trim()
-      filteredRentals = filteredRentals.filter(rental => {
-        const propertyName = rental.propertyName?.toLowerCase() || ''
-        const unitName = rental.name?.toLowerCase() || ''
-        const amenities = rental.amenities?.toLowerCase() || ''
-        
-        return propertyName.includes(searchLower) || 
-               unitName.includes(searchLower) || 
-               amenities.includes(searchLower)
-      })
+      if (exactPropertyMode) {
+        filteredRentals = filteredRentals.filter(rental => {
+          const propertyName = (rental.propertyName || '').toLowerCase().trim()
+          return propertyName === searchLower
+        })
+      } else {
+        filteredRentals = filteredRentals.filter(rental => {
+          const propertyName = rental.propertyName?.toLowerCase() || ''
+          const unitName = rental.name?.toLowerCase() || ''
+          const amenities = rental.amenities?.toLowerCase() || ''
+          
+          return propertyName.includes(searchLower) || 
+                 unitName.includes(searchLower) || 
+                 amenities.includes(searchLower)
+        })
+      }
     }
     
     // Then apply bedroom filter
@@ -124,15 +147,22 @@ export function RentalListings() {
     // Apply search filter
     if (searchQuery.trim()) {
       const searchLower = searchQuery.toLowerCase().trim()
-      filteredRentals = filteredRentals.filter(rental => {
-        const propertyName = rental.propertyName?.toLowerCase() || ''
-        const unitName = rental.name?.toLowerCase() || ''
-        const amenities = rental.amenities?.toLowerCase() || ''
-        
-        return propertyName.includes(searchLower) || 
-               unitName.includes(searchLower) || 
-               amenities.includes(searchLower)
-      })
+      if (exactPropertyMode) {
+        filteredRentals = filteredRentals.filter(rental => {
+          const propertyName = (rental.propertyName || '').toLowerCase().trim()
+          return propertyName === searchLower
+        })
+      } else {
+        filteredRentals = filteredRentals.filter(rental => {
+          const propertyName = rental.propertyName?.toLowerCase() || ''
+          const unitName = rental.name?.toLowerCase() || ''
+          const amenities = rental.amenities?.toLowerCase() || ''
+          
+          return propertyName.includes(searchLower) || 
+                 unitName.includes(searchLower) || 
+                 amenities.includes(searchLower)
+        })
+      }
     }
     
     // Apply bedroom filter
@@ -434,15 +464,22 @@ export function RentalListings() {
                 // Apply search filter
                 if (searchQuery.trim()) {
                   const searchLower = searchQuery.toLowerCase().trim()
-                  filteredRentals = filteredRentals.filter(rental => {
-                    const propertyName = rental.propertyName?.toLowerCase() || ''
-                    const unitName = rental.name?.toLowerCase() || ''
-                    const amenities = rental.amenities?.toLowerCase() || ''
-                    
-                    return propertyName.includes(searchLower) || 
-                           unitName.includes(searchLower) || 
-                           amenities.includes(searchLower)
-                  })
+                  if (exactPropertyMode) {
+                    filteredRentals = filteredRentals.filter(rental => {
+                      const propertyName = (rental.propertyName || '').toLowerCase().trim()
+                      return propertyName === searchLower
+                    })
+                  } else {
+                    filteredRentals = filteredRentals.filter(rental => {
+                      const propertyName = rental.propertyName?.toLowerCase() || ''
+                      const unitName = rental.name?.toLowerCase() || ''
+                      const amenities = rental.amenities?.toLowerCase() || ''
+                      
+                      return propertyName.includes(searchLower) || 
+                             unitName.includes(searchLower) || 
+                             amenities.includes(searchLower)
+                    })
+                  }
                 }
                 
                 // Apply bedroom filter

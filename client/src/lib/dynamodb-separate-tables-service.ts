@@ -96,6 +96,68 @@ export class DynamoDBSeparateTablesService {
     this.initializeClientWithRetry();
   }
 
+  // Recursively sanitize values so DynamoDB marshaller accepts them
+  private sanitizeForDynamo<T = any>(input: T): T {
+    const seen = new WeakSet();
+
+    const sanitize = (value: any): any => {
+      if (value === undefined) return undefined;
+      if (value === null) return null;
+      const t = typeof value;
+      if (t === 'string' || t === 'number' || t === 'boolean') return value;
+
+      // Dates -> ISO strings
+      if (value instanceof Date) return value.toISOString();
+
+      // ArrayBuffer -> Uint8Array (Binary)
+      if (typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer) {
+        return new Uint8Array(value);
+      }
+
+      // Uint8Array -> keep (Binary)
+      if (typeof Uint8Array !== 'undefined' && value instanceof Uint8Array) {
+        return value;
+      }
+
+      // Browser File/Blob -> drop (store metadata only if needed)
+      const isBlob = typeof Blob !== 'undefined' && value instanceof Blob;
+      const isFile = typeof File !== 'undefined' && value instanceof File;
+      if (isBlob || isFile) {
+        return undefined; // rely on S3 references elsewhere
+      }
+
+      // Functions/symbols -> drop
+      if (t === 'function' || t === 'symbol') return undefined;
+
+      // Arrays
+      if (Array.isArray(value)) {
+        const arr = value.map(sanitize).filter((v) => v !== undefined);
+        return arr;
+      }
+
+      // Objects
+      if (t === 'object') {
+        if (seen.has(value)) return undefined; // avoid circular
+        seen.add(value);
+        const out: any = {};
+        for (const [k, v] of Object.entries(value)) {
+          const sv = sanitize(v);
+          if (sv !== undefined) out[k] = sv;
+        }
+        return out;
+      }
+
+      // Fallback: stringify
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    };
+
+    return sanitize(input);
+  }
+
   // Initialize DynamoDB client with authenticated credentials
   private async initializeClient(): Promise<void> {
     try {
@@ -350,14 +412,15 @@ export class DynamoDBSeparateTablesService {
       }
 
       const appid = this.generateApplicationId();
-      const applicationData: ApplicationData = {
+      const applicationData: ApplicationData = this.sanitizeForDynamo({
         ...data,
         userId,
         role,
         appid,
         zoneinfo,
+        timestamp: new Date().toISOString(),
         last_updated: new Date().toISOString()
-      };
+      });
 
       const command = new PutItemCommand({
         TableName: this.tables.app_nyc,
@@ -480,14 +543,15 @@ export class DynamoDBSeparateTablesService {
         applicationAppid = existingApp?.appid;
       } catch {}
 
-      const applicantData: ApplicantData = {
+      const applicantData: ApplicantData = this.sanitizeForDynamo({
         ...data,
         userId,
         role,
         zoneinfo,
         appid: applicationAppid,
+        timestamp: new Date().toISOString(),
         last_updated: new Date().toISOString()
-      };
+      });
 
       const command = new PutItemCommand({
         TableName: this.tables.applicant_nyc,
@@ -544,14 +608,15 @@ export class DynamoDBSeparateTablesService {
       // Use appid (if available) as userId to avoid suffixes; fallback to base userId
       const uniqueUserId = applicationAppid || baseUserId;
 
-      const applicantData: ApplicantData = {
+      const applicantData: ApplicantData = this.sanitizeForDynamo({
         ...data,
         userId: uniqueUserId,
         role,
         zoneinfo,
         appid: applicationAppid,
+        timestamp: new Date().toISOString(),
         last_updated: new Date().toISOString()
-      };
+      });
 
       const command = new PutItemCommand({
         TableName: this.tables.applicant_nyc,
@@ -590,18 +655,23 @@ export class DynamoDBSeparateTablesService {
         return null;
       }
 
-      const command = new GetItemCommand({
+      // Scan by userId and filter by zoneinfo since we're using timestamp as sort key
+      const command = new ScanCommand({
         TableName: this.tables.applicant_nyc,
-        Key: marshall({
-          userId,
-          zoneinfo
-        })
+        FilterExpression: 'userId = :userId AND zoneinfo = :zoneinfo',
+        ExpressionAttributeValues: marshall({
+          ':userId': userId,
+          ':zoneinfo': zoneinfo
+        }, { convertClassInstanceToMap: true })
       });
 
       const result = await this.client.send(command);
       
-      if (result.Item) {
-        return unmarshall(result.Item) as ApplicantData;
+      if (result.Items && result.Items.length > 0) {
+        // Return the most recent record
+        const items = result.Items.map(item => unmarshall(item) as ApplicantData);
+        items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
+        return items[0];
       }
       
       return null;
@@ -611,7 +681,7 @@ export class DynamoDBSeparateTablesService {
     }
   }
 
-  // Get applicant_nyc record by appid (scan by zoneinfo + appid)
+  // Get applicant_nyc record by appid (scan by appid)
   async getApplicantByAppId(appid: string): Promise<ApplicantData | null> {
     if (!this.client) {
       console.error('❌ DynamoDB client not initialized');
@@ -627,10 +697,10 @@ export class DynamoDBSeparateTablesService {
 
       const command = new ScanCommand({
         TableName: this.tables.applicant_nyc,
-        FilterExpression: 'zoneinfo = :zoneinfo AND appid = :appid',
+        FilterExpression: 'appid = :appid AND zoneinfo = :zoneinfo',
         ExpressionAttributeValues: marshall({
-          ':zoneinfo': zoneinfo,
           ':appid': appid,
+          ':zoneinfo': zoneinfo,
         }, { convertClassInstanceToMap: true })
       });
 
@@ -687,14 +757,15 @@ export class DynamoDBSeparateTablesService {
         }
       }
 
-      const coApplicantData: CoApplicantData = {
+      const coApplicantData: CoApplicantData = this.sanitizeForDynamo({
         ...data,
         userId,
         role,
         zoneinfo,
         appid: applicationAppid,
+        timestamp: new Date().toISOString(),
         last_updated: new Date().toISOString()
-      };
+      });
 
       const command = new PutItemCommand({
         TableName: this.tables.coapplicants,
@@ -733,18 +804,23 @@ export class DynamoDBSeparateTablesService {
         return null;
       }
 
-      const command = new GetItemCommand({
+      // Scan by userId and filter by zoneinfo since we're using timestamp as sort key
+      const command = new ScanCommand({
         TableName: this.tables.coapplicants,
-        Key: marshall({
-          userId,
-          zoneinfo
-        })
+        FilterExpression: 'userId = :userId AND zoneinfo = :zoneinfo',
+        ExpressionAttributeValues: marshall({
+          ':userId': userId,
+          ':zoneinfo': zoneinfo
+        }, { convertClassInstanceToMap: true })
       });
 
       const result = await this.client.send(command);
       
-      if (result.Item) {
-        return unmarshall(result.Item) as CoApplicantData;
+      if (result.Items && result.Items.length > 0) {
+        // Return the most recent record
+        const items = result.Items.map(item => unmarshall(item) as CoApplicantData);
+        items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
+        return items[0];
       }
       
       return null;
@@ -792,14 +868,15 @@ export class DynamoDBSeparateTablesService {
 
       const uniqueUserId = `${baseUserId}-co-${Date.now()}`;
 
-      const coApplicantData: CoApplicantData = {
+      const coApplicantData: CoApplicantData = this.sanitizeForDynamo({
         ...data,
         userId: uniqueUserId,
         role,
         zoneinfo,
         appid: applicationAppid,
+        timestamp: new Date().toISOString(),
         last_updated: new Date().toISOString()
-      };
+      });
 
       const command = new PutItemCommand({
         TableName: this.tables.coapplicants,
@@ -839,7 +916,7 @@ export class DynamoDBSeparateTablesService {
         return [];
       }
 
-      // Table primary key appears to be { userId, zoneinfo }. Since we need by appid, use Scan with filter
+      // Scan by appid and filter by zoneinfo since we're using timestamp as sort key
       const command = new ScanCommand({
         TableName: this.tables.coapplicants,
         FilterExpression: 'appid = :appid AND zoneinfo = :zoneinfo',
@@ -851,9 +928,55 @@ export class DynamoDBSeparateTablesService {
 
       const result = await this.client.send(command);
       const items = (result.Items || []).map(item => unmarshall(item) as CoApplicantData);
+      // Sort by timestamp (most recent first)
+      items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
       return items;
     } catch (error) {
       console.error('❌ Error listing co-applicants by appid:', error);
+      return [];
+    }
+  }
+
+  // List all co-applicant records for the current userId (including suffixed IDs)
+  async getAllCoApplicantsForCurrentUser(): Promise<CoApplicantData[]> {
+    if (!this.client) {
+      console.error('❌ DynamoDB client not initialized');
+      return [];
+    }
+
+    try {
+      const baseUserId = await this.getCurrentUserId();
+      if (!baseUserId) {
+        console.error('❌ No userId available for current user');
+        return [];
+      }
+
+      const zoneinfo = await this.getCurrentUserZoneinfo();
+      if (!zoneinfo) {
+        console.error('❌ No zoneinfo available for current user');
+        return [];
+      }
+
+      // Scan coapplicants table for any records that match:
+      // - exact userId match, or
+      // - suffixed IDs created by saveCoApplicantDataNew ("<base>-co-<ts>")
+      const command = new ScanCommand({
+        TableName: this.tables.coapplicants,
+        FilterExpression: 'zoneinfo = :zoneinfo AND (userId = :userId OR begins_with(userId, :userIdCoPrefix))',
+        ExpressionAttributeValues: marshall({
+          ':zoneinfo': zoneinfo,
+          ':userId': baseUserId,
+          ':userIdCoPrefix': `${baseUserId}-co-`
+        }, { convertClassInstanceToMap: true })
+      });
+
+      const result = await this.client.send(command);
+      const items = (result.Items || []).map(item => unmarshall(item) as CoApplicantData);
+      // Sort by timestamp (most recent first)
+      items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
+      return items;
+    } catch (error) {
+      console.error('❌ Error listing co-applicants for current user:', error);
       return [];
     }
   }
@@ -897,14 +1020,15 @@ export class DynamoDBSeparateTablesService {
         }
       }
 
-      const guarantorData: GuarantorData = {
+      const guarantorData: GuarantorData = this.sanitizeForDynamo({
         ...data,
         userId,
         role,
         zoneinfo,
         appid: applicationAppid,
+        timestamp: new Date().toISOString(),
         last_updated: new Date().toISOString()
-      };
+      });
 
       const command = new PutItemCommand({
         TableName: this.tables.guarantors,
@@ -943,18 +1067,23 @@ export class DynamoDBSeparateTablesService {
         return null;
       }
 
-      const command = new GetItemCommand({
+      // Scan by userId and filter by zoneinfo since we're using timestamp as sort key
+      const command = new ScanCommand({
         TableName: this.tables.guarantors,
-        Key: marshall({
-          userId,
-          zoneinfo
-        })
+        FilterExpression: 'userId = :userId AND zoneinfo = :zoneinfo',
+        ExpressionAttributeValues: marshall({
+          ':userId': userId,
+          ':zoneinfo': zoneinfo
+        }, { convertClassInstanceToMap: true })
       });
 
       const result = await this.client.send(command);
       
-      if (result.Item) {
-        return unmarshall(result.Item) as GuarantorData;
+      if (result.Items && result.Items.length > 0) {
+        // Return the most recent record
+        const items = result.Items.map(item => unmarshall(item) as GuarantorData);
+        items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
+        return items[0];
       }
       
       return null;
@@ -1002,14 +1131,15 @@ export class DynamoDBSeparateTablesService {
 
       const uniqueUserId = `${baseUserId}-guar-${Date.now()}`;
 
-      const guarantorData: GuarantorData = {
+      const guarantorData: GuarantorData = this.sanitizeForDynamo({
         ...data,
         userId: uniqueUserId,
         role,
         zoneinfo,
         appid: applicationAppid,
+        timestamp: new Date().toISOString(),
         last_updated: new Date().toISOString()
-      };
+      });
 
       const command = new PutItemCommand({
         TableName: this.tables.guarantors,
@@ -1049,6 +1179,7 @@ export class DynamoDBSeparateTablesService {
         return [];
       }
 
+      // Scan by appid and filter by zoneinfo since we're using timestamp as sort key
       const command = new ScanCommand({
         TableName: this.tables.guarantors,
         FilterExpression: 'appid = :appid AND zoneinfo = :zoneinfo',
@@ -1060,6 +1191,8 @@ export class DynamoDBSeparateTablesService {
 
       const result = await this.client.send(command);
       const items = (result.Items || []).map(item => unmarshall(item) as GuarantorData);
+      // Sort by timestamp (most recent first)
+      items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
       return items;
     } catch (error) {
       console.error('❌ Error listing guarantors by appid:', error);
@@ -1152,24 +1285,70 @@ export class DynamoDBSeparateTablesService {
       const applicationData = await this.getApplicationData();
       const appid = applicationData?.appid;
 
-      // Delete from all tables
-      const deletePromises = [
-        // Delete from applicant_nyc, coapplicants, and guarantors using composite key
-        this.client.send(new DeleteItemCommand({
-          TableName: this.tables.applicant_nyc,
-          Key: marshall({ userId, zoneinfo })
-        })),
-        this.client.send(new DeleteItemCommand({
-          TableName: this.tables.coapplicants,
-          Key: marshall({ userId, zoneinfo })
-        })),
-        this.client.send(new DeleteItemCommand({
-          TableName: this.tables.guarantors,
-          Key: marshall({ userId, zoneinfo })
-        }))
-      ];
+      // Since we're using timestamp as sort key, we need to scan and delete all matching records
+      const deletePromises = [];
 
-      // Add app_nyc deletion if we have the appid
+      // Delete from applicant_nyc - scan for all records with this userId and zoneinfo
+      const applicantScan = new ScanCommand({
+        TableName: this.tables.applicant_nyc,
+        FilterExpression: 'userId = :userId AND zoneinfo = :zoneinfo',
+        ExpressionAttributeValues: marshall({
+          ':userId': userId,
+          ':zoneinfo': zoneinfo
+        }, { convertClassInstanceToMap: true })
+      });
+      const applicantResult = await this.client.send(applicantScan);
+      for (const item of applicantResult.Items || []) {
+        const record = unmarshall(item);
+        deletePromises.push(
+          this.client.send(new DeleteItemCommand({
+            TableName: this.tables.applicant_nyc,
+            Key: marshall({ userId: record.userId, timestamp: record.timestamp })
+          }))
+        );
+      }
+
+      // Delete from coapplicants - scan for all records with this userId and zoneinfo
+      const coApplicantScan = new ScanCommand({
+        TableName: this.tables.coapplicants,
+        FilterExpression: 'userId = :userId AND zoneinfo = :zoneinfo',
+        ExpressionAttributeValues: marshall({
+          ':userId': userId,
+          ':zoneinfo': zoneinfo
+        }, { convertClassInstanceToMap: true })
+      });
+      const coApplicantResult = await this.client.send(coApplicantScan);
+      for (const item of coApplicantResult.Items || []) {
+        const record = unmarshall(item);
+        deletePromises.push(
+          this.client.send(new DeleteItemCommand({
+            TableName: this.tables.coapplicants,
+            Key: marshall({ userId: record.userId, timestamp: record.timestamp })
+          }))
+        );
+      }
+
+      // Delete from guarantors - scan for all records with this userId and zoneinfo
+      const guarantorScan = new ScanCommand({
+        TableName: this.tables.guarantors,
+        FilterExpression: 'userId = :userId AND zoneinfo = :zoneinfo',
+        ExpressionAttributeValues: marshall({
+          ':userId': userId,
+          ':zoneinfo': zoneinfo
+        }, { convertClassInstanceToMap: true })
+      });
+      const guarantorResult = await this.client.send(guarantorScan);
+      for (const item of guarantorResult.Items || []) {
+        const record = unmarshall(item);
+        deletePromises.push(
+          this.client.send(new DeleteItemCommand({
+            TableName: this.tables.guarantors,
+            Key: marshall({ userId: record.userId, timestamp: record.timestamp })
+          }))
+        );
+      }
+
+      // Add app_nyc deletion if we have the appid (this still uses zoneinfo as sort key)
       if (appid) {
         deletePromises.push(
           this.client.send(new DeleteItemCommand({
@@ -1240,6 +1419,10 @@ export const dynamoDBSeparateTablesUtils = {
   
   async getCoApplicantsByAppId(appid?: string): Promise<CoApplicantData[]> {
     return dynamoDBSeparateTablesService.getCoApplicantsByAppId(appid);
+  },
+  
+  async getAllCoApplicantsForCurrentUser(): Promise<CoApplicantData[]> {
+    return dynamoDBSeparateTablesService.getAllCoApplicantsForCurrentUser();
   },
   
   async saveGuarantorData(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
