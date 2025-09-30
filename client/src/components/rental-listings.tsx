@@ -432,7 +432,7 @@ export function RentalListings() {
                 <div className="items-center p-6 pt-0 flex gap-3">
                   <Button 
                     className="flex-1 bg-cyan-600 hover:bg-cyan-700"
-                    onClick={() => window.open('https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1&color_mktgkr4e=East+30th+Street&short_text800omovg=6B', '_blank')}
+                    onClick={() => window.open(`/interest-form?propertyName=${encodeURIComponent(rental.propertyName || '')}&unitNumber=${encodeURIComponent(rental.name || '')}`, '_blank')}
                   >
                     Apply
                   </Button>

@@ -94,6 +94,7 @@ export function InterestForm({ className }: InterestFormProps) {
   const [selectedProperty, setSelectedProperty] = useState<string>("")
   const [useFallback, setUseFallback] = useState(false)
   const [apiData, setApiData] = useState<any[]>([])
+  const [urlPrefill, setUrlPrefill] = useState<{ propertyName?: string; unitNumber?: string }>({})
   const { toast } = useToast()
   const [, setLocation] = useLocation()
 
@@ -190,6 +191,28 @@ export function InterestForm({ className }: InterestFormProps) {
 
   // Fetch properties and units on component mount
   useEffect(() => {
+    // Prefill from query params if present
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const propertyName = params.get('propertyName') || ''
+      const unitNumber = params.get('unitNumber') || ''
+      if (propertyName) {
+        form.setValue('propertyName', propertyName)
+        setSelectedProperty(propertyName)
+      }
+      if (unitNumber) {
+        form.setValue('unitNumber', unitNumber)
+      }
+      setUrlPrefill({ propertyName: propertyName || undefined, unitNumber: unitNumber || undefined })
+      // If both provided, attempt to set available units immediately so dropdown shows selection
+      if (propertyName && unitNumber) {
+        // Fallback path: if we are using fallback options, hydrate units from fallback map
+        if (useFallback) {
+          const fallbackUnitOptions = (fallbackUnits as any)[propertyName] || []
+          setAvailableUnits(Array.from(new Set([unitNumber, ...fallbackUnitOptions])))
+        }
+      }
+    } catch {}
     const fetchProperties = async () => {
       setIsLoadingProperties(true)
       try {
@@ -267,6 +290,25 @@ export function InterestForm({ className }: InterestFormProps) {
 
     fetchProperties()
   }, [toast])
+
+  // After properties load or fallback toggles, if URL provided a property, populate units
+  useEffect(() => {
+    if (selectedProperty && (properties.length > 0 || useFallback)) {
+      handlePropertyChange(selectedProperty)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProperty, properties.length, useFallback])
+
+  // When units are available, if URL provided a unitNumber, set it
+  useEffect(() => {
+    if (urlPrefill.unitNumber) {
+      // Ensure the unitNumber exists in options; if not, include it temporarily
+      if (availableUnits.length > 0 && !availableUnits.includes(urlPrefill.unitNumber)) {
+        setAvailableUnits(prev => Array.from(new Set([urlPrefill.unitNumber!, ...prev])))
+      }
+      form.setValue('unitNumber', urlPrefill.unitNumber)
+    }
+  }, [availableUnits, urlPrefill.unitNumber, form])
 
   // Handle property selection
   const handlePropertyChange = (propertyName: string) => {
@@ -369,6 +411,54 @@ export function InterestForm({ className }: InterestFormProps) {
 
 
 
+  // Try to map URL-provided propertyName to one of the loaded property options
+  useEffect(() => {
+    const requested = (urlPrefill.propertyName || '').trim()
+    if (!requested) return
+    if (!properties || properties.length === 0) return
+
+    // If already selected and valid, nothing to do
+    const current = form.getValues('propertyName')
+    if (current && properties.includes(current)) return
+
+    const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ')
+    const reqNorm = normalize(requested)
+
+    // 1) case-insensitive exact match
+    let match = properties.find(p => normalize(p) === reqNorm)
+
+    // 2) startsWith or includes
+    if (!match) {
+      match = properties.find(p => normalize(p).startsWith(reqNorm)) ||
+              properties.find(p => normalize(p).includes(reqNorm)) || undefined
+    }
+
+    // 3) numeric token match fallback (match by leading street number)
+    if (!match) {
+      const num = (requested.match(/\d+/)?.[0]) || ''
+      if (num) {
+        match = properties.find(p => p.includes(num)) || undefined
+      }
+    }
+
+    if (match) {
+      // Set both RHF value and our selectedProperty, then populate units
+      form.setValue('propertyName', match, { shouldDirty: true, shouldValidate: true })
+      setSelectedProperty(match)
+      handlePropertyChange(match)
+    } else {
+      // If no match, keep the provided value visible by injecting into options (fallback mode)
+      if (useFallback) {
+        const injected = Array.from(new Set([requested, ...properties]))
+        setProperties(injected)
+        form.setValue('propertyName', requested, { shouldDirty: true })
+        setSelectedProperty(requested)
+        handlePropertyChange(requested)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [properties, urlPrefill.propertyName])
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -409,7 +499,7 @@ export function InterestForm({ className }: InterestFormProps) {
                     Property Name *
                   </FormLabel>
                   <FormControl>
-                    <Select onValueChange={handlePropertyChange} defaultValue={field.value} disabled={isLoadingProperties}>
+                    <Select onValueChange={handlePropertyChange} value={field.value} disabled={isLoadingProperties}>
                       <SelectTrigger>
                         <SelectValue placeholder={isLoadingProperties ? "Loading properties..." : "Select a property"} />
                       </SelectTrigger>
@@ -436,7 +526,7 @@ export function InterestForm({ className }: InterestFormProps) {
                 <FormItem>
                   <FormLabel>Unit # *</FormLabel>
                   <FormControl>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!selectedProperty}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedProperty}>
                       <SelectTrigger>
                         <SelectValue placeholder={selectedProperty ? "Select a unit" : "Select a property first"} />
                       </SelectTrigger>

@@ -248,28 +248,8 @@ export default function AvailableRentalsPage() {
   };
 
   const handleApplyNow = (rental: RentalItem) => {
-    // Build Monday.com form URL with property name and unit number
-    const baseUrl = 'https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1';
-    const params = new URLSearchParams();
-    
-    // Map property name to color_mktgkr4e parameter
-    if (rental.propertyName) {
-      params.append('color_mktgkr4e', rental.propertyName);
-    }
-    
-    // Map unit number to short_text800omovg parameter
-    if (rental.name) {
-      params.append('short_text800omovg', rental.name);
-    }
-    
-    // Construct the final URL
-    const formUrl = params.toString() ? `${baseUrl}&${params.toString()}` : baseUrl;
-    
-    console.log('Opening Monday.com form in new tab for rental:', rental.name);
-    console.log('Form URL:', formUrl);
-    
-    // Open the form in a new tab
-    window.open(formUrl, '_blank');
+    const url = `/interest-form?propertyName=${encodeURIComponent(rental.propertyName || '')}&unitNumber=${encodeURIComponent(rental.name || '')}`;
+    window.open(url, '_blank');
   };
 
   const getFilteredRentals = () => {

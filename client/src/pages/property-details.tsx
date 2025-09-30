@@ -229,7 +229,7 @@ export default function PropertyDetailsPage() {
                 <div className="space-y-3">
                   <Button 
                     className="w-full bg-cyan-600 hover:bg-cyan-700 text-white"
-                    onClick={() => window.open('https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1&color_mktgkr4e=East+30th+Street&short_text800omovg=6B', '_blank')}
+                    onClick={() => window.open(`/interest-form?propertyName=${encodeURIComponent(displayPropertyName)}&unitNumber=${encodeURIComponent(displayUnitName)}`, '_blank')}
                   >
                     Apply Now
                   </Button>
@@ -542,7 +542,7 @@ export default function PropertyDetailsPage() {
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           className="w-16 h-16 rounded-full bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-          onClick={() => window.open('https://forms.monday.com/forms/8c6c6cd6c030c82856c14ef4439c61df?r=use1&color_mktgkr4e=East+30th+Street&short_text800omovg=6B', '_blank')}
+          onClick={() => window.open(`/interest-form?propertyName=${encodeURIComponent(displayPropertyName)}&unitNumber=${encodeURIComponent(displayUnitName)}`, '_blank')}
         >
           <span className="text-2xl">📝</span>
         </Button>
