@@ -34,12 +34,7 @@ const interestFormSchema = z.object({
     invalid_type_error: "Please select a valid date",
   }),
   currentAddress: z.string().min(1, "Current address is required"),
-  // New inputs used to calculate annual income
-  householdIncome: z.string().min(1, "Household income is required"),
-  incomeFrequency: z.enum(["weekly", "bi-weekly", "monthly", "quarterly", "yearly"], {
-    required_error: "Income frequency is required",
-  }),
-  // Calculated field (kept required as we auto-populate it)
+  // Restore Annual Income (applicant) as required
   annualIncome: z.string().min(1, "Annual income is required"),
   creditScore: z.string().min(1, "Credit score is required"),
   hasCoApplicant: z.enum(["yes", "no"], {
@@ -131,8 +126,6 @@ export function InterestForm({ className }: InterestFormProps) {
       phone: "",
       email: "",
       currentAddress: "",
-      householdIncome: "",
-      incomeFrequency: "monthly",
       annualIncome: "",
       creditScore: "",
       hasCoApplicant: undefined,
@@ -145,31 +138,7 @@ export function InterestForm({ className }: InterestFormProps) {
     },
   })
 
-  // Calculate annual income whenever household income or frequency changes
-  useEffect(() => {
-    const subscription = form.watch((values, { name }) => {
-      if (name === 'householdIncome' || name === 'incomeFrequency') {
-        const raw = values.householdIncome as unknown as string
-        const freq = values.incomeFrequency as unknown as string
-        const amount = raw ? parseFloat(String(raw)) : 0
-        if (!isFinite(amount) || amount <= 0) {
-          form.setValue('annualIncome', '')
-          return
-        }
-        const factorMap: Record<string, number> = {
-          'weekly': 52,
-          'bi-weekly': 26,
-          'monthly': 12,
-          'quarterly': 4,
-          'yearly': 1,
-        }
-        const factor = factorMap[freq] ?? 12
-        const annual = amount * factor
-        form.setValue('annualIncome', annual.toFixed(2), { shouldValidate: true, shouldDirty: true })
-      }
-    })
-    return () => subscription.unsubscribe()
-  }, [form])
+  // Income auto-calculation removed; annual income entered manually
 
   // Meta (Facebook) Pixel - load only on this component mount
   useEffect(() => {
@@ -644,42 +613,7 @@ export function InterestForm({ className }: InterestFormProps) {
               )}
             />
 
-            {/* Household Income + Frequency (bilingual prompt) */}
-            <div className="space-y-2">
-           
-              <Label className="text-sm text-gray-700">
-                Please provide your total household income (including your income and that of all household members).
-              </Label>
-            </div>
-
-            <div className="form-field">
-              <FormField
-                control={form.control}
-                name="householdIncome"
-                render={({ field }) => (
-                  <FormItem>
-                   
-                    <IncomeWithFrequencyInput
-                      name="household-income"
-                      label="  Por favor indique el ingreso total del hogar (incluyendo su ingreso y el de todos los miembros del hogar).
-              "
-                      value={field.value}
-                      frequency={form.watch('incomeFrequency') || 'monthly'}
-                      onValueChange={(val) => form.setValue('householdIncome', val, { shouldValidate: true, shouldDirty: true })}
-                      onFrequencyChange={(freq) => form.setValue('incomeFrequency', freq as any, { shouldValidate: true, shouldDirty: true })}
-                      required
-                    />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="space-y-2">
-        
-            </div>
-
-            {/* Annual Income */}
+            {/* Annual Income (Applicant) */}
             <FormField
               control={form.control}
               name="annualIncome"
@@ -687,10 +621,10 @@ export function InterestForm({ className }: InterestFormProps) {
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4" />
-                    Annual Income [Applicant] * (calculated)
+                    Annual Income [Applicant] *
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Calculated annual income" readOnly {...field} />
+                    <Input placeholder="Enter Annual Income" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
