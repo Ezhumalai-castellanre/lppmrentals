@@ -4262,9 +4262,20 @@ export function ApplicationForm() {
         for (const field of requiredFields) {
           // Resolve value with fallbacks for nested application fields
           let value = (data as any)[field];
-          if (field === 'monthlyRent') {
-            value = (data as any).monthlyRent ?? formData.application?.monthlyRent;
+
+          // Application-level fields can live under formData.application
+          const applicationLevelFields = new Set([
+            'buildingAddress',
+            'apartmentNumber',
+            'moveInDate',
+            'monthlyRent',
+            'apartmentType'
+          ]);
+
+          if (applicationLevelFields.has(field as string)) {
+            value = value ?? (formData.application as any)?.[field as keyof typeof formData.application];
           }
+
           if (
             value === undefined ||
             value === null ||
