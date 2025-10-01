@@ -4969,9 +4969,15 @@ export function ApplicationForm() {
         console.log('  - moveInDate (optimized):', serverOptimizedData.application?.moveInDate);
         console.log('Current window location:', window.location.href);
         
-        // API base: use VITE_API_BASE_URL in production, fallback to /api for local/dev
+        // Resolve submission endpoints (try multiple in production)
         const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
-        const submitEndpoint = `${apiBase}/submit-application`;
+        const explicitSubmitUrl = (import.meta as any).env?.VITE_SUBMIT_FUNCTION_URL as string | undefined;
+        const candidateSubmitEndpoints: string[] = [];
+        if (explicitSubmitUrl) candidateSubmitEndpoints.push(explicitSubmitUrl);
+        candidateSubmitEndpoints.push(`${apiBase}/submit-application`);
+        // Common Amplify/CloudFront path alias to Lambda gateway (if configured)
+        candidateSubmitEndpoints.push('/aws/lambda/lppmrentals-submit-application');
+        console.log('🔗 Submission endpoint candidates:', candidateSubmitEndpoints);
         
         // Validate required fields before submission based on user role
         console.log('🔍 VALIDATION DEBUG:');
@@ -5060,18 +5066,37 @@ export function ApplicationForm() {
           const submissionController = new AbortController();
           const submissionTimeoutId = setTimeout(() => submissionController.abort(), 45000); // 45 second timeout
           
-          const submissionResponse = await fetch(submitEndpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
-            signal: submissionController.signal
-          });
+          // Try candidates in order until one succeeds
+          let submissionResponse: Response | null = null;
+          let lastError: any = null;
+          for (const endpoint of candidateSubmitEndpoints) {
+            try {
+              console.log('🌐 Attempting submission to:', endpoint);
+              submissionResponse = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+                signal: submissionController.signal
+              });
+              if (submissionResponse.ok) {
+                console.log('✅ Submission succeeded at:', endpoint);
+                break;
+              }
+              console.warn('⚠️ Submission returned non-OK from:', endpoint, submissionResponse.status);
+            } catch (e) {
+              console.warn('⚠️ Submission attempt failed at:', endpoint, e);
+              lastError = e;
+            }
+          }
+          if (!submissionResponse) {
+            throw lastError || new Error('No submission response received');
+          }
 
-          clearTimeout(submissionTimeoutId);
-
+          // Evaluate response
           if (!submissionResponse.ok) {
+            clearTimeout(submissionTimeoutId);
             const errorText = await submissionResponse.text();
             console.error('Submission response error:', submissionResponse.status, submissionResponse.statusText);
             console.error('Error response body:', errorText);
@@ -5090,6 +5115,7 @@ export function ApplicationForm() {
               throw new Error(`Submission failed: ${submissionResponse.status} ${submissionResponse.statusText}`);
             }
           } else {
+            clearTimeout(submissionTimeoutId);
             submissionResult = await submissionResponse.json();
             serverSubmissionOk = true;
             console.log('✅ === SERVER SUBMISSION RESULT ===');
