@@ -1095,6 +1095,22 @@ export function ApplicationForm() {
       if (allData.application || allData.applicant || allData.coApplicant || allData.guarantor) {
         console.log('📊 Draft data loaded from separate tables');
         
+        // Also fetch arrays of co-applicants and guarantors by appid (multi-applicant support)
+        let coApplicantsArray: any[] = [];
+        let guarantorsArray: any[] = [];
+        if (allData.application?.appid) {
+          try {
+            const [coApps, guarans] = await Promise.all([
+              dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(allData.application.appid),
+              dynamoDBSeparateTablesUtils.getGuarantorsByAppId(allData.application.appid)
+            ]);
+            coApplicantsArray = Array.isArray(coApps) ? coApps.map((c: any) => c.coapplicant_info || c) : [];
+            guarantorsArray = Array.isArray(guarans) ? guarans.map((g: any) => g.guarantor_info || g) : [];
+          } catch (e) {
+            // Failed to load multi-applicant arrays; continue with single records
+          }
+        }
+
         // Reconstruct the form data from separate table data
         let parsedFormData: any = {
           application: {},
@@ -1106,6 +1122,15 @@ export function ApplicationForm() {
         // Restore application data
         if (allData.application) {
           parsedFormData.application = allData.application.application_info || {};
+          // Normalize application field names from legacy/alternate keys
+          const app = parsedFormData.application as any;
+          app.buildingAddress = app.buildingAddress || app.building_address || app.address || '';
+          app.apartmentNumber = app.apartmentNumber || app.unitNumber || app.apartment || app.unit || '';
+          app.apartmentType = app.apartmentType || app.apartment_type || app.unitType || app.unit_type || '';
+          if (typeof app.monthlyRent === 'undefined') {
+            app.monthlyRent = typeof app.rent !== 'undefined' ? app.rent : app.monthly_rent;
+          }
+          if (app.move_in_date && !app.moveInDate) app.moveInDate = app.move_in_date;
           parsedFormData.current_step = allData.application.current_step;
           parsedFormData.status = allData.application.status;
           parsedFormData.uploaded_files_metadata = allData.application.uploaded_files_metadata || {};
@@ -1114,14 +1139,54 @@ export function ApplicationForm() {
           parsedFormData.encrypted_documents = allData.application.encrypted_documents || {};
         }
         
-        // Restore applicant data
-        if (allData.applicant) {
-          parsedFormData.applicant = allData.applicant.applicant_info || {};
-          parsedFormData.occupants = allData.applicant.occupants || [];
-          parsedFormData.webhookSummary = allData.applicant.webhookSummary || {};
+        // Restore applicant data (prefer matching applicant_nyc by appid if available)
+        let selectedApplicantInfo: any = {};
+        let selectedApplicantOccupants: any[] = [];
+        let selectedApplicantSignature: any = {};
+        try {
+          const appid = allData.application?.appid;
+          if (appid) {
+            const matchedApplicant = await dynamoDBSeparateTablesUtils.getApplicantByAppId(appid);
+            if (matchedApplicant) {
+              selectedApplicantInfo = matchedApplicant.applicant_info || {};
+              selectedApplicantOccupants = matchedApplicant.occupants || [];
+              selectedApplicantSignature = matchedApplicant.signature || {};
+            }
+          }
+        } catch {}
+        if (Object.keys(selectedApplicantInfo).length === 0 && allData.applicant) {
+          selectedApplicantInfo = allData.applicant.applicant_info || {};
+          selectedApplicantOccupants = allData.applicant.occupants || [];
+          selectedApplicantSignature = allData.applicant.signature || {};
+        }
+        if (selectedApplicantInfo) {
+          parsedFormData.applicant = selectedApplicantInfo;
+          // Normalize applicant field names from legacy/alternate keys
+          const ap = parsedFormData.applicant as any;
+          ap.name = ap.name || ap.fullName || ap.full_name || '';
+          ap.email = ap.email || ap.mail || '';
+          ap.phone = ap.phone || ap.phoneNumber || ap.phone_number || '';
+          ap.address = ap.address || ap.addressLine1 || ap.address1 || ap.street || '';
+          ap.city = ap.city || ap.town || '';
+          ap.state = ap.state || ap.region || '';
+          ap.zip = ap.zip || ap.zipCode || ap.postalCode || ap.postal_code || '';
+          if (ap.date_of_birth && !ap.dob) ap.dob = ap.date_of_birth;
+          // Normalize employment type (applicant_nyc variants)
+          ap.employmentType = ap.employmentType || ap.employment_type || ap.employment || ap.applicant_employmentType || '';
+          // Normalize landlord fields
+          ap.landlordName = ap.landlordName || ap.landlord_name || '';
+          ap.landlordAddressLine1 = ap.landlordAddressLine1 || ap.landlord_address_line1 || ap.landlord_address || '';
+          ap.landlordAddressLine2 = ap.landlordAddressLine2 || ap.landlord_address_line2 || '';
+          ap.landlordCity = ap.landlordCity || ap.landlord_city || '';
+          ap.landlordState = ap.landlordState || ap.landlord_state || '';
+          ap.landlordZipCode = ap.landlordZipCode || ap.landlord_zip || ap.landlord_zip_code || '';
+          ap.landlordPhone = ap.landlordPhone || ap.landlord_phone || '';
+          ap.landlordEmail = ap.landlordEmail || ap.landlord_email || '';
+          parsedFormData.occupants = selectedApplicantOccupants || [];
+          parsedFormData.webhookSummary = allData.applicant?.webhookSummary || parsedFormData.webhookSummary || {};
           parsedFormData.signatures = {
             ...parsedFormData.signatures,
-            applicant: allData.applicant.signature || {}
+            applicant: selectedApplicantSignature || {}
           };
         }
         
@@ -1160,6 +1225,14 @@ export function ApplicationForm() {
               parsedFormData.guarantor = parsedFormData.guarantor || {};
               parsedFormData.occupants = parsedFormData.occupants || [];
           
+          // Attach multi-applicant arrays if present
+          if (coApplicantsArray.length > 0) {
+            parsedFormData.coApplicants = coApplicantsArray;
+          }
+          if (guarantorsArray.length > 0) {
+            parsedFormData.guarantors = guarantorsArray;
+          }
+
           // Merge webhookSummary.webhookResponses into the main formData.webhookResponses
           if (parsedFormData.webhookSummary?.webhookResponses) {
             parsedFormData.webhookResponses = {
@@ -1205,21 +1278,21 @@ export function ApplicationForm() {
             // Restore all application fields
             if (app.buildingAddress !== undefined) {
               form.setValue('buildingAddress', app.buildingAddress || '');
-              // Set buildingAddress
+              updateFormData('application', 'buildingAddress', app.buildingAddress || '');
             }
             if (app.apartmentNumber !== undefined) {
               form.setValue('apartmentNumber', app.apartmentNumber || '');
-              // Set apartmentNumber
+              updateFormData('application', 'apartmentNumber', app.apartmentNumber || '');
             }
             if (app.apartmentType !== undefined) {
               form.setValue('apartmentType', app.apartmentType || '');
-              // Set apartmentType
+              updateFormData('application', 'apartmentType', app.apartmentType || '');
             }
             
             // Apartment fields restored from draft
-            if (app.monthlyRent) {
+            if (app.monthlyRent !== undefined) {
               form.setValue('monthlyRent', app.monthlyRent);
-              // Set monthlyRent
+              updateFormData('application', 'monthlyRent', app.monthlyRent);
             }
             if (app.howDidYouHear) {
               form.setValue('howDidYouHear', app.howDidYouHear);
@@ -1233,7 +1306,7 @@ export function ApplicationForm() {
               const moveInDate = new Date(app.moveInDate);
               if (!isNaN(moveInDate.getTime())) {
                 form.setValue('moveInDate', moveInDate);
-                // Set moveInDate
+                updateFormData('application', 'moveInDate', app.moveInDate);
               }
             }
             
@@ -2321,10 +2394,37 @@ export function ApplicationForm() {
     setAvailableApartments(unitsForBuilding);
     
     // Find the specific apartment that was previously selected
-    let selectedUnit = null;
-    if (apartmentNumber) {
-      selectedUnit = unitsForBuilding.find(unit => unit.name === apartmentNumber);
+    let selectedUnit = null as any;
+    let effectiveApartmentNumber = apartmentNumber;
+    if (effectiveApartmentNumber) {
+      selectedUnit = unitsForBuilding.find(unit => unit.name === effectiveApartmentNumber);
       console.log('🏠 Found previously selected apartment:', selectedUnit);
+    }
+
+    // Fallback: derive apartment by matching type and/or monthlyRent when apartmentNumber is missing
+    if (!selectedUnit) {
+      const normalizeType = (t?: string) => {
+        if (!t) return '';
+        const s = String(t).toLowerCase().replace(/\s+/g, '');
+        if (s.includes('studio')) return 'studio';
+        if (s === '1br' || s === '1bedroom' || s === 'onebedroom') return '1br';
+        if (s === '2br' || s === '2bedroom' || s === 'twobedroom') return '2br';
+        if (s === '3br' || s === '3bedroom' || s === 'threebedroom') return '3br';
+        return s;
+      };
+      const effectiveType = normalizeType(apartmentType);
+      const effectiveMonthlyRent = formData.application?.monthlyRent;
+      if (effectiveType || typeof effectiveMonthlyRent !== 'undefined') {
+        selectedUnit = unitsForBuilding.find(unit => {
+          const typeMatches = effectiveType ? normalizeType(unit.unitType) === effectiveType : false;
+          const rentMatches = typeof effectiveMonthlyRent !== 'undefined' ? Number(unit.monthlyRent) === Number(effectiveMonthlyRent) : false;
+          return typeMatches || rentMatches;
+        }) || null;
+        if (selectedUnit) {
+          effectiveApartmentNumber = selectedUnit.name;
+          console.log('🏠 Derived apartment by type/rent:', { effectiveApartmentNumber, selectedUnit });
+        }
+      }
     }
     
     // If no specific apartment found, don't auto-select anything
@@ -2332,9 +2432,9 @@ export function ApplicationForm() {
     
     // Update form fields directly - the useEffect will handle formData synchronization
     form.setValue('buildingAddress', buildingAddress);
-    if (apartmentNumber) {
-      form.setValue('apartmentNumber', apartmentNumber);
-      console.log('🏠 Restored apartmentNumber:', apartmentNumber);
+    if (effectiveApartmentNumber) {
+      form.setValue('apartmentNumber', effectiveApartmentNumber);
+      console.log('🏠 Restored apartmentNumber:', effectiveApartmentNumber);
     }
     if (apartmentType) {
       form.setValue('apartmentType', apartmentType);
