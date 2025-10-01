@@ -4260,7 +4260,7 @@ export function ApplicationForm() {
         ];
         
         for (const field of requiredFields) {
-          // Resolve value with fallbacks for nested application fields
+          // Resolve value with fallbacks for nested application and applicant fields
           let value = (data as any)[field];
 
           // Application-level fields can live under formData.application
@@ -4276,6 +4276,21 @@ export function ApplicationForm() {
             value = value ?? (formData.application as any)?.[field as keyof typeof formData.application];
           }
 
+          // Applicant fields can live under formData.applicant
+          const applicantFieldMap: Record<string, string> = {
+            applicantName: 'name',
+            applicantDob: 'dob',
+            applicantEmail: 'email',
+            applicantAddress: 'address',
+            applicantCity: 'city',
+            applicantState: 'state',
+            applicantZip: 'zip'
+          };
+          if (field in applicantFieldMap) {
+            const nestedKey = applicantFieldMap[field as keyof typeof applicantFieldMap];
+            value = value ?? (formData.applicant as any)?.[nestedKey];
+          }
+
           if (
             value === undefined ||
             value === null ||
@@ -4289,7 +4304,8 @@ export function ApplicationForm() {
         
         // Email format check for applicant
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(data.applicantEmail || '')) {
+        const effectiveApplicantEmail = data.applicantEmail || formData.applicant?.email || '';
+        if (!emailRegex.test(effectiveApplicantEmail)) {
           missingFields.push('applicantEmail');
         }
       }
@@ -4853,10 +4869,9 @@ export function ApplicationForm() {
         console.log('  - moveInDate (optimized):', serverOptimizedData.application?.moveInDate);
         console.log('Current window location:', window.location.href);
         
-        // Check if submit-application endpoint exists, if not, skip server submission
-        // Use Netlify functions endpoint for local development, or AWS Lambda for production
-        const apiEndpoint = import.meta.env.DEV ? '/api' : 'https://your-aws-api-gateway-url.amazonaws.com/prod';
-        const submitEndpoint = apiEndpoint + '/submit-application';
+        // API base: use VITE_API_BASE_URL in production, fallback to /api for local/dev
+        const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
+        const submitEndpoint = `${apiBase}/submit-application`;
         
         // Validate required fields before submission based on user role
         console.log('🔍 VALIDATION DEBUG:');
