@@ -311,26 +311,33 @@ export class DynamoDBSeparateTablesService {
     }
   }
 
-  // Get current user's sub (user ID) for draft saving
+  // Get current user's zoneinfo (fallback to sub only if zoneinfo is missing)
   async getCurrentUserZoneinfo(): Promise<string | null> {
     try {
       const session = await fetchAuthSession();
       if (!session.tokens?.idToken) {
-        console.error('❌ No valid authentication session to get user sub');
+        console.error('❌ No valid authentication session to get user zoneinfo');
         return null;
       }
 
-      const userId = session.tokens.idToken.payload?.sub;
-      
-      if (!userId) {
-        console.error('❌ User has no sub in ID token - cannot determine user ID');
-        return null;
+      const payload: any = session.tokens.idToken.payload || {};
+      const zoneinfo: string | undefined = payload.zoneinfo || payload['custom:zoneinfo'];
+      if (zoneinfo && typeof zoneinfo === 'string' && zoneinfo.trim()) {
+        console.log(`✅ Retrieved user zoneinfo: ${zoneinfo}`);
+        return zoneinfo;
       }
-      
-      console.log(`✅ Retrieved user sub for draft saving: ${userId}`);
-      return userId;
+
+      // Fallback to sub only if zoneinfo not present
+      const userSub = payload?.sub;
+      if (userSub) {
+        console.warn('⚠️ No zoneinfo in token; falling back to sub for zone mapping');
+        return userSub;
+      }
+
+      console.error('❌ Neither zoneinfo nor sub available in ID token');
+      return null;
     } catch (error) {
-      console.error('❌ Error getting current user sub:', error);
+      console.error('❌ Error getting current user zoneinfo:', error);
       return null;
     }
   }
