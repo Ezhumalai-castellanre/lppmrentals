@@ -49,7 +49,6 @@ export interface CoApplicantData {
   zoneinfo: string; // User's zoneinfo
   appid: string; // Application ID to link to main application
   coapplicant_info: any; // Co-applicant form data
-  occupants: any; // Occupants data
   webhookSummary: any; // Webhook summary
   signature: any; // Co-applicant signature
   last_updated: string;
@@ -63,7 +62,6 @@ export interface GuarantorData {
   zoneinfo: string; // User's zoneinfo
   appid: string; // Application ID to link to main application
   guarantor_info: any; // Guarantor form data
-  occupants: any; // Occupants data
   webhookSummary: any; // Webhook summary
   signature: any; // Guarantor signature
   last_updated: string;
@@ -236,6 +234,13 @@ export class DynamoDBSeparateTablesService {
     }
     
     console.error('❌ Failed to initialize DynamoDB client after all retries');
+  }
+
+  // Ensure DynamoDB client is ready before proceeding with operations
+  private async ensureClientReady(): Promise<boolean> {
+    if (this.client) return true;
+    await this.initializeClientWithRetry();
+    return !!this.client;
   }
 
   // Check if user needs to re-authenticate
@@ -458,7 +463,8 @@ export class DynamoDBSeparateTablesService {
         })
       });
 
-      await this.client.send(command);
+      const client = this.client as DynamoDBClient;
+      await client.send(command);
       console.log('✅ Application data saved successfully with role:', role, 'appid:', appid);
       return true;
     } catch (error) {
@@ -764,10 +770,11 @@ export class DynamoDBSeparateTablesService {
 
   // Save co-applicant data
   async saveCoApplicantData(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
-    if (!this.client) {
+    if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return false;
     }
+    const client = this.client as DynamoDBClient;
 
     try {
       const userId = await this.getCurrentUserId();
@@ -794,8 +801,9 @@ export class DynamoDBSeparateTablesService {
         const existingApp = await this.getApplicationData();
         applicationAppid = existingApp?.appid;
         if (!applicationAppid) {
-          console.error('❌ No appid available for co-applicant data');
-          return false;
+          // Generate an appid if none exists so co-applicant submission doesn't fail
+          applicationAppid = this.generateApplicationId();
+          console.warn('⚠️ No existing appid found; generating new appid for co-applicant:', applicationAppid);
         }
       }
 
@@ -817,7 +825,7 @@ export class DynamoDBSeparateTablesService {
         })
       });
 
-      await this.client.send(command);
+      await client.send(command);
       console.log('✅ Co-applicant data saved successfully with appid:', applicationAppid, 'and role:', role);
       return true;
     } catch (error) {
@@ -828,10 +836,11 @@ export class DynamoDBSeparateTablesService {
 
   // Get co-applicant data
   async getCoApplicantData(): Promise<CoApplicantData | null> {
-    if (!this.client) {
+    if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return null;
     }
+    const client = this.client as DynamoDBClient;
 
     try {
       const userId = await this.getCurrentUserId();
@@ -856,12 +865,12 @@ export class DynamoDBSeparateTablesService {
         }, { convertClassInstanceToMap: true })
       });
 
-      const result = await this.client.send(command);
+      const result = await client.send(command);
       
       if (result.Items && result.Items.length > 0) {
         // Return the most recent record
-        const items = result.Items.map(item => unmarshall(item) as CoApplicantData);
-        items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
+        const items = result.Items.map((item: any) => unmarshall(item) as CoApplicantData);
+        items.sort((a: CoApplicantData, b: CoApplicantData) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
         return items[0];
       }
       
@@ -874,10 +883,11 @@ export class DynamoDBSeparateTablesService {
 
   // Save co-applicant as NEW record by generating unique userId suffix
   async saveCoApplicantDataNew(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
-    if (!this.client) {
+    if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return false;
     }
+    const client = this.client as DynamoDBClient;
 
     try {
       const baseUserId = await this.getCurrentUserId();
@@ -908,11 +918,8 @@ export class DynamoDBSeparateTablesService {
         }
       }
 
-      // Check for existing co-applicant data
-      const existingCoApplicant = await this.getCoApplicantData();
-      
-      // Use consistent userId for co-applicant (overwrite existing)
-      const uniqueUserId = `${baseUserId}-co`;
+      // Use the logged-in user's sub for userId (no suffix)
+      const uniqueUserId = baseUserId;
 
       const coApplicantData: CoApplicantData = this.sanitizeForDynamo({
         ...data,
@@ -920,6 +927,7 @@ export class DynamoDBSeparateTablesService {
         role,
         zoneinfo,
         appid: applicationAppid,
+        timestamp: new Date().toISOString(),
         // Keep original timestamp if overwriting (using last_updated as reference)
         last_updated: new Date().toISOString()
       });
@@ -929,7 +937,7 @@ export class DynamoDBSeparateTablesService {
         Item: marshall(coApplicantData, { removeUndefinedValues: true, convertClassInstanceToMap: true })
       });
 
-      await this.client.send(command);
+      await client.send(command);
       console.log('✅ Co-applicant data saved successfully (overwritten existing if found) with userId:', uniqueUserId);
       return true;
     } catch (error) {
@@ -940,10 +948,11 @@ export class DynamoDBSeparateTablesService {
 
   // List all co-applicants for the current application (by appid within same zone)
   async getCoApplicantsByAppId(appid?: string): Promise<CoApplicantData[]> {
-    if (!this.client) {
+    if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return [];
     }
+    const client = this.client as DynamoDBClient;
 
     try {
       const zoneinfo = await this.getCurrentUserZoneinfo();
@@ -972,10 +981,10 @@ export class DynamoDBSeparateTablesService {
         }, { convertClassInstanceToMap: true })
       });
 
-      const result = await this.client.send(command);
-      const items = (result.Items || []).map(item => unmarshall(item) as CoApplicantData);
+      const result = await client.send(command);
+      const items = (result.Items || []).map((item: any) => unmarshall(item) as CoApplicantData);
       // Sort by timestamp (most recent first)
-      items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
+      items.sort((a: CoApplicantData, b: CoApplicantData) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
       return items;
     } catch (error) {
       console.error('❌ Error listing co-applicants by appid:', error);
@@ -985,10 +994,11 @@ export class DynamoDBSeparateTablesService {
 
   // List all co-applicant records for the current userId (including suffixed IDs)
   async getAllCoApplicantsForCurrentUser(): Promise<CoApplicantData[]> {
-    if (!this.client) {
+    if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return [];
     }
+    const client = this.client as DynamoDBClient;
 
     try {
       const baseUserId = await this.getCurrentUserId();
@@ -1012,14 +1022,14 @@ export class DynamoDBSeparateTablesService {
         ExpressionAttributeValues: marshall({
           ':zoneinfo': zoneinfo,
           ':userId': baseUserId,
-          ':userIdCoPrefix': `${baseUserId}-co-`
+          ':userIdCoPrefix': `${baseUserId}`
         }, { convertClassInstanceToMap: true })
       });
 
-      const result = await this.client.send(command);
-      const items = (result.Items || []).map(item => unmarshall(item) as CoApplicantData);
+      const result = await client.send(command);
+      const items = (result.Items || []).map((item: any) => unmarshall(item) as CoApplicantData);
       // Sort by timestamp (most recent first)
-      items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
+      items.sort((a: CoApplicantData, b: CoApplicantData) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
       return items;
     } catch (error) {
       console.error('❌ Error listing co-applicants for current user:', error);
@@ -1031,10 +1041,11 @@ export class DynamoDBSeparateTablesService {
 
   // Save guarantor data
   async saveGuarantorData(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
-    if (!this.client) {
+    if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return false;
     }
+    const client = this.client as DynamoDBClient;
 
     try {
       const userId = await this.getCurrentUserId();
@@ -1061,8 +1072,9 @@ export class DynamoDBSeparateTablesService {
         const existingApp = await this.getApplicationData();
         applicationAppid = existingApp?.appid;
         if (!applicationAppid) {
-          console.error('❌ No appid available for guarantor data');
-          return false;
+          // Generate an appid if none exists so guarantor submission doesn't fail
+          applicationAppid = this.generateApplicationId();
+          console.warn('⚠️ No existing appid found; generating new appid for guarantor:', applicationAppid);
         }
       }
 
@@ -1084,7 +1096,7 @@ export class DynamoDBSeparateTablesService {
         })
       });
 
-      await this.client.send(command);
+      await client.send(command);
       console.log('✅ Guarantor data saved successfully with appid:', applicationAppid, 'and role:', role);
       return true;
     } catch (error) {
@@ -1095,10 +1107,11 @@ export class DynamoDBSeparateTablesService {
 
   // Get guarantor data
   async getGuarantorData(): Promise<GuarantorData | null> {
-    if (!this.client) {
+    if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return null;
     }
+    const client = this.client as DynamoDBClient;
 
     try {
       const userId = await this.getCurrentUserId();
@@ -1123,7 +1136,7 @@ export class DynamoDBSeparateTablesService {
         }, { convertClassInstanceToMap: true })
       });
 
-      const result = await this.client.send(command);
+      const result = await client.send(command);
       
       if (result.Items && result.Items.length > 0) {
         // Return the most recent record
@@ -1141,10 +1154,11 @@ export class DynamoDBSeparateTablesService {
 
   // Save guarantor data (overwrites existing if found)
   async saveGuarantorDataNew(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
-    if (!this.client) {
+    if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return false;
     }
+    const client = this.client as DynamoDBClient;
 
     try {
       const baseUserId = await this.getCurrentUserId();
@@ -1175,11 +1189,8 @@ export class DynamoDBSeparateTablesService {
         }
       }
 
-      // Check for existing guarantor data
-      const existingGuarantor = await this.getGuarantorData();
-      
-      // Use consistent userId for guarantor (overwrite existing)
-      const uniqueUserId = `${baseUserId}-guar`;
+      // Use the logged-in user's sub for userId (no suffix)
+      const uniqueUserId = baseUserId;
 
       const guarantorData: GuarantorData = this.sanitizeForDynamo({
         ...data,
@@ -1187,6 +1198,7 @@ export class DynamoDBSeparateTablesService {
         role,
         zoneinfo,
         appid: applicationAppid,
+        timestamp: new Date().toISOString(),
         // Keep original timestamp if overwriting (using last_updated as reference)
         last_updated: new Date().toISOString()
       });
@@ -1196,7 +1208,7 @@ export class DynamoDBSeparateTablesService {
         Item: marshall(guarantorData, { removeUndefinedValues: true, convertClassInstanceToMap: true })
       });
 
-      await this.client.send(command);
+      await client.send(command);
       console.log('✅ Guarantor data saved successfully (overwritten existing if found) with userId:', uniqueUserId);
       return true;
     } catch (error) {
@@ -1207,7 +1219,7 @@ export class DynamoDBSeparateTablesService {
 
   // List all guarantors for the current application (by appid within same zone)
   async getGuarantorsByAppId(appid?: string): Promise<GuarantorData[]> {
-    if (!this.client) {
+    if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return [];
     }
@@ -1239,10 +1251,11 @@ export class DynamoDBSeparateTablesService {
         }, { convertClassInstanceToMap: true })
       });
 
-      const result = await this.client.send(command);
-      const items = (result.Items || []).map(item => unmarshall(item) as GuarantorData);
+      const client = this.client as DynamoDBClient;
+      const result = await client.send(command);
+      const items = (result.Items || []).map((item: any) => unmarshall(item) as GuarantorData);
       // Sort by timestamp (most recent first)
-      items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
+      items.sort((a: GuarantorData, b: GuarantorData) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
       return items;
     } catch (error) {
       console.error('❌ Error listing guarantors by appid:', error);

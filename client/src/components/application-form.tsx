@@ -3372,7 +3372,6 @@ export function ApplicationForm() {
   const guarantorWebhookResponse = (documentType: string, response: any) => {
     handleWebhookResponse('guarantor', documentType, response);
   };
-
   const occupantWebhookResponse = (documentType: string, response: any) => {
     console.log(`🌐 Occupant webhook response for ${documentType}:`, response);
     console.log(`🌐 Calling handleWebhookResponse with:`, { person: 'occupants', documentType, response });
@@ -4871,65 +4870,6 @@ export function ApplicationForm() {
         console.log(`📊 Size reduction: ${Math.round((payloadSize - optimizedPayloadSize)/1024)}KB`);
         console.log(`📊 Size reduction percentage: ${Math.round(((payloadSize - optimizedPayloadSize) / payloadSize) * 100)}%`);
         
-        // Debug: Check what's making the payload large
-        if (payloadSize > 100 * 1024) { // If larger than 100KB
-          console.log('🔍 Large payload detected, analyzing...');
-          console.log(`📊 Total payload size: ${Math.round(payloadSize/1024)}KB`);
-          
-          // Sort fields by size to identify the largest contributors
-          const fieldSizes: { key: string; size: number; sizeKB: number }[] = [];
-          
-          Object.keys(completeServerData).forEach(key => {
-            try {
-              const fieldValue = (completeServerData as any)[key];
-              if (fieldValue !== undefined && fieldValue !== null) {
-                const fieldSize = JSON.stringify(fieldValue).length;
-                if (fieldSize > 1024) { // If field is larger than 1KB
-                  fieldSizes.push({
-                    key,
-                    size: fieldSize,
-                    sizeKB: Math.round(fieldSize/1024)
-                  });
-                  console.log(`⚠️ Large field: ${key} = ${Math.round(fieldSize/1024)}KB`);
-                  
-                  // If it's an object, check its properties
-                  if (typeof fieldValue === 'object' && fieldValue !== null) {
-                    Object.keys(fieldValue).forEach(subKey => {
-                      try {
-                        const subValue = fieldValue[subKey];
-                        if (subValue !== undefined && subValue !== null) {
-                          const subSize = JSON.stringify(subValue).length;
-                          if (subSize > 100) { // If sub-field is larger than 100 bytes
-                            console.log(`  ⚠️ Large sub-field: ${key}.${subKey} = ${Math.round(subSize/1024)}KB`);
-                            // If it's a string and looks like base64, log its length
-                            if (typeof subValue === 'string' && subValue.length > 1000) {
-                              console.log(`    📝 Large string detected: ${subKey} length = ${subValue.length} characters`);
-                              if (subValue.startsWith('data:')) {
-                                console.log(`    📝 This appears to be a data URL (base64 encoded)`);
-                              }
-                            }
-                          }
-                        }
-                      } catch (subError) {
-                        console.log(`  ⚠️ Error analyzing sub-field ${key}.${subKey}:`, subError);
-                      }
-                    });
-                  }
-                }
-              }
-            } catch (error) {
-              console.log(`⚠️ Error analyzing field ${key}:`, error);
-            }
-          });
-          
-          // Sort and display the largest fields
-          fieldSizes.sort((a, b) => b.size - a.size);
-          console.log('📊 Top 5 largest fields:');
-          fieldSizes.slice(0, 5).forEach((field, index) => {
-            console.log(`  ${index + 1}. ${field.key}: ${field.sizeKB}KB`);
-          });
-        }
-        
         // Additional debugging for the optimized data
         console.log('🔍 Optimized data analysis:');
         console.log('  - documents: REMOVED (sent via webhook)');
@@ -5133,7 +5073,6 @@ export function ApplicationForm() {
           console.log('📤 Server submission failed. Proceeding with webhook submission fallback.');
           console.log('🔄 This is expected behavior when server endpoint is not available.');
         }
-
         // Disabled automatic PDF generation on submit
         let pdfUrl: string | null = null;
         console.log('🛑 Skipping PDF generation on submit for all roles');
@@ -5923,7 +5862,6 @@ export function ApplicationForm() {
       form.setValue('applicantDob', dateObj);
     }
   }, [formData.applicant?.dob, form]);
-
   // Ensure moveInDate in formData and react-hook-form stay in sync for DatePicker display
   useEffect(() => {
     const formValue = form.watch('moveInDate');
@@ -7017,7 +6955,6 @@ export function ApplicationForm() {
                   )}
                 />
               </div>
-
               {/* Co-Applicant and Guarantor Count Selectors - Only for applicant role */}
               {userRole === 'applicant' && (
                 <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
@@ -7395,7 +7332,6 @@ export function ApplicationForm() {
             </CardContent>
           </Card>
         );
-
       case 5:
 
         return (
@@ -8179,7 +8115,6 @@ export function ApplicationForm() {
             </>
           ) : null
         );
-
       case 8:
         return (
           <Card className="form-section border-l-4 border-l-blue-500">
@@ -8512,7 +8447,6 @@ export function ApplicationForm() {
                   </Label>
                 </div>
                 )}
-
                 {(hasGuarantor || (userRole.startsWith('guarantor') && specificIndex !== null)) && (
                   <div className="space-y-4">
                     <div className="flex items-center space-x-4">
@@ -9307,8 +9241,11 @@ export function ApplicationForm() {
       return Math.max(prevStep, 0);
     });
   };
-
-  const handleNext = () => {
+  const handleNext = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     // Validate current step before proceeding
     const validation = validateStep(currentStep);
     if (!validation.isValid) {
@@ -9373,7 +9310,19 @@ export function ApplicationForm() {
       )}
 
       <Form {...form}>
-        <form onSubmit={(e) => {
+        <form onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            const isTextArea = (e.target as HTMLElement)?.tagName === 'TEXTAREA';
+            if (!isTextArea && currentStep !== filteredSteps.length - 1) {
+              e.preventDefault();
+            }
+          }
+        }} onSubmit={(e) => {
+          // Only allow submit on last step
+          if (currentStep !== filteredSteps.length - 1) {
+            e.preventDefault();
+            return;
+          }
           console.log('🚀🚀🚀 FORM SUBMIT EVENT TRIGGERED!');
           console.log('🔍 User role:', userRole);
           console.log('🔍 Is role-specific submit?', userRole && (userRole.startsWith('coapplicant') || userRole.startsWith('guarantor')));
@@ -9545,7 +9494,7 @@ export function ApplicationForm() {
               ) : (
                 <Button
                   type="button"
-                  onClick={handleNext}
+                  onClick={(e) => handleNext(e)}
                   className="flex items-center"
                 >
                   Next
@@ -9571,153 +9520,6 @@ export function ApplicationForm() {
                 <p>
                   Your rental application has been submitted and is being processed.
                 </p>
-                {(userRole !== 'applicant' && userRole !== 'coapplicant') && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-                    <div className="flex items-center justify-center mb-2">
-                      <FileText className="w-4 h-4 text-blue-600 mr-2" />
-                      <span className="font-semibold text-blue-800">PDF Generated & Downloaded</span>
-                    </div>
-                    <p className="text-blue-700">
-                      Your application PDF has been automatically generated and downloaded to your device.
-                    </p>
-                  </div>
-                )}
-
-                {/* Additional People Summary - Only for applicant role */}
-                {userRole === 'applicant' && (formData.coApplicantCount > 0 || formData.guarantorCount > 0) && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-left">
-                    <div className="flex items-center mb-3">
-                      <Users className="w-4 h-4 text-green-600 mr-2" />
-                      <span className="font-semibold text-green-800">Additional People in Application</span>
-                    </div>
-                    
-                    {/* Co-Applicants Summary */}
-                    {formData.coApplicantCount > 0 && formData.coApplicants && (
-                      <div className="mb-3">
-                        <h4 className="font-medium text-green-700 mb-2">Co-Applicants ({formData.coApplicantCount}):</h4>
-                        <div className="space-y-1">
-                          {formData.coApplicants.slice(0, formData.coApplicantCount).map((coApplicant: any, index: number) => (
-                            <div key={index} className="text-green-600">
-                              <span className="font-medium">{coApplicant.name || `Co-Applicant ${index + 1}`}</span>
-                              {coApplicant.email && (
-                                <span className="text-gray-500 ml-2">({coApplicant.email})</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Guarantors Summary */}
-                    {formData.guarantorCount > 0 && formData.guarantors && (
-                      <div>
-                        <h4 className="font-medium text-green-700 mb-2">Guarantors ({formData.guarantorCount}):</h4>
-                        <div className="space-y-1">
-                          {formData.guarantors.slice(0, formData.guarantorCount).map((guarantor: any, index: number) => (
-                            <div key={index} className="text-green-600">
-                              <span className="font-medium">{guarantor.name || `Guarantor ${index + 1}`}</span>
-                              {guarantor.email && (
-                                <span className="text-gray-500 ml-2">({guarantor.email})</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Draft Preview - Role-based */}
-                {(() => {
-                  const role = userRole || 'applicant';
-                  const idx = specificIndex ?? undefined;
-                  const previewForm: any = buildRoleScopedFormData(form.getValues(), role, idx);
-                  const previewSigs = buildRoleScopedSignatures(signatures, role, idx);
-                  const roleLabel = role.startsWith('coapplicant') ? `Co-Applicant${typeof idx === 'number' ? ` ${idx + 1}` : ''}`
-                    : role.startsWith('guarantor') ? `Guarantor${typeof idx === 'number' ? ` ${idx + 1}` : ''}`
-                    : 'Applicant';
-                  return (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-left mt-4">
-                      <div className="flex items-center mb-3">
-                        <Users className="w-4 h-4 text-blue-600 mr-2" />
-                        <span className="font-semibold text-blue-800">Draft Preview ({roleLabel})</span>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-gray-700">
-                        <div>
-                          <div className="text-xs text-gray-500">Application</div>
-                          <div className="text-sm break-words">
-                            {(form.getValues() as any).application?.buildingAddress || '-'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-500">People Included</div>
-                          <div className="text-sm space-y-0.5">
-                            {(() => {
-                              const coCount = (formData.coApplicants || []).filter((co: any) => hasCoApplicantData(co)).length;
-                              const guaCount = (formData.guarantors || []).filter((g: any) => hasGuarantorData(g)).length;
-                              const occCount = (formData.occupants || []).filter((o: any) => !!(o && (o.name || o.relationship || o.dob))).length;
-                              const docsCount = Object.values(uploadedFilesMetadata || {}).reduce((sum: number, arr: any) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
-                              return (
-                                <div>
-                                  <div>Co-Applicants — Count: {coCount} | Status: {coCount > 0 ? 'Added' : 'None'}</div>
-                                  <div>Guarantors — Count: {guaCount} | Status: {guaCount > 0 ? 'Added' : 'None'}</div>
-                                  <div>Occupants — Count: {occCount} | Status: {occCount > 0 ? 'Added' : 'None'}</div>
-                                  <div>Documents — Uploaded: {docsCount} | Status: {docsCount > 0 ? 'Uploaded' : 'Pending'}</div>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-500">Signatures</div>
-                          <div className="text-sm">
-                            Applicant: {previewSigs.applicant ? 'Signed' : '—'}; Co-App: {previewSigs.coApplicants ? Object.values(previewSigs.coApplicants).filter(Boolean).length : 0}; Guarantor: {previewSigs.guarantors ? Object.values(previewSigs.guarantors).filter(Boolean).length : 0}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-gray-500">Reference ID</div>
-                          <div className="text-sm">{referenceId}</div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Co-Applicant Submission Preview - Only show relevant co-applicant data */}
-                {userRole && userRole.startsWith('coapplicant') && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-left">
-                    <div className="flex items-center mb-3">
-                      <Users className="w-4 h-4 text-green-600 mr-2" />
-                      <span className="font-semibold text-green-800">Co-Applicant Submission Preview</span>
-                    </div>
-                    <div className="space-y-2">
-                      {(() => {
-                        const indices = (specificIndex !== null)
-                          ? [specificIndex]
-                          : (formData.coApplicants || []).map((_: any, idx: number) => idx);
-                        return indices.map((idx: number) => {
-                          const ca = (formData.coApplicants || [])[idx];
-                          if (!ca || (!ca.name && !ca.email && !ca.phone)) return null;
-                          return (
-                            <div key={`coapp-preview-${idx}`} className="p-3 bg-white border border-green-200 rounded-md">
-                              <div className="font-medium text-green-700 mb-1">Co-Applicant {idx + 1}</div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-gray-700">
-                                <div><span className="text-gray-500">Name:</span> {ca.name || '—'}</div>
-                                <div><span className="text-gray-500">Email:</span> {ca.email || '—'}</div>
-                                <div><span className="text-gray-500">Phone:</span> {ca.phone || '—'}</div>
-                                <div><span className="text-gray-500">Relationship:</span> {ca.relationship || '—'}</div>
-                                <div><span className="text-gray-500">Address:</span> {ca.address || '—'}</div>
-                                <div><span className="text-gray-500">City:</span> {ca.city || '—'}</div>
-                                <div><span className="text-gray-500">State:</span> {ca.state || '—'}</div>
-                                <div><span className="text-gray-500">Zip:</span> {ca.zip || '—'}</div>
-                              </div>
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="flex space-x-3">
                 <Button

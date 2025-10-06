@@ -880,6 +880,16 @@ export class WebhookService {
 
       console.log(`📤 Sending co-applicant ${coApplicantIndex + 1} webhook for application ${applicationId}`);
       
+      // Attach webhook summary if available from transform (scoped to this co-applicant)
+      try {
+        const transformed = this.transformFormDataToWebhookFormat({ ...formData, coApplicants: [coApplicant] }, uploadedFiles);
+        if (transformed && (transformed as any).webhookSummary) {
+          (webhookData as any).webhookSummary = (transformed as any).webhookSummary;
+        }
+      } catch (e) {
+        console.warn('⚠️ Could not attach webhookSummary to co-applicant webhookData:', e instanceof Error ? e.message : String(e));
+      }
+
       const response = await this.sendWebhookRequest(webhookData, 'coapplicant_only');
       
       this.ongoingSubmissions.delete(submissionId);
@@ -929,6 +939,16 @@ export class WebhookService {
         uploaded_files: this.filterGuarantorFiles(uploadedFiles, guarantorIndex),
         submission_type: 'guarantor_only'
       };
+
+      // Attach webhook summary if available from transform
+      try {
+        const transformed = this.transformFormDataToWebhookFormat({ ...formData, guarantors: [guarantor] }, uploadedFiles);
+        if (transformed && (transformed as any).webhookSummary) {
+          (webhookData as any).webhookSummary = (transformed as any).webhookSummary;
+        }
+      } catch (e) {
+        console.warn('⚠️ Could not attach webhookSummary to guarantor webhookData:', e instanceof Error ? e.message : String(e));
+      }
 
       console.log(`📤 Sending guarantor ${guarantorIndex + 1} webhook for application ${applicationId}`);
       
