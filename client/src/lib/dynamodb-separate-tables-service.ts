@@ -51,6 +51,7 @@ export interface CoApplicantData {
   coapplicant_info: any; // Co-applicant form data
   webhookSummary: any; // Webhook summary
   signature: any; // Co-applicant signature
+  timestamp: string; // Creation timestamp (sort key)
   last_updated: string;
   status: 'draft' | 'submitted';
 }
@@ -64,6 +65,7 @@ export interface GuarantorData {
   guarantor_info: any; // Guarantor form data
   webhookSummary: any; // Webhook summary
   signature: any; // Guarantor signature
+  timestamp: string; // Creation timestamp (sort key)
   last_updated: string;
   status: 'draft' | 'submitted';
 }
@@ -95,6 +97,31 @@ export class DynamoDBSeparateTablesService {
     
     // Initialize client lazily when needed
     this.initializeClientWithRetry();
+  }
+
+  // Normalize person info for storage: enforce 10-digit phone, 5-digit ZIP
+  private normalizePersonInfo(raw: any): any {
+    if (!raw || typeof raw !== 'object') return raw;
+    const normalized: any = { ...raw };
+    try {
+      if (normalized.phone) {
+        const digits = String(normalized.phone).replace(/\D/g, '');
+        normalized.phone = digits.slice(-10);
+      }
+      if (normalized.landlordPhone) {
+        const digits = String(normalized.landlordPhone).replace(/\D/g, '');
+        normalized.landlordPhone = digits.slice(-10);
+      }
+      if (normalized.zip) {
+        const digits = String(normalized.zip).replace(/\D/g, '');
+        normalized.zip = digits.slice(0, 5);
+      }
+      if (normalized.landlordZipCode) {
+        const digits = String(normalized.landlordZipCode).replace(/\D/g, '');
+        normalized.landlordZipCode = digits.slice(0, 5);
+      }
+    } catch {}
+    return normalized;
   }
 
   // Recursively sanitize values so DynamoDB marshaller accepts them
@@ -577,13 +604,15 @@ export class DynamoDBSeparateTablesService {
         applicationAppid = existingApp?.appid;
       } catch {}
 
+      // Preserve existing timestamp if a draft already exists to avoid duplicate records
+      const existingApplicant = await this.getApplicantData();
       const applicantData: ApplicantData = this.sanitizeForDynamo({
         ...data,
         userId,
         role,
         zoneinfo,
         appid: applicationAppid,
-        timestamp: new Date().toISOString(),
+        timestamp: existingApplicant?.timestamp || new Date().toISOString(),
         last_updated: new Date().toISOString()
       });
 
@@ -769,7 +798,7 @@ export class DynamoDBSeparateTablesService {
   // CO-APPLICANT DATA METHODS
 
   // Save co-applicant data
-  async saveCoApplicantData(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
+  async saveCoApplicantData(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
     if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return false;
@@ -882,7 +911,7 @@ export class DynamoDBSeparateTablesService {
   }
 
   // Save co-applicant as NEW record by generating unique userId suffix
-  async saveCoApplicantDataNew(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
+  async saveCoApplicantDataNew(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
     if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return false;
@@ -921,13 +950,16 @@ export class DynamoDBSeparateTablesService {
       // Use the logged-in user's sub for userId (no suffix)
       const uniqueUserId = baseUserId;
 
+      // Preserve existing timestamp if a draft already exists to avoid duplicate records
+      const existingCoApplicant = await this.getCoApplicantData();
       const coApplicantData: CoApplicantData = this.sanitizeForDynamo({
         ...data,
+        coapplicant_info: this.normalizePersonInfo((data as any).coapplicant_info),
         userId: uniqueUserId,
         role,
         zoneinfo,
         appid: applicationAppid,
-        timestamp: new Date().toISOString(),
+        timestamp: existingCoApplicant?.timestamp || new Date().toISOString(),
         // Keep original timestamp if overwriting (using last_updated as reference)
         last_updated: new Date().toISOString()
       });
@@ -1040,7 +1072,7 @@ export class DynamoDBSeparateTablesService {
   // GUARANTOR DATA METHODS
 
   // Save guarantor data
-  async saveGuarantorData(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
+  async saveGuarantorData(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
     if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return false;
@@ -1153,7 +1185,7 @@ export class DynamoDBSeparateTablesService {
   }
 
   // Save guarantor data (overwrites existing if found)
-  async saveGuarantorDataNew(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
+  async saveGuarantorDataNew(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
     if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return false;
@@ -1192,13 +1224,16 @@ export class DynamoDBSeparateTablesService {
       // Use the logged-in user's sub for userId (no suffix)
       const uniqueUserId = baseUserId;
 
+      // Preserve existing timestamp if a draft already exists to avoid duplicate records
+      const existingGuarantor = await this.getGuarantorData();
       const guarantorData: GuarantorData = this.sanitizeForDynamo({
         ...data,
+        guarantor_info: this.normalizePersonInfo((data as any).guarantor_info),
         userId: uniqueUserId,
         role,
         zoneinfo,
         appid: applicationAppid,
-        timestamp: new Date().toISOString(),
+        timestamp: existingGuarantor?.timestamp || new Date().toISOString(),
         // Keep original timestamp if overwriting (using last_updated as reference)
         last_updated: new Date().toISOString()
       });
@@ -1472,7 +1507,7 @@ export const dynamoDBSeparateTablesUtils = {
     return dynamoDBSeparateTablesService.saveApplicantDataNew(data, appid);
   },
   
-  async saveCoApplicantData(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
+  async saveCoApplicantData(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
     return dynamoDBSeparateTablesService.saveCoApplicantData(data, appid);
   },
   
@@ -1496,11 +1531,11 @@ export const dynamoDBSeparateTablesUtils = {
     return dynamoDBSeparateTablesService.getGuarantorData();
   },
   
-  async saveCoApplicantDataNew(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
+  async saveCoApplicantDataNew(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
     return dynamoDBSeparateTablesService.saveCoApplicantDataNew(data, appid);
   },
   
-  async saveGuarantorDataNew(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
+  async saveGuarantorDataNew(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
     return dynamoDBSeparateTablesService.saveGuarantorDataNew(data, appid);
   },
   

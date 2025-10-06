@@ -1343,6 +1343,8 @@ export class WebhookService {
       application: transformedData.application,
       // Include only the specific co-applicant
       coApplicants: [safeCoApplicant],
+      // Include webhook summary so receivers see it inside form_data
+      webhookSummary: transformedData.webhookSummary,
       // Include basic application info
       hasCoApplicant: true,
       hasGuarantor: false,
@@ -1379,6 +1381,8 @@ export class WebhookService {
       application: transformedData.application,
       // Include only the specific guarantor
       guarantors: [transformedData.guarantors[guarantorIndex]],
+      // Include webhook summary so receivers see it inside form_data
+      webhookSummary: transformedData.webhookSummary,
       // Include basic application info
       hasCoApplicant: false,
       hasGuarantor: true,
@@ -1429,10 +1433,17 @@ export class WebhookService {
    */
   private static filterCoApplicantFiles(uploadedFiles?: any, coApplicantIndex: number = 0): any {
     if (!uploadedFiles) return {};
-    
-    // For now, return all co-applicant files since we can't easily separate by index
-    // In a more sophisticated implementation, you might want to prefix files by index
-    return {
+
+    // Try indexed structure first if present (e.g., arrays per co-applicant)
+    const indexed = Array.isArray(uploadedFiles.coApplicants)
+      ? uploadedFiles.coApplicants[coApplicantIndex] || {}
+      : {};
+
+    // Merge both generic coApplicant_* buckets and any indexed buckets
+    const merged = {
+      // Indexed buckets
+      ...(indexed || {}),
+      // Generic buckets
       coApplicant_w9_forms: uploadedFiles.coApplicant_w9_forms || [],
       coApplicant_photo_id: uploadedFiles.coApplicant_photo_id || [],
       coApplicant_social_security: uploadedFiles.coApplicant_social_security || [],
@@ -1440,8 +1451,21 @@ export class WebhookService {
       coApplicant_tax_returns: uploadedFiles.coApplicant_tax_returns || [],
       coApplicant_employment_letter: uploadedFiles.coApplicant_employment_letter || [],
       coApplicant_pay_stubs: uploadedFiles.coApplicant_pay_stubs || [],
-      coApplicant_credit_report: uploadedFiles.coApplicant_credit_report || []
+      coApplicant_credit_report: uploadedFiles.coApplicant_credit_report || [],
+      // Fallback: include applicant-shared categories if Make scenario expects them
+      supporting_w9_forms: uploadedFiles.supporting_w9_forms || [],
+      supporting_photo_id: uploadedFiles.supporting_photo_id || [],
+      supporting_social_security: uploadedFiles.supporting_social_security || [],
+      supporting_bank_statement: uploadedFiles.supporting_bank_statement || [],
+      supporting_tax_returns: uploadedFiles.supporting_tax_returns || [],
+      supporting_employment_letter: uploadedFiles.supporting_employment_letter || [],
+      supporting_pay_stubs: uploadedFiles.supporting_pay_stubs || [],
+      supporting_credit_report: uploadedFiles.supporting_credit_report || []
     };
+
+    // Include raw for debugging in Make (non-breaking to receivers that ignore unknown fields)
+    (merged as any).raw = uploadedFiles;
+    return merged;
   }
 
   /**
@@ -1449,10 +1473,16 @@ export class WebhookService {
    */
   private static filterGuarantorFiles(uploadedFiles?: any, guarantorIndex: number = 0): any {
     if (!uploadedFiles) return {};
-    
-    // For now, return all guarantor files since we can't easily separate by index
-    // In a more sophisticated implementation, you might want to prefix files by index
-    return {
+
+    // Try indexed structure first if present (e.g., arrays per guarantor)
+    const indexed = Array.isArray(uploadedFiles.guarantors)
+      ? uploadedFiles.guarantors[guarantorIndex] || {}
+      : {};
+
+    const merged = {
+      // Indexed buckets
+      ...(indexed || {}),
+      // Generic buckets
       guarantor_w9_forms: uploadedFiles.guarantor_w9_forms || [],
       guarantor_photo_id: uploadedFiles.guarantor_photo_id || [],
       guarantor_social_security: uploadedFiles.guarantor_social_security || [],
@@ -1460,8 +1490,20 @@ export class WebhookService {
       guarantor_tax_returns: uploadedFiles.guarantor_tax_returns || [],
       guarantor_employment_letter: uploadedFiles.guarantor_employment_letter || [],
       guarantor_pay_stubs: uploadedFiles.guarantor_pay_stubs || [],
-      guarantor_credit_report: uploadedFiles.guarantor_credit_report || []
+      guarantor_credit_report: uploadedFiles.guarantor_credit_report || [],
+      // Fallback: include applicant-shared categories if Make scenario expects them
+      supporting_w9_forms: uploadedFiles.supporting_w9_forms || [],
+      supporting_photo_id: uploadedFiles.supporting_photo_id || [],
+      supporting_social_security: uploadedFiles.supporting_social_security || [],
+      supporting_bank_statement: uploadedFiles.supporting_bank_statement || [],
+      supporting_tax_returns: uploadedFiles.supporting_tax_returns || [],
+      supporting_employment_letter: uploadedFiles.supporting_employment_letter || [],
+      supporting_pay_stubs: uploadedFiles.supporting_pay_stubs || [],
+      supporting_credit_report: uploadedFiles.supporting_credit_report || []
     };
+
+    (merged as any).raw = uploadedFiles;
+    return merged;
   }
 
   /**

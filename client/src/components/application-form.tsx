@@ -1,4 +1,5 @@
 import React from "react";
+import { dynamoDBUtils as legacyDraftUtils } from "../lib/dynamodb-service";
 import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -85,6 +86,8 @@ const applicationSchema = z.object({
     return validatePhoneNumber(val);
   }, {
     message: "Please enter a valid US phone number"
+  }).refine((val) => !val || (val.replace(/\D/g, '').length === 10), {
+    message: "Phone number must be 10 digits"
   }),
   applicantEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
     message: "Please enter a valid email address"
@@ -115,9 +118,13 @@ const applicationSchema = z.object({
   applicantLandlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
     message: "Please enter a valid ZIP code"
   }),
-  applicantLandlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
-    message: "Please enter a valid US phone number"
-  }),
+  applicantLandlordPhone: z.string().optional()
+    .refine((val) => !val || validatePhoneNumber(val), {
+      message: "Please enter a valid US phone number"
+    })
+    .refine((val) => !val || (val.replace(/\D/g, '').length === 10), {
+      message: "Phone number must be 10 digits"
+    }),
   applicantLandlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
     message: "Please enter a valid email address"
   }),
@@ -142,6 +149,8 @@ const applicationSchema = z.object({
       return validatePhoneNumber(val);
     }, {
       message: "Please enter a valid US phone number"
+    }).refine((val) => !val || (val.replace(/\D/g, '').length === 10), {
+      message: "Phone number must be 10 digits"
     }),
     email: z.string().optional().refine((val) => !val || validateEmail(val), {
       message: "Please enter a valid email address"
@@ -172,9 +181,13 @@ const applicationSchema = z.object({
     landlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
       message: "Please enter a valid ZIP code"
     }),
-    landlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
-      message: "Please enter a valid US phone number"
-    }),
+    landlordPhone: z.string().optional()
+      .refine((val) => !val || validatePhoneNumber(val), {
+        message: "Please enter a valid US phone number"
+      })
+      .refine((val) => !val || (val.replace(/\D/g, '').length === 10), {
+        message: "Phone number must be 10 digits"
+      }),
     landlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
       message: "Please enter a valid email address"
     }),
@@ -215,6 +228,8 @@ const applicationSchema = z.object({
       return validatePhoneNumber(val);
     }, {
       message: "Please enter a valid US phone number"
+    }).refine((val) => !val || (val.replace(/\D/g, '').length === 10), {
+      message: "Phone number must be 10 digits"
     }),
     email: z.string().optional().refine((val) => !val || validateEmail(val), {
       message: "Please enter a valid email address"
@@ -245,9 +260,13 @@ const applicationSchema = z.object({
     landlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
       message: "Please enter a valid ZIP code"
     }),
-    landlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
-      message: "Please enter a valid US phone number"
-    }),
+    landlordPhone: z.string().optional()
+      .refine((val) => !val || validatePhoneNumber(val), {
+        message: "Please enter a valid US phone number"
+      })
+      .refine((val) => !val || (val.replace(/\D/g, '').length === 10), {
+        message: "Phone number must be 10 digits"
+      }),
     landlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
       message: "Please enter a valid email address"
     }),
@@ -292,9 +311,13 @@ const applicationSchema = z.object({
   coApplicantLandlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
     message: "Please enter a valid ZIP code"
   }),
-  coApplicantLandlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
-    message: "Please enter a valid US phone number"
-  }),
+  coApplicantLandlordPhone: z.string().optional()
+    .refine((val) => !val || validatePhoneNumber(val), {
+      message: "Please enter a valid US phone number"
+    })
+    .refine((val) => !val || (val.replace(/\D/g, '').length === 10), {
+      message: "Phone number must be 10 digits"
+    }),
   coApplicantLandlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
     message: "Please enter a valid email address"
   }),
@@ -318,9 +341,13 @@ const applicationSchema = z.object({
   guarantorLandlordZipCode: z.string().optional().refine((val) => !val || validateZIPCode(val), {
     message: "Please enter a valid ZIP code"
   }),
-  guarantorLandlordPhone: z.string().optional().refine((val) => !val || validatePhoneNumber(val), {
-    message: "Please enter a valid US phone number"
-  }),
+  guarantorLandlordPhone: z.string().optional()
+    .refine((val) => !val || validatePhoneNumber(val), {
+      message: "Please enter a valid US phone number"
+    })
+    .refine((val) => !val || (val.replace(/\D/g, '').length === 10), {
+      message: "Phone number must be 10 digits"
+    }),
   guarantorLandlordEmail: z.string().optional().refine((val) => !val || validateEmail(val), {
     message: "Please enter a valid email address"
   }),
@@ -805,7 +832,7 @@ export function ApplicationForm() {
       // Application Info
       buildingAddress: "",
       apartmentNumber: "",
-      moveInDate: (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })(),
+      moveInDate: undefined,
       monthlyRent: undefined,
       apartmentType: "",
       howDidYouHear: "",
@@ -1775,7 +1802,87 @@ export function ApplicationForm() {
             description: "Your previous draft has been restored. You can continue from where you left off.",
           });
       } else {
-        console.log('📭 No draft data found or draft already submitted');
+        console.log('📭 No draft data found in separate tables; trying legacy draft fallback...');
+        // Fallback: try to load legacy single-table draft (by most recent for current user)
+        try {
+          const drafts = await legacyDraftUtils.getAllDraftsForCurrentUser();
+          if (drafts && drafts.length > 0) {
+            const latest = drafts[0];
+            console.log('📦 Loaded legacy draft for mapping:', latest);
+            const fd = latest.form_data || {};
+            const parsedFormData: any = {
+              application: fd.application || {},
+              applicant: fd.applicant || {},
+              coApplicant: (fd.coApplicants && fd.coApplicants[0]) || {},
+              guarantor: (fd.guarantors && fd.guarantors[0]) || {},
+              coApplicants: fd.coApplicants || [],
+              guarantors: fd.guarantors || [],
+              occupants: fd.occupants || [],
+              webhookSummary: latest.webhook_responses || {},
+              signatures: latest.signatures || {},
+              uploaded_files_metadata: latest.uploaded_files_metadata || {},
+              encrypted_documents: latest.encrypted_documents || {},
+              current_step: latest.current_step || 0,
+              status: latest.status || 'draft'
+            };
+            // Normalize key variants used in legacy drafts
+            const app = parsedFormData.application as any;
+            app.buildingAddress = app.buildingAddress || app.building_address || app.address || '';
+            app.apartmentNumber = app.apartmentNumber || app.unitNumber || app.apartment || app.unit || '';
+            app.apartmentType = app.apartmentType || app.apartment_type || app.unitType || app.unit_type || '';
+            if (typeof app.monthlyRent === 'undefined') {
+              app.monthlyRent = typeof app.rent !== 'undefined' ? app.rent : app.monthly_rent;
+            }
+            if (app.move_in_date && !app.moveInDate) app.moveInDate = app.move_in_date;
+
+            const ap = (parsedFormData.applicant = parsedFormData.applicant || {}) as any;
+            ap.name = ap.name || ap.fullName || ap.full_name || '';
+            ap.email = ap.email || ap.mail || '';
+            ap.phone = ap.phone || ap.phoneNumber || ap.phone_number || '';
+            ap.address = ap.address || ap.addressLine1 || ap.address1 || ap.street || '';
+            ap.city = ap.city || ap.town || '';
+            ap.state = ap.state || ap.region || '';
+            ap.zip = ap.zip || ap.zipCode || ap.postalCode || ap.postal_code || '';
+            if (ap.date_of_birth && !ap.dob) ap.dob = ap.date_of_birth;
+            ap.employmentType = ap.employmentType || ap.employment_type || ap.employment || ap.applicant_employmentType || '';
+            ap.landlordName = ap.landlordName || ap.landlord_name || '';
+            ap.landlordAddressLine1 = ap.landlordAddressLine1 || ap.landlord_address_line1 || ap.landlord_address || '';
+            ap.landlordAddressLine2 = ap.landlordAddressLine2 || ap.landlord_address_line2 || '';
+            ap.landlordCity = ap.landlordCity || ap.landlord_city || '';
+            ap.landlordState = ap.landlordState || ap.landlord_state || '';
+            ap.landlordZipCode = ap.landlordZipCode || ap.landlord_zip || ap.landlord_zip_code || '';
+            ap.landlordPhone = ap.landlordPhone || ap.landlord_phone || '';
+            ap.landlordEmail = ap.landlordEmail || ap.landlord_email || '';
+
+            // Merge webhook responses if nested under webhookSummary.webhookResponses
+            if (parsedFormData.webhookSummary?.webhookResponses) {
+              parsedFormData.webhook_responses = {
+                ...parsedFormData.webhook_responses,
+                ...parsedFormData.webhookSummary.webhookResponses
+              };
+            }
+
+            setFormData(parsedFormData);
+            setCurrentStep(parsedFormData.current_step || 0);
+            if (parsedFormData.signatures) setSignatures(parsedFormData.signatures);
+            if (parsedFormData.webhook_responses) setWebhookResponses(parsedFormData.webhook_responses);
+
+            // Try restoring building/unit selection if present
+            if (parsedFormData.application?.buildingAddress) {
+              await restoreBuildingSelection(
+                parsedFormData.application.buildingAddress,
+                parsedFormData.application.apartmentNumber,
+                parsedFormData.application.apartmentType
+              );
+            }
+
+            toast({ title: 'Draft Loaded', description: 'Your previous draft has been restored from legacy storage.' });
+          } else {
+            console.log('📭 No draft data found or draft already submitted');
+          }
+        } catch (legacyErr) {
+          console.warn('⚠️ Legacy draft fallback failed:', legacyErr);
+        }
       }
     } catch (error) {
       console.error('❌ Error loading draft data:', error);
@@ -2008,6 +2115,12 @@ export function ApplicationForm() {
         }
       }
       
+      // Auto-load existing draft by default even without explicit continue param
+      if (!shouldContinue && user.applicantId) {
+        console.log('🔄 No continue param; attempting to auto-load existing draft...');
+        loadDraftData(user.applicantId);
+      }
+
       if (shouldContinue) {
         console.log('🔄 Continue parameter detected, loading existing draft...');
         // Load draft data from DynamoDB if available
@@ -2907,6 +3020,51 @@ export function ApplicationForm() {
         saveResults.push(applicantSaveResult);
         
         console.log('✅ Primary Applicant draft with co-applicants and guarantors saved to app_nyc and applicant_nyc tables');
+
+      } else if (userRole && userRole.startsWith('coapplicant')) {
+        console.log('👥 Co-Applicant saving draft to Co-Applicants table...');
+
+        // Build co-applicant record
+        const coApplicantIndex = typeof specificIndex === 'number' ? specificIndex : 0;
+        const coApplicantData = (enhancedFormDataSnapshot.coApplicants || [])[0] || {};
+        const submittedCoApplicantData = {
+          coapplicant_info: coApplicantData,
+          occupants: enhancedFormDataSnapshot.occupants || [],
+          webhookSummary: getWebhookSummary(),
+          signature: (roleScopedSign as any).coapplicant || {},
+          status: 'draft' as const,
+          last_updated: new Date().toISOString()
+        };
+
+        // Link to current application id if available
+        const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
+        const appid = existingApp?.appid;
+        const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantDataNew(submittedCoApplicantData as any, appid);
+        saveResults.push(coApplicantSaveResult);
+
+        console.log('✅ Co-Applicant draft saved to Co-Applicants table');
+
+      } else if (userRole && userRole.startsWith('guarantor')) {
+        console.log('🛡️ Guarantor saving draft to Guarantors_nyc table...');
+
+        // Build guarantor record
+        const guarantorIndex = typeof specificIndex === 'number' ? specificIndex : 0;
+        const guarantorData = (enhancedFormDataSnapshot.guarantors || [])[0] || {};
+        const submittedGuarantorData = {
+          guarantor_info: guarantorData,
+          occupants: enhancedFormDataSnapshot.occupants || [],
+          webhookSummary: getWebhookSummary(),
+          signature: (roleScopedSign as any).guarantor || {},
+          status: 'draft' as const,
+          last_updated: new Date().toISOString()
+        };
+
+        const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
+        const appid = existingApp?.appid;
+        const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorDataNew(submittedGuarantorData as any, appid);
+        saveResults.push(guarantorSaveResult);
+
+        console.log('✅ Guarantor draft saved to Guarantors_nyc table');
 
       } else {
         console.log('❓ Unknown role, saving to all tables as fallback...');
@@ -5882,17 +6040,9 @@ export function ApplicationForm() {
     }
   }, [formData.application?.moveInDate, form]);
 
-  // Ensure a valid default move-in date exists at runtime (handles SSR/hydration differences)
+  // Do not auto-fill moveInDate 
   useEffect(() => {
-    const current = form.getValues('moveInDate');
-    if (!current) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      form.setValue('moveInDate', today, { shouldValidate: true, shouldDirty: false });
-      updateFormData('application', 'moveInDate', today);
-    }
-    // run once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Intentionally left blank: user must select a date
   }, []);
 
   // Ensure apartmentNumber in formData and react-hook-form stay in sync

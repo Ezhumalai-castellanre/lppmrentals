@@ -52,6 +52,11 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
 
     switch (type) {
       case 'phone':
+        // Require exactly 10 digits
+        const digits = inputValue.replace(/\D/g, '');
+        if (digits.length !== 10) {
+          return { isValid: false, message: 'Phone number must be exactly 10 digits' };
+        }
         if (!validatePhoneNumber(inputValue)) {
           return { isValid: false, message: 'Please enter a valid US phone number (e.g., (555) 123-4567)' };
         }
@@ -100,11 +105,8 @@ export const ValidatedInput: React.FC<ValidatedInputProps> = ({
       case 'phone':
         // Remove all non-digits and format
         const phoneDigits = inputValue.replace(/\D/g, '');
-        if (phoneDigits.length <= 10) {
-          inputValue = phoneDigits;
-        } else if (phoneDigits.length <= 11 && phoneDigits.startsWith('1')) {
-          inputValue = phoneDigits;
-        }
+        // Limit to 10 digits hard cap while typing
+        inputValue = phoneDigits.slice(0, 10);
         break;
       
       case 'ssn':
