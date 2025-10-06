@@ -5943,6 +5943,19 @@ export function ApplicationForm() {
     }
   }, [formData.application?.moveInDate, form]);
 
+  // Ensure a valid default move-in date exists at runtime (handles SSR/hydration differences)
+  useEffect(() => {
+    const current = form.getValues('moveInDate');
+    if (!current) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      form.setValue('moveInDate', today, { shouldValidate: true, shouldDirty: false });
+      updateFormData('application', 'moveInDate', today);
+    }
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Ensure apartmentNumber in formData and react-hook-form stay in sync
   useEffect(() => {
     const formValue = form.watch('apartmentNumber');
@@ -6344,13 +6357,18 @@ export function ApplicationForm() {
                       <FormLabel>Move-in Date</FormLabel>
                       <FormControl>
                         <DatePicker
-                          value={field.value}
+                          value={field.value instanceof Date ? field.value : (field.value ? new Date(field.value) : undefined)}
                           onChange={(date) => {
-                            field.onChange(date);
-                            updateFormData('application', 'moveInDate', date); // Store Date object, not string
+                            const onlyDate = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate()) : undefined;
+                            field.onChange(onlyDate);
+                            updateFormData('application', 'moveInDate', onlyDate);
                           }}
                           placeholder="Select move-in date"
-                          disabled={(date) => date < new Date()}
+                          disabled={(date) => {
+                            const today = new Date(); today.setHours(0,0,0,0);
+                            const d = new Date(date); d.setHours(0,0,0,0);
+                            return d < today; // allow today and future
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
