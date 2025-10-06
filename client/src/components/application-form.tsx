@@ -40,14 +40,33 @@ import { FileUpload } from "./ui/file-upload";
 
 
 
+// Helpers to normalize incoming values to expected types for Zod
+const toDate = (val: unknown) => {
+  if (!val) return undefined;
+  if (val instanceof Date) return val;
+  if (typeof val === 'string' || typeof val === 'number') {
+    const d = new Date(val as any);
+    return isNaN(d.getTime()) ? undefined : d;
+  }
+  return undefined;
+};
+
+const toStringValue = (val: unknown) => {
+  if (val == null) return '';
+  if (typeof val === 'string') return val;
+  // Prevent accidental Date -> string for SSN; treat as empty
+  if (val instanceof Date) return '';
+  try { return String(val); } catch { return ''; }
+};
+
 const applicationSchema = z.object({
   // Application Info
   buildingAddress: z.string().optional(),
   apartmentNumber: z.string().optional(),
-  moveInDate: z.date({
+  moveInDate: z.preprocess(toDate, z.date({
     required_error: "Move-in date is required",
     invalid_type_error: "Please select a valid move-in date",
-  }),
+  })),
   monthlyRent: z.union([
     z.number().optional(),
     z.string().optional().transform((val) => val ? Number(val) : undefined)
@@ -58,10 +77,10 @@ const applicationSchema = z.object({
 
   // Primary Applicant
   applicantName: z.string().optional(), // Lenient: any name entry is okay
-  applicantDob: z.date().optional(),
-  applicantSsn: z.string().optional().refine((val) => !val || validateSSN(val), {
+  applicantDob: z.preprocess(toDate, z.date()).optional(),
+  applicantSsn: z.preprocess(toStringValue, z.string().optional().refine((val) => !val || validateSSN(val), {
     message: "Please enter a valid 9-digit Social Security Number"
-  }),
+  })),
   applicantPhone: z.string().optional().refine((val) => {
     // If no value or empty string, it's valid (optional field)
     if (!val || val.trim() === '') return true;
