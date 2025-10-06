@@ -808,7 +808,7 @@ export function ApplicationForm() {
       // Application Info
       buildingAddress: "",
       apartmentNumber: "",
-      moveInDate: undefined as any,
+      moveInDate: (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })(),
       monthlyRent: undefined,
       apartmentType: "",
       howDidYouHear: "",
