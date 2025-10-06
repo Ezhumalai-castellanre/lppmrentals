@@ -1895,9 +1895,9 @@ export class WebhookService {
       if (transformedData.coApplicants && transformedData.coApplicants.length > 0) {
         transformedData.coApplicants.forEach((coApplicant: any, index: number) => {
           if (coApplicant && coApplicant.name) {
-            additionalPeople[`coApplicants${index + 1}`] = {
-              coApplicants: `coapplicants${index + 1}`,
-              url: `https://www.app.lppmrentals.com/login?role=coapplicants${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+            additionalPeople[`coApplicant${index + 1}`] = {
+              coApplicant: `coapplicant${index + 1}`,
+              url: `https://www.app.lppmrentals.com/login?role=coapplicant${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
               name: coApplicant.name,
               email: coApplicant.email || ''
             };

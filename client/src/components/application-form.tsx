@@ -972,10 +972,10 @@ export function ApplicationForm() {
     return () => subscription.unsubscribe();
   }, [form]);
 
-  // Helper function to get current user's zoneinfo (source of truth for LPPM numbers)
+  // Helper: always prefer logged-in user's zoneinfo; fallbacks are last-resort
   const getCurrentUserZoneinfo = useCallback(() => {
-    return user?.sub || user?.zoneinfo || user?.applicantId;
-  }, [user?.sub, user?.zoneinfo, user?.applicantId]);
+    return user?.zoneinfo || user?.applicantId || user?.sub;
+  }, [user?.zoneinfo, user?.applicantId, user?.sub]);
 
   // Helper function to check if co-applicant has meaningful data
   const hasCoApplicantData = useCallback((coApplicant: any) => {
@@ -2869,14 +2869,15 @@ export function ApplicationForm() {
         const applicationData = {
           application_info: {
             ...enhancedFormDataSnapshot.application,
-            reference_id: referenceId
+            reference_id: referenceId,
+            zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''
           },
-        current_step: currentStep,
+          current_step: currentStep,
           status: 'draft' as const,
-        uploaded_files_metadata: uploadedFilesMetadata,
-        webhook_responses: webhookResponses,
-        signatures: roleScopedSign,
-        encrypted_documents: encryptedDocuments,
+          uploaded_files_metadata: uploadedFilesMetadata,
+          webhook_responses: webhookResponses,
+          signatures: roleScopedSign,
+          encrypted_documents: encryptedDocuments,
           storage_mode: 'direct' as const,
           flow_type: 'separate_webhooks' as const,
           webhook_flow_version: '2.0',
@@ -2914,7 +2915,8 @@ export function ApplicationForm() {
         const applicationData = {
           application_info: {
             ...enhancedFormDataSnapshot.application,
-            reference_id: referenceId
+            reference_id: referenceId,
+            zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''
           },
           current_step: currentStep,
           status: 'draft' as const,
@@ -5667,7 +5669,8 @@ export function ApplicationForm() {
             const submittedApplicationData = {
               application_info: {
                 ...submittedFormRoleScoped.application,
-                reference_id: submissionResult?.reference_id || referenceId
+                reference_id: submissionResult?.reference_id || referenceId,
+                zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''
               },
             current_step: 12, // Mark as completed
             status: 'submitted' as const,
@@ -5765,7 +5768,8 @@ export function ApplicationForm() {
             const submittedApplicationData = {
               application_info: {
                 ...submittedFormRoleScoped.application,
-                reference_id: submissionResult?.reference_id || referenceId
+                reference_id: submissionResult?.reference_id || referenceId,
+                zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''
               },
               current_step: 12,
               status: 'submitted' as const,
@@ -9647,8 +9651,21 @@ export function ApplicationForm() {
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">People Included</div>
-                          <div className="text-sm">
-                            Applicant: {(previewForm as any).applicant ? 'Yes' : 'No'}; Co-Applicants: {Array.isArray((previewForm as any).coApplicants) ? (previewForm as any).coApplicants.length : 0}; Guarantors: {Array.isArray((previewForm as any).guarantors) ? (previewForm as any).guarantors.length : 0}
+                          <div className="text-sm space-y-0.5">
+                            {(() => {
+                              const coCount = (formData.coApplicants || []).filter((co: any) => hasCoApplicantData(co)).length;
+                              const guaCount = (formData.guarantors || []).filter((g: any) => hasGuarantorData(g)).length;
+                              const occCount = (formData.occupants || []).filter((o: any) => !!(o && (o.name || o.relationship || o.dob))).length;
+                              const docsCount = Object.values(uploadedFilesMetadata || {}).reduce((sum: number, arr: any) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+                              return (
+                                <div>
+                                  <div>Co-Applicants — Count: {coCount} | Status: {coCount > 0 ? 'Added' : 'None'}</div>
+                                  <div>Guarantors — Count: {guaCount} | Status: {guaCount > 0 ? 'Added' : 'None'}</div>
+                                  <div>Occupants — Count: {occCount} | Status: {occCount > 0 ? 'Added' : 'None'}</div>
+                                  <div>Documents — Uploaded: {docsCount} | Status: {docsCount > 0 ? 'Uploaded' : 'Pending'}</div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                         <div>
