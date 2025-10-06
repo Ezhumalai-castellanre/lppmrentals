@@ -63,10 +63,7 @@ const applicationSchema = z.object({
   // Application Info
   buildingAddress: z.string().optional(),
   apartmentNumber: z.string().optional(),
-  moveInDate: z.preprocess(toDate, z.date({
-    required_error: "Move-in date is required",
-    invalid_type_error: "Please select a valid move-in date",
-  })),
+  moveInDate: z.preprocess(toDate, z.date()).optional(),
   monthlyRent: z.union([
     z.number().optional(),
     z.string().optional().transform((val) => val ? Number(val) : undefined)
