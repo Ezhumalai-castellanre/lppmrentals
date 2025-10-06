@@ -1269,55 +1269,25 @@ export class WebhookService {
   private static createApplicantOnlyPayload(formData: any, uploadedFiles?: any): any {
     const transformedData = this.transformFormDataToWebhookFormat(formData, uploadedFiles);
     
-    // Create Additional People section with proper structure
-    const additionalPeople: any = {
-      zoneinfo: formData.zoneinfo || formData.applicantId || 'unknown',
-      role: 'applicant',
-      applicant: transformedData.applicant?.name || 'unknown'
-    };
-
-    // Add co-applicants if they exist
-    if (formData.coApplicants && formData.coApplicants.length > 0) {
-      formData.coApplicants.forEach((coApplicant: any, index: number) => {
-        if (coApplicant && coApplicant.name) {
-          additionalPeople[`coApplicants${index + 1}`] = {
-            coApplicants: `coapplicants${index + 1}`,
-            url: `https://www.app.lppmrentals.com/login?role=coapplicants${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
-            name: coApplicant.name,
-            email: coApplicant.email || ''
-          };
-        }
-      });
-    }
-
-    // Add guarantors if they exist
-    if (formData.guarantors && formData.guarantors.length > 0) {
-      formData.guarantors.forEach((guarantor: any, index: number) => {
-        if (guarantor && guarantor.name) {
-          additionalPeople[`guarantor${index + 1}`] = {
-            guarantor: `guarantor${index + 1}`,
-            url: `https://www.app.lppmrentals.com/login?role=guarantor${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
-            name: guarantor.name,
-            email: guarantor.email || ''
-          };
-        }
-      });
-    }
-    
+    // For applicant role, only include applicant data - exclude co-applicants and guarantors
     return {
       application: transformedData.application,
       applicant: transformedData.applicant,
       // Include occupants with proper structure
       occupants: transformedData.occupants || [],
-      // Relationship flags and counts + arrays
-      hasCoApplicant: Array.isArray(formData.coApplicants) && formData.coApplicants.length > 0,
-      hasGuarantor: Array.isArray(formData.guarantors) && formData.guarantors.length > 0,
-      coApplicantCount: Array.isArray(formData.coApplicants) ? formData.coApplicants.length : 0,
-      guarantorCount: Array.isArray(formData.guarantors) ? formData.guarantors.length : 0,
-      coApplicants: Array.isArray(transformedData.coApplicants) ? transformedData.coApplicants : [],
-      guarantors: Array.isArray(transformedData.guarantors) ? transformedData.guarantors : [],
-      // Include Additional People section
-      "Additional People": additionalPeople,
+      // For applicant role, set all additional people flags to false and arrays to empty
+      hasCoApplicant: false,
+      hasGuarantor: false,
+      coApplicantCount: 0,
+      guarantorCount: 0,
+      coApplicants: [],
+      guarantors: [],
+      // Include Additional People section with only applicant info
+      "Additional People": {
+        zoneinfo: formData.zoneinfo || formData.applicantId || 'unknown',
+        role: 'applicant',
+        applicant: transformedData.applicant?.name || 'unknown'
+      },
       // Include webhook summary for form field documents
       webhookSummary: transformedData.webhookSummary,
       // Include legal questions

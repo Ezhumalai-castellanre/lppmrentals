@@ -25,7 +25,7 @@ export interface ApplicationData {
   webhook_flow_version?: string;
 }
 
-// Primary Applicant Interface
+// Primary Applicant Interface (consolidated with co-applicants and guarantors)
 export interface ApplicantData {
   userId: string; // User's ID
   role: string; // User's role (applicant, coapplicant, guarantor, etc.)
@@ -35,6 +35,9 @@ export interface ApplicantData {
   occupants: any; // Occupants data
   webhookSummary: any; // Webhook summary
   signature: any; // Applicant signature
+  co_applicants?: any[]; // Array of co-applicant data
+  guarantors?: any[]; // Array of guarantor data
+  timestamp: string; // Creation timestamp
   last_updated: string;
   status: 'draft' | 'submitted';
 }
@@ -308,21 +311,26 @@ export class DynamoDBSeparateTablesService {
     }
   }
 
-  // Get current user's zoneinfo
+  // Get current user's sub (user ID) for draft saving
   async getCurrentUserZoneinfo(): Promise<string | null> {
     try {
-      const userAttributes = await fetchUserAttributes();
-      const zoneinfo = userAttributes.zoneinfo;
+      const session = await fetchAuthSession();
+      if (!session.tokens?.idToken) {
+        console.error('❌ No valid authentication session to get user sub');
+        return null;
+      }
+
+      const userId = session.tokens.idToken.payload?.sub;
       
-      if (!zoneinfo) {
-        console.warn('⚠️ No zoneinfo found in user attributes');
+      if (!userId) {
+        console.error('❌ User has no sub in ID token - cannot determine user ID');
         return null;
       }
       
-      console.log('✅ Retrieved zoneinfo:', zoneinfo);
-      return zoneinfo;
+      console.log(`✅ Retrieved user sub for draft saving: ${userId}`);
+      return userId;
     } catch (error) {
-      console.error('❌ Error getting user zoneinfo:', error);
+      console.error('❌ Error getting current user sub:', error);
       return null;
     }
   }
@@ -385,7 +393,7 @@ export class DynamoDBSeparateTablesService {
 
   // APPLICATION DATA METHODS
 
-  // Save application data
+  // Save application data (overwrites existing if found)
   async saveApplicationData(data: Omit<ApplicationData, 'userId' | 'role' | 'appid' | 'zoneinfo'>): Promise<boolean> {
     if (!this.client) {
       console.error('❌ DynamoDB client not initialized');
@@ -411,14 +419,27 @@ export class DynamoDBSeparateTablesService {
         return false;
       }
 
-      const appid = this.generateApplicationId();
+      // Check for existing application data
+      let existingApp = await this.getApplicationData();
+      let appid: string;
+      
+      if (existingApp) {
+        // Use existing appid to overwrite
+        appid = existingApp.appid;
+        console.log('🔄 Found existing application, overwriting with appid:', appid);
+      } else {
+        // Generate new appid for first-time submission
+        appid = this.generateApplicationId();
+        console.log('🆕 Creating new application with appid:', appid);
+      }
+
       const applicationData: ApplicationData = this.sanitizeForDynamo({
         ...data,
         userId,
         role,
         appid,
         zoneinfo,
-        timestamp: new Date().toISOString(),
+        // Keep original timestamp if overwriting (using last_updated as reference)
         last_updated: new Date().toISOString()
       });
 
@@ -431,7 +452,7 @@ export class DynamoDBSeparateTablesService {
       });
 
       await this.client.send(command);
-      console.log('✅ Application data saved successfully with role:', role);
+      console.log('✅ Application data saved successfully with role:', role, 'appid:', appid);
       return true;
     } catch (error) {
       console.error('❌ Error saving application data:', error);
@@ -570,7 +591,7 @@ export class DynamoDBSeparateTablesService {
     }
   }
 
-  // Save applicant data as a NEW record by generating a unique userId suffix
+  // Save applicant data with co-applicants and guarantors (overwrites existing if found)
   async saveApplicantDataNew(data: Omit<ApplicantData, 'userId' | 'role' | 'zoneinfo'>, appid?: string): Promise<boolean> {
     if (!this.client) {
       console.error('❌ DynamoDB client not initialized');
@@ -605,8 +626,20 @@ export class DynamoDBSeparateTablesService {
         } catch {}
       }
 
-      // Use appid (if available) as userId to avoid suffixes; fallback to base userId
-      const uniqueUserId = applicationAppid || baseUserId;
+      // Check for existing applicant data
+      const existingApplicant = await this.getApplicantData();
+      
+      // Use user's sub as userId for draft saving
+      const uniqueUserId = baseUserId;
+
+      // Get existing co-applicants and guarantors data to preserve them
+      let existingCoApplicants: any[] = [];
+      let existingGuarantors: any[] = [];
+      
+      if (existingApplicant) {
+        existingCoApplicants = existingApplicant.co_applicants || [];
+        existingGuarantors = existingApplicant.guarantors || [];
+      }
 
       const applicantData: ApplicantData = this.sanitizeForDynamo({
         ...data,
@@ -614,7 +647,9 @@ export class DynamoDBSeparateTablesService {
         role,
         zoneinfo,
         appid: applicationAppid,
-        timestamp: new Date().toISOString(),
+        co_applicants: data.co_applicants || existingCoApplicants, // Include co-applicants data
+        guarantors: data.guarantors || existingGuarantors, // Include guarantors data
+        timestamp: existingApplicant?.timestamp || new Date().toISOString(), // Keep original timestamp if overwriting
         last_updated: new Date().toISOString()
       });
 
@@ -627,10 +662,10 @@ export class DynamoDBSeparateTablesService {
       });
 
       await this.client.send(command);
-      console.log('✅ Applicant data saved as NEW record with unique userId:', uniqueUserId);
+      console.log('✅ Applicant data with co-applicants and guarantors saved successfully (overwritten existing if found) with userId:', uniqueUserId);
       return true;
     } catch (error) {
-      console.error('❌ Error saving applicant data as new record:', error);
+      console.error('❌ Error saving applicant data:', error);
       return false;
     }
   }
@@ -866,7 +901,11 @@ export class DynamoDBSeparateTablesService {
         }
       }
 
-      const uniqueUserId = `${baseUserId}-co-${Date.now()}`;
+      // Check for existing co-applicant data
+      const existingCoApplicant = await this.getCoApplicantData();
+      
+      // Use consistent userId for co-applicant (overwrite existing)
+      const uniqueUserId = `${baseUserId}-co`;
 
       const coApplicantData: CoApplicantData = this.sanitizeForDynamo({
         ...data,
@@ -874,7 +913,7 @@ export class DynamoDBSeparateTablesService {
         role,
         zoneinfo,
         appid: applicationAppid,
-        timestamp: new Date().toISOString(),
+        // Keep original timestamp if overwriting (using last_updated as reference)
         last_updated: new Date().toISOString()
       });
 
@@ -884,10 +923,10 @@ export class DynamoDBSeparateTablesService {
       });
 
       await this.client.send(command);
-      console.log('✅ Co-applicant saved as NEW record with unique userId:', uniqueUserId);
+      console.log('✅ Co-applicant data saved successfully (overwritten existing if found) with userId:', uniqueUserId);
       return true;
     } catch (error) {
-      console.error('❌ Error saving co-applicant as new record:', error);
+      console.error('❌ Error saving co-applicant data:', error);
       return false;
     }
   }
@@ -1093,7 +1132,7 @@ export class DynamoDBSeparateTablesService {
     }
   }
 
-  // Save guarantor as NEW record by generating unique userId suffix
+  // Save guarantor data (overwrites existing if found)
   async saveGuarantorDataNew(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
     if (!this.client) {
       console.error('❌ DynamoDB client not initialized');
@@ -1129,7 +1168,11 @@ export class DynamoDBSeparateTablesService {
         }
       }
 
-      const uniqueUserId = `${baseUserId}-guar-${Date.now()}`;
+      // Check for existing guarantor data
+      const existingGuarantor = await this.getGuarantorData();
+      
+      // Use consistent userId for guarantor (overwrite existing)
+      const uniqueUserId = `${baseUserId}-guar`;
 
       const guarantorData: GuarantorData = this.sanitizeForDynamo({
         ...data,
@@ -1137,7 +1180,7 @@ export class DynamoDBSeparateTablesService {
         role,
         zoneinfo,
         appid: applicationAppid,
-        timestamp: new Date().toISOString(),
+        // Keep original timestamp if overwriting (using last_updated as reference)
         last_updated: new Date().toISOString()
       });
 
@@ -1147,10 +1190,10 @@ export class DynamoDBSeparateTablesService {
       });
 
       await this.client.send(command);
-      console.log('✅ Guarantor saved as NEW record with unique userId:', uniqueUserId);
+      console.log('✅ Guarantor data saved successfully (overwritten existing if found) with userId:', uniqueUserId);
       return true;
     } catch (error) {
-      console.error('❌ Error saving guarantor as new record:', error);
+      console.error('❌ Error saving guarantor data:', error);
       return false;
     }
   }

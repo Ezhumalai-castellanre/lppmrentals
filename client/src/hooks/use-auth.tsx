@@ -9,6 +9,7 @@ interface User {
   username: string;
   applicantId?: string;
   zoneinfo?: string;
+  sub?: string;
   name?: string;
   given_name?: string;
   family_name?: string;
@@ -83,6 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             username: currentUser.username,
             applicantId: finalApplicantId, // Now uses zoneinfo value
             zoneinfo: zoneinfoValue,
+            sub: currentUser.userId, // Add sub field
             name: (userAttributes as any).name || '',
             given_name: userAttributes.given_name || '',
             family_name: userAttributes.family_name || '',
@@ -309,6 +311,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             username: currentUser.username,
             applicantId: finalApplicantId,
             zoneinfo: zoneinfoValue,
+            sub: currentUser.userId, // Add sub field
             name: userAttributes.name || '',
             given_name: userAttributes.given_name || '',
             family_name: userAttributes.family_name || '',

@@ -218,29 +218,26 @@ export class DynamoDBService {
     return this.client;
   }
 
-  // Get the current user's zoneinfo attribute (source of truth)
+  // Get the current user's sub (user ID) for draft saving
   async getCurrentUserZoneinfo(): Promise<string | null> {
     try {
       const session = await fetchAuthSession();
       if (!session.tokens?.idToken) {
-        console.error('❌ No valid authentication session to get zoneinfo');
+        console.error('❌ No valid authentication session to get user sub');
         return null;
       }
 
-      // Get user attributes to check zoneinfo
-      const userAttributes = await fetchUserAttributes();
+      const userId = session.tokens.idToken.payload?.sub;
       
-      const zoneinfoValue = userAttributes.zoneinfo || userAttributes['custom:zoneinfo'];
-      
-      if (!zoneinfoValue) {
-        console.error('❌ User has no zoneinfo attribute - cannot determine zoneinfo');
+      if (!userId) {
+        console.error('❌ User has no sub in ID token - cannot determine user ID');
         return null;
       }
       
-      console.log(`✅ Retrieved zoneinfo from user attributes: ${zoneinfoValue}`);
-      return zoneinfoValue;
+      console.log(`✅ Retrieved user sub for draft saving: ${userId}`);
+      return userId;
     } catch (error) {
-      console.error('❌ Error getting current user zoneinfo:', error);
+      console.error('❌ Error getting current user sub:', error);
       return null;
     }
   }
@@ -1889,82 +1886,77 @@ export const dynamoDBService = new DynamoDBService();
 
 // Utility functions that automatically use the current user's zoneinfo
 export const dynamoDBUtils = {
-  // Save draft using current user's zoneinfo
+  // Save draft using current user's sub
   async saveDraftForCurrentUser(draftData: any): Promise<boolean> {
-    const zoneinfo = await dynamoDBService.getCurrentUserZoneinfo();
-    if (!zoneinfo) {
-      console.error('❌ Cannot save draft - no zoneinfo available for current user');
+    const userSub = await dynamoDBService.getCurrentUserZoneinfo();
+    if (!userSub) {
+      console.error('❌ Cannot save draft - no user sub available for current user');
       return false;
     }
     
-    // Ensure the draft data uses the current user's zoneinfo
-    draftData.zoneinfo = zoneinfo;
+    // Ensure the draft data uses the current user's sub
+    draftData.zoneinfo = userSub;
     
-    // If the draft data has application_id, use it; otherwise use the current user's zoneinfo
-    if (draftData.application_id) {
-      console.log(`🔄 Using application_id '${draftData.application_id}' from form data`);
-      draftData.applicantId = draftData.application_id;
-    } else {
-      console.log(`🔄 Using current user's zoneinfo '${zoneinfo}' for DynamoDB`);
-      draftData.applicantId = zoneinfo;
-    }
+    // Use the current user's sub as applicantId for draft saving
+    console.log(`🔄 Using current user's sub '${userSub}' for DynamoDB draft saving`);
+    draftData.applicantId = userSub;
     
     return dynamoDBService.saveDraft(draftData, draftData.applicantId);
   },
 
-  // Get draft using current user's zoneinfo
+  // Get draft using current user's sub
   async getDraftForCurrentUser(referenceId: string): Promise<DraftData | null> {
-    const zoneinfo = await dynamoDBService.getCurrentUserZoneinfo();
-    if (!zoneinfo) {
-      console.error('❌ Cannot get draft - no zoneinfo available for current user');
+    const userSub = await dynamoDBService.getCurrentUserZoneinfo();
+    if (!userSub) {
+      console.error('❌ Cannot get draft - no user sub available for current user');
       return null;
     }
     
-    return dynamoDBService.getDraft(zoneinfo, referenceId);
+    return dynamoDBService.getDraft(userSub, referenceId);
   },
 
-  // Mark draft as submitted using current user's zoneinfo
+  // Mark draft as submitted using current user's sub
   async markDraftAsSubmittedForCurrentUser(referenceId: string): Promise<boolean> {
-    const zoneinfo = await dynamoDBService.getCurrentUserZoneinfo();
-    if (!zoneinfo) {
-      console.error('❌ Cannot mark draft as submitted - no zoneinfo available for current user');
+    const userSub = await dynamoDBService.getCurrentUserZoneinfo();
+    if (!userSub) {
+      console.error('❌ Cannot mark draft as submitted - no user sub available for current user');
       return false;
     }
     
-    return dynamoDBService.markAsSubmitted(zoneinfo, referenceId);
+    return dynamoDBService.markAsSubmitted(userSub, referenceId);
   },
 
-  // Delete draft using current user's zoneinfo
+  // Delete draft using current user's sub
   async deleteDraftForCurrentUser(referenceId: string): Promise<boolean> {
-    const zoneinfo = await dynamoDBService.getCurrentUserZoneinfo();
-    if (!zoneinfo) {
-      console.error('❌ Cannot delete draft - no zoneinfo available for current user');
+    const userSub = await dynamoDBService.getCurrentUserZoneinfo();
+    if (!userSub) {
+      console.error('❌ Cannot delete draft - no user sub available for current user');
       return false;
     }
     
-    return dynamoDBService.deleteDraft(zoneinfo, referenceId);
+    return dynamoDBService.deleteDraft(userSub, referenceId);
   },
 
   // Get all drafts for current user
   async getAllDraftsForCurrentUser(): Promise<DraftData[]> {
-    const zoneinfo = await dynamoDBService.getCurrentUserZoneinfo();
-    if (!zoneinfo) {
-      console.error('❌ Cannot get drafts - no zoneinfo available for current user');
+    const userSub = await dynamoDBService.getCurrentUserZoneinfo();
+    if (!userSub) {
+      console.error('❌ Cannot get drafts - no user sub available for current user');
       return [];
     }
     
-    return dynamoDBService.getAllDrafts(zoneinfo);
+    return dynamoDBService.getAllDrafts(userSub);
   },
 
   // Migrate existing data to hybrid storage
   async migrateToHybridStorage(referenceId: string): Promise<boolean> {
-    const zoneinfo = await dynamoDBService.getCurrentUserZoneinfo();
-    if (!zoneinfo) {
-      console.error('❌ Cannot migrate data - no zoneinfo available for current user');
+    const userSub = await dynamoDBService.getCurrentUserZoneinfo();
+    if (!userSub) {
+      console.error('❌ Cannot migrate data - no user sub available for current user');
       return false;
     }
     
-    return dynamoDBService.migrateToHybridStorage(zoneinfo, referenceId);
+    return dynamoDBService.migrateToHybridStorage(userSub, referenceId);
   },
 
   // Test hybrid storage functionality

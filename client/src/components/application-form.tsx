@@ -958,8 +958,8 @@ export function ApplicationForm() {
 
   // Helper function to get current user's zoneinfo (source of truth for LPPM numbers)
   const getCurrentUserZoneinfo = useCallback(() => {
-    return user?.zoneinfo || user?.applicantId;
-  }, [user?.zoneinfo, user?.applicantId]);
+    return user?.sub || user?.zoneinfo || user?.applicantId;
+  }, [user?.sub, user?.zoneinfo, user?.applicantId]);
 
   // Helper function to check if co-applicant has meaningful data
   const hasCoApplicantData = useCallback((coApplicant: any) => {
@@ -1095,20 +1095,12 @@ export function ApplicationForm() {
       if (allData.application || allData.applicant || allData.coApplicant || allData.guarantor) {
         console.log('📊 Draft data loaded from separate tables');
         
-        // Also fetch arrays of co-applicants and guarantors by appid (multi-applicant support)
+        // Get co-applicants and guarantors from applicant_nyc table
         let coApplicantsArray: any[] = [];
         let guarantorsArray: any[] = [];
-        if (allData.application?.appid) {
-          try {
-            const [coApps, guarans] = await Promise.all([
-              dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(allData.application.appid),
-              dynamoDBSeparateTablesUtils.getGuarantorsByAppId(allData.application.appid)
-            ]);
-            coApplicantsArray = Array.isArray(coApps) ? coApps.map((c: any) => c.coapplicant_info || c) : [];
-            guarantorsArray = Array.isArray(guarans) ? guarans.map((g: any) => g.guarantor_info || g) : [];
-          } catch (e) {
-            // Failed to load multi-applicant arrays; continue with single records
-          }
+        if (allData.applicant) {
+          coApplicantsArray = allData.applicant.co_applicants || [];
+          guarantorsArray = allData.applicant.guarantors || [];
         }
 
         // Reconstruct the form data from separate table data
@@ -1190,32 +1182,18 @@ export function ApplicationForm() {
           };
         }
         
-        // Restore co-applicant data
-        if (allData.coApplicant) {
-          parsedFormData.coApplicant = allData.coApplicant.coapplicant_info || {};
-          parsedFormData.coApplicantOccupants = allData.coApplicant.occupants || [];
-          parsedFormData.webhookSummary = {
-            ...parsedFormData.webhookSummary,
-            coapplicant: allData.coApplicant.webhookSummary || {}
-          };
-          parsedFormData.signatures = {
-            ...parsedFormData.signatures,
-            coapplicant: allData.coApplicant.signature || {}
-          };
+        // Restore co-applicant data from applicant_nyc table
+        if (coApplicantsArray.length > 0) {
+          parsedFormData.coApplicant = coApplicantsArray[0] || {};
+          parsedFormData.coApplicants = coApplicantsArray;
+          // Note: co-applicant occupants and signatures are stored in the co-applicant data itself
         }
         
-        // Restore guarantor data
-        if (allData.guarantor) {
-          parsedFormData.guarantor = allData.guarantor.guarantor_info || {};
-          parsedFormData.guarantorOccupants = allData.guarantor.occupants || [];
-          parsedFormData.webhookSummary = {
-            ...parsedFormData.webhookSummary,
-            guarantor: allData.guarantor.webhookSummary || {}
-          };
-          parsedFormData.signatures = {
-            ...parsedFormData.signatures,
-            guarantor: allData.guarantor.signature || {}
-          };
+        // Restore guarantor data from applicant_nyc table
+        if (guarantorsArray.length > 0) {
+          parsedFormData.guarantor = guarantorsArray[0] || {};
+          parsedFormData.guarantors = guarantorsArray;
+          // Note: guarantor occupants and signatures are stored in the guarantor data itself
         }
               
               // Ensure all required sections exist
@@ -2853,9 +2831,10 @@ export function ApplicationForm() {
         webhookSummary: getWebhookSummary()
       };
 
-      console.log('💾 Saving draft with zoneinfo-based IDs:', {
+      console.log('💾 Saving draft with user sub-based IDs:', {
         application_id: currentUserZoneinfo,
         applicantId: currentUserZoneinfo,
+        userSub: user?.sub,
         userZoneinfo: user?.zoneinfo,
         userApplicantId: user?.applicantId
       });
@@ -2891,12 +2870,15 @@ export function ApplicationForm() {
         const appSaveResult = await dynamoDBSeparateTablesUtils.saveApplicationData(applicationData);
         saveResults.push(appSaveResult);
         
-        // Save Primary Applicant data to applicant_nyc table
+        // Save Primary Applicant data to applicant_nyc table (including co-applicants and guarantors)
         const applicantData = {
           applicant_info: enhancedFormDataSnapshot.applicant || {},
           occupants: enhancedFormDataSnapshot.occupants || [],
           webhookSummary: getWebhookSummary(),
           signature: roleScopedSign.applicant || {},
+          co_applicants: enhancedFormDataSnapshot.coApplicants || [], // Include co-applicants data
+          guarantors: enhancedFormDataSnapshot.guarantors || [], // Include guarantors data
+          timestamp: new Date().toISOString(), // Add timestamp field
           status: 'draft' as const,
           last_updated: new Date().toISOString()
         };
@@ -2907,61 +2889,7 @@ export function ApplicationForm() {
         const applicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicantDataNew(applicantData, newAppId);
         saveResults.push(applicantSaveResult);
         
-        console.log('✅ Primary Applicant draft saved to app_nyc and applicant_nyc tables');
-
-      } else if (userRole && userRole.startsWith('coapplicant')) {
-        console.log('👥 Co-Applicant saving draft to Co-Applicants table...');
-        
-        // Get the specific co-applicant data from the form data
-        const coApplicantData = enhancedFormDataSnapshot.coApplicants?.[0] || {};
-        console.log('📊 Co-Applicant draft data to save:', coApplicantData);
-        
-        // Save Co-Applicant data to Co-Applicants table
-        const coApplicantSaveData = {
-          coapplicant_info: coApplicantData,
-          occupants: [],
-          webhookSummary: getWebhookSummary(),
-          signature: roleScopedSign.coapplicant || {},
-          status: 'draft' as const,
-          last_updated: new Date().toISOString()
-        };
-
-        // Get the appid from the application data to link co-applicant to application
-        const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
-        const appid = selectedAppId || existingApp?.appid || referenceId;
-        console.log('🔗 Linking co-applicant draft to appid:', appid);
-
-        const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantDataNew(coApplicantSaveData, appid);
-        saveResults.push(coApplicantSaveResult);
-        
-        console.log('✅ Co-Applicant draft saved to Co-Applicants table');
-
-      } else if (userRole && userRole.startsWith('guarantor')) {
-        console.log('🛡️ Guarantor saving draft to Guarantors_nyc table...');
-        
-        // Get the specific guarantor data from the form data
-        const guarantorData = enhancedFormDataSnapshot.guarantors?.[0] || {};
-        console.log('📊 Guarantor draft data to save:', guarantorData);
-        
-        // Save Guarantor data to Guarantors_nyc table
-        const guarantorSaveData = {
-          guarantor_info: guarantorData,
-          occupants: [],
-          webhookSummary: getWebhookSummary(),
-          signature: roleScopedSign.guarantor || {},
-          status: 'draft' as const,
-          last_updated: new Date().toISOString()
-        };
-
-        // Get the appid from the application data to link guarantor to application
-        const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
-        const appid = selectedAppId || existingApp?.appid || referenceId;
-        console.log('🔗 Linking guarantor draft to appid:', appid);
-
-        const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorDataNew(guarantorSaveData, appid);
-        saveResults.push(guarantorSaveResult);
-        
-        console.log('✅ Guarantor draft saved to Guarantors_nyc table');
+        console.log('✅ Primary Applicant draft with co-applicants and guarantors saved to app_nyc and applicant_nyc tables');
 
       } else {
         console.log('❓ Unknown role, saving to all tables as fallback...');
@@ -4203,6 +4131,27 @@ export function ApplicationForm() {
     // Call the same onSubmit function with the form values
     await onSubmit(formValues);
   };
+
+  // Handle regular form submission with debugging
+  const handleFormSubmit = async (data: ApplicationFormData) => {
+    console.log('🚀🚀🚀 REGULAR FORM SUBMIT HANDLER CALLED!');
+    console.log('🔍 User role:', userRole);
+    console.log('🔍 User role starts with coapplicant:', userRole?.startsWith('coapplicant'));
+    console.log('🔍 User role starts with guarantor:', userRole?.startsWith('guarantor'));
+    console.log('🔍 Form data received:', data);
+    console.log('🔍 Form validation state in handler:', {
+      isValid: form.formState.isValid,
+      errors: form.formState.errors
+    });
+    await onSubmit(data);
+  };
+
+  // Handle form validation errors
+  const handleFormError = (errors: any) => {
+    console.log('❌❌❌ FORM VALIDATION FAILED!');
+    console.log('🔍 Validation errors:', errors);
+    console.log('🔍 Form state:', form.formState);
+  };
   const onSubmit = async (data: ApplicationFormData) => {
     console.log('🚀🚀🚀 FORM SUBMIT BUTTON CLICKED - onSubmit function called!');
     console.log('🚀 Form submission started');
@@ -4322,6 +4271,7 @@ export function ApplicationForm() {
       const isValid = await form.trigger();
       console.log("✅ Form validation result:", isValid);
       console.log("✅ Updated form errors:", form.formState.errors);
+      console.log("🔍 Form values being validated:", form.getValues());
       
       // For guarantor and co-applicant roles, we need to be more lenient with validation
       // since they don't have all the applicant fields filled out
@@ -4435,6 +4385,20 @@ export function ApplicationForm() {
       
       if (missingFields.length > 0) {
         console.log('❌ Missing required fields:', missingFields);
+        console.log('🔍 Detailed field validation:');
+        console.log('- buildingAddress:', data.buildingAddress, '| formData.application?.buildingAddress:', formData.application?.buildingAddress);
+        console.log('- apartmentNumber:', data.apartmentNumber, '| formData.application?.apartmentNumber:', formData.application?.apartmentNumber);
+        console.log('- moveInDate:', data.moveInDate, '| formData.application?.moveInDate:', formData.application?.moveInDate);
+        console.log('- monthlyRent:', data.monthlyRent, '| formData.application?.monthlyRent:', formData.application?.monthlyRent);
+        console.log('- apartmentType:', data.apartmentType, '| formData.application?.apartmentType:', formData.application?.apartmentType);
+        console.log('- applicantName:', data.applicantName, '| formData.applicant?.name:', formData.applicant?.name);
+        console.log('- applicantDob:', data.applicantDob, '| formData.applicant?.dob:', formData.applicant?.dob);
+        console.log('- applicantEmail:', data.applicantEmail, '| formData.applicant?.email:', formData.applicant?.email);
+        console.log('- applicantAddress:', data.applicantAddress, '| formData.applicant?.address:', formData.applicant?.address);
+        console.log('- applicantCity:', data.applicantCity, '| formData.applicant?.city:', formData.applicant?.city);
+        console.log('- applicantState:', data.applicantState, '| formData.applicant?.state:', formData.applicant?.state);
+        console.log('- applicantZip:', data.applicantZip, '| formData.applicant?.zip:', formData.applicant?.zip);
+        console.log('🔍 Form state errors:', form.formState.errors);
         toast({
           title: 'Missing or invalid fields',
           description: `Please fill in: ${missingFields.join(', ')}`,
@@ -5628,7 +5592,7 @@ export function ApplicationForm() {
               encryptedDocuments: encryptedDocuments
             };
             
-            webhookResult = await WebhookService.sendSeparateWebhooks(
+            webhookResult = await WebhookService.sendFormDataToWebhook(
               completeFormData,
               referenceId,
               individualApplicantId,
@@ -5638,16 +5602,12 @@ export function ApplicationForm() {
           }
           
           console.log('📥 Webhook result:', JSON.stringify(webhookResult, null, 2));
-          console.log('=== END ROLE-SPECIFIC WEBHOOK SUBMISSIONS ===');
+          console.log('=== END WEBHOOK SUBMISSION ===');
           
           if (webhookResult.success) {
-            const roleDescription = userRole && userRole.startsWith('coapplicant') ? `Co-applicant ${(specificIndex || 0) + 1}` :
-                                  userRole && userRole.startsWith('guarantor') ? `Guarantor ${(specificIndex || 0) + 1}` :
-                                  'all roles';
-            
             toast({
               title: "Application Submitted & Sent",
-              description: `Your rental application has been submitted and sent to webhook successfully for ${roleDescription}.`,
+              description: "Your rental application has been submitted and sent to webhook successfully.",
             });
             setShowSuccessPopup(true);
             setSubmissionReferenceId((submissionResult && submissionResult.reference_id) ? submissionResult.reference_id : referenceId);
@@ -5714,6 +5674,9 @@ export function ApplicationForm() {
               occupants: submittedFormRoleScoped.occupants || [],
               webhookSummary: getWebhookSummary(),
               signature: submittedSigsRoleScoped.applicant || {},
+              co_applicants: submittedFormRoleScoped.coApplicants || [], // Include co-applicants data
+              guarantors: submittedFormRoleScoped.guarantors || [], // Include guarantors data
+              timestamp: new Date().toISOString(), // Add timestamp field
               status: 'submitted' as const,
               last_updated: new Date().toISOString()
             };
@@ -6265,9 +6228,6 @@ export function ApplicationForm() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-end">
-              <Button onClick={nextStep}>Next</Button>
-            </div>
           </div>
         );
       case 1:
@@ -9215,8 +9175,8 @@ export function ApplicationForm() {
                   </div>
                 )}
 
-                {/* Co-Applicant Signatures - Hide for guarantor role */}
-                {userRole !== 'guarantor' && (hasCoApplicant || userRole.startsWith('coapplicant')) && Array.from({ 
+                {/* Co-Applicant Signatures - Hide for guarantor and applicant roles */}
+                {userRole !== 'guarantor' && userRole !== 'applicant' && (hasCoApplicant || userRole.startsWith('coapplicant')) && Array.from({ 
                   length: userRole.startsWith('coapplicant') && specificIndex !== null ? 1 : (formData.coApplicantCount || 1) 
                 }, (_, index) => {
                   // For specific co-applicant roles, show the specific number
@@ -9233,8 +9193,8 @@ export function ApplicationForm() {
                   );
                 })}
 
-                {/* Guarantor Signatures - Hide for coapplicant role, show for guarantor role */}
-                {userRole !== 'coapplicant' && (hasGuarantor || userRole.startsWith('guarantor')) && Array.from({ 
+                {/* Guarantor Signatures - Hide for coapplicant and applicant roles, show for guarantor role */}
+                {userRole !== 'coapplicant' && userRole !== 'applicant' && (hasGuarantor || userRole.startsWith('guarantor')) && Array.from({ 
                   length: userRole.startsWith('guarantor') && specificIndex !== null ? 1 : Math.max(1, formData.guarantorCount || 1) 
                 }, (_, index) => {
                   // For specific guarantor roles, show the specific number
@@ -9375,7 +9335,22 @@ export function ApplicationForm() {
       )}
 
       <Form {...form}>
-        <form onSubmit={userRole && (userRole.startsWith('coapplicant') || userRole.startsWith('guarantor')) ? handleRoleSpecificSubmit : form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={(e) => {
+          console.log('🚀🚀🚀 FORM SUBMIT EVENT TRIGGERED!');
+          console.log('🔍 User role:', userRole);
+          console.log('🔍 Is role-specific submit?', userRole && (userRole.startsWith('coapplicant') || userRole.startsWith('guarantor')));
+          console.log('🔍 Form validation state:', {
+            isValid: form.formState.isValid,
+            isDirty: form.formState.isDirty,
+            isSubmitting: form.formState.isSubmitting,
+            errors: form.formState.errors
+          });
+          if (userRole && (userRole.startsWith('coapplicant') || userRole.startsWith('guarantor'))) {
+            handleRoleSpecificSubmit(e);
+          } else {
+            form.handleSubmit(handleFormSubmit, handleFormError)(e);
+          }
+        }} className="space-y-8">
           {/* Progress Bar - Hidden */}
           {/* <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
