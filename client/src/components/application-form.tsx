@@ -506,6 +506,7 @@ export function ApplicationForm() {
 
 
   const [currentStep, setCurrentStep] = useState(0);
+  const [hasExistingDraft, setHasExistingDraft] = useState<boolean | null>(null); // null = checking, true = has draft, false = no draft
   const [formData, setFormData] = useState<any>({
     application: {
       buildingAddress: '',
@@ -1182,8 +1183,30 @@ export function ApplicationForm() {
       handleWebhookFileUrl(personKey, documentType, url, fileName);
     });
   }, [webhookResponses]);
+  // Check if any draft data exists
+  const checkForExistingDraft = useCallback(async (): Promise<boolean> => {
+    try {
+      console.log('🔍 Checking for existing draft data...');
+      const allData = await dynamoDBSeparateTablesUtils.getAllUserData();
+      
+      // Check if any draft data exists in any table
+      const hasDraft = !!(
+        (allData.application && allData.application.status === 'draft') ||
+        (allData.applicant && allData.applicant.status === 'draft') ||
+        (allData.coApplicant && allData.coApplicant.status === 'draft') ||
+        (allData.guarantor && allData.guarantor.status === 'draft')
+      );
+      
+      console.log('🔍 Draft check result:', hasDraft);
+      return hasDraft;
+    } catch (error) {
+      console.error('❌ Error checking for existing draft:', error);
+      return false;
+    }
+  }, []);
+
   // Load draft data from separate DynamoDB tables
-  const loadDraftData = useCallback(async (applicationId: string) => {
+  const loadDraftData = useCallback(async (applicationId: string, restoreStep: boolean = true) => {
     try {
       console.log('🔄 Loading draft data from separate tables for application ID:', applicationId);
       
@@ -1192,6 +1215,7 @@ export function ApplicationForm() {
       
       if (allData.application || allData.applicant || allData.coApplicant || allData.guarantor) {
         console.log('📊 Draft data loaded from separate tables');
+        setHasExistingDraft(true);
         
         // Get co-applicants and guarantors
         let coApplicantsArray: any[] = [];
@@ -1335,8 +1359,8 @@ export function ApplicationForm() {
           
           setFormData(parsedFormData);
           
-          // Restore current step
-        if (allData.application?.current_step !== undefined) {
+          // Restore current step only if restoreStep is true
+        if (restoreStep && allData.application?.current_step !== undefined) {
           setCurrentStep(allData.application.current_step);
           }
           
@@ -1933,7 +1957,9 @@ export function ApplicationForm() {
             }
 
             setFormData(parsedFormData);
-            setCurrentStep(parsedFormData.current_step || 0);
+            if (restoreStep) {
+              setCurrentStep(parsedFormData.current_step || 0);
+            }
             if (parsedFormData.signatures) setSignatures(parsedFormData.signatures);
             if (parsedFormData.webhook_responses) setWebhookResponses(parsedFormData.webhook_responses);
 
@@ -1946,6 +1972,7 @@ export function ApplicationForm() {
               );
             }
 
+            setHasExistingDraft(true);
             toast({ title: 'Draft Loaded', description: 'Your previous draft has been restored from legacy storage.' });
           } else {
             console.log('📭 No draft data found or draft already submitted');
@@ -2185,31 +2212,30 @@ export function ApplicationForm() {
         }
       }
       
-      // Auto-load existing draft by default even without explicit continue param
-      if (!shouldContinue && user.applicantId) {
-        console.log('🔄 No continue param; attempting to auto-load existing draft...');
-        loadDraftData(user.applicantId);
-      }
-
-      if (shouldContinue) {
-        console.log('🔄 Continue parameter detected, loading existing draft...');
-        // Load draft data from DynamoDB if available
-        if (user.applicantId) {
-          loadDraftData(user.applicantId);
-        }
+      // Check for existing draft data first and handle initialization
+      checkForExistingDraft().then(hasDraft => {
+        setHasExistingDraft(hasDraft);
         
-        // If a specific step is provided, navigate to it after draft is loaded
-        if (stepParam) {
-          const targetStep = parseInt(stepParam, 10);
-          if (!isNaN(targetStep) && targetStep >= 0 && targetStep < filteredSteps.length) {
-            console.log('🎯 Step parameter detected, will navigate to step:', targetStep);
-            // Set the target step - it will be applied after draft data is loaded
-            setCurrentStep(targetStep);
+        if (shouldContinue) {
+          console.log('🔄 Continue parameter detected, loading existing draft...');
+          // Load draft data from DynamoDB if available
+          if (user.applicantId) {
+            loadDraftData(user.applicantId, true); // Restore step when continuing
           }
-        }
-      } else {
-        console.log('🆕 No continue parameter, starting fresh...');
-        // Clear any existing draft data and start fresh
+          
+          // If a specific step is provided, navigate to it after draft is loaded
+          if (stepParam) {
+            const targetStep = parseInt(stepParam, 10);
+            if (!isNaN(targetStep) && targetStep >= 0 && targetStep < filteredSteps.length) {
+              console.log('🎯 Step parameter detected, will navigate to step:', targetStep);
+              // Set the target step - it will be applied after draft data is loaded
+              setCurrentStep(targetStep);
+            }
+          }
+        } else {
+          console.log('🆕 No continue parameter, starting fresh application...');
+          // Clear any existing draft data and start fresh, regardless of whether draft exists
+          setHasExistingDraft(false); // Force fresh start behavior
         setFormData({
           // Application Info
           buildingAddress: '',
@@ -2345,16 +2371,17 @@ export function ApplicationForm() {
           occupants: []
         });
         setCurrentStep(0);
-      }
-      
-      // Hide welcome message after 5 minutes
-      const timer = setTimeout(() => {
-        setShowWelcomeMessage(false);
-      }, 5 * 60 * 1000); // 5 minutes
+        }
+        
+        // Hide welcome message after 5 minutes
+        const timer = setTimeout(() => {
+          setShowWelcomeMessage(false);
+        }, 5 * 60 * 1000); // 5 minutes
 
-      return () => clearTimeout(timer);
+        return () => clearTimeout(timer);
+      });
     }
-  }, [user, loadDraftData]);
+  }, [user, loadDraftData, checkForExistingDraft]);
 
   // Read selected rental from sessionStorage and pre-populate form
   useEffect(() => {
@@ -2891,6 +2918,9 @@ export function ApplicationForm() {
   // Build role-scoped copies of form data and signatures for saving
   const buildRoleScopedFormData = useCallback((data: any, role: string, coGuarIndex?: number): any => {
     if (!role) return data;
+    
+    console.log('🔍 buildRoleScopedFormData called with:', { role, coGuarIndex, dataKeys: Object.keys(data) });
+    
     // Applicant saves full dataset
     if (role === 'applicant') {
       return data;
@@ -2898,8 +2928,19 @@ export function ApplicationForm() {
 
     // Co-applicant specific role: coapplicant or coapplicantN
     if (role === 'coapplicant' || /^coapplicant\d+$/.test(role)) {
-      const index = typeof coGuarIndex === 'number' ? coGuarIndex : 0;
+      // Extract index from role if it's in format coapplicantN, otherwise use coGuarIndex
+      let index = 0;
+      if (/^coapplicant\d+$/.test(role)) {
+        const match = role.match(/coapplicant(\d+)/);
+        index = match ? parseInt(match[1]) - 1 : 0; // Convert 1-based to 0-based index
+      } else if (typeof coGuarIndex === 'number') {
+        index = coGuarIndex;
+      }
+      
+      console.log('👥 Co-applicant role detected, using index:', index);
       const coApplicant = (data.coApplicants || [])[index] || {};
+      console.log('👥 Co-applicant data for index', index, ':', coApplicant);
+      
       return {
         application: data.application,
         zoneinfo: data.zoneinfo,
@@ -2910,13 +2951,26 @@ export function ApplicationForm() {
         coApplicantCount: 1,
         guarantorCount: 0,
         coApplicants: [coApplicant],
+        // Include the original index for reference
+        coApplicantIndex: index,
       };
     }
 
     // Guarantor specific role: guarantor or guarantorN
     if (role === 'guarantor' || /^guarantor\d+$/.test(role)) {
-      const index = typeof coGuarIndex === 'number' ? coGuarIndex : 0;
+      // Extract index from role if it's in format guarantorN, otherwise use coGuarIndex
+      let index = 0;
+      if (/^guarantor\d+$/.test(role)) {
+        const match = role.match(/guarantor(\d+)/);
+        index = match ? parseInt(match[1]) - 1 : 0; // Convert 1-based to 0-based index
+      } else if (typeof coGuarIndex === 'number') {
+        index = coGuarIndex;
+      }
+      
+      console.log('🛡️ Guarantor role detected, using index:', index);
       const guarantor = (data.guarantors || [])[index] || {};
+      console.log('🛡️ Guarantor data for index', index, ':', guarantor);
+      
       return {
         application: data.application,
         zoneinfo: data.zoneinfo,
@@ -2927,6 +2981,8 @@ export function ApplicationForm() {
         coApplicantCount: 0,
         guarantorCount: 1,
         guarantors: [guarantor],
+        // Include the original index for reference
+        guarantorIndex: index,
       };
     }
 
@@ -2936,19 +2992,47 @@ export function ApplicationForm() {
 
   const buildRoleScopedSignatures = useCallback((rawSignatures: any, role: string, coGuarIndex?: number): any => {
     const safe = rawSignatures || {};
+    
+    console.log('🔍 buildRoleScopedSignatures called with:', { role, coGuarIndex, signatureKeys: Object.keys(safe) });
+    
     if (role === 'applicant') {
       return { applicant: safe.applicant ?? null };
     }
+    
     if (role === 'coapplicant' || /^coapplicant\d+$/.test(role)) {
-      const index = typeof coGuarIndex === 'number' ? coGuarIndex : 0;
-      const co = (safe.coApplicants || {})[index] || null;
-      return { coApplicants: { [index]: co } };
+      // Extract index from role if it's in format coapplicantN, otherwise use coGuarIndex
+      let index = 0;
+      if (/^coapplicant\d+$/.test(role)) {
+        const match = role.match(/coapplicant(\d+)/);
+        index = match ? parseInt(match[1]) - 1 : 0; // Convert 1-based to 0-based index
+      } else if (typeof coGuarIndex === 'number') {
+        index = coGuarIndex;
+      }
+      
+      console.log('👥 Co-applicant signature role detected, using index:', index);
+      const signature = (safe.coApplicants || {})[index] || null;
+      console.log('👥 Co-applicant signature for index', index, ':', signature);
+      
+      return { coApplicants: { [index]: signature } };
     }
+    
     if (role === 'guarantor' || /^guarantor\d+$/.test(role)) {
-      const index = typeof coGuarIndex === 'number' ? coGuarIndex : 0;
-      const g = (safe.guarantors || {})[index] || null;
-      return { guarantors: { [index]: g } };
+      // Extract index from role if it's in format guarantorN, otherwise use coGuarIndex
+      let index = 0;
+      if (/^guarantor\d+$/.test(role)) {
+        const match = role.match(/guarantor(\d+)/);
+        index = match ? parseInt(match[1]) - 1 : 0; // Convert 1-based to 0-based index
+      } else if (typeof coGuarIndex === 'number') {
+        index = coGuarIndex;
+      }
+      
+      console.log('🛡️ Guarantor signature role detected, using index:', index);
+      const signature = (safe.guarantors || {})[index] || null;
+      console.log('🛡️ Guarantor signature for index', index, ':', signature);
+      
+      return { guarantors: { [index]: signature } };
     }
+    
     return safe;
   }, []);
 
@@ -3094,14 +3178,25 @@ export function ApplicationForm() {
       } else if (userRole && userRole.startsWith('coapplicant')) {
         console.log('👥 Co-Applicant saving draft to Co-Applicants table...');
 
-        // Build co-applicant record
-        const coApplicantIndex = typeof specificIndex === 'number' ? specificIndex : 0;
-        const coApplicantData = (enhancedFormDataSnapshot.coApplicants || [])[0] || {};
+        // Build co-applicant record with proper index handling
+        let coApplicantIndex = 0;
+        if (/^coapplicant\d+$/.test(userRole)) {
+          const match = userRole.match(/coapplicant(\d+)/);
+          coApplicantIndex = match ? parseInt(match[1]) - 1 : 0; // Convert 1-based to 0-based index
+        } else if (typeof specificIndex === 'number') {
+          coApplicantIndex = specificIndex;
+        }
+        
+        console.log('👥 Co-Applicant save using index:', coApplicantIndex);
+        const coApplicantData = (enhancedFormDataSnapshot.coApplicants || [])[coApplicantIndex] || {};
+        console.log('👥 Co-Applicant data being saved:', coApplicantData);
+        
         const submittedCoApplicantData = {
           coapplicant_info: coApplicantData,
           occupants: enhancedFormDataSnapshot.occupants || [],
           webhookSummary: getWebhookSummary(),
-          signature: (roleScopedSign as any).coapplicant || {},
+          // Store only this co-applicant's signature
+          signature: (roleScopedSign as any)?.coApplicants?.[coApplicantIndex] || {},
           status: 'draft' as const,
           last_updated: new Date().toISOString()
         };
@@ -3138,14 +3233,25 @@ export function ApplicationForm() {
       } else if (userRole && userRole.startsWith('guarantor')) {
         console.log('🛡️ Guarantor saving draft to Guarantors_nyc table...');
 
-        // Build guarantor record
-        const guarantorIndex = typeof specificIndex === 'number' ? specificIndex : 0;
-        const guarantorData = (enhancedFormDataSnapshot.guarantors || [])[0] || {};
+        // Build guarantor record with proper index handling
+        let guarantorIndex = 0;
+        if (/^guarantor\d+$/.test(userRole)) {
+          const match = userRole.match(/guarantor(\d+)/);
+          guarantorIndex = match ? parseInt(match[1]) - 1 : 0; // Convert 1-based to 0-based index
+        } else if (typeof specificIndex === 'number') {
+          guarantorIndex = specificIndex;
+        }
+        
+        console.log('🛡️ Guarantor save using index:', guarantorIndex);
+        const guarantorData = (enhancedFormDataSnapshot.guarantors || [])[guarantorIndex] || {};
+        console.log('🛡️ Guarantor data being saved:', guarantorData);
+        
         const submittedGuarantorData = {
           guarantor_info: guarantorData,
           occupants: enhancedFormDataSnapshot.occupants || [],
           webhookSummary: getWebhookSummary(),
-          signature: (roleScopedSign as any).guarantor || {},
+          // Store only this guarantor's signature
+          signature: (roleScopedSign as any)?.guarantors?.[guarantorIndex] || {},
           status: 'draft' as const,
           last_updated: new Date().toISOString()
         };
@@ -3207,6 +3313,7 @@ export function ApplicationForm() {
       const allSaved = saveResults.every(result => result);
       if (allSaved) {
         console.log('💾 Role-based draft saved successfully');
+        setHasExistingDraft(true);
         toast({
           title: 'Draft Saved Successfully',
           description: 'Your application draft has been saved to the appropriate table. You can continue working on it later.',
@@ -3853,6 +3960,16 @@ export function ApplicationForm() {
   const getNextAllowedStep = (current: number, direction: 1 | -1) => {
     let next = current + direction;
     
+    // If no existing draft and starting fresh, check if Step 1 is valid before allowing navigation
+    if (hasExistingDraft === false && current === 0 && direction === 1) {
+      const stepValidation = validateStep(current);
+      if (!stepValidation.isValid) {
+        console.log('🚫 No existing draft found and Step 1 is invalid, restricting navigation to Step 1 only');
+        return current; // Stay on Step 1
+      }
+      console.log('✅ No existing draft but Step 1 is valid, allowing navigation to create first draft');
+    }
+    
     // Get actual step IDs for current and next steps
     const currentStepId = getActualStepId(current);
     const nextStepId = getActualStepId(next);
@@ -4257,6 +4374,21 @@ export function ApplicationForm() {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
+    }
+    
+    // If no existing draft and trying to navigate away from Step 1, check if Step 1 is valid first
+    if (hasExistingDraft === false && step > 0) {
+      const stepValidation = validateStep(0);
+      if (!stepValidation.isValid) {
+        console.log('🚫 No existing draft found and Step 1 is invalid, blocking navigation to step:', step);
+        toast({
+          title: 'Complete Step 1 First',
+          description: 'Please complete the required fields in Step 1 before proceeding to other steps.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      console.log('✅ No existing draft but Step 1 is valid, allowing navigation to step:', step);
     }
     
     // Validate all previous steps before allowing navigation to a step
@@ -9519,6 +9651,24 @@ export function ApplicationForm() {
       e.preventDefault();
       e.stopPropagation();
     }
+    
+    // If no existing draft and trying to move from Step 1, check if Step 1 is valid first
+    if (hasExistingDraft === false && currentStep === 0) {
+      // First validate Step 1 - if it's not valid, show validation errors
+      const stepValidation = validateStep(currentStep);
+      if (!stepValidation.isValid) {
+        console.log('🚫 Step 1 validation failed, blocking navigation');
+        toast({
+          title: 'Complete Step 1 First',
+          description: 'Please complete the required fields before proceeding to the next step.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      // If Step 1 is valid, allow navigation (this will create the first draft)
+      console.log('✅ Step 1 is valid, allowing navigation to create first draft');
+    }
+    
     // Validate current step before proceeding, but be lenient when resuming a draft
     const validation = validateStep(currentStep);
     if (!validation.isValid) {
@@ -9643,14 +9793,18 @@ export function ApplicationForm() {
               const stepValidation = validateStep(index);
               const isCompleted = index < currentStep && stepValidation.isValid;
               const hasErrors = index < currentStep && !stepValidation.isValid;
+              const isDisabled = hasExistingDraft === false && index > 0 && !validateStep(0).isValid;
               
               return (
                 <div key={step.id} className="flex items-center">
                   <button
                     type="button"
                       onClick={() => goToStep(index)}
+                      disabled={isDisabled}
                       className={`flex items-center px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-                        index === currentStep
+                        isDisabled
+                          ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                          : index === currentStep
                           ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
                           : isCompleted
                           ? 'bg-green-100 text-green-700 hover:bg-green-200'
@@ -9732,6 +9886,30 @@ export function ApplicationForm() {
 
 
 
+            {/* Draft Status Message */}
+            {hasExistingDraft === false && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    </div>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800">
+                      Starting Fresh Application
+                    </h3>
+                    <p className="text-sm text-blue-700 mt-1">
+                      {validateStep(currentStep).isValid 
+                        ? "Step 1 is complete! You can now proceed to the next step or save your progress."
+                        : "Complete Step 1 to begin your application. You'll be able to navigate to other steps once you save your progress."
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Navigation Buttons */}
           <div className="flex justify-between pt-6">
                   <Button
@@ -9778,6 +9956,7 @@ export function ApplicationForm() {
                 <Button
                   type="button"
                   onClick={(e) => handleNext(e)}
+                  disabled={hasExistingDraft === false && currentStep === 0 && !validateStep(currentStep).isValid}
                   className="flex items-center"
                 >
                   Next

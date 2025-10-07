@@ -273,6 +273,46 @@ export const SupportingDocuments = ({
   const getDocumentStatus = (documentId: string): DocumentStatus => {
     // Debug logging to help troubleshoot
     
+    // EARLY: Applicant exact key when rendering applicant section
+    if (showOnlyApplicant) {
+      const k = `applicant_${documentId}`;
+      const resp = (originalWebhookResponses as any)?.[k] || (formData.webhookResponses as any)?.[k];
+      if (resp) {
+        let fileUrl = '';
+        if (typeof resp === 'string') fileUrl = resp;
+        else if ((resp as any)?.body) fileUrl = (resp as any).body;
+        else if ((resp as any)?.url) fileUrl = (resp as any).url;
+        if (fileUrl && fileUrl.trim()) {
+          return { status: 'uploaded', count: 1 };
+        }
+      }
+    }
+
+    // EARLY: Exact indexed key check so saved drafts map to this specific card
+    if (index !== undefined && (showOnlyCoApplicant || showOnlyGuarantor)) {
+      const keysToTry: string[] = [];
+      if (showOnlyCoApplicant) {
+        keysToTry.push(`coApplicants_${index}_${documentId}`);
+        keysToTry.push(`coApplicant_${index}_${documentId}`); // legacy
+      }
+      if (showOnlyGuarantor) {
+        keysToTry.push(`guarantors_${index}_${documentId}`);
+        keysToTry.push(`guarantor_${index}_${documentId}`); // legacy
+      }
+      for (const k of keysToTry) {
+        const resp = (originalWebhookResponses as any)?.[k] || (formData.webhookResponses as any)?.[k];
+        if (resp) {
+          let fileUrl = '';
+          if (typeof resp === 'string') fileUrl = resp;
+          else if ((resp as any)?.body) fileUrl = (resp as any).body;
+          else if ((resp as any)?.url) fileUrl = (resp as any).url;
+          if (fileUrl && fileUrl.trim()) {
+            return { status: 'uploaded', count: 1 };
+          }
+        }
+      }
+    }
+
     // Special handling for Pay Stubs sections
     if (documentId.startsWith('pay_stubs_')) {
       // Check if this specific Pay Stubs section has been uploaded
@@ -301,7 +341,7 @@ export const SupportingDocuments = ({
         // Handle both old format (coApplicant_) and new format (coApplicants_1_, coApplicants_2_, etc.)
         if (prefix === 'coApplicants_') {
           // Check for coApplicants_1_, coApplicants_2_, etc.
-          for (let i = 1; i <= 4; i++) {
+          for (let i = 0; i <= 4; i++) {
             const indexedPrefix = `coApplicants_${i}_`;
             const prefixedDocumentId = indexedPrefix + documentId;
             const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
@@ -325,7 +365,7 @@ export const SupportingDocuments = ({
           }
         } else if (prefix === 'guarantors_') {
           // Check for guarantors_1_, guarantors_2_, etc.
-          for (let i = 1; i <= 4; i++) {
+          for (let i = 0; i <= 4; i++) {
             const indexedPrefix = `guarantors_${i}_`;
             const prefixedDocumentId = indexedPrefix + documentId;
             const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
@@ -397,15 +437,32 @@ export const SupportingDocuments = ({
       }
     }
     
-    // Check original webhook responses if available (for proper document mapping)
+    // Explicitly check indexed person keys when rendering a specific Co-Applicant/Guarantor section
+    if (index !== undefined) {
+      const directIndexedKey = `${showOnlyCoApplicant ? 'coApplicants' : showOnlyGuarantor ? 'guarantors' : ''}_${index}_${documentId}`;
+      if (directIndexedKey.startsWith('coApplicants_') || directIndexedKey.startsWith('guarantors_')) {
+        const resp = formData.webhookResponses?.[directIndexedKey as any];
+        if (resp) {
+          let fileUrl = '';
+          if (typeof resp === 'string') fileUrl = resp;
+          else if ((resp as any).body) fileUrl = (resp as any).body;
+          else if ((resp as any).url) fileUrl = (resp as any).url;
+          if (fileUrl && fileUrl.trim()) {
+            return { status: 'uploaded', count: 1 };
+          }
+        }
+      }
+    }
+
+    // Check original webhook responses (prefer prop if provided) for proper document mapping
     // This is crucial for co-applicant documents where the prefix might be filtered out
-    if ((formData as any).originalWebhookResponses) {
-      const originalWebhookResponses = (formData as any).originalWebhookResponses;
+    if ((originalWebhookResponses as any) || (formData as any).originalWebhookResponses) {
+      const originalResponses: Record<string, any> = (originalWebhookResponses as any) || (formData as any).originalWebhookResponses;
       
       // Check for the document ID directly in original webhook responses
-      if (originalWebhookResponses[documentId]) {
+      if (originalResponses[documentId]) {
         let fileUrl = '';
-        const response = originalWebhookResponses[documentId];
+        const response = originalResponses[documentId];
         if (typeof response === 'string') {
           fileUrl = response;
         } else if (response && response.body) {
@@ -427,10 +484,10 @@ export const SupportingDocuments = ({
       for (const prefix of personPrefixes) {
         if (prefix === 'coApplicants_') {
           // Check for coApplicants_1_, coApplicants_2_, etc.
-          for (let i = 1; i <= 4; i++) {
+          for (let i = 0; i <= 4; i++) {
             const indexedPrefix = `coApplicants_${i}_`;
             const prefixedDocumentId = indexedPrefix + documentId;
-            const prefixedWebhookResponse = originalWebhookResponses[prefixedDocumentId];
+            const prefixedWebhookResponse = originalResponses[prefixedDocumentId];
             if (prefixedWebhookResponse) {
               let fileUrl = '';
               if (typeof prefixedWebhookResponse === 'string') {
@@ -451,10 +508,10 @@ export const SupportingDocuments = ({
           }
         } else if (prefix === 'guarantors_') {
           // Check for guarantors_1_, guarantors_2_, etc.
-          for (let i = 1; i <= 4; i++) {
+          for (let i = 0; i <= 4; i++) {
             const indexedPrefix = `guarantors_${i}_`;
             const prefixedDocumentId = indexedPrefix + documentId;
-            const prefixedWebhookResponse = originalWebhookResponses[prefixedDocumentId];
+            const prefixedWebhookResponse = originalResponses[prefixedDocumentId];
             if (prefixedWebhookResponse) {
               let fileUrl = '';
               if (typeof prefixedWebhookResponse === 'string') {
@@ -476,7 +533,7 @@ export const SupportingDocuments = ({
         } else {
           // Handle applicant_, coApplicant_, and occupants_ normally
           const prefixedDocumentId = prefix + documentId;
-          const prefixedWebhookResponse = originalWebhookResponses[prefixedDocumentId];
+          const prefixedWebhookResponse = originalResponses[prefixedDocumentId];
           if (prefixedWebhookResponse) {
             let fileUrl = '';
             if (typeof prefixedWebhookResponse === 'string') {
@@ -504,7 +561,7 @@ export const SupportingDocuments = ({
       // Handle both old format (coApplicant_) and new format (coApplicant_1_, coApplicant_2_, etc.)
       if (prefix === 'coApplicant_') {
         // Check for coApplicant_1_, coApplicant_2_, etc.
-        for (let i = 1; i <= 4; i++) {
+        for (let i = 0; i <= 4; i++) {
           const indexedPrefix = `coApplicant_${i}_`;
           const prefixedDocumentId = indexedPrefix + documentId;
           const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
@@ -528,7 +585,7 @@ export const SupportingDocuments = ({
         }
       } else if (prefix === 'guarantor_') {
         // Check for guarantor_1_, guarantor_2_, etc.
-        for (let i = 1; i <= 4; i++) {
+        for (let i = 0; i <= 4; i++) {
           const indexedPrefix = `guarantor_${i}_`;
           const prefixedDocumentId = indexedPrefix + documentId;
           const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
@@ -606,7 +663,7 @@ export const SupportingDocuments = ({
       for (const prefix of personPrefixes) {
         if (prefix === 'coApplicant_') {
           // Check for coApplicant_1_, coApplicant_2_, etc. in encryptedDocuments
-          for (let i = 1; i <= 4; i++) {
+          for (let i = 0; i <= 4; i++) {
             const indexedPrefix = `coApplicant_${i}_`;
             const cleanPerson = 'coApplicant' as keyof typeof encryptedDocuments;
             const personDocs = encryptedDocuments[cleanPerson];
@@ -622,7 +679,7 @@ export const SupportingDocuments = ({
           }
         } else if (prefix === 'guarantor_') {
           // Check for guarantor_1_, guarantor_2_, etc. in encryptedDocuments
-          for (let i = 1; i <= 4; i++) {
+          for (let i = 0; i <= 4; i++) {
             const indexedPrefix = `guarantor_${i}_`;
             const cleanPerson = 'guarantor' as keyof typeof encryptedDocuments;
             const personDocs = encryptedDocuments[cleanPerson];
@@ -714,6 +771,48 @@ export const SupportingDocuments = ({
     
     // Get the current context to filter documents appropriately
     const currentContext = getCurrentContext();
+
+    // EARLY: Applicant exact key when rendering applicant section
+    if (showOnlyApplicant) {
+      const k = `applicant_${documentId}`;
+      const resp = (originalWebhookResponses as any)?.[k] || (formData.webhookResponses as any)?.[k];
+      if (resp) {
+        let fileUrl = '';
+        if (typeof resp === 'string') fileUrl = resp;
+        else if ((resp as any)?.body) fileUrl = (resp as any).body;
+        else if ((resp as any)?.url) fileUrl = (resp as any).url;
+        if (fileUrl && fileUrl.trim()) {
+          uploadedDocs.push({ filename: `${k}_document`, webhookbodyUrl: fileUrl });
+          return uploadedDocs;
+        }
+      }
+    }
+
+    // EARLY: Exact indexed key check so saved drafts map to this specific card
+    if (index !== undefined && (showOnlyCoApplicant || showOnlyGuarantor)) {
+      const keysToTry: string[] = [];
+      if (showOnlyCoApplicant) {
+        keysToTry.push(`coApplicants_${index}_${documentId}`);
+        keysToTry.push(`coApplicant_${index}_${documentId}`); // legacy
+      }
+      if (showOnlyGuarantor) {
+        keysToTry.push(`guarantors_${index}_${documentId}`);
+        keysToTry.push(`guarantor_${index}_${documentId}`); // legacy
+      }
+      for (const k of keysToTry) {
+        const resp = (originalWebhookResponses as any)?.[k] || (formData.webhookResponses as any)?.[k];
+        if (resp) {
+          let fileUrl = '';
+          if (typeof resp === 'string') fileUrl = resp;
+          else if ((resp as any)?.body) fileUrl = (resp as any).body;
+          else if ((resp as any)?.url) fileUrl = (resp as any).url;
+          if (fileUrl && fileUrl.trim()) {
+            uploadedDocs.push({ filename: `${k}_document`, webhookbodyUrl: fileUrl });
+            return uploadedDocs;
+          }
+        }
+      }
+    }
     
     // Special handling for Pay Stubs sections
     if (documentId.startsWith('pay_stubs_')) {
@@ -750,7 +849,7 @@ export const SupportingDocuments = ({
         
         if (prefix === 'coApplicants_') {
           // Check for coApplicants_1_, coApplicants_2_, etc.
-          for (let i = 1; i <= 4; i++) {
+          for (let i = 0; i <= 4; i++) {
             const indexedPrefix = `coApplicants_${i}_`;
             const prefixedDocumentId = indexedPrefix + documentId;
             const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
@@ -776,7 +875,7 @@ export const SupportingDocuments = ({
           }
         } else if (prefix === 'guarantors_') {
           // Check for guarantors_1_, guarantors_2_, etc.
-          for (let i = 1; i <= 4; i++) {
+          for (let i = 0; i <= 4; i++) {
             const indexedPrefix = `guarantors_${i}_`;
             const prefixedDocumentId = indexedPrefix + documentId;
             const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
@@ -852,6 +951,24 @@ export const SupportingDocuments = ({
       }
     }
     
+    // Explicitly check indexed key for current section (co-applicant/guarantor)
+    if (index !== undefined) {
+      const directIndexedKey = `${showOnlyCoApplicant ? 'coApplicants' : showOnlyGuarantor ? 'guarantors' : ''}_${index}_${documentId}`;
+      if (directIndexedKey.startsWith('coApplicants_') || directIndexedKey.startsWith('guarantors_')) {
+        const resp = formData.webhookResponses?.[directIndexedKey as any];
+        if (resp) {
+          let fileUrl = '';
+          if (typeof resp === 'string') fileUrl = resp;
+          else if ((resp as any).body) fileUrl = (resp as any).body;
+          else if ((resp as any).url) fileUrl = (resp as any).url;
+          if (fileUrl && fileUrl.trim()) {
+            const filename = `${directIndexedKey}_document`;
+            uploadedDocs.push({ filename, webhookbodyUrl: fileUrl });
+          }
+        }
+      }
+    }
+
     // Check original webhook responses if available (for proper document mapping)
     // This is crucial for co-applicant documents where the prefix might be filtered out
     if ((formData as any).originalWebhookResponses) {
@@ -891,7 +1008,7 @@ export const SupportingDocuments = ({
         
         if (prefix === 'coApplicants_') {
           // Check for coApplicants_1_, coApplicants_2_, etc.
-          for (let i = 1; i <= 4; i++) {
+          for (let i = 0; i <= 4; i++) {
             const indexedPrefix = `coApplicants_${i}_`;
             const prefixedDocumentId = indexedPrefix + documentId;
             const prefixedWebhookResponse = originalWebhookResponses[prefixedDocumentId];
@@ -917,7 +1034,7 @@ export const SupportingDocuments = ({
           }
         } else if (prefix === 'guarantors_') {
           // Check for guarantors_1_, guarantors_2_, etc.
-          for (let i = 1; i <= 4; i++) {
+          for (let i = 0; i <= 4; i++) {
             const indexedPrefix = `guarantors_${i}_`;
             const prefixedDocumentId = indexedPrefix + documentId;
             const prefixedWebhookResponse = originalWebhookResponses[prefixedDocumentId];
@@ -979,7 +1096,7 @@ export const SupportingDocuments = ({
       
       if (prefix === 'coApplicants_') {
         // Check for coApplicants_1_, coApplicants_2_, etc.
-        for (let i = 1; i <= 4; i++) {
+        for (let i = 0; i <= 4; i++) {
           const indexedPrefix = `coApplicants_${i}_`;
           const prefixedDocumentId = indexedPrefix + documentId;
           const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
@@ -1005,7 +1122,7 @@ export const SupportingDocuments = ({
         }
       } else if (prefix === 'guarantors_') {
         // Check for guarantors_1_, guarantors_2_, etc.
-        for (let i = 1; i <= 4; i++) {
+        for (let i = 0; i <= 4; i++) {
           const indexedPrefix = `guarantors_${i}_`;
           const prefixedDocumentId = indexedPrefix + documentId;
           const prefixedWebhookResponse = formData.webhookResponses?.[prefixedDocumentId];
@@ -1633,9 +1750,31 @@ export const SupportingDocuments = ({
                                 
                                 {/* File information */}
                                 {hasWebhookUrl && (
-                                  <div className="flex items-center gap-2 p-2 bg-white rounded border border-green-100">
-                                    <FileText className="h-4 w-4 text-green-600" />
-                                    <span className="text-sm text-green-700 font-medium">
+                                  <div className="flex items-center gap-3 p-2 bg-white rounded border border-green-100">
+                                    {(() => {
+                                      const isImage = (() => {
+                                        const urlOrName = uploadedDocs[0].webhookbodyUrl || uploadedDocs[0].filename;
+                                        const lower = (urlOrName || '').toLowerCase();
+                                        return [
+                                          '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'
+                                        ].some(ext => lower.includes(ext));
+                                      })();
+                                      if (isImage) {
+                                        return (
+                                          <img
+                                            src={uploadedDocs[0].webhookbodyUrl}
+                                            alt={uploadedDocs[0].filename}
+                                            className="h-10 w-10 object-cover rounded border"
+                                            onError={(e) => {
+                                              // Fallback to icon if image fails
+                                              (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                            }}
+                                          />
+                                        );
+                                      }
+                                      return <FileText className="h-4 w-4 text-green-600" />;
+                                    })()}
+                                    <span className="text-sm text-green-700 font-medium break-all">
                                       {uploadedDocs[0].filename}
                                     </span>
                                   </div>
