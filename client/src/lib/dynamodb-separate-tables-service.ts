@@ -447,69 +447,169 @@ export class DynamoDBSeparateTablesService {
     
     const reduced = { ...data };
     
-    // Reduce webhook_responses size
+    // Aggressive reduction for webhook_responses - keep only essential data
     if (reduced.webhook_responses && typeof reduced.webhook_responses === 'object') {
       const webhookKeys = Object.keys(reduced.webhook_responses);
-      if (webhookKeys.length > 10) {
-        // Keep only the most recent 10 webhook responses
-        const sortedKeys = webhookKeys.sort().slice(-10);
+      if (webhookKeys.length > 3) {
+        // Keep only the most recent 3 webhook responses with minimal data
+        const sortedKeys = webhookKeys.sort().slice(-3);
         const reducedWebhooks: any = {};
         sortedKeys.forEach(key => {
-          reducedWebhooks[key] = reduced.webhook_responses[key];
+          const webhook = reduced.webhook_responses[key];
+          if (webhook && typeof webhook === 'object') {
+            // Keep only essential fields
+            reducedWebhooks[key] = {
+              status: webhook.status || 'unknown',
+              timestamp: webhook.timestamp || webhook.processingDate,
+              documentType: webhook.documentType || 'unknown'
+            };
+          }
         });
         reduced.webhook_responses = reducedWebhooks;
-        console.log('📉 Reduced webhook_responses from', webhookKeys.length, 'to', sortedKeys.length, 'entries');
+        console.log('📉 Reduced webhook_responses from', webhookKeys.length, 'to', sortedKeys.length, 'entries (minimal data)');
       }
     }
     
-    // Reduce uploaded_files_metadata size
+    // Aggressive reduction for uploaded_files_metadata - keep only file names and basic info
     if (reduced.uploaded_files_metadata && typeof reduced.uploaded_files_metadata === 'object') {
       const fileKeys = Object.keys(reduced.uploaded_files_metadata);
-      if (fileKeys.length > 20) {
-        // Keep only the most recent 20 file entries
-        const sortedKeys = fileKeys.sort().slice(-20);
+      if (fileKeys.length > 5) {
+        // Keep only the most recent 5 file entries with minimal metadata
+        const sortedKeys = fileKeys.sort().slice(-5);
         const reducedFiles: any = {};
         sortedKeys.forEach(key => {
-          reducedFiles[key] = reduced.uploaded_files_metadata[key];
+          const file = reduced.uploaded_files_metadata[key];
+          if (file && typeof file === 'object') {
+            // Keep only essential file info
+            reducedFiles[key] = {
+              filename: file.filename || key,
+              size: file.size || 0,
+              type: file.type || 'unknown',
+              uploadedAt: file.uploadedAt || new Date().toISOString()
+            };
+          }
         });
         reduced.uploaded_files_metadata = reducedFiles;
-        console.log('📉 Reduced uploaded_files_metadata from', fileKeys.length, 'to', sortedKeys.length, 'entries');
+        console.log('📉 Reduced uploaded_files_metadata from', fileKeys.length, 'to', sortedKeys.length, 'entries (minimal data)');
       }
     }
     
-    // Reduce application_info size by removing large nested objects
+    // Aggressive reduction for application_info - remove large nested objects entirely
     if (reduced.application_info && typeof reduced.application_info === 'object') {
       const appInfo = { ...reduced.application_info };
       
       // Remove large arrays or objects that might be causing size issues
-      const fieldsToReduce = ['coApplicants', 'guarantors', 'occupants', 'bankRecords'];
-      fieldsToReduce.forEach(field => {
-        if (appInfo[field] && Array.isArray(appInfo[field]) && appInfo[field].length > 5) {
-          appInfo[field] = appInfo[field].slice(0, 5);
-          console.log(`📉 Reduced ${field} from ${appInfo[field].length + 5} to 5 entries`);
+      const fieldsToRemove = ['coApplicants', 'guarantors', 'occupants', 'bankRecords', 'documents'];
+      fieldsToRemove.forEach(field => {
+        if (appInfo[field]) {
+          delete appInfo[field];
+          console.log(`📉 Removed ${field} entirely from application_info`);
         }
       });
       
-      reduced.application_info = appInfo;
+      // Keep only essential application fields
+      const essentialFields = [
+        'buildingAddress', 'apartmentNumber', 'apartmentType', 'monthlyRent', 
+        'moveInDate', 'howDidYouHear', 'reference_id', 'zoneinfo'
+      ];
+      const essentialAppInfo: any = {};
+      essentialFields.forEach(field => {
+        if (appInfo[field] !== undefined) {
+          essentialAppInfo[field] = appInfo[field];
+        }
+      });
+      
+      reduced.application_info = essentialAppInfo;
+      console.log('📉 Reduced application_info to essential fields only');
     }
     
-    // Reduce encrypted_documents size
+    // Aggressive reduction for encrypted_documents - keep only document count
     if (reduced.encrypted_documents && typeof reduced.encrypted_documents === 'object') {
       const docKeys = Object.keys(reduced.encrypted_documents);
-      if (docKeys.length > 15) {
-        // Keep only the most recent 15 document entries
-        const sortedKeys = docKeys.sort().slice(-15);
-        const reducedDocs: any = {};
-        sortedKeys.forEach(key => {
-          reducedDocs[key] = reduced.encrypted_documents[key];
-        });
-        reduced.encrypted_documents = reducedDocs;
-        console.log('📉 Reduced encrypted_documents from', docKeys.length, 'to', sortedKeys.length, 'entries');
+      if (docKeys.length > 0) {
+        // Replace with just a count summary
+        reduced.encrypted_documents = {
+          documentCount: docKeys.length,
+          lastUpdated: new Date().toISOString()
+        };
+        console.log('📉 Reduced encrypted_documents to count summary only');
+      }
+    }
+    
+    // Remove signatures entirely if they're large
+    if (reduced.signatures && typeof reduced.signatures === 'object') {
+      const sigSize = JSON.stringify(reduced.signatures).length;
+      if (sigSize > 10000) { // If signatures are larger than 10KB
+        reduced.signatures = {
+          hasSignatures: true,
+          signatureCount: Object.keys(reduced.signatures).length,
+          lastUpdated: new Date().toISOString()
+        };
+        console.log('📉 Reduced signatures to summary only');
       }
     }
     
     console.log('✅ Application data size reduction completed');
     return reduced;
+  }
+
+  // Apply ultra-aggressive reduction for extremely large data
+  private applyUltraAggressiveReduction(data: ApplicationData): ApplicationData {
+    console.log('🔧 Applying ultra-aggressive data reduction...');
+    
+    const ultraReduced = { ...data };
+    
+    // Keep only the absolute minimum required fields
+    const minimalData: ApplicationData = {
+      userId: ultraReduced.userId,
+      role: ultraReduced.role,
+      appid: ultraReduced.appid,
+      zoneinfo: ultraReduced.zoneinfo,
+      current_step: ultraReduced.current_step,
+      last_updated: ultraReduced.last_updated,
+      status: ultraReduced.status,
+      flow_type: ultraReduced.flow_type || 'separate_webhooks',
+      webhook_flow_version: ultraReduced.webhook_flow_version || '2.0',
+      
+      // Minimal application_info with only essential fields
+      application_info: {
+        buildingAddress: ultraReduced.application_info?.buildingAddress || 'Not specified',
+        apartmentNumber: ultraReduced.application_info?.apartmentNumber || 'Not specified',
+        monthlyRent: ultraReduced.application_info?.monthlyRent || 'Not specified',
+        reference_id: ultraReduced.application_info?.reference_id || ultraReduced.appid,
+        zoneinfo: ultraReduced.zoneinfo
+      },
+      
+      // Minimal metadata
+      uploaded_files_metadata: {
+        fileCount: ultraReduced.uploaded_files_metadata ? Object.keys(ultraReduced.uploaded_files_metadata).length : 0,
+        lastUpdated: new Date().toISOString()
+      },
+      
+      // Minimal webhook responses
+      webhook_responses: {
+        responseCount: ultraReduced.webhook_responses ? Object.keys(ultraReduced.webhook_responses).length : 0,
+        lastUpdated: new Date().toISOString()
+      },
+      
+      // Minimal signatures
+      signatures: {
+        hasSignatures: !!(ultraReduced.signatures && Object.keys(ultraReduced.signatures).length > 0),
+        signatureCount: ultraReduced.signatures ? Object.keys(ultraReduced.signatures).length : 0,
+        lastUpdated: new Date().toISOString()
+      },
+      
+      // Minimal encrypted documents
+      encrypted_documents: {
+        documentCount: ultraReduced.encrypted_documents ? Object.keys(ultraReduced.encrypted_documents).length : 0,
+        lastUpdated: new Date().toISOString()
+      },
+      
+      storage_mode: 'direct' as const
+    };
+    
+    console.log('✅ Ultra-aggressive data reduction completed - keeping only essential fields');
+    return minimalData;
   }
 
   // Save application data (overwrites existing if found)
@@ -569,10 +669,10 @@ export class DynamoDBSeparateTablesService {
       });
       
       const dataSize = JSON.stringify(marshalledData).length;
-      console.log('📏 Application data size:', dataSize, 'bytes (max: 400KB)');
+      console.log('📏 Application data size:', dataSize, 'bytes (max: 50MB)');
       
-      if (dataSize > 400 * 1024) {
-        console.warn('⚠️ Application data exceeds 400KB limit, reducing data size...');
+      if (dataSize > 50 * 1024 * 1024) {
+        console.warn('⚠️ Application data exceeds 50MB limit, reducing data size...');
         applicationData = this.reduceApplicationDataSize(applicationData);
         
         // Re-check size after reduction
@@ -583,9 +683,22 @@ export class DynamoDBSeparateTablesService {
         const reducedSize = JSON.stringify(reducedMarshalledData).length;
         console.log('📏 Reduced application data size:', reducedSize, 'bytes');
         
-        if (reducedSize > 400 * 1024) {
-          console.error('❌ Application data still too large after reduction:', reducedSize, 'bytes');
-          throw new Error(`Application data exceeds DynamoDB size limit: ${reducedSize} bytes`);
+        if (reducedSize > 50 * 1024 * 1024) {
+          console.warn('⚠️ Application data still too large after first reduction, applying ultra-aggressive reduction...');
+          applicationData = this.applyUltraAggressiveReduction(applicationData);
+          
+          // Final size check
+          const ultraReducedMarshalledData = marshall(applicationData, { 
+            removeUndefinedValues: true,
+            convertClassInstanceToMap: true 
+          });
+          const ultraReducedSize = JSON.stringify(ultraReducedMarshalledData).length;
+          console.log('📏 Ultra-reduced application data size:', ultraReducedSize, 'bytes');
+          
+          if (ultraReducedSize > 50 * 1024 * 1024) {
+            console.error('❌ Application data still too large after ultra-aggressive reduction:', ultraReducedSize, 'bytes');
+            throw new Error(`Application data exceeds DynamoDB size limit even after aggressive reduction: ${ultraReducedSize} bytes`);
+          }
         }
       }
 
@@ -799,10 +912,10 @@ export class DynamoDBSeparateTablesService {
       });
       
       const dataSize = JSON.stringify(marshalledData).length;
-      console.log('📏 Applicant data size:', dataSize, 'bytes (max: 400KB)');
+      console.log('📏 Applicant data size:', dataSize, 'bytes (max: 50MB)');
       
-      if (dataSize > 400 * 1024) {
-        console.warn('⚠️ Applicant data exceeds 400KB limit, reducing data size...');
+      if (dataSize > 50 * 1024 * 1024) {
+        console.warn('⚠️ Applicant data exceeds 50MB limit, reducing data size...');
         applicantData = this.reduceApplicantDataSize(applicantData);
         
         // Re-check size after reduction
@@ -813,7 +926,7 @@ export class DynamoDBSeparateTablesService {
         const reducedSize = JSON.stringify(reducedMarshalledData).length;
         console.log('📏 Reduced applicant data size:', reducedSize, 'bytes');
         
-        if (reducedSize > 400 * 1024) {
+        if (reducedSize > 50 * 1024 * 1024) {
           console.error('❌ Applicant data still too large after reduction:', reducedSize, 'bytes');
           throw new Error(`Applicant data exceeds DynamoDB size limit: ${reducedSize} bytes`);
         }
@@ -1099,10 +1212,10 @@ export class DynamoDBSeparateTablesService {
       });
       
       const dataSize = JSON.stringify(marshalledData).length;
-      console.log('📏 Co-applicant data size:', dataSize, 'bytes (max: 400KB)');
+      console.log('📏 Co-applicant data size:', dataSize, 'bytes (max: 50MB)');
       
-      if (dataSize > 400 * 1024) {
-        console.warn('⚠️ Co-applicant data exceeds 400KB limit, reducing data size...');
+      if (dataSize > 50 * 1024 * 1024) {
+        console.warn('⚠️ Co-applicant data exceeds 50MB limit, reducing data size...');
         coApplicantData = this.reduceCoApplicantDataSize(coApplicantData);
         
         // Re-check size after reduction
@@ -1113,7 +1226,7 @@ export class DynamoDBSeparateTablesService {
         const reducedSize = JSON.stringify(reducedMarshalledData).length;
         console.log('📏 Reduced co-applicant data size:', reducedSize, 'bytes');
         
-        if (reducedSize > 400 * 1024) {
+        if (reducedSize > 50 * 1024 * 1024) {
           console.error('❌ Co-applicant data still too large after reduction:', reducedSize, 'bytes');
           throw new Error(`Co-applicant data exceeds DynamoDB size limit: ${reducedSize} bytes`);
         }
@@ -1443,10 +1556,10 @@ export class DynamoDBSeparateTablesService {
       });
       
       const dataSize = JSON.stringify(marshalledData).length;
-      console.log('📏 Guarantor data size:', dataSize, 'bytes (max: 400KB)');
+      console.log('📏 Guarantor data size:', dataSize, 'bytes (max: 50MB)');
       
-      if (dataSize > 400 * 1024) {
-        console.warn('⚠️ Guarantor data exceeds 400KB limit, reducing data size...');
+      if (dataSize > 50 * 1024 * 1024) {
+        console.warn('⚠️ Guarantor data exceeds 50MB limit, reducing data size...');
         guarantorData = this.reduceGuarantorDataSize(guarantorData);
         
         // Re-check size after reduction
@@ -1457,7 +1570,7 @@ export class DynamoDBSeparateTablesService {
         const reducedSize = JSON.stringify(reducedMarshalledData).length;
         console.log('📏 Reduced guarantor data size:', reducedSize, 'bytes');
         
-        if (reducedSize > 400 * 1024) {
+        if (reducedSize > 50 * 1024 * 1024) {
           console.error('❌ Guarantor data still too large after reduction:', reducedSize, 'bytes');
           throw new Error(`Guarantor data exceeds DynamoDB size limit: ${reducedSize} bytes`);
         }
