@@ -1477,15 +1477,7 @@ export const DraftCards = () => {
               </div>
             </div>
 
-            {/* Add Application Button */}
-            <div className="relative mt-6">
-              <Button
-                onClick={() => (window as any).location.href = '/application'}
-                className="bg-white text-blue-700 hover:bg-blue-50"
-              >
-                Start Another Application
-              </Button>
-            </div>
+            {/* Removed: Add Application Button */}
           </div>
         </div>
 
