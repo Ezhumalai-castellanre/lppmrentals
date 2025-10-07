@@ -441,6 +441,77 @@ export class DynamoDBSeparateTablesService {
 
   // APPLICATION DATA METHODS
 
+  // Reduce application data size to fit within DynamoDB limits
+  private reduceApplicationDataSize(data: ApplicationData): ApplicationData {
+    console.log('🔧 Reducing application data size...');
+    
+    const reduced = { ...data };
+    
+    // Reduce webhook_responses size
+    if (reduced.webhook_responses && typeof reduced.webhook_responses === 'object') {
+      const webhookKeys = Object.keys(reduced.webhook_responses);
+      if (webhookKeys.length > 10) {
+        // Keep only the most recent 10 webhook responses
+        const sortedKeys = webhookKeys.sort().slice(-10);
+        const reducedWebhooks: any = {};
+        sortedKeys.forEach(key => {
+          reducedWebhooks[key] = reduced.webhook_responses[key];
+        });
+        reduced.webhook_responses = reducedWebhooks;
+        console.log('📉 Reduced webhook_responses from', webhookKeys.length, 'to', sortedKeys.length, 'entries');
+      }
+    }
+    
+    // Reduce uploaded_files_metadata size
+    if (reduced.uploaded_files_metadata && typeof reduced.uploaded_files_metadata === 'object') {
+      const fileKeys = Object.keys(reduced.uploaded_files_metadata);
+      if (fileKeys.length > 20) {
+        // Keep only the most recent 20 file entries
+        const sortedKeys = fileKeys.sort().slice(-20);
+        const reducedFiles: any = {};
+        sortedKeys.forEach(key => {
+          reducedFiles[key] = reduced.uploaded_files_metadata[key];
+        });
+        reduced.uploaded_files_metadata = reducedFiles;
+        console.log('📉 Reduced uploaded_files_metadata from', fileKeys.length, 'to', sortedKeys.length, 'entries');
+      }
+    }
+    
+    // Reduce application_info size by removing large nested objects
+    if (reduced.application_info && typeof reduced.application_info === 'object') {
+      const appInfo = { ...reduced.application_info };
+      
+      // Remove large arrays or objects that might be causing size issues
+      const fieldsToReduce = ['coApplicants', 'guarantors', 'occupants', 'bankRecords'];
+      fieldsToReduce.forEach(field => {
+        if (appInfo[field] && Array.isArray(appInfo[field]) && appInfo[field].length > 5) {
+          appInfo[field] = appInfo[field].slice(0, 5);
+          console.log(`📉 Reduced ${field} from ${appInfo[field].length + 5} to 5 entries`);
+        }
+      });
+      
+      reduced.application_info = appInfo;
+    }
+    
+    // Reduce encrypted_documents size
+    if (reduced.encrypted_documents && typeof reduced.encrypted_documents === 'object') {
+      const docKeys = Object.keys(reduced.encrypted_documents);
+      if (docKeys.length > 15) {
+        // Keep only the most recent 15 document entries
+        const sortedKeys = docKeys.sort().slice(-15);
+        const reducedDocs: any = {};
+        sortedKeys.forEach(key => {
+          reducedDocs[key] = reduced.encrypted_documents[key];
+        });
+        reduced.encrypted_documents = reducedDocs;
+        console.log('📉 Reduced encrypted_documents from', docKeys.length, 'to', sortedKeys.length, 'entries');
+      }
+    }
+    
+    console.log('✅ Application data size reduction completed');
+    return reduced;
+  }
+
   // Save application data (overwrites existing if found)
   async saveApplicationData(data: Omit<ApplicationData, 'userId' | 'role' | 'appid' | 'zoneinfo'>): Promise<boolean> {
     if (!this.client) {
@@ -481,7 +552,7 @@ export class DynamoDBSeparateTablesService {
         console.log('🆕 Creating new application with appid:', appid);
       }
 
-      const applicationData: ApplicationData = this.sanitizeForDynamo({
+      let applicationData: ApplicationData = this.sanitizeForDynamo({
         ...data,
         userId,
         role,
@@ -490,6 +561,33 @@ export class DynamoDBSeparateTablesService {
         // Keep original timestamp if overwriting (using last_updated as reference)
         last_updated: new Date().toISOString()
       });
+
+      // Check data size and reduce if necessary
+      const marshalledData = marshall(applicationData, { 
+        removeUndefinedValues: true,
+        convertClassInstanceToMap: true 
+      });
+      
+      const dataSize = JSON.stringify(marshalledData).length;
+      console.log('📏 Application data size:', dataSize, 'bytes (max: 400KB)');
+      
+      if (dataSize > 400 * 1024) {
+        console.warn('⚠️ Application data exceeds 400KB limit, reducing data size...');
+        applicationData = this.reduceApplicationDataSize(applicationData);
+        
+        // Re-check size after reduction
+        const reducedMarshalledData = marshall(applicationData, { 
+          removeUndefinedValues: true,
+          convertClassInstanceToMap: true 
+        });
+        const reducedSize = JSON.stringify(reducedMarshalledData).length;
+        console.log('📏 Reduced application data size:', reducedSize, 'bytes');
+        
+        if (reducedSize > 400 * 1024) {
+          console.error('❌ Application data still too large after reduction:', reducedSize, 'bytes');
+          throw new Error(`Application data exceeds DynamoDB size limit: ${reducedSize} bytes`);
+        }
+      }
 
       const command = new PutItemCommand({
         TableName: this.tables.app_nyc,
@@ -602,6 +700,53 @@ export class DynamoDBSeparateTablesService {
   }
   // APPLICANT DATA METHODS
 
+  // Reduce applicant data size to fit within DynamoDB limits
+  private reduceApplicantDataSize(data: ApplicantData): ApplicantData {
+    console.log('🔧 Reducing applicant data size...');
+    
+    const reduced = { ...data };
+    
+    // Reduce webhookSummary size
+    if (reduced.webhookSummary && typeof reduced.webhookSummary === 'object') {
+      const webhookKeys = Object.keys(reduced.webhookSummary);
+      if (webhookKeys.length > 10) {
+        // Keep only the most recent 10 webhook responses
+        const sortedKeys = webhookKeys.sort().slice(-10);
+        const reducedWebhooks: any = {};
+        sortedKeys.forEach(key => {
+          reducedWebhooks[key] = reduced.webhookSummary[key];
+        });
+        reduced.webhookSummary = reducedWebhooks;
+        console.log('📉 Reduced webhookSummary from', webhookKeys.length, 'to', sortedKeys.length, 'entries');
+      }
+    }
+    
+    // Reduce applicant_info size by removing large nested objects
+    if (reduced.applicant_info && typeof reduced.applicant_info === 'object') {
+      const appInfo = { ...reduced.applicant_info };
+      
+      // Remove large arrays or objects that might be causing size issues
+      const fieldsToReduce = ['bankRecords', 'documents'];
+      fieldsToReduce.forEach(field => {
+        if (appInfo[field] && Array.isArray(appInfo[field]) && appInfo[field].length > 10) {
+          appInfo[field] = appInfo[field].slice(0, 10);
+          console.log(`📉 Reduced ${field} from ${appInfo[field].length + 10} to 10 entries`);
+        }
+      });
+      
+      reduced.applicant_info = appInfo;
+    }
+    
+    // Reduce occupants size
+    if (reduced.occupants && Array.isArray(reduced.occupants) && reduced.occupants.length > 10) {
+      reduced.occupants = reduced.occupants.slice(0, 10);
+      console.log('📉 Reduced occupants from', reduced.occupants.length + 10, 'to 10 entries');
+    }
+    
+    console.log('✅ Applicant data size reduction completed');
+    return reduced;
+  }
+
   // Save applicant data
   async saveApplicantData(data: Omit<ApplicantData, 'userId' | 'role' | 'zoneinfo'>): Promise<boolean> {
     if (!this.client) {
@@ -637,7 +782,7 @@ export class DynamoDBSeparateTablesService {
 
       // Preserve existing timestamp if a draft already exists to avoid duplicate records
       const existingApplicant = await this.getApplicantData();
-      const applicantData: ApplicantData = this.sanitizeForDynamo({
+      let applicantData: ApplicantData = this.sanitizeForDynamo({
         ...data,
         userId,
         role,
@@ -646,6 +791,33 @@ export class DynamoDBSeparateTablesService {
         timestamp: existingApplicant?.timestamp || new Date().toISOString(),
         last_updated: new Date().toISOString()
       });
+
+      // Check data size and reduce if necessary
+      const marshalledData = marshall(applicantData, { 
+        removeUndefinedValues: true,
+        convertClassInstanceToMap: true 
+      });
+      
+      const dataSize = JSON.stringify(marshalledData).length;
+      console.log('📏 Applicant data size:', dataSize, 'bytes (max: 400KB)');
+      
+      if (dataSize > 400 * 1024) {
+        console.warn('⚠️ Applicant data exceeds 400KB limit, reducing data size...');
+        applicantData = this.reduceApplicantDataSize(applicantData);
+        
+        // Re-check size after reduction
+        const reducedMarshalledData = marshall(applicantData, { 
+          removeUndefinedValues: true,
+          convertClassInstanceToMap: true 
+        });
+        const reducedSize = JSON.stringify(reducedMarshalledData).length;
+        console.log('📏 Reduced applicant data size:', reducedSize, 'bytes');
+        
+        if (reducedSize > 400 * 1024) {
+          console.error('❌ Applicant data still too large after reduction:', reducedSize, 'bytes');
+          throw new Error(`Applicant data exceeds DynamoDB size limit: ${reducedSize} bytes`);
+        }
+      }
 
       const command = new PutItemCommand({
         TableName: this.tables.applicant_nyc,
@@ -828,6 +1000,49 @@ export class DynamoDBSeparateTablesService {
 
   // CO-APPLICANT DATA METHODS
 
+  // Reduce co-applicant data size to fit within DynamoDB limits
+  private reduceCoApplicantDataSize(data: CoApplicantData): CoApplicantData {
+    console.log('🔧 Reducing co-applicant data size...');
+    
+    const reduced = { ...data };
+    
+    // Reduce webhookSummary size
+    if (reduced.webhookSummary && typeof reduced.webhookSummary === 'object') {
+      const webhookKeys = Object.keys(reduced.webhookSummary);
+      if (webhookKeys.length > 10) {
+        // Keep only the most recent 10 webhook responses
+        const sortedKeys = webhookKeys.sort().slice(-10);
+        const reducedWebhooks: any = {};
+        sortedKeys.forEach(key => {
+          reducedWebhooks[key] = reduced.webhookSummary[key];
+        });
+        reduced.webhookSummary = reducedWebhooks;
+        console.log('📉 Reduced webhookSummary from', webhookKeys.length, 'to', sortedKeys.length, 'entries');
+      }
+    }
+    
+    // Reduce coapplicant_info size by removing large nested objects
+    if (reduced.coapplicant_info && typeof reduced.coapplicant_info === 'object') {
+      const coAppInfo = { ...reduced.coapplicant_info };
+      
+      // Remove large arrays or objects that might be causing size issues
+      const fieldsToReduce = ['bankRecords', 'documents'];
+      fieldsToReduce.forEach(field => {
+        if (coAppInfo[field] && Array.isArray(coAppInfo[field]) && coAppInfo[field].length > 10) {
+          coAppInfo[field] = coAppInfo[field].slice(0, 10);
+          console.log(`📉 Reduced ${field} from ${coAppInfo[field].length + 10} to 10 entries`);
+        }
+      });
+      
+      reduced.coapplicant_info = coAppInfo;
+    }
+    
+    // Note: CoApplicantData doesn't have occupants property
+    
+    console.log('✅ Co-applicant data size reduction completed');
+    return reduced;
+  }
+
   // Save co-applicant data
   async saveCoApplicantData(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
     if (!(await this.ensureClientReady())) {
@@ -867,7 +1082,7 @@ export class DynamoDBSeparateTablesService {
         }
       }
 
-      const coApplicantData: CoApplicantData = this.sanitizeForDynamo({
+      let coApplicantData: CoApplicantData = this.sanitizeForDynamo({
         ...data,
         userId,
         role,
@@ -876,6 +1091,33 @@ export class DynamoDBSeparateTablesService {
         timestamp: new Date().toISOString(),
         last_updated: new Date().toISOString()
       });
+
+      // Check data size and reduce if necessary
+      const marshalledData = marshall(coApplicantData, { 
+        removeUndefinedValues: true,
+        convertClassInstanceToMap: true 
+      });
+      
+      const dataSize = JSON.stringify(marshalledData).length;
+      console.log('📏 Co-applicant data size:', dataSize, 'bytes (max: 400KB)');
+      
+      if (dataSize > 400 * 1024) {
+        console.warn('⚠️ Co-applicant data exceeds 400KB limit, reducing data size...');
+        coApplicantData = this.reduceCoApplicantDataSize(coApplicantData);
+        
+        // Re-check size after reduction
+        const reducedMarshalledData = marshall(coApplicantData, { 
+          removeUndefinedValues: true,
+          convertClassInstanceToMap: true 
+        });
+        const reducedSize = JSON.stringify(reducedMarshalledData).length;
+        console.log('📏 Reduced co-applicant data size:', reducedSize, 'bytes');
+        
+        if (reducedSize > 400 * 1024) {
+          console.error('❌ Co-applicant data still too large after reduction:', reducedSize, 'bytes');
+          throw new Error(`Co-applicant data exceeds DynamoDB size limit: ${reducedSize} bytes`);
+        }
+      }
 
       const command = new PutItemCommand({
         TableName: this.tables.coapplicants,
@@ -1102,6 +1344,49 @@ export class DynamoDBSeparateTablesService {
 
   // GUARANTOR DATA METHODS
 
+  // Reduce guarantor data size to fit within DynamoDB limits
+  private reduceGuarantorDataSize(data: GuarantorData): GuarantorData {
+    console.log('🔧 Reducing guarantor data size...');
+    
+    const reduced = { ...data };
+    
+    // Reduce webhookSummary size
+    if (reduced.webhookSummary && typeof reduced.webhookSummary === 'object') {
+      const webhookKeys = Object.keys(reduced.webhookSummary);
+      if (webhookKeys.length > 10) {
+        // Keep only the most recent 10 webhook responses
+        const sortedKeys = webhookKeys.sort().slice(-10);
+        const reducedWebhooks: any = {};
+        sortedKeys.forEach(key => {
+          reducedWebhooks[key] = reduced.webhookSummary[key];
+        });
+        reduced.webhookSummary = reducedWebhooks;
+        console.log('📉 Reduced webhookSummary from', webhookKeys.length, 'to', sortedKeys.length, 'entries');
+      }
+    }
+    
+    // Reduce guarantor_info size by removing large nested objects
+    if (reduced.guarantor_info && typeof reduced.guarantor_info === 'object') {
+      const guarInfo = { ...reduced.guarantor_info };
+      
+      // Remove large arrays or objects that might be causing size issues
+      const fieldsToReduce = ['bankRecords', 'documents'];
+      fieldsToReduce.forEach(field => {
+        if (guarInfo[field] && Array.isArray(guarInfo[field]) && guarInfo[field].length > 10) {
+          guarInfo[field] = guarInfo[field].slice(0, 10);
+          console.log(`📉 Reduced ${field} from ${guarInfo[field].length + 10} to 10 entries`);
+        }
+      });
+      
+      reduced.guarantor_info = guarInfo;
+    }
+    
+    // Note: GuarantorData doesn't have occupants property
+    
+    console.log('✅ Guarantor data size reduction completed');
+    return reduced;
+  }
+
   // Save guarantor data
   async saveGuarantorData(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
     if (!(await this.ensureClientReady())) {
@@ -1141,7 +1426,7 @@ export class DynamoDBSeparateTablesService {
         }
       }
 
-      const guarantorData: GuarantorData = this.sanitizeForDynamo({
+      let guarantorData: GuarantorData = this.sanitizeForDynamo({
         ...data,
         userId,
         role,
@@ -1150,6 +1435,33 @@ export class DynamoDBSeparateTablesService {
         timestamp: new Date().toISOString(),
         last_updated: new Date().toISOString()
       });
+
+      // Check data size and reduce if necessary
+      const marshalledData = marshall(guarantorData, { 
+        removeUndefinedValues: true,
+        convertClassInstanceToMap: true 
+      });
+      
+      const dataSize = JSON.stringify(marshalledData).length;
+      console.log('📏 Guarantor data size:', dataSize, 'bytes (max: 400KB)');
+      
+      if (dataSize > 400 * 1024) {
+        console.warn('⚠️ Guarantor data exceeds 400KB limit, reducing data size...');
+        guarantorData = this.reduceGuarantorDataSize(guarantorData);
+        
+        // Re-check size after reduction
+        const reducedMarshalledData = marshall(guarantorData, { 
+          removeUndefinedValues: true,
+          convertClassInstanceToMap: true 
+        });
+        const reducedSize = JSON.stringify(reducedMarshalledData).length;
+        console.log('📏 Reduced guarantor data size:', reducedSize, 'bytes');
+        
+        if (reducedSize > 400 * 1024) {
+          console.error('❌ Guarantor data still too large after reduction:', reducedSize, 'bytes');
+          throw new Error(`Guarantor data exceeds DynamoDB size limit: ${reducedSize} bytes`);
+        }
+      }
 
       const command = new PutItemCommand({
         TableName: this.tables.guarantors,
