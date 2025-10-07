@@ -265,8 +265,17 @@ export class DynamoDBSeparateTablesService {
 
   // Ensure DynamoDB client is ready before proceeding with operations
   private async ensureClientReady(): Promise<boolean> {
-    if (this.client) return true;
-    await this.initializeClientWithRetry();
+    // If client exists, verify token freshness; otherwise initialize
+    if (!this.client) {
+      await this.initializeClientWithRetry();
+      return !!this.client;
+    }
+
+    // Proactively refresh if token near expiry (<=5 min)
+    const isAuthOk = await this.checkAuthenticationStatus();
+    if (!isAuthOk) {
+      await this.initializeClientWithRetry();
+    }
     return !!this.client;
   }
 
@@ -523,7 +532,18 @@ export class DynamoDBSeparateTablesService {
         }, { convertClassInstanceToMap: true })
       });
 
-      const result = await this.client.send(command);
+      let result;
+      try {
+        result = await this.client.send(command);
+      } catch (err: any) {
+        if (err?.name === 'NotAuthorizedException' || err?.name === 'ExpiredTokenException') {
+          console.warn('🔄 Auth error during getApplicationData; refreshing and retrying once...');
+          await this.initializeClientWithRetry();
+          result = await this.client!.send(command);
+        } else {
+          throw err;
+        }
+      }
       
       if (result.Items && result.Items.length > 0) {
         // Return the first (and should be only) application for this userId
@@ -559,7 +579,18 @@ export class DynamoDBSeparateTablesService {
         }, { convertClassInstanceToMap: true })
       });
 
-      const result = await this.client.send(command);
+      let result;
+      try {
+        result = await this.client.send(command);
+      } catch (err: any) {
+        if (err?.name === 'NotAuthorizedException' || err?.name === 'ExpiredTokenException') {
+          console.warn('🔄 Auth error during getApplicationsByZoneinfo; refreshing and retrying once...');
+          await this.initializeClientWithRetry();
+          result = await this.client!.send(command);
+        } else {
+          throw err;
+        }
+      }
       if (result.Items && result.Items.length > 0) {
         return result.Items.map(item => unmarshall(item) as ApplicationData);
       }

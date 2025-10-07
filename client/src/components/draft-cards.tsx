@@ -1164,11 +1164,15 @@ export const DraftCards = () => {
         } else if (userRole.startsWith('coapplicant')) {
           // Co-Applicant: Show ALL co-applicant records for this user (including suffixed IDs)
           const allCoApplicants = await dynamoDBSeparateTablesUtils.getAllCoApplicantsForCurrentUser();
+          // Fetch applications in this zone once to resolve current_step by appid
+          const zoneApps = await dynamoDBSeparateTablesUtils.getApplicationsByZoneinfo();
           if (allCoApplicants && allCoApplicants.length > 0) {
             for (const coApp of allCoApplicants) {
+              const matchedApp = (zoneApps || []).find(a => a.appid === coApp.appid);
+              const currentStepFromApp = matchedApp?.current_step ?? 0;
               const coApplicantFormData = {
                 coApplicants: [coApp.coapplicant_info],
-                coApplicant_occupants: coApp.occupants || [],
+                coApplicant_occupants: [],
                 application_id: coApp.appid,
                 zoneinfo: coApp.zoneinfo
               };
@@ -1178,7 +1182,7 @@ export const DraftCards = () => {
                 applicantId: coApp.userId,
                 reference_id: coApp.userId,
                 form_data: coApplicantFormData,
-                current_step: 0,
+                current_step: currentStepFromApp,
                 last_updated: coApp.last_updated,
                 status: coApp.status,
                 uploaded_files_metadata: {},
@@ -1197,34 +1201,38 @@ export const DraftCards = () => {
         } else if (userRole.startsWith('guarantor')) {
           // Guarantor: Show data from Guarantors_nyc table only
           if (allData.guarantor) {
+            // Fetch applications to resolve current_step by appid
+            const zoneApps = await dynamoDBSeparateTablesUtils.getApplicationsByZoneinfo();
+            const matchedApp = (zoneApps || []).find(a => a.appid === (allData.guarantor as any).appid);
+            const currentStepFromApp = matchedApp?.current_step ?? 0;
             const guarantorFormData = {
               // Guarantor data (from Guarantors_nyc)
-              guarantors: [allData.guarantor.guarantor_info],
-              guarantor_occupants: allData.guarantor.occupants || [],
+              guarantors: [ (allData.guarantor as any).guarantor_info ],
+              guarantor_occupants: [],
               
               // Reference data
-              application_id: allData.guarantor.userId,
-              zoneinfo: allData.guarantor.zoneinfo
+              application_id: (allData.guarantor as any).appid,
+              zoneinfo: (allData.guarantor as any).zoneinfo
             };
             
             drafts.push({
-              zoneinfo: allData.guarantor.zoneinfo,
-              applicantId: allData.guarantor.userId,
-              reference_id: allData.guarantor.userId,
+              zoneinfo: (allData.guarantor as any).zoneinfo,
+              applicantId: (allData.guarantor as any).userId,
+              reference_id: (allData.guarantor as any).userId,
               form_data: guarantorFormData,
-              current_step: 0, // Guarantors don't have current_step in their interface
-              last_updated: allData.guarantor.last_updated,
-              status: allData.guarantor.status,
+              current_step: currentStepFromApp,
+              last_updated: (allData.guarantor as any).last_updated,
+              status: (allData.guarantor as any).status,
               uploaded_files_metadata: {},
-              webhook_responses: allData.guarantor.webhookSummary || {},
-              signatures: { guarantor: allData.guarantor.signature },
+              webhook_responses: (allData.guarantor as any).webhookSummary || {},
+              signatures: { guarantor: (allData.guarantor as any).signature },
               encrypted_documents: {},
               flow_type: 'separate_webhooks',
               webhook_flow_version: '2.0',
               
               // Role-specific table data
               table_data: {
-                guarantor: allData.guarantor
+                guarantor: allData.guarantor as any
               }
             });
           }
@@ -1242,18 +1250,14 @@ export const DraftCards = () => {
               
               // Co-Applicants (from Co-Applicants)
               coApplicants: allData.coApplicant ? [allData.coApplicant.coapplicant_info] : [],
-              coApplicant_occupants: allData.coApplicant?.occupants || [],
+              coApplicant_occupants: [],
               
               // Guarantors (from Guarantors_nyc)
               guarantors: allData.guarantor ? [allData.guarantor.guarantor_info] : [],
-              guarantor_occupants: allData.guarantor?.occupants || [],
+              guarantor_occupants: [],
               
               // Combined occupants from all tables
-              occupants: [
-                ...(allData.applicant?.occupants || []),
-                ...(allData.coApplicant?.occupants || []),
-                ...(allData.guarantor?.occupants || [])
-              ],
+              occupants: [],
               
               // Combined webhook responses
               webhookResponses: {

@@ -12,13 +12,13 @@ interface LogoutButtonProps {
   children?: React.ReactNode;
 }
 
-const LogoutButton: React.FC<LogoutButtonProps> = ({
+const LogoutButton = React.forwardRef<HTMLButtonElement, LogoutButtonProps>(({ 
   variant = 'outline',
   size = 'default',
   className = '',
   showIcon = true,
   children = 'Sign Out'
-}) => {
+}, ref) => {
   const { signOut } = useAuth();
   const { toast } = useToast();
 
@@ -40,6 +40,7 @@ const LogoutButton: React.FC<LogoutButtonProps> = ({
 
   return (
     <Button
+      ref={ref}
       variant={variant}
       size={size}
       className={className}
@@ -49,6 +50,8 @@ const LogoutButton: React.FC<LogoutButtonProps> = ({
       {children}
     </Button>
   );
-};
+});
+
+LogoutButton.displayName = 'LogoutButton';
 
 export default LogoutButton; 

@@ -1127,6 +1127,61 @@ export function ApplicationForm() {
       console.log('🔗 Merged webhook responses from webhookSummary in useEffect:', mergedWebhookResponses);
     }
   }, [formData.webhookSummary?.webhookResponses]);
+
+  // When webhookResponses contains direct file URLs (from saved drafts), seed preview slots and map URLs
+  useEffect(() => {
+    if (!webhookResponses || Object.keys(webhookResponses).length === 0) return;
+
+    const ensureEncryptedSlot = (personKey: string, documentType: string) => {
+      setEncryptedDocuments((prev: any) => {
+        const updated = { ...(prev || {}) };
+        if (!updated[personKey]) updated[personKey] = {};
+        if (!Array.isArray(updated[personKey][documentType])) {
+          updated[personKey][documentType] = [{}];
+        }
+        return updated;
+      });
+    };
+
+    const getFileName = (url: string) => {
+      try {
+        const u = new URL(url);
+        const last = u.pathname.split('/').pop() || '';
+        return decodeURIComponent(last);
+      } catch { return url.split('/').pop() || 'document'; }
+    };
+
+    Object.entries(webhookResponses).forEach(([key, value]) => {
+      if (typeof value !== 'string') return;
+      const url = value as string;
+      if (!(url.startsWith('http://') || url.startsWith('https://') || url.startsWith('s3://'))) return;
+
+      // Parse keys like: coApplicants_0_photo_id, guarantors_1_paystub, applicant_photo_id
+      const parts = key.split('_');
+      let personKey = '';
+      let documentType = '';
+
+      if ((key.startsWith('coApplicants_') || key.startsWith('guarantors_')) && parts.length >= 3) {
+        personKey = `${parts[0]}_${parts[1]}`; // e.g., coApplicants_0
+        documentType = parts.slice(2).join('_');
+      } else if (key.startsWith('applicant_') || key.startsWith('guarantor_') || key.startsWith('coApplicant_')) {
+        const [p, ...rest] = parts;
+        personKey = p; // applicant / guarantor / coApplicant (singular)
+        documentType = rest.join('_');
+      } else if (key.startsWith('occupants_') && parts.length >= 2) {
+        personKey = 'occupants';
+        documentType = parts.slice(1).join('_');
+      } else {
+        // Fallback: treat entire key as document type for applicant
+        personKey = 'applicant';
+        documentType = key;
+      }
+
+      ensureEncryptedSlot(personKey, documentType);
+      const fileName = getFileName(url);
+      handleWebhookFileUrl(personKey, documentType, url, fileName);
+    });
+  }, [webhookResponses]);
   // Load draft data from separate DynamoDB tables
   const loadDraftData = useCallback(async (applicationId: string) => {
     try {
@@ -3057,6 +3112,27 @@ export function ApplicationForm() {
         const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantDataNew(submittedCoApplicantData as any, appid);
         saveResults.push(coApplicantSaveResult);
 
+        // Also persist current_step for resume navigation
+        try {
+          const stepOnlyApplicationData = {
+            application_info: { zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '' },
+            current_step: currentStep,
+            status: 'draft' as const,
+            uploaded_files_metadata: {},
+            webhook_responses: {},
+            signatures: {},
+            encrypted_documents: {},
+            storage_mode: 'direct' as const,
+            flow_type: 'separate_webhooks' as const,
+            webhook_flow_version: '2.0',
+            last_updated: new Date().toISOString()
+          };
+          const stepSave = await dynamoDBSeparateTablesUtils.saveApplicationData(stepOnlyApplicationData as any);
+          saveResults.push(stepSave);
+        } catch (e) {
+          console.warn('⚠️ Failed to persist current_step for co-applicant resume:', e);
+        }
+
         console.log('✅ Co-Applicant draft saved to Co-Applicants table');
 
       } else if (userRole && userRole.startsWith('guarantor')) {
@@ -3078,6 +3154,27 @@ export function ApplicationForm() {
         const appid = existingApp?.appid;
         const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorDataNew(submittedGuarantorData as any, appid);
         saveResults.push(guarantorSaveResult);
+
+        // Also persist current_step for resume navigation
+        try {
+          const stepOnlyApplicationData = {
+            application_info: { zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '' },
+            current_step: currentStep,
+            status: 'draft' as const,
+            uploaded_files_metadata: {},
+            webhook_responses: {},
+            signatures: {},
+            encrypted_documents: {},
+            storage_mode: 'direct' as const,
+            flow_type: 'separate_webhooks' as const,
+            webhook_flow_version: '2.0',
+            last_updated: new Date().toISOString()
+          };
+          const stepSave = await dynamoDBSeparateTablesUtils.saveApplicationData(stepOnlyApplicationData as any);
+          saveResults.push(stepSave);
+        } catch (e) {
+          console.warn('⚠️ Failed to persist current_step for guarantor resume:', e);
+        }
 
         console.log('✅ Guarantor draft saved to Guarantors_nyc table');
 
