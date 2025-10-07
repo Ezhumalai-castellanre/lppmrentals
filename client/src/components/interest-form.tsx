@@ -11,6 +11,8 @@ import { Label } from './ui/label'
 import { Textarea } from './ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form'
+import { Checkbox } from './ui/checkbox'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
 import { DatePicker } from './ui/date-picker'
 import { CheckCircle, Send, Home, User, Phone, Mail, Calendar, MapPin, DollarSign, CreditCard, Users, Shield, MessageSquare, Loader2 } from 'lucide-react'
 import { useToast } from '../hooks/use-toast'
@@ -48,6 +50,9 @@ const interestFormSchema = z.object({
   guarantorAnnualIncome: z.string().optional(),
   guarantorCreditScore: z.string().optional(),
   message: z.string().min(1, "Message is required"),
+  consent: z.boolean().refine((val) => val === true, {
+    message: "You must agree to the terms to proceed",
+  }),
 }).refine((data) => {
   // If co-applicant is "yes", then co-applicant fields are required
   if (data.hasCoApplicant === "yes") {
@@ -135,6 +140,7 @@ export function InterestForm({ className }: InterestFormProps) {
       guarantorAnnualIncome: "",
       guarantorCreditScore: "",
       message: "",
+      consent: false,
     },
   })
 
@@ -814,6 +820,48 @@ export function InterestForm({ className }: InterestFormProps) {
                       {...field} 
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Consent */}
+            <FormField
+              control={form.control}
+              name="consent"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <FormControl>
+                      <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <FormLabel className="text-xs italic font-normal">
+                      I agree to{' '}
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <button type="button" className="underline text-blue-600 hover:text-blue-700 not-italic">
+                           terms & conditions <span className="text-xs text-gray-600">provided by the company</span>
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-[90vw] sm:max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>Terms & Conditions</DialogTitle>
+                            <DialogDescription asChild>
+                              <div className="space-y-5 text-base italic">
+                                <p className="text-sm text-gray-600">
+                                  By checking this box, I agree that LPPM and its agents may contact me by phone call, email, or text message or other electronic means (including by automated means) at the number and email I have provided. Message and data rates may apply. I understand that consent is not required to rent or lease any unit and that I may opt out at any time by replying STOP to any text message or by contacting:
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  <span className="mr-2 text-gray-600">Email: leasing@libertyplacepm.com</span>
+                                  <span className="text-gray-600">Phone: 929-623-4266</span>
+                                </p>
+                              </div>
+                            </DialogDescription>
+                          </DialogHeader>
+                        </DialogContent>
+                      </Dialog>
+                    </FormLabel>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

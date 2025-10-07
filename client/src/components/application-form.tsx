@@ -1138,7 +1138,7 @@ export function ApplicationForm() {
       if (allData.application || allData.applicant || allData.coApplicant || allData.guarantor) {
         console.log('📊 Draft data loaded from separate tables');
         
-        // Get co-applicants and guarantors from applicant_nyc table
+        // Get co-applicants and guarantors
         let coApplicantsArray: any[] = [];
         let guarantorsArray: any[] = [];
         if (allData.applicant) {
@@ -1225,18 +1225,33 @@ export function ApplicationForm() {
           };
         }
         
-        // Restore co-applicant data from applicant_nyc table
+        // If no co-applicants/guarantors found on applicant_nyc, try separate tables by appid
+        try {
+          const currentAppId = allData.application?.appid;
+          if ((!coApplicantsArray || coApplicantsArray.length === 0) && currentAppId) {
+            const coApps = await dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(currentAppId);
+            if (coApps && coApps.length > 0) {
+              coApplicantsArray = coApps.map((c: any) => c.coapplicant_info || {});
+            }
+          }
+          if ((!guarantorsArray || guarantorsArray.length === 0) && currentAppId) {
+            const gs = await dynamoDBSeparateTablesUtils.getGuarantorsByAppId(currentAppId);
+            if (gs && gs.length > 0) {
+              guarantorsArray = gs.map((g: any) => g.guarantor_info || {});
+            }
+          }
+        } catch {}
+
+        // Restore co-applicant data into form structure
         if (coApplicantsArray.length > 0) {
           parsedFormData.coApplicant = coApplicantsArray[0] || {};
           parsedFormData.coApplicants = coApplicantsArray;
-          // Note: co-applicant occupants and signatures are stored in the co-applicant data itself
         }
         
-        // Restore guarantor data from applicant_nyc table
+        // Restore guarantor data into form structure
         if (guarantorsArray.length > 0) {
           parsedFormData.guarantor = guarantorsArray[0] || {};
           parsedFormData.guarantors = guarantorsArray;
-          // Note: guarantor occupants and signatures are stored in the guarantor data itself
         }
               
               // Ensure all required sections exist
@@ -4052,15 +4067,26 @@ export function ApplicationForm() {
       e.stopPropagation();
     }
 
-    // Validate current step before proceeding
+    // Validate current step before proceeding, but don't block if we're restoring a draft
     const validation = validateStep(currentStep);
     if (!validation.isValid) {
-      toast({
-        title: 'Required fields missing',
-        description: validation.errors.join(', '),
-        variant: 'destructive',
-      });
-      return;
+      // If the page was opened with continue=true (restoring a draft), allow navigation and show a gentle hint
+      const urlParams = new URLSearchParams(window.location.search);
+      const isContinuing = urlParams.get('continue') === 'true';
+      if (isContinuing) {
+        toast({
+          title: 'Some fields are incomplete',
+          description: 'You can continue editing your restored draft and fill these later.',
+          variant: 'default',
+        });
+      } else {
+        toast({
+          title: 'Required fields missing',
+          description: validation.errors.join(', '),
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     try {
@@ -9297,8 +9323,8 @@ export function ApplicationForm() {
                   </div>
                 )}
 
-                {/* Co-Applicant Signatures - Hide for guarantor and applicant roles */}
-                {userRole !== 'guarantor' && userRole !== 'applicant' && (hasCoApplicant || userRole.startsWith('coapplicant')) && Array.from({ 
+                {/* Co-Applicant Signatures - Only for co-applicant logins */}
+                {userRole.startsWith('coapplicant') && Array.from({ 
                   length: userRole.startsWith('coapplicant') && specificIndex !== null ? 1 : (formData.coApplicantCount || 1) 
                 }, (_, index) => {
                   // For specific co-applicant roles, show the specific number
@@ -9315,8 +9341,8 @@ export function ApplicationForm() {
                   );
                 })}
 
-                {/* Guarantor Signatures - Hide for coapplicant and applicant roles, show for guarantor role */}
-                {userRole !== 'coapplicant' && userRole !== 'applicant' && (hasGuarantor || userRole.startsWith('guarantor')) && Array.from({ 
+                {/* Guarantor Signatures - Only for guarantor logins */}
+                {userRole.startsWith('guarantor') && Array.from({ 
                   length: userRole.startsWith('guarantor') && specificIndex !== null ? 1 : Math.max(1, formData.guarantorCount || 1) 
                 }, (_, index) => {
                   // For specific guarantor roles, show the specific number
@@ -9396,15 +9422,25 @@ export function ApplicationForm() {
       e.preventDefault();
       e.stopPropagation();
     }
-    // Validate current step before proceeding
+    // Validate current step before proceeding, but be lenient when resuming a draft
     const validation = validateStep(currentStep);
     if (!validation.isValid) {
-      toast({
-        title: 'Required fields missing',
-        description: validation.errors.join(', '),
-        variant: 'destructive',
-      });
-      return;
+      const urlParams = new URLSearchParams(window.location.search);
+      const isContinuing = urlParams.get('continue') === 'true';
+      if (isContinuing) {
+        toast({
+          title: 'Some fields are incomplete',
+          description: 'Keep going; you can complete these before submission.',
+          variant: 'default',
+        });
+      } else {
+        toast({
+          title: 'Required fields missing',
+          description: validation.errors.join(', '),
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     setCurrentStep((prev: number) => {
