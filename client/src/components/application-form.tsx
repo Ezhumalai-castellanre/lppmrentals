@@ -1225,6 +1225,27 @@ export function ApplicationForm() {
           guarantorsArray = allData.applicant.guarantors || [];
         }
 
+        // If appId is available, augment from separate tables to ensure full array data
+        try {
+          const appIdToUse = allData.application?.appid;
+          if (appIdToUse) {
+            const [coAppsByAppId, guarantorsByAppId] = await Promise.all([
+              dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(appIdToUse),
+              dynamoDBSeparateTablesUtils.getGuarantorsByAppId(appIdToUse)
+            ]);
+            if (Array.isArray(coAppsByAppId) && coAppsByAppId.length > 0) {
+              // Normalize to plain co-applicant_info objects
+              coApplicantsArray = coAppsByAppId.map((c: any) => c?.coapplicant_info || c || {});
+            }
+            if (Array.isArray(guarantorsByAppId) && guarantorsByAppId.length > 0) {
+              // Normalize to plain guarantor_info objects
+              guarantorsArray = guarantorsByAppId.map((g: any) => g?.guarantor_info || g || {});
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ Failed to augment co-applicants/guarantors by appid', e);
+        }
+
         // Reconstruct the form data from separate table data
         let parsedFormData: any = {
           application: {},
@@ -1355,6 +1376,44 @@ export function ApplicationForm() {
               ...parsedFormData.webhookSummary.webhookResponses
             };
             console.log('🔗 Merged webhook responses from webhookSummary:', parsedFormData.webhookResponses);
+          }
+
+          // Also merge indexed webhook responses from co-applicants and guarantors arrays so previews show
+          try {
+            // Gather raw arrays from separate tables if available for webhook merging
+            const appIdToUse = allData.application?.appid;
+            if (appIdToUse) {
+              const [coAppsByAppId, guarantorsByAppId] = await Promise.all([
+                dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(appIdToUse),
+                dynamoDBSeparateTablesUtils.getGuarantorsByAppId(appIdToUse)
+              ]);
+
+              // Merge co-applicants webhook responses with indexed prefixes
+              (coAppsByAppId || []).forEach((co, idx) => {
+                const responses = co?.webhookSummary?.webhookResponses || {};
+                Object.entries(responses).forEach(([k, v]) => {
+                  const indexedKey = `coApplicants_${idx}_` + k;
+                  parsedFormData.webhookResponses = {
+                    ...parsedFormData.webhookResponses,
+                    [indexedKey]: v
+                  };
+                });
+              });
+
+              // Merge guarantors webhook responses with indexed prefixes
+              (guarantorsByAppId || []).forEach((gu, idx) => {
+                const responses = gu?.webhookSummary?.webhookResponses || {};
+                Object.entries(responses).forEach(([k, v]) => {
+                  const indexedKey = `guarantors_${idx}_` + k;
+                  parsedFormData.webhookResponses = {
+                    ...parsedFormData.webhookResponses,
+                    [indexedKey]: v
+                  };
+                });
+              });
+            }
+          } catch (e) {
+            console.warn('⚠️ Failed to merge indexed webhook responses from separate tables', e);
           }
           
           setFormData(parsedFormData);
