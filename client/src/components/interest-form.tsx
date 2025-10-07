@@ -839,10 +839,11 @@ export function InterestForm({ className }: InterestFormProps) {
                       I agree to{' '}
                       <Dialog>
                         <DialogTrigger asChild>
-                          <button type="button" className="underline text-blue-600 hover:text-blue-700 not-italic">
-                           terms & conditions <span className="text-xs text-gray-600">provided by the company</span>
+                          <button type="button" className="underline italic text-blue-600 hover:text-blue-700">
+                           terms & conditions
                           </button>
-                        </DialogTrigger>
+                        </DialogTrigger>{' '}
+                        <span className="text-xs text-gray-600">provided by the company</span>
                         <DialogContent className="max-w-[90vw] sm:max-w-2xl">
                           <DialogHeader>
                             <DialogTitle>Terms & Conditions</DialogTitle>
