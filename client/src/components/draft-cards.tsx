@@ -413,21 +413,22 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
         }
         {(() => {
           const userRole = (user as any)?.role || '';
-          const isSubmitted = draft.status === 'submitted';
           let allowedTabs = ["overview", "main", "applicant", "coapplicants", "guarantors", "occupants"] as string[];
-          if (isSubmitted) {
-            if (userRole && userRole.startsWith('coapplicant')) {
-              allowedTabs = ["coapplicants"];
-            } else if (userRole && userRole.startsWith('guarantor')) {
-              allowedTabs = ["guarantors"];
-            } else {
-              // Primary applicant: show Overview and Applicant tabs only
-              allowedTabs = ["overview", "applicant"];
-            }
-            if (!allowedTabs.includes(activeTab)) {
-              setTimeout(() => setActiveTab(allowedTabs[0]), 0);
-            }
+
+          // Apply role-based tab visibility for both draft and submitted previews
+          if (userRole && userRole.startsWith('coapplicant')) {
+            allowedTabs = ["coapplicants"];
+          } else if (userRole && userRole.startsWith('guarantor')) {
+            allowedTabs = ["guarantors"];
+          } else {
+            // Primary applicant (or unknown/admin defaults to primary view)
+            allowedTabs = ["overview", "applicant"];
           }
+
+          if (!allowedTabs.includes(activeTab)) {
+            setTimeout(() => setActiveTab(allowedTabs[0]), 0);
+          }
+
           return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-6 mb-4">
@@ -471,6 +472,14 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-4">
+            {(() => {
+              // Determine which summary cards to show based on role
+              const overviewUserRole = (user as any)?.role || '';
+              const isCoApplicantRole = overviewUserRole.startsWith('coapplicant');
+              const isGuarantorRole = overviewUserRole.startsWith('guarantor');
+              const isApplicantRole = !isCoApplicantRole && !isGuarantorRole; // default to primary applicant
+              return null; // variables used below in conditional rendering
+            })()}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Application Summary Card */}
               <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
@@ -498,81 +507,89 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 </div>
               </div>
 
-              {/* Co-Applicants Summary Card */}
-              <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <Users className="w-5 h-5 text-purple-600" />
-                  <h6 className="font-semibold text-purple-900">Co-Applicants</h6>
+              {/* Co-Applicants Summary Card - visible only for co-applicant role */}
+              {((user as any)?.role || '').startsWith('coapplicant') && (
+                <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Users className="w-5 h-5 text-purple-600" />
+                    <h6 className="font-semibold text-purple-900">Co-Applicants</h6>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    {(() => {
+                      const coApps = Array.isArray(formSummary.coApplicants) ? formSummary.coApplicants : [];
+                      const keys = new Set<string>();
+                      const count = coApps.reduce((acc: number, x: any) => {
+                        const k = `${x?.name || ''}|${x?.email || ''}|${x?.phone || ''}`;
+                        if (keys.has(k)) return acc;
+                        keys.add(k);
+                        return acc + 1;
+                      }, 0);
+                      return (
+                        <>
+                          <div><span className="font-medium">Count:</span> {count}</div>
+                          <div><span className="font-medium">Status:</span> {count > 0 ? 'Added' : 'None'}</div>
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
-                <div className="space-y-2 text-sm">
-                  {(() => {
-                    const coApps = Array.isArray(formSummary.coApplicants) ? formSummary.coApplicants : [];
-                    const keys = new Set<string>();
-                    const count = coApps.reduce((acc: number, x: any) => {
-                      const k = `${x?.name || ''}|${x?.email || ''}|${x?.phone || ''}`;
-                      if (keys.has(k)) return acc;
-                      keys.add(k);
-                      return acc + 1;
-                    }, 0);
-                    return (
-                      <>
-                        <div><span className="font-medium">Count:</span> {count}</div>
-                        <div><span className="font-medium">Status:</span> {count > 0 ? 'Added' : 'None'}</div>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
+              )}
 
-              {/* Guarantors Summary Card */}
-              <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <Shield className="w-5 h-5 text-orange-600" />
-                  <h6 className="font-semibold text-orange-900">Guarantors</h6>
+              {/* Guarantors Summary Card - visible only for guarantor role */}
+              {((user as any)?.role || '').startsWith('guarantor') && (
+                <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shield className="w-5 h-5 text-orange-600" />
+                    <h6 className="font-semibold text-orange-900">Guarantors</h6>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    {(() => {
+                      const guar = Array.isArray(formSummary.guarantors) ? formSummary.guarantors : [];
+                      const keys = new Set<string>();
+                      const count = guar.reduce((acc: number, x: any) => {
+                        const k = `${x?.name || ''}|${x?.email || ''}|${x?.phone || ''}`;
+                        if (keys.has(k)) return acc;
+                        keys.add(k);
+                        return acc + 1;
+                      }, 0);
+                      return (
+                        <>
+                          <div><span className="font-medium">Count:</span> {count}</div>
+                          <div><span className="font-medium">Status:</span> {count > 0 ? 'Added' : 'None'}</div>
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
-                <div className="space-y-2 text-sm">
-                  {(() => {
-                    const guar = Array.isArray(formSummary.guarantors) ? formSummary.guarantors : [];
-                    const keys = new Set<string>();
-                    const count = guar.reduce((acc: number, x: any) => {
-                      const k = `${x?.name || ''}|${x?.email || ''}|${x?.phone || ''}`;
-                      if (keys.has(k)) return acc;
-                      keys.add(k);
-                      return acc + 1;
-                    }, 0);
-                    return (
-                      <>
-                        <div><span className="font-medium">Count:</span> {count}</div>
-                        <div><span className="font-medium">Status:</span> {count > 0 ? 'Added' : 'None'}</div>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
+              )}
 
-              {/* Occupants Summary Card */}
-              <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <Home className="w-5 h-5 text-indigo-600" />
-                  <h6 className="font-semibold text-indigo-900">Occupants</h6>
+              {/* Occupants Summary Card - hidden for primary applicant */}
+              {((user as any)?.role || '').startsWith('coapplicant') || ((user as any)?.role || '').startsWith('guarantor') ? (
+                <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Home className="w-5 h-5 text-indigo-600" />
+                    <h6 className="font-semibold text-indigo-900">Occupants</h6>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Count:</span> {formSummary.occupants?.length || 0}</div>
+                    <div><span className="font-medium">Status:</span> {formSummary.occupants?.length > 0 ? 'Added' : 'None'}</div>
+                  </div>
                 </div>
-                <div className="space-y-2 text-sm">
-                  <div><span className="font-medium">Count:</span> {formSummary.occupants?.length || 0}</div>
-                  <div><span className="font-medium">Status:</span> {formSummary.occupants?.length > 0 ? 'Added' : 'None'}</div>
-                </div>
-              </div>
+              ) : null}
 
-              {/* Documents Summary Card */}
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <FileCheck className="w-5 h-5 text-gray-600" />
-                  <h6 className="font-semibold text-gray-900">Documents</h6>
+              {/* Documents Summary Card - hidden for primary applicant */}
+              {((user as any)?.role || '').startsWith('coapplicant') || ((user as any)?.role || '').startsWith('guarantor') ? (
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileCheck className="w-5 h-5 text-gray-600" />
+                    <h6 className="font-semibold text-gray-900">Documents</h6>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Uploaded:</span> {documentCount}</div>
+                    <div><span className="font-medium">Status:</span> {documentCount > 0 ? 'In Progress' : 'Pending'}</div>
+                  </div>
                 </div>
-                <div className="space-y-2 text-sm">
-                  <div><span className="font-medium">Uploaded:</span> {documentCount}</div>
-                  <div><span className="font-medium">Status:</span> {documentCount > 0 ? 'In Progress' : 'Pending'}</div>
-                </div>
-              </div>
+              ) : null}
             </div>
 
             {/* Removed: Complete Data from Separate Tables and Data Summary */}
