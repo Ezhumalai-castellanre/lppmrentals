@@ -3159,7 +3159,10 @@ export function ApplicationForm() {
           applicant_info: enhancedFormDataSnapshot.applicant || {},
           occupants: enhancedFormDataSnapshot.occupants || [],
           webhookSummary: getWebhookSummary(),
-          signature: roleScopedSign.applicant || {},
+          // Store applicant signature as base64 string or null (never empty object)
+          signature: (typeof roleScopedSign.applicant === 'string' && roleScopedSign.applicant.startsWith('data:image/'))
+            ? roleScopedSign.applicant
+            : (roleScopedSign.applicant ?? null),
           co_applicants: enhancedFormDataSnapshot.coApplicants || [], // Include co-applicants data
           guarantors: enhancedFormDataSnapshot.guarantors || [], // Include guarantors data
           timestamp: new Date().toISOString(), // Add timestamp field
@@ -3195,8 +3198,12 @@ export function ApplicationForm() {
           coapplicant_info: coApplicantData,
           occupants: enhancedFormDataSnapshot.occupants || [],
           webhookSummary: getWebhookSummary(),
-          // Store only this co-applicant's signature
-          signature: (roleScopedSign as any)?.coApplicants?.[coApplicantIndex] || {},
+          // Store only this co-applicant's signature as base64 string or null
+          signature: (() => {
+            const sig = (roleScopedSign as any)?.coApplicants?.[coApplicantIndex];
+            if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
+            return sig ?? null;
+          })(),
           status: 'draft' as const,
           last_updated: new Date().toISOString()
         };
@@ -3207,16 +3214,12 @@ export function ApplicationForm() {
         const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantDataNew(submittedCoApplicantData as any, appid);
         saveResults.push(coApplicantSaveResult);
 
-        // Also persist current_step for resume navigation
+        // Also persist current_step for resume navigation (do not overwrite signatures/documents)
         try {
           const stepOnlyApplicationData = {
             application_info: { zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '' },
             current_step: currentStep,
             status: 'draft' as const,
-            uploaded_files_metadata: {},
-            webhook_responses: {},
-            signatures: {},
-            encrypted_documents: {},
             storage_mode: 'direct' as const,
             flow_type: 'separate_webhooks' as const,
             webhook_flow_version: '2.0',
@@ -3250,8 +3253,12 @@ export function ApplicationForm() {
           guarantor_info: guarantorData,
           occupants: enhancedFormDataSnapshot.occupants || [],
           webhookSummary: getWebhookSummary(),
-          // Store only this guarantor's signature
-          signature: (roleScopedSign as any)?.guarantors?.[guarantorIndex] || {},
+          // Store only this guarantor's signature as base64 string or null
+          signature: (() => {
+            const sig = (roleScopedSign as any)?.guarantors?.[guarantorIndex];
+            if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
+            return sig ?? null;
+          })(),
           status: 'draft' as const,
           last_updated: new Date().toISOString()
         };
@@ -3261,16 +3268,12 @@ export function ApplicationForm() {
         const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorDataNew(submittedGuarantorData as any, appid);
         saveResults.push(guarantorSaveResult);
 
-        // Also persist current_step for resume navigation
+        // Also persist current_step for resume navigation (do not overwrite signatures/documents)
         try {
           const stepOnlyApplicationData = {
             application_info: { zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '' },
             current_step: currentStep,
             status: 'draft' as const,
-            uploaded_files_metadata: {},
-            webhook_responses: {},
-            signatures: {},
-            encrypted_documents: {},
             storage_mode: 'direct' as const,
             flow_type: 'separate_webhooks' as const,
             webhook_flow_version: '2.0',
@@ -6044,7 +6047,12 @@ export function ApplicationForm() {
               applicant_info: submittedFormRoleScoped.applicant || {},
               occupants: submittedFormRoleScoped.occupants || [],
               webhookSummary: getWebhookSummary(),
-              signature: submittedSigsRoleScoped.applicant || {},
+              // Store applicant signature as base64 string or null
+              signature: (() => {
+                const sig = (submittedSigsRoleScoped as any)?.applicant;
+                if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
+                return sig ?? null;
+              })(),
               co_applicants: submittedFormRoleScoped.coApplicants || [], // Include co-applicants data
               guarantors: submittedFormRoleScoped.guarantors || [], // Include guarantors data
               timestamp: new Date().toISOString(), // Add timestamp field
@@ -6071,7 +6079,12 @@ export function ApplicationForm() {
               coapplicant_info: coApplicantData,
               occupants: submittedFormRoleScoped.occupants || [],
               webhookSummary: getWebhookSummary(),
-              signature: submittedSigsRoleScoped.coapplicant || {},
+              // Use role-scoped coApplicants[0] signature (base64) or null
+              signature: (() => {
+                const sig = (submittedSigsRoleScoped as any)?.coApplicants?.[0];
+                if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
+                return sig ?? null;
+              })(),
               status: 'submitted' as const,
               last_updated: new Date().toISOString()
             };
@@ -6098,7 +6111,12 @@ export function ApplicationForm() {
               guarantor_info: guarantorData,
               occupants: submittedFormRoleScoped.occupants || [],
               webhookSummary: getWebhookSummary(),
-              signature: submittedSigsRoleScoped.guarantor || {},
+              // Use role-scoped guarantors[0] signature (base64) or null
+              signature: (() => {
+                const sig = (submittedSigsRoleScoped as any)?.guarantors?.[0];
+                if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
+                return sig ?? null;
+              })(),
               status: 'submitted' as const,
               last_updated: new Date().toISOString()
             };
