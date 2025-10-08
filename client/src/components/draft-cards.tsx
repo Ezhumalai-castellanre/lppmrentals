@@ -508,6 +508,56 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 </div>
               </div>
 
+              {/* Co-Applicants Summary (names, emails, status) */}
+              <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-purple-600" />
+                    <h6 className="font-semibold text-purple-900">Co-Applicants</h6>
+                  </div>
+                  <Badge variant="outline" className={`text-xs ${Array.isArray(formSummary.coApplicants) && formSummary.coApplicants.length > 0 ? 'border-purple-300 text-purple-700' : 'border-gray-300 text-gray-600'}`}>
+                    {Array.isArray(formSummary.coApplicants) && formSummary.coApplicants.length > 0 ? 'Added' : 'None'}
+                  </Badge>
+                </div>
+                <div className="space-y-1 text-sm">
+                  {Array.isArray(formSummary.coApplicants) && formSummary.coApplicants.length > 0 ? (
+                    (formSummary.coApplicants as any[]).map((c, i) => (
+                      <div key={i} className="flex justify-between">
+                        <span className="text-purple-900">Co-Applicant{i + 1}: {c?.name || 'Unnamed'}</span>
+                        <span className="text-purple-700">{c?.email || 'No email'}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-purple-700">No co-applicants</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Guarantors Summary (names, emails, status) */}
+              <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-orange-600" />
+                    <h6 className="font-semibold text-orange-900">Guarantors</h6>
+                  </div>
+                  <Badge variant="outline" className={`text-xs ${Array.isArray(formSummary.guarantors) && formSummary.guarantors.length > 0 ? 'border-orange-300 text-orange-700' : 'border-gray-300 text-gray-600'}`}>
+                    {Array.isArray(formSummary.guarantors) && formSummary.guarantors.length > 0 ? 'Added' : 'None'}
+                  </Badge>
+                </div>
+                <div className="space-y-1 text-sm">
+                  {Array.isArray(formSummary.guarantors) && formSummary.guarantors.length > 0 ? (
+                    (formSummary.guarantors as any[]).map((g, i) => (
+                      <div key={i} className="flex justify-between">
+                        <span className="text-orange-900">Guarantor{i + 1}: {g?.name || 'Unnamed'}</span>
+                        <span className="text-orange-700">{g?.email || 'No email'}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-orange-700">No guarantors</div>
+                  )}
+                </div>
+              </div>
+
               {/* Co-Applicants Summary Card - visible only for co-applicant role */}
               {((user as any)?.role || '').startsWith('coapplicant') && (
                 <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
@@ -785,6 +835,48 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 <Users className="w-5 h-5 mr-2" />
                 Co-Applicants Information
               </h5>
+              {/* Applicant summary for context */}
+              <div className="mb-4 text-sm text-purple-900/80 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <span className="font-medium">Application ID:</span>
+                  <span className="ml-2 text-purple-700">{draft.reference_id || formSummary.application_id || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="font-medium">Applicant Name:</span>
+                  <span className="ml-2 text-purple-700">{formSummary.applicant?.name || formSummary.applicantName || formSummary.applicant?.fullName || 'Not specified'}</span>
+                </div>
+                <div>
+                  <span className="font-medium">Applicant Email:</span>
+                  <span className="ml-2 text-purple-700">{formSummary.applicant?.email || formSummary.applicantEmail || formSummary.applicant?.mail || 'Not specified'}</span>
+                </div>
+              </div>
+
+              {/* Application Information for context */}
+              <div className="mb-6 bg-white rounded-md border border-purple-200 p-3">
+                <div className="text-sm font-semibold text-purple-900 mb-2">Application Information</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <span className="font-medium">Building Address:</span>
+                    <span className="ml-2 text-purple-700">{formSummary.buildingAddress || 'Not specified'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Apartment:</span>
+                    <span className="ml-2 text-purple-700">{formSummary.apartmentNumber || 'Not specified'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Move-in Date:</span>
+                    <span className="ml-2 text-purple-700">{formSummary.moveInDate && formSummary.moveInDate !== 'Not specified' ? formatDate(formSummary.moveInDate) : 'Not specified'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Monthly Rent:</span>
+                    <span className="ml-2 text-purple-700">{formSummary.monthlyRent && formSummary.monthlyRent !== 'Not specified' ? `$${formSummary.monthlyRent}` : 'Not specified'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Apartment Type:</span>
+                    <span className="ml-2 text-purple-700">{formSummary.apartmentType || 'Not specified'}</span>
+                  </div>
+                </div>
+              </div>
               
               {(() => {
                 const coApps = Array.isArray(formSummary.coApplicants) ? formSummary.coApplicants : [];
@@ -1122,10 +1214,14 @@ export const DraftCards = () => {
               try {
                 matchedApplicant = await dynamoDBSeparateTablesUtils.getApplicantByAppId(application.appid);
               } catch {}
-              // Load ALL co-applicants for this appid
+              // Load ALL co-applicants and guarantors for this appid
               let coApplicantsForApp: any[] = [];
+              let guarantorsForApp: any[] = [];
               try {
                 coApplicantsForApp = await dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(application.appid);
+              } catch {}
+              try {
+                guarantorsForApp = await dynamoDBSeparateTablesUtils.getGuarantorsByAppId(application.appid);
               } catch {}
             const applicantFormData = {
               // Application Information (from app_nyc)
@@ -1138,6 +1234,13 @@ export const DraftCards = () => {
                 // Co-Applicants (from Co-Applicants table) - all records for this app
                 coApplicants: (coApplicantsForApp || []).map((c: any) => c?.coapplicant_info).filter(Boolean),
                 coApplicant_occupants: (coApplicantsForApp || []).flatMap((c: any) => c?.occupants || []),
+
+                // Guarantors (from Guarantors table + applicant_nyc table) - all records for this app
+                guarantors: [
+                  ...(guarantorsForApp || []).map((g: any) => g?.guarantor_info).filter(Boolean),
+                  ...(matchedApplicant?.guarantors || [])
+                ],
+                guarantor_occupants: (guarantorsForApp || []).flatMap((g: any) => g?.occupants || []),
 
               // Reference data
                 application_id: application.appid,
@@ -1153,17 +1256,22 @@ export const DraftCards = () => {
                 last_updated: application.last_updated,
                 status: application.status,
                 uploaded_files_metadata: application.uploaded_files_metadata || {},
-                // Combine webhook responses and signatures from co-applicants for a fuller preview
+                // Combine webhook responses and signatures from co-applicants and guarantors for a fuller preview
                 webhook_responses: {
                   ...(application.webhook_responses || {}),
                   ...(coApplicantsForApp || []).reduce((acc: any, c: any) => ({
                     ...acc,
                     ...(c?.webhookSummary || {})
+                  }), {}),
+                  ...(guarantorsForApp || []).reduce((acc: any, g: any) => ({
+                    ...acc,
+                    ...(g?.webhookSummary || {})
                   }), {})
                 },
                 signatures: {
                   ...(application.signatures || {}),
-                  coApplicants: (coApplicantsForApp || []).map((c: any) => c?.signature).filter(Boolean)
+                  coApplicants: (coApplicantsForApp || []).map((c: any) => c?.signature).filter(Boolean),
+                  guarantors: (guarantorsForApp || []).map((g: any) => g?.signature).filter(Boolean)
                 },
                 encrypted_documents: application.encrypted_documents || {},
                 flow_type: application.flow_type || 'separate_webhooks',
@@ -1173,7 +1281,8 @@ export const DraftCards = () => {
               table_data: {
                   application: application,
                   applicant: allData.applicant,
-                  coApplicant: coApplicantsForApp
+                  coApplicant: coApplicantsForApp,
+                  guarantor: guarantorsForApp
               }
             });
             }
@@ -1188,11 +1297,22 @@ export const DraftCards = () => {
             for (const coApp of allCoApplicants) {
               const matchedApp = (zoneApps || []).find(a => a.appid === coApp.appid);
               const currentStepFromApp = matchedApp?.current_step ?? 0;
+              // Try to fetch the primary applicant for this application to show name/email in previews
+              let matchedApplicant: any = undefined;
+              try {
+                matchedApplicant = await dynamoDBSeparateTablesUtils.getApplicantByAppId(coApp.appid);
+              } catch {}
               const coApplicantFormData = {
+                // Include application for Application Information block
+                application: matchedApp?.application_info || {},
                 coApplicants: [coApp.coapplicant_info],
                 coApplicant_occupants: [],
                 application_id: coApp.appid,
-                zoneinfo: coApp.zoneinfo
+                zoneinfo: coApp.zoneinfo,
+                // Provide applicant context for preview headers
+                applicant: matchedApplicant?.applicant_info || {},
+                applicantName: matchedApplicant?.applicant_info?.name,
+                applicantEmail: matchedApplicant?.applicant_info?.email
               };
 
               drafts.push({
@@ -1210,7 +1330,8 @@ export const DraftCards = () => {
                 flow_type: 'separate_webhooks',
                 webhook_flow_version: '2.0',
                 table_data: {
-                  coApplicant: coApp
+                  coApplicant: coApp,
+                  applicant: matchedApplicant
                 }
               });
             }
