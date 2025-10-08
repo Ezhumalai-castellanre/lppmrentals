@@ -20,7 +20,7 @@ export interface FileUploadWebhookData {
 export interface FormDataWebhookData {
   reference_id: string;
   application_id: string;
-  role?: string;
+  role: string;
   form_data: {
     application?: {
       buildingAddress?: string;
@@ -1770,7 +1770,6 @@ export class WebhookService {
     if (formData.hasCoApplicant || formData.hasGuarantor) {
       const additionalPeople: any = {
         zoneinfo: formData.zoneinfo || formData.applicantId || 'unknown',
-        role: 'applicant',
         applicant: transformedData.applicant?.name || 'unknown',
         applicantEmail: transformedData.applicant?.email || formData.applicantEmail || ''
       };

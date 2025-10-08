@@ -5448,6 +5448,8 @@ export function ApplicationForm() {
         try {
           // Create complete webhook payload with ALL data
           const completeWebhookData = {
+            // Role at top level
+            role: 'applicant',
             // Application Info
             buildingAddress: data.buildingAddress,
             apartmentNumber: data.apartmentNumber,
@@ -5709,7 +5711,6 @@ export function ApplicationForm() {
             // Additional People in Application data - Always include this section
             "Additional People": {
               zoneinfo: user?.zoneinfo || 'unknown',
-              role: 'applicant',
               applicant: data.applicantName || 'unknown',
               // Include co-applicants if they exist
               ...(formData.coApplicantCount > 0 && formData.coApplicants && formData.coApplicants.length > 0 ? {
