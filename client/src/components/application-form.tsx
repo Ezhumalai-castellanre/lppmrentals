@@ -2998,16 +2998,10 @@ export function ApplicationForm() {
       const coApplicant = (data.coApplicants || [])[index] || {};
       console.log('👥 Co-applicant data for index', index, ':', coApplicant);
       
+      // Return simplified JSON structure as requested
       return {
-        application: data.application,
-        zoneinfo: data.zoneinfo,
-        applicantId: data.applicantId,
-        application_id: data.application_id,
-        hasCoApplicant: true,
-        hasGuarantor: !!(data.guarantors && data.guarantors.length > 0),
-        coApplicantCount: 1,
-        guarantorCount: 0,
         coApplicants: [coApplicant],
+        webhookSummary: data.webhookSummary || {},
         // Include the original index for reference
         coApplicantIndex: index,
       };
@@ -3028,16 +3022,10 @@ export function ApplicationForm() {
       const guarantor = (data.guarantors || [])[index] || {};
       console.log('🛡️ Guarantor data for index', index, ':', guarantor);
       
+      // Return simplified JSON structure as requested
       return {
-        application: data.application,
-        zoneinfo: data.zoneinfo,
-        applicantId: data.applicantId,
-        application_id: data.application_id,
-        hasCoApplicant: !!(data.coApplicants && data.coApplicants.length > 0),
-        hasGuarantor: true,
-        coApplicantCount: 0,
-        guarantorCount: 1,
         guarantors: [guarantor],
+        webhookSummary: data.webhookSummary || {},
         // Include the original index for reference
         guarantorIndex: index,
       };
@@ -3252,9 +3240,10 @@ export function ApplicationForm() {
         console.log('👥 Co-Applicant data being saved:', coApplicantData);
         
         const submittedCoApplicantData = {
+          role: 'coApplicant', // Add role attribute at top level
           coapplicant_info: coApplicantData,
           occupants: enhancedFormDataSnapshot.occupants || [],
-          webhookSummary: getWebhookSummary(),
+          webhookSummary: enhancedFormDataSnapshot.webhookSummary || getWebhookSummary(),
           // Store only this co-applicant's signature as base64 string or null
           signature: (() => {
             const sig = (roleScopedSign as any)?.coApplicants?.[coApplicantIndex];
@@ -3307,9 +3296,10 @@ export function ApplicationForm() {
         console.log('🛡️ Guarantor data being saved:', guarantorData);
         
         const submittedGuarantorData = {
+          role: 'Guarantor', // Add role attribute at top level
           guarantor_info: guarantorData,
           occupants: enhancedFormDataSnapshot.occupants || [],
-          webhookSummary: getWebhookSummary(),
+          webhookSummary: enhancedFormDataSnapshot.webhookSummary || getWebhookSummary(),
           // Store only this guarantor's signature as base64 string or null
           signature: (() => {
             const sig = (roleScopedSign as any)?.guarantors?.[guarantorIndex];
@@ -5178,92 +5168,6 @@ export function ApplicationForm() {
             })),
           },
           
-          // Co-Applicants (nested objects)
-          coApplicants: (formData.coApplicants || []).map((coApplicant: any, index: number) => ({
-            coApplicant: (index + 1).toString(), // Dynamic type field
-            email: coApplicant.email || formData.coApplicantEmail,
-            phone: formatPhoneForPayload(coApplicant.phone || formData.coApplicantPhone),
-            zip: coApplicant.zip || formData.coApplicantZip,
-            landlordZipCode: coApplicant.landlordZipCode || formData.coApplicantLandlordZipCode,
-            landlordPhone: coApplicant.landlordPhone || formData.coApplicantLandlordPhone,
-            landlordEmail: coApplicant.landlordEmail || formData.coApplicantLandlordEmail,
-            city: coApplicant.city,
-            landlordCity: coApplicant.landlordCity,
-            name: coApplicant.name,
-            licenseState: coApplicant.licenseState,
-            state: coApplicant.state,
-            relationship: coApplicant.relationship,
-            dob: safeDateToISO(coApplicant.dob),
-            age: coApplicant.age || 0,
-            ssn: coApplicant.ssn || formData.coApplicantSsn,
-            license: coApplicant.license || formData.coApplicantLicense,
-            lengthAtAddressYears: coApplicant.lengthAtAddressYears,
-            lengthAtAddressMonths: coApplicant.lengthAtAddressMonths,
-            landlordName: coApplicant.landlordName,
-            landlordAddressLine1: coApplicant.landlordAddressLine1,
-            landlordAddressLine2: coApplicant.landlordAddressLine2,
-            landlordState: coApplicant.landlordState,
-            currentRent: coApplicant.currentRent,
-            reasonForMoving: coApplicant.reasonForMoving,
-            employmentType: coApplicant.employmentType,
-            employer: coApplicant.employer,
-            position: coApplicant.position,
-            employmentStart: safeDateToISO(coApplicant.employmentStart),
-            income: coApplicant.income,
-            incomeFrequency: coApplicant.incomeFrequency,
-            otherIncome: coApplicant.otherIncome,
-            otherIncomeSource: coApplicant.otherIncomeSource,
-            bankRecords: (coApplicant.bankRecords || []).map((record: any) => ({
-                bankName: record.bankName,
-                accountType: record.accountType,
-                accountNumber: record.accountNumber || ""
-              })),
-          })),
-          
-          // Guarantors (nested objects)
-          guarantors: (formData.guarantors || []).map((guarantor: any, index: number) => ({
-            guarantor: (index + 1).toString(), // Dynamic type field
-            email: guarantor.email || formData.guarantorEmail,
-            phone: formatPhoneForPayload(guarantor.phone || formData.guarantorPhone),
-            zip: guarantor.zip || formData.guarantorZip,
-            city: guarantor.city,
-            name: guarantor.name,
-            licenseState: guarantor.licenseState,
-            address: guarantor.address,
-            state: guarantor.state,
-            relationship: guarantor.relationship,
-            dob: safeDateToISO(guarantor.dob),
-            age: guarantor.age || 0,
-            ssn: guarantor.ssn || formData.guarantorSsn,
-            license: guarantor.license || formData.guarantorLicense,
-            lengthAtAddressYears: guarantor.lengthAtAddressYears,
-            lengthAtAddressMonths: guarantor.lengthAtAddressMonths,
-            landlordName: guarantor.landlordName,
-            landlordAddressLine1: guarantor.landlordAddressLine1,
-            landlordAddressLine2: guarantor.landlordAddressLine2,
-            landlordCity: guarantor.landlordCity,
-            landlordState: guarantor.landlordState,
-            landlordZipCode: guarantor.landlordZipCode,
-            landlordPhone: guarantor.landlordPhone,
-            landlordEmail: guarantor.landlordEmail,
-            currentRent: guarantor.currentRent,
-            reasonForMoving: guarantor.reasonForMoving,
-            employmentType: guarantor.employmentType,
-            businessName: guarantor.businessName,
-            businessType: guarantor.businessType,
-            yearsInBusiness: guarantor.yearsInBusiness,
-            income: guarantor.income,
-            incomeFrequency: guarantor.incomeFrequency,
-            otherIncome: guarantor.otherIncome,
-            otherIncomeFrequency: guarantor.otherIncomeFrequency || "monthly",
-            otherIncomeSource: guarantor.otherIncomeSource,
-            bankRecords: (guarantor.bankRecords || []).map((record: any) => ({
-                bankName: record.bankName,
-                accountType: record.accountType,
-                accountNumber: record.accountNumber || ""
-              })),
-
-          })),
           
           // Occupants (array)
           occupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any) => ({
@@ -5272,8 +5176,7 @@ export function ApplicationForm() {
             dob: occupant.dob,
             ssn: occupant.ssn,
             license: occupant.license,
-            age: occupant.age || 0,
-            documents: occupant.documents || {}
+            age: occupant.age || 0
           })),
           
           // Core metadata fields
@@ -5315,22 +5218,14 @@ export function ApplicationForm() {
           // For specific co-applicant, only include that co-applicant's data
           const specificCoApplicant = (formData.coApplicants || [])[specificIndex];
           if (specificCoApplicant) {
-            completeServerData = {
-              ...completeServerData,
-              // Remove other co-applicants, keep only the specific one
-              coApplicants: [specificCoApplicant]
-            };
+            (completeServerData as any).coApplicants = [specificCoApplicant];
             console.log(`🎯 Filtered data for co-applicant ${specificIndex + 1}:`, specificCoApplicant);
           }
         } else if (userRole.startsWith('guarantor') && specificIndex !== null) {
           // For specific guarantor, only include that guarantor's data
           const specificGuarantor = (formData.guarantors || [])[specificIndex];
           if (specificGuarantor) {
-            completeServerData = {
-              ...completeServerData,
-              // Remove other guarantors, keep only the specific one
-              guarantors: [specificGuarantor]
-            };
+            (completeServerData as any).guarantors = [specificGuarantor];
             console.log(`🎯 Filtered data for guarantor ${specificIndex + 1}:`, specificGuarantor);
           }
         }
@@ -5553,6 +5448,8 @@ export function ApplicationForm() {
         try {
           // Create complete webhook payload with ALL data
           const completeWebhookData = {
+            // Role at top level
+            role: 'applicant',
             // Application Info
             buildingAddress: data.buildingAddress,
             apartmentNumber: data.apartmentNumber,
@@ -5814,7 +5711,6 @@ export function ApplicationForm() {
             // Additional People in Application data - Always include this section
             "Additional People": {
               zoneinfo: user?.zoneinfo || 'unknown',
-              role: 'applicant',
               applicant: data.applicantName || 'unknown',
               // Include co-applicants if they exist
               ...(formData.coApplicantCount > 0 && formData.coApplicants && formData.coApplicants.length > 0 ? {
@@ -6016,8 +5912,6 @@ export function ApplicationForm() {
               hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0),
               // Ensure webhook responses are properly included for form field documents
               webhookResponses: webhookResponses,
-              // Include uploaded files metadata for form field documents
-              uploadedFilesMetadata: uploadedFilesMetadata,
               // Include encrypted documents for form field documents
               encryptedDocuments: encryptedDocuments
             };
@@ -6027,7 +5921,8 @@ export function ApplicationForm() {
               referenceId,
               individualApplicantId,
               user?.zoneinfo,
-              uploadedFilesMetadata
+              uploadedFilesMetadata,
+              userRole || 'applicant'
             );
           }
           
@@ -6131,11 +6026,12 @@ export function ApplicationForm() {
             const coApplicantData = submittedFormRoleScoped.coApplicants?.[0] || {};
             console.log('📊 Co-Applicant data to save:', coApplicantData);
             
-            // Save Co-Applicant data to Co-Applicants table
+            // Save Co-Applicant data to Co-Applicants table with simplified structure
             const submittedCoApplicantData = {
+              role: 'coApplicant', // Add role attribute at top level
               coapplicant_info: coApplicantData,
               occupants: submittedFormRoleScoped.occupants || [],
-              webhookSummary: getWebhookSummary(),
+              webhookSummary: submittedFormRoleScoped.webhookSummary || getWebhookSummary(),
               // Use role-scoped coApplicants[0] signature (base64) or null
               signature: (() => {
                 const sig = (submittedSigsRoleScoped as any)?.coApplicants?.[0];
@@ -6163,11 +6059,12 @@ export function ApplicationForm() {
             const guarantorData = submittedFormRoleScoped.guarantors?.[0] || {};
             console.log('📊 Guarantor data to save:', guarantorData);
             
-            // Save Guarantor data to Guarantors_nyc table
+            // Save Guarantor data to Guarantors_nyc table with simplified structure
             const submittedGuarantorData = {
+              role: 'Guarantor', // Add role attribute at top level
               guarantor_info: guarantorData,
               occupants: submittedFormRoleScoped.occupants || [],
-              webhookSummary: getWebhookSummary(),
+              webhookSummary: submittedFormRoleScoped.webhookSummary || getWebhookSummary(),
               // Use role-scoped guarantors[0] signature (base64) or null
               signature: (() => {
                 const sig = (submittedSigsRoleScoped as any)?.guarantors?.[0];

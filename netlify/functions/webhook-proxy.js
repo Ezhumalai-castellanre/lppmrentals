@@ -71,6 +71,9 @@ export const handler = async (event, context) => {
     console.log(`📊 Payload size: ${(JSON.stringify(webhookData).length / 1024).toFixed(2)}KB`);
     console.log(`🆔 Document ID in webhookData: ${webhookData.id}`);
     console.log(`💬 Comment ID in webhookData: ${webhookData.comment_id}`);
+    console.log(`🔍 DEBUG: Role in webhookData: ${webhookData.role}`);
+    console.log(`🔍 DEBUG: Webhook data keys:`, Object.keys(webhookData));
+    console.log(`🔍 DEBUG: Role attribute exists:`, 'role' in webhookData);
 
     // Forward request to Make.com webhook
     const startTime = Date.now();
