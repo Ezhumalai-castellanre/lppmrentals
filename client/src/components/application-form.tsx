@@ -1344,7 +1344,6 @@ export function ApplicationForm() {
 
         // Restore co-applicant data into form structure
         if (coApplicantsArray.length > 0) {
-          parsedFormData.coApplicant = coApplicantsArray[0] || {};
           parsedFormData.coApplicants = coApplicantsArray;
         }
         
@@ -1573,37 +1572,36 @@ export function ApplicationForm() {
             }
           }
           
-          // Restore co-applicant information (only fields that exist in schema)
-          if (parsedFormData.coApplicant) {
-            const coApplicant = parsedFormData.coApplicant;
-            if (coApplicant.email !== undefined) form.setValue('coApplicantEmail', coApplicant.email || '');
-            if (coApplicant.phone !== undefined) form.setValue('coApplicantPhone', coApplicant.phone || '');
-            if (coApplicant.zip !== undefined) form.setValue('coApplicantZip', coApplicant.zip || '');
-            
-            // Restore co-applicant landlord information (only fields that exist in schema)
-            if (coApplicant.landlordZipCode !== undefined) {
-              form.setValue('coApplicantLandlordZipCode', coApplicant.landlordZipCode || '');
-              // Set coApplicantLandlordZipCode
-            }
-            if (coApplicant.landlordPhone !== undefined) {
-              form.setValue('coApplicantLandlordPhone', coApplicant.landlordPhone || '');
-              // Set coApplicantLandlordPhone
-            }
-            if (coApplicant.landlordEmail !== undefined) {
-              form.setValue('coApplicantLandlordEmail', coApplicant.landlordEmail || '');
-              // Set coApplicantLandlordEmail
-            }
-            
-            // Auto-check co-applicant checkbox if there's co-applicant data but no explicit flag
-            if (parsedFormData.hasCoApplicant === undefined && hasCoApplicantData(coApplicant)) {
-              // Auto-detected co-applicant data, checking checkbox
-              setHasCoApplicant(true);
-              form.setValue('hasCoApplicant', true);
-              // Also update formData state
-              setFormData((prev: any) => ({
-                ...prev,
-                hasCoApplicant: true
-              }));
+          // Restore co-applicant information (use first entry in coApplicants array if present)
+          {
+            const coApplicant = (parsedFormData.coApplicants && Array.isArray(parsedFormData.coApplicants))
+              ? (parsedFormData.coApplicants[0] || {})
+              : (parsedFormData.coApplicant || {});
+            if (coApplicant && Object.keys(coApplicant).length > 0) {
+              if (coApplicant.email !== undefined) form.setValue('coApplicantEmail', coApplicant.email || '');
+              if (coApplicant.phone !== undefined) form.setValue('coApplicantPhone', coApplicant.phone || '');
+              if (coApplicant.zip !== undefined) form.setValue('coApplicantZip', coApplicant.zip || '');
+              
+              // Restore co-applicant landlord information (only fields that exist in schema)
+              if (coApplicant.landlordZipCode !== undefined) {
+                form.setValue('coApplicantLandlordZipCode', coApplicant.landlordZipCode || '');
+              }
+              if (coApplicant.landlordPhone !== undefined) {
+                form.setValue('coApplicantLandlordPhone', coApplicant.landlordPhone || '');
+              }
+              if (coApplicant.landlordEmail !== undefined) {
+                form.setValue('coApplicantLandlordEmail', coApplicant.landlordEmail || '');
+              }
+              
+              // Auto-check co-applicant checkbox if there's co-applicant data but no explicit flag
+              if (parsedFormData.hasCoApplicant === undefined && hasCoApplicantData(coApplicant)) {
+                setHasCoApplicant(true);
+                form.setValue('hasCoApplicant', true);
+                setFormData((prev: any) => ({
+                  ...prev,
+                  hasCoApplicant: true
+                }));
+              }
             }
           }
           

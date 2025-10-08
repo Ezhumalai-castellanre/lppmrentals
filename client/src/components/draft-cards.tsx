@@ -26,6 +26,7 @@ interface DraftData {
   table_data?: { // Additional metadata for separate tables display
     application?: any;
     applicant?: any;
+    // Deprecated: use coApplicants array instead
     coApplicant?: any;
     guarantor?: any;
   };
@@ -1266,7 +1267,9 @@ export const DraftCards = () => {
               applicant_occupants: allData.applicant?.occupants || [],
               
               // Co-Applicants (from Co-Applicants)
-              coApplicants: allData.coApplicant ? [allData.coApplicant.coapplicant_info] : [],
+              coApplicants: Array.isArray(allData.coApplicant)
+                ? allData.coApplicant.map((c: any) => c?.coapplicant_info).filter(Boolean)
+                : (allData.coApplicant ? [allData.coApplicant.coapplicant_info] : []),
               coApplicant_occupants: [],
               
               // Guarantors (from Guarantors_nyc)
@@ -1280,7 +1283,9 @@ export const DraftCards = () => {
               webhookResponses: {
                 ...allData.application.webhook_responses,
                 ...allData.applicant?.webhookSummary,
-                ...allData.coApplicant?.webhookSummary,
+                ...(Array.isArray(allData.coApplicant)
+                  ? allData.coApplicant.reduce((acc: any, c: any) => ({ ...acc, ...(c?.webhookSummary || {}) }), {})
+                  : allData.coApplicant?.webhookSummary),
                 ...allData.guarantor?.webhookSummary
               },
               
@@ -1288,7 +1293,9 @@ export const DraftCards = () => {
               signatures: {
                 ...allData.application.signatures,
                 applicant: allData.applicant?.signature,
-                coApplicants: allData.coApplicant?.signature,
+                coApplicants: Array.isArray(allData.coApplicant)
+                  ? allData.coApplicant.map((c: any) => c?.signature).filter(Boolean)
+                  : allData.coApplicant?.signature,
                 guarantor: allData.guarantor?.signature
               },
               
