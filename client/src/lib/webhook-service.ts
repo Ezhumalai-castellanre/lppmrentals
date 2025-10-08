@@ -1804,7 +1804,9 @@ export class WebhookService {
     if (formData.hasCoApplicant || formData.hasGuarantor) {
       const additionalPeople: any = {
         zoneinfo: formData.zoneinfo || formData.applicantId || 'unknown',
-        applicant: transformedData.applicant?.name || 'unknown'
+        role: 'applicant',
+        applicant: transformedData.applicant?.name || 'unknown',
+        applicantEmail: transformedData.applicant?.email || formData.applicantEmail || ''
       };
 
       // Add co-applicants based on hasCoApplicant flag
