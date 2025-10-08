@@ -1950,7 +1950,8 @@ export class WebhookService {
       const additionalPeople: any = {
         zoneinfo: formData.zoneinfo || formData.applicantId || 'unknown',
         role: 'applicant',
-        applicant: transformedData.applicant?.name || 'unknown'
+        applicant: transformedData.applicant?.name || 'unknown',
+        applicantEmail: transformedData.applicant?.email || formData.applicantEmail || ''
       };
 
       // Add co-applicants (use pluralized keys and roles: coApplicants1, coapplicants1)
