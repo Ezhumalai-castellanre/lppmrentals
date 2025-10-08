@@ -174,12 +174,6 @@ export interface FormDataWebhookData {
     guarantorCount?: number;
     coApplicants?: any[];
     guarantors?: any[];
-    bankInformation?: {
-      applicant?: { totalBankRecords?: number; records?: any[] };
-      coApplicants?: { totalBankRecords?: number; records?: any[] };
-      guarantors?: { totalBankRecords?: number; records?: any[] };
-      summary?: { totalBankRecords?: number };
-    };
     webhookSummary?: {
       totalResponses?: number;
       responsesByPerson?: {
@@ -1311,17 +1305,16 @@ export class WebhookService {
     
     // For applicant role, only include applicant data - exclude co-applicants and guarantors
     return {
+      role: 'applicant', // Add role attribute at top level
       application: transformedData.application,
       applicant: transformedData.applicant,
       // Include occupants with proper structure
       occupants: transformedData.occupants || [],
-      // For applicant role, set all additional people flags to false and arrays to empty
+      // For applicant role, set all additional people flags to false
       hasCoApplicant: false,
       hasGuarantor: false,
       coApplicantCount: 0,
       guarantorCount: 0,
-      coApplicants: [],
-      guarantors: [],
       // Include Additional People section with only applicant info
       "Additional People": {
         zoneinfo: formData.zoneinfo || formData.applicantId || 'unknown',
@@ -1334,16 +1327,7 @@ export class WebhookService {
       landlordTenantLegalAction: transformedData.landlordTenantLegalAction,
       brokenLease: transformedData.brokenLease,
       // Include signatures
-      signatures: transformedData.signatures,
-      // Include bank information for applicant only
-      bankInformation: {
-        applicant: transformedData.bankInformation?.applicant,
-        coApplicants: { totalBankRecords: 0, records: [] },
-        guarantors: { totalBankRecords: 0, records: [] },
-        summary: {
-          totalBankRecords: transformedData.bankInformation?.applicant?.totalBankRecords || 0
-        }
-      }
+      signatures: transformedData.signatures
     };
   }
 
@@ -1360,6 +1344,7 @@ export class WebhookService {
     const safeCoApplicant = coApplicantFromTransformed || coApplicant || {};
 
     return {
+      role: 'coApplicant', // Add role attribute at top level
       application: transformedData.application,
       // Include only the specific co-applicant
       coApplicants: [safeCoApplicant],
@@ -1370,24 +1355,11 @@ export class WebhookService {
       hasGuarantor: false,
       coApplicantCount: 1,
       guarantorCount: 0,
-      guarantors: [],
       // Include legal questions
       landlordTenantLegalAction: transformedData.landlordTenantLegalAction,
       brokenLease: transformedData.brokenLease,
       // Include signatures
-      signatures: transformedData.signatures,
-      // Include bank information for this co-applicant only
-      bankInformation: {
-        applicant: { totalBankRecords: 0, records: [] },
-        coApplicants: {
-          totalBankRecords: (safeCoApplicant as any).bankRecords?.length || 0,
-          records: (safeCoApplicant as any).bankRecords || []
-        },
-        guarantors: { totalBankRecords: 0, records: [] },
-        summary: {
-          totalBankRecords: (safeCoApplicant as any).bankRecords?.length || 0
-        }
-      }
+      signatures: transformedData.signatures
     };
   }
 
@@ -1397,10 +1369,17 @@ export class WebhookService {
   private static createGuarantorOnlyPayload(guarantor: any, guarantorIndex: number, formData: any, uploadedFiles?: any): any {
     const transformedData = this.transformFormDataToWebhookFormat(formData, uploadedFiles);
     
+    // Guard against missing index in transformedData.guarantors
+    const guarantorFromTransformed = Array.isArray(transformedData.guarantors)
+      ? transformedData.guarantors[guarantorIndex]
+      : undefined;
+    const safeGuarantor = guarantorFromTransformed || guarantor || {};
+    
     return {
+      role: 'Guarantor', // Add role attribute at top level
       application: transformedData.application,
       // Include only the specific guarantor
-      guarantors: [transformedData.guarantors[guarantorIndex]],
+      guarantors: [safeGuarantor],
       // Include webhook summary so receivers see it inside form_data
       webhookSummary: transformedData.webhookSummary,
       // Include basic application info
@@ -1408,24 +1387,11 @@ export class WebhookService {
       hasGuarantor: true,
       coApplicantCount: 0,
       guarantorCount: 1,
-      coApplicants: [],
       // Include legal questions
       landlordTenantLegalAction: transformedData.landlordTenantLegalAction,
       brokenLease: transformedData.brokenLease,
       // Include signatures
-      signatures: transformedData.signatures,
-      // Include bank information for this guarantor only
-      bankInformation: {
-        applicant: { totalBankRecords: 0, records: [] },
-        coApplicants: { totalBankRecords: 0, records: [] },
-        guarantors: {
-          totalBankRecords: guarantor.bankRecords?.length || 0,
-          records: guarantor.bankRecords || []
-        },
-        summary: {
-          totalBankRecords: guarantor.bankRecords?.length || 0
-        }
-      }
+      signatures: transformedData.signatures
     };
   }
 

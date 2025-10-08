@@ -2998,16 +2998,10 @@ export function ApplicationForm() {
       const coApplicant = (data.coApplicants || [])[index] || {};
       console.log('👥 Co-applicant data for index', index, ':', coApplicant);
       
+      // Return simplified JSON structure as requested
       return {
-        application: data.application,
-        zoneinfo: data.zoneinfo,
-        applicantId: data.applicantId,
-        application_id: data.application_id,
-        hasCoApplicant: true,
-        hasGuarantor: !!(data.guarantors && data.guarantors.length > 0),
-        coApplicantCount: 1,
-        guarantorCount: 0,
         coApplicants: [coApplicant],
+        webhookSummary: data.webhookSummary || {},
         // Include the original index for reference
         coApplicantIndex: index,
       };
@@ -3028,16 +3022,10 @@ export function ApplicationForm() {
       const guarantor = (data.guarantors || [])[index] || {};
       console.log('🛡️ Guarantor data for index', index, ':', guarantor);
       
+      // Return simplified JSON structure as requested
       return {
-        application: data.application,
-        zoneinfo: data.zoneinfo,
-        applicantId: data.applicantId,
-        application_id: data.application_id,
-        hasCoApplicant: !!(data.coApplicants && data.coApplicants.length > 0),
-        hasGuarantor: true,
-        coApplicantCount: 0,
-        guarantorCount: 1,
         guarantors: [guarantor],
+        webhookSummary: data.webhookSummary || {},
         // Include the original index for reference
         guarantorIndex: index,
       };
@@ -3252,9 +3240,10 @@ export function ApplicationForm() {
         console.log('👥 Co-Applicant data being saved:', coApplicantData);
         
         const submittedCoApplicantData = {
+          role: 'coApplicant', // Add role attribute at top level
           coapplicant_info: coApplicantData,
           occupants: enhancedFormDataSnapshot.occupants || [],
-          webhookSummary: getWebhookSummary(),
+          webhookSummary: enhancedFormDataSnapshot.webhookSummary || getWebhookSummary(),
           // Store only this co-applicant's signature as base64 string or null
           signature: (() => {
             const sig = (roleScopedSign as any)?.coApplicants?.[coApplicantIndex];
@@ -3307,9 +3296,10 @@ export function ApplicationForm() {
         console.log('🛡️ Guarantor data being saved:', guarantorData);
         
         const submittedGuarantorData = {
+          role: 'Guarantor', // Add role attribute at top level
           guarantor_info: guarantorData,
           occupants: enhancedFormDataSnapshot.occupants || [],
-          webhookSummary: getWebhookSummary(),
+          webhookSummary: enhancedFormDataSnapshot.webhookSummary || getWebhookSummary(),
           // Store only this guarantor's signature as base64 string or null
           signature: (() => {
             const sig = (roleScopedSign as any)?.guarantors?.[guarantorIndex];
@@ -5228,22 +5218,14 @@ export function ApplicationForm() {
           // For specific co-applicant, only include that co-applicant's data
           const specificCoApplicant = (formData.coApplicants || [])[specificIndex];
           if (specificCoApplicant) {
-            completeServerData = {
-              ...completeServerData,
-              // Remove other co-applicants, keep only the specific one
-              coApplicants: [specificCoApplicant]
-            };
+            (completeServerData as any).coApplicants = [specificCoApplicant];
             console.log(`🎯 Filtered data for co-applicant ${specificIndex + 1}:`, specificCoApplicant);
           }
         } else if (userRole.startsWith('guarantor') && specificIndex !== null) {
           // For specific guarantor, only include that guarantor's data
           const specificGuarantor = (formData.guarantors || [])[specificIndex];
           if (specificGuarantor) {
-            completeServerData = {
-              ...completeServerData,
-              // Remove other guarantors, keep only the specific one
-              guarantors: [specificGuarantor]
-            };
+            (completeServerData as any).guarantors = [specificGuarantor];
             console.log(`🎯 Filtered data for guarantor ${specificIndex + 1}:`, specificGuarantor);
           }
         }
@@ -6043,11 +6025,12 @@ export function ApplicationForm() {
             const coApplicantData = submittedFormRoleScoped.coApplicants?.[0] || {};
             console.log('📊 Co-Applicant data to save:', coApplicantData);
             
-            // Save Co-Applicant data to Co-Applicants table
+            // Save Co-Applicant data to Co-Applicants table with simplified structure
             const submittedCoApplicantData = {
+              role: 'coApplicant', // Add role attribute at top level
               coapplicant_info: coApplicantData,
               occupants: submittedFormRoleScoped.occupants || [],
-              webhookSummary: getWebhookSummary(),
+              webhookSummary: submittedFormRoleScoped.webhookSummary || getWebhookSummary(),
               // Use role-scoped coApplicants[0] signature (base64) or null
               signature: (() => {
                 const sig = (submittedSigsRoleScoped as any)?.coApplicants?.[0];
@@ -6075,11 +6058,12 @@ export function ApplicationForm() {
             const guarantorData = submittedFormRoleScoped.guarantors?.[0] || {};
             console.log('📊 Guarantor data to save:', guarantorData);
             
-            // Save Guarantor data to Guarantors_nyc table
+            // Save Guarantor data to Guarantors_nyc table with simplified structure
             const submittedGuarantorData = {
+              role: 'Guarantor', // Add role attribute at top level
               guarantor_info: guarantorData,
               occupants: submittedFormRoleScoped.occupants || [],
-              webhookSummary: getWebhookSummary(),
+              webhookSummary: submittedFormRoleScoped.webhookSummary || getWebhookSummary(),
               // Use role-scoped guarantors[0] signature (base64) or null
               signature: (() => {
                 const sig = (submittedSigsRoleScoped as any)?.guarantors?.[0];
