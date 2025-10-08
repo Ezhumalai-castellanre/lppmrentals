@@ -669,10 +669,10 @@ export class DynamoDBSeparateTablesService {
       });
       
       const dataSize = JSON.stringify(marshalledData).length;
-        console.log('📏 Application data size:', dataSize, 'bytes (max: 1GB)');
+        console.log('📏 Application data size:', dataSize, 'bytes (DynamoDB limit: 400KB)');
         
-        if (dataSize > 1024 * 1024 * 1024) {
-        console.warn('⚠️ Application data exceeds 1GB limit, reducing data size...');
+        if (dataSize > 400 * 1024) {
+          console.warn('⚠️ Application data exceeds DynamoDB 400KB limit, reducing data size...');
         applicationData = this.reduceApplicationDataSize(applicationData);
         
         // Re-check size after reduction
@@ -683,7 +683,7 @@ export class DynamoDBSeparateTablesService {
         const reducedSize = JSON.stringify(reducedMarshalledData).length;
         console.log('📏 Reduced application data size:', reducedSize, 'bytes');
         
-        if (reducedSize > 1024 * 1024 * 1024) {
+        if (reducedSize > 400 * 1024) {
           console.warn('⚠️ Application data still too large after first reduction, applying ultra-aggressive reduction...');
           applicationData = this.applyUltraAggressiveReduction(applicationData);
           
@@ -695,9 +695,9 @@ export class DynamoDBSeparateTablesService {
           const ultraReducedSize = JSON.stringify(ultraReducedMarshalledData).length;
           console.log('📏 Ultra-reduced application data size:', ultraReducedSize, 'bytes');
           
-          if (ultraReducedSize > 1024 * 1024 * 1024) {
+          if (ultraReducedSize > 400 * 1024) {
             console.error('❌ Application data still too large after ultra-aggressive reduction:', ultraReducedSize, 'bytes');
-            throw new Error(`Application data exceeds DynamoDB size limit even after aggressive reduction: ${ultraReducedSize} bytes`);
+            throw new Error(`Application data exceeds DynamoDB 400KB limit even after aggressive reduction: ${ultraReducedSize} bytes`);
           }
         }
       }
@@ -912,10 +912,10 @@ export class DynamoDBSeparateTablesService {
       });
       
       const dataSize = JSON.stringify(marshalledData).length;
-        console.log('📏 Applicant data size:', dataSize, 'bytes (max: 1GB)');
+        console.log('📏 Applicant data size:', dataSize, 'bytes (DynamoDB limit: 400KB)');
         
-        if (dataSize > 1024 * 1024 * 1024) {
-          console.warn('⚠️ Applicant data exceeds 1GB limit, reducing data size...');
+        if (dataSize > 400 * 1024) {
+          console.warn('⚠️ Applicant data exceeds DynamoDB 400KB limit, reducing data size...');
         applicantData = this.reduceApplicantDataSize(applicantData);
         
         // Re-check size after reduction
@@ -926,9 +926,9 @@ export class DynamoDBSeparateTablesService {
         const reducedSize = JSON.stringify(reducedMarshalledData).length;
         console.log('📏 Reduced applicant data size:', reducedSize, 'bytes');
         
-        if (reducedSize > 1024 * 1024 * 1024) {
+        if (reducedSize > 400 * 1024) {
           console.error('❌ Applicant data still too large after reduction:', reducedSize, 'bytes');
-          throw new Error(`Applicant data exceeds DynamoDB size limit: ${reducedSize} bytes`);
+          throw new Error(`Applicant data exceeds DynamoDB 400KB limit: ${reducedSize} bytes`);
         }
       }
 
@@ -1212,10 +1212,10 @@ export class DynamoDBSeparateTablesService {
       });
       
       const dataSize = JSON.stringify(marshalledData).length;
-        console.log('📏 Co-applicant data size:', dataSize, 'bytes (max: 1GB)');
+        console.log('📏 Co-applicant data size:', dataSize, 'bytes (DynamoDB limit: 400KB)');
         
-        if (dataSize > 1024 * 1024 * 1024) {
-          console.warn('⚠️ Co-applicant data exceeds 1GB limit, reducing data size...');
+        if (dataSize > 400 * 1024) {
+          console.warn('⚠️ Co-applicant data exceeds DynamoDB 400KB limit, reducing data size...');
         coApplicantData = this.reduceCoApplicantDataSize(coApplicantData);
         
         // Re-check size after reduction
@@ -1226,9 +1226,9 @@ export class DynamoDBSeparateTablesService {
         const reducedSize = JSON.stringify(reducedMarshalledData).length;
         console.log('📏 Reduced co-applicant data size:', reducedSize, 'bytes');
         
-        if (reducedSize > 1024 * 1024 * 1024) {
+        if (reducedSize > 400 * 1024) {
           console.error('❌ Co-applicant data still too large after reduction:', reducedSize, 'bytes');
-          throw new Error(`Co-applicant data exceeds DynamoDB size limit: ${reducedSize} bytes`);
+          throw new Error(`Co-applicant data exceeds DynamoDB 400KB limit: ${reducedSize} bytes`);
         }
       }
 
@@ -1556,10 +1556,10 @@ export class DynamoDBSeparateTablesService {
       });
       
       const dataSize = JSON.stringify(marshalledData).length;
-        console.log('📏 Guarantor data size:', dataSize, 'bytes (max: 1GB)');
+        console.log('📏 Guarantor data size:', dataSize, 'bytes (DynamoDB limit: 400KB)');
         
-        if (dataSize > 1024 * 1024 * 1024) {
-          console.warn('⚠️ Guarantor data exceeds 1GB limit, reducing data size...');
+        if (dataSize > 400 * 1024) {
+          console.warn('⚠️ Guarantor data exceeds DynamoDB 400KB limit, reducing data size...');
         guarantorData = this.reduceGuarantorDataSize(guarantorData);
         
         // Re-check size after reduction
@@ -1570,9 +1570,9 @@ export class DynamoDBSeparateTablesService {
         const reducedSize = JSON.stringify(reducedMarshalledData).length;
         console.log('📏 Reduced guarantor data size:', reducedSize, 'bytes');
         
-        if (reducedSize > 1024 * 1024 * 1024) {
+        if (reducedSize > 400 * 1024) {
           console.error('❌ Guarantor data still too large after reduction:', reducedSize, 'bytes');
-          throw new Error(`Guarantor data exceeds DynamoDB size limit: ${reducedSize} bytes`);
+          throw new Error(`Guarantor data exceeds DynamoDB 400KB limit: ${reducedSize} bytes`);
         }
       }
 
