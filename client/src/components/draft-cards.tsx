@@ -1314,6 +1314,7 @@ export const DraftCards = () => {
               zoneinfo: allData.application.zoneinfo,
               applicantId: allData.application.appid,
               reference_id: allData.application.appid,
+              role: 'applicant',
               form_data: comprehensiveFormData,
               current_step: allData.application.current_step || 0,
               last_updated: allData.application.last_updated,

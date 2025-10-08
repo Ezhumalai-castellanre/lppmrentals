@@ -20,6 +20,7 @@ export interface FileUploadWebhookData {
 export interface FormDataWebhookData {
   reference_id: string;
   application_id: string;
+  role?: string;
   form_data: {
     application?: {
       buildingAddress?: string;
@@ -821,6 +822,7 @@ export class WebhookService {
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: zoneinfo || applicationId,
+        role: 'applicant',
         form_data: applicantPayload,
         uploaded_files: this.filterApplicantFiles(uploadedFiles),
         submission_type: 'applicant_only'
@@ -873,6 +875,7 @@ export class WebhookService {
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: zoneinfo || applicationId,
+        role: `coapplicant${coApplicantIndex + 1}`,
         form_data: coApplicantPayload,
         uploaded_files: this.filterCoApplicantFiles(uploadedFiles, coApplicantIndex),
         submission_type: 'coapplicant_only'
@@ -935,6 +938,7 @@ export class WebhookService {
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: zoneinfo || applicationId,
+        role: `guarantor${guarantorIndex + 1}`,
         form_data: guarantorPayload,
         uploaded_files: this.filterGuarantorFiles(uploadedFiles, guarantorIndex),
         submission_type: 'guarantor_only'
@@ -1147,7 +1151,8 @@ export class WebhookService {
       guarantor_pay_stubs?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
       guarantor_credit_report?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
       other_occupants_identity?: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
-    }
+    },
+    role?: string
   ): Promise<{ success: boolean; error?: string }> {
     // Create a stable submission ID to prevent duplicate sends
     const stableAppId = zoneinfo || applicationId || '';
@@ -1166,10 +1171,18 @@ export class WebhookService {
       // Transform the data into the exact structure needed for the webhook
       const transformedData = this.transformFormDataToWebhookFormat(formData, uploadedFiles);
       
+      // Debug: Log the role parameter
+      console.log('🔍 DEBUG: Role parameter received:', role);
+      console.log('🔍 DEBUG: Role value being set:', role || 'applicant');
+      
       // Format data for external webhook
+      const roleValue = role || 'applicant';
+      console.log('🔍 DEBUG: Final role value before webhook data creation:', roleValue);
+      
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: zoneinfo || applicationId,
+        role: roleValue,
         form_data: transformedData,
         uploaded_files: {
           supporting_w9_forms: uploadedFiles?.supporting_w9_forms || [],
@@ -1218,6 +1231,13 @@ export class WebhookService {
       const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout for large JSON
       
       try {
+        // Debug: Log the final webhook data being sent
+        console.log('🔍 DEBUG: Final webhook data being sent:', JSON.stringify(webhookData, null, 2));
+        console.log('🔍 DEBUG: Role in webhook data:', webhookData.role);
+        console.log('🔍 DEBUG: Webhook data keys:', Object.keys(webhookData));
+        console.log('🔍 DEBUG: Role attribute exists:', 'role' in webhookData);
+        console.log('🔍 DEBUG: Role value type:', typeof webhookData.role);
+        
         const response = await fetch(this.WEBHOOK_PROXY_URL, {
           method: 'POST',
           headers: {
@@ -1747,163 +1767,6 @@ export class WebhookService {
         ...(Object.keys(applicantDocuments).length > 0 ? { documents: applicantDocuments } : {})
       }),
 
-      // Co-Applicants section - use new nested structure if available
-      coApplicants: formData.coApplicants ? formData.coApplicants.map((coApplicant: any, index: number) => ({
-        coApplicant: coApplicant.coApplicant || `coapplicant${index + 1}`, // Dynamic type field
-        email: coApplicant.email,
-        phone: coApplicant.phone,
-        address: coApplicant.address || "",
-        zip: coApplicant.zip,
-        landlordZipCode: coApplicant.landlordZipCode,
-        landlordPhone: coApplicant.landlordPhone,
-        landlordEmail: coApplicant.landlordEmail,
-        city: coApplicant.city,
-        landlordCity: coApplicant.landlordCity,
-        name: coApplicant.name,
-        licenseState: coApplicant.licenseState,
-        state: coApplicant.state,
-        relationship: coApplicant.relationship,
-        dob: coApplicant.dob,
-        age: coApplicant.age || 0,
-        ssn: coApplicant.ssn,
-        license: coApplicant.license,
-        lengthAtAddressYears: coApplicant.lengthAtAddressYears,
-        lengthAtAddressMonths: coApplicant.lengthAtAddressMonths,
-        landlordName: coApplicant.landlordName,
-        landlordAddressLine1: coApplicant.landlordAddressLine1,
-        landlordAddressLine2: coApplicant.landlordAddressLine2,
-        landlordState: coApplicant.landlordState,
-        currentRent: coApplicant.currentRent,
-        reasonForMoving: coApplicant.reasonForMoving,
-        employmentType: coApplicant.employmentType,
-        employer: coApplicant.employer,
-        position: coApplicant.position,
-        employmentStart: coApplicant.employmentStart,
-        income: coApplicant.income || "",
-        incomeFrequency: coApplicant.incomeFrequency || "monthly",
-        otherIncome: coApplicant.otherIncome || "",
-        otherIncomeSource: coApplicant.otherIncomeSource || "",
-        otherIncomeFrequency: coApplicant.otherIncomeFrequency || "monthly",
-        bankRecords: coApplicant.bankRecords || [],
-        ...(Object.keys(coApplicantDocuments).length > 0 ? { documents: coApplicantDocuments } : {})
-      })) : (formData.hasCoApplicant ? [{
-        coApplicant: "coapplicant1", // Single co-applicant gets coapplicant1
-        email: formData.coApplicantEmail,
-        phone: formData.coApplicantPhone,
-        address: formData.coApplicantAddress || formData.coApplicant?.address || "",
-        zip: formData.coApplicantZip,
-        landlordZipCode: formData.coApplicantLandlordZipCode,
-        landlordPhone: formData.coApplicantLandlordPhone,
-        landlordEmail: formData.coApplicantLandlordEmail,
-        city: formData.coApplicantCity,
-        landlordCity: formData.coApplicantLandlordCity,
-        name: formData.coApplicantName,
-        licenseState: formData.coApplicantLicenseState,
-        state: formData.coApplicantState,
-        relationship: formData.coApplicantRelationship,
-        dob: formData.coApplicantDob,
-        age: formData.coApplicantAge || 0,
-        ssn: formData.coApplicantSsn,
-        license: formData.coApplicantLicense,
-        lengthAtAddressYears: formData.coApplicantLengthAtAddressYears,
-        lengthAtAddressMonths: formData.coApplicantLengthAtAddressMonths,
-        landlordName: formData.coApplicantLandlordName,
-        landlordAddressLine1: formData.coApplicantLandlordAddressLine1,
-        landlordAddressLine2: formData.coApplicantLandlordAddressLine2,
-        landlordState: formData.coApplicantLandlordState,
-        currentRent: formData.coApplicantCurrentRent,
-        reasonForMoving: formData.coApplicantReasonForMoving,
-        employmentType: formData.coApplicantEmploymentType,
-        employer: formData.coApplicantEmployerName,
-        position: formData.coApplicantPosition,
-        employmentStart: formData.coApplicantStartDate,
-        income: formData.coApplicantSalary || formData.coApplicant?.income || formData.coApplicant?.salary || "",
-        incomeFrequency: formData.coApplicantIncomeFrequency || formData.coApplicant?.incomeFrequency || "monthly",
-        otherIncome: formData.coApplicantOtherIncome || formData.coApplicant?.otherIncome || "",
-        otherIncomeSource: formData.coApplicantOtherIncomeSource || formData.coApplicant?.otherIncomeSource || "",
-        otherIncomeFrequency: formData.coApplicantOtherIncomeFrequency || formData.coApplicant?.otherIncomeFrequency || "monthly",
-        bankRecords: formData.coApplicantBankRecords || formData.coApplicant?.bankRecords || [],
-        ...(Object.keys(coApplicantDocuments).length > 0 ? { documents: coApplicantDocuments } : {})
-      }] : []),
-
-      // Guarantors section - use new nested structure if available
-      guarantors: formData.guarantors ? formData.guarantors.map((guarantor: any, index: number) => ({
-        guarantor: guarantor.guarantor || (index + 1).toString(), // Dynamic type field
-        email: guarantor.email,
-        phone: guarantor.phone,
-        address: guarantor.address || "",
-        zip: guarantor.zip,
-        landlordZipCode: guarantor.landlordZipCode,
-        landlordPhone: guarantor.landlordPhone,
-        landlordEmail: guarantor.landlordEmail,
-        city: guarantor.city,
-        landlordCity: guarantor.landlordCity,
-        name: guarantor.name,
-        licenseState: guarantor.licenseState,
-        state: guarantor.state,
-        relationship: guarantor.relationship,
-        dob: guarantor.dob,
-        age: guarantor.age || 0,
-        ssn: guarantor.ssn,
-        license: guarantor.license,
-        lengthAtAddressYears: guarantor.lengthAtAddressYears,
-        lengthAtAddressMonths: guarantor.lengthAtAddressMonths,
-        landlordName: guarantor.landlordName,
-        landlordAddressLine1: guarantor.landlordAddressLine1,
-        landlordState: guarantor.landlordState,
-        landlordAddressLine2: guarantor.landlordAddressLine2,
-        currentRent: guarantor.currentRent,
-        reasonForMoving: guarantor.reasonForMoving,
-        employmentType: guarantor.employmentType,
-        businessName: guarantor.businessName || "",
-        businessType: guarantor.businessType || "",
-        yearsInBusiness: guarantor.yearsInBusiness || "",
-        income: guarantor.income || guarantor.salary || "",
-        incomeFrequency: guarantor.incomeFrequency || "monthly",
-        otherIncome: guarantor.otherIncome || "",
-        otherIncomeSource: guarantor.otherIncomeSource || "",
-        otherIncomeFrequency: guarantor.otherIncomeFrequency || "monthly",
-        bankRecords: guarantor.bankRecords || [],
-        ...(Object.keys(guarantorDocuments).length > 0 ? { documents: guarantorDocuments } : {})
-      })) : (formData.hasGuarantor ? [{
-        guarantor: "1", // Dynamic type field for single guarantor
-        email: formData.guarantorEmail,
-        phone: formData.guarantorPhone,
-        address: formData.guarantorAddress || formData.guarantor?.address || "",
-        zip: formData.guarantorZip,
-        landlordZipCode: formData.guarantorLandlordZipCode,
-        landlordPhone: formData.guarantorLandlordPhone,
-        landlordEmail: formData.guarantorLandlordEmail,
-        city: formData.guarantorCity,
-        landlordCity: formData.guarantorLandlordCity,
-        name: formData.guarantorName,
-        licenseState: formData.guarantorLicenseState,
-        state: formData.guarantorState,
-        relationship: formData.guarantorRelationship,
-        dob: formData.guarantorDob,
-        age: formData.guarantorAge || 0,
-        ssn: formData.guarantorSsn,
-        license: formData.guarantorLicense,
-        lengthAtAddressYears: formData.guarantorLengthAtAddressYears,
-        lengthAtAddressMonths: formData.guarantorLengthAtAddressMonths,
-        landlordName: formData.guarantorLandlordName,
-        landlordAddressLine1: formData.guarantorLandlordAddressLine1,
-        landlordState: formData.guarantorLandlordState,
-        landlordAddressLine2: formData.guarantorLandlordAddressLine2,
-        currentRent: formData.guarantorCurrentRent,
-        reasonForMoving: formData.guarantorReasonForMoving,
-        employmentType: formData.guarantorEmploymentType,
-        businessName: formData.guarantorBusinessName || formData.guarantor?.businessName || "",
-        businessType: formData.guarantorBusinessType || formData.guarantor?.businessType || "",
-        yearsInBusiness: formData.guarantorYearsInBusiness || formData.guarantor?.yearsInBusiness || "",
-        income: formData.guarantorSalary || formData.guarantor?.income || formData.guarantor?.salary || "",
-        incomeFrequency: formData.guarantorIncomeFrequency || formData.guarantor?.incomeFrequency || "monthly",
-        otherIncome: formData.guarantorOtherIncome || formData.guarantor?.otherIncome || "",
-        otherIncomeSource: formData.guarantorOtherIncomeSource || formData.guarantor?.otherIncomeSource || "",
-        otherIncomeFrequency: formData.guarantor?.otherIncomeFrequency || "monthly",
-        bankRecords: formData.guarantorBankRecords || formData.guarantor?.bankRecords || [],
-        ...(Object.keys(guarantorDocuments).length > 0 ? { documents: guarantorDocuments } : {})
-      }] : []),
 
       // Occupants section with proper structure
       occupants: (formData.otherOccupants || []).map((occupant: any, index: number) => ({
@@ -1913,10 +1776,7 @@ export class WebhookService {
         dob: occupant.dob,
         ssn: occupant.ssn,
         license: occupant.license,
-        age: occupant.age || 0,
-        documents: {
-          ssn1: [{}] // Placeholder for document structure
-        }
+        age: occupant.age || 0
       })),
 
       // Applicant summary fields
@@ -1939,57 +1799,39 @@ export class WebhookService {
       pdfUrl: formData.pdfUrl
     };
 
-    // Include uploadedFilesMetadata inside form data when present for consumers that expect it there
-    if (formData.uploadedFilesMetadata) {
-      (transformedData as any).uploadedFilesMetadata = formData.uploadedFilesMetadata;
-    }
 
     // Add Additional People section if co-applicants or guarantors exist
-    if (transformedData.coApplicants && transformedData.coApplicants.length > 0 || 
-        transformedData.guarantors && transformedData.guarantors.length > 0) {
+    if (formData.hasCoApplicant || formData.hasGuarantor) {
       const additionalPeople: any = {
         zoneinfo: formData.zoneinfo || formData.applicantId || 'unknown',
-        role: 'applicant',
         applicant: transformedData.applicant?.name || 'unknown'
       };
 
-      // Add co-applicants (use pluralized keys and roles: coApplicants1, coapplicants1)
-      if (transformedData.coApplicants && transformedData.coApplicants.length > 0) {
-        transformedData.coApplicants.forEach((coApplicant: any, index: number) => {
-          if (coApplicant && coApplicant.name) {
-            additionalPeople[`coApplicants${index + 1}`] = {
-              coApplicants: `coapplicants${index + 1}`,
-              url: `https://www.app.lppmrentals.com/login?role=coapplicants${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
-              name: coApplicant.name,
-              email: coApplicant.email || ''
-            };
-          }
-        });
+      // Add co-applicants based on hasCoApplicant flag
+      if (formData.hasCoApplicant) {
+        // Use actual co-applicant data if available, otherwise create placeholder
+        const coApplicantData = formData.coApplicants && formData.coApplicants.length > 0 ? formData.coApplicants[0] : null;
+        additionalPeople[`coApplicants1`] = {
+          coApplicant: `coapplicant1`,
+          url: `https://www.app.lppmrentals.com/login?role=coapplicant1&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+          name: coApplicantData?.name || 'Co-Applicant',
+          email: coApplicantData?.email || ''
+        };
       }
 
-      // Add guarantors
-      if (transformedData.guarantors && transformedData.guarantors.length > 0) {
-        transformedData.guarantors.forEach((guarantor: any, index: number) => {
-          if (guarantor && guarantor.name) {
-            additionalPeople[`guarantor${index + 1}`] = {
-              guarantor: `guarantor${index + 1}`,
-              url: `https://www.app.lppmrentals.com/login?role=guarantor${index + 1}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
-              name: guarantor.name,
-              email: guarantor.email || ''
-            };
-          }
-        });
+      // Add guarantors based on hasGuarantor flag
+      if (formData.hasGuarantor) {
+        // Use actual guarantor data if available, otherwise create placeholder
+        const guarantorData = formData.guarantors && formData.guarantors.length > 0 ? formData.guarantors[0] : null;
+        additionalPeople[`guarantor1`] = {
+          guarantor: `guarantor1`,
+          url: `https://www.app.lppmrentals.com/login?role=guarantor1&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+          name: guarantorData?.name || 'Guarantor',
+          email: guarantorData?.email || ''
+        };
       }
 
       (transformedData as any)["Additional People"] = additionalPeople;
-    }
-
-    // Remove undefined sections
-    if (!transformedData.coApplicants || transformedData.coApplicants.length === 0) {
-      delete transformedData.coApplicants;
-    }
-    if (!transformedData.guarantors || transformedData.guarantors.length === 0) {
-      delete transformedData.guarantors;
     }
 
     // Debug logging for transformed income fields

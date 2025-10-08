@@ -9,6 +9,7 @@ export interface DraftData {
   zoneinfo: string; // Source of truth - user's zoneinfo value
   applicantId: string; // Generated from zoneinfo for DynamoDB partition key
   reference_id: string;
+  role?: string; // Role of the person submitting (applicant, coapplicant1, guarantor1, etc.)
   form_data: any;
   current_step: number;
   last_updated: string;
@@ -35,6 +36,7 @@ export interface FormDataWithApplicationId {
   application_id: string; // Form data uses application_id (should match zoneinfo)
   applicantId: string; // Generated from zoneinfo for DynamoDB partition key
   reference_id: string;
+  role?: string; // Role of the person submitting (applicant, coapplicant1, guarantor1, etc.)
   form_data: any;
   current_step: number;
   last_updated: string;
@@ -747,6 +749,7 @@ export class DynamoDBService {
             Item: {
               applicantId: { S: applicantId },
               reference_id: { S: draftData.reference_id },
+              role: { S: draftData.role || 'applicant' },
               form_data: { S: JSON.stringify(hybridData.formData) },
               current_step: { N: (draftData.current_step || 0).toString() },
               last_updated: { S: draftData.last_updated || new Date().toISOString() },
@@ -776,6 +779,7 @@ export class DynamoDBService {
           Item: {
             applicantId: { S: applicantId },
             reference_id: { S: draftData.reference_id },
+            role: { S: draftData.role || 'applicant' },
             form_data: { S: JSON.stringify(cleanFormData) },
             current_step: { N: (draftData.current_step || 0).toString() },
             last_updated: { S: draftData.last_updated || new Date().toISOString() },
@@ -1427,6 +1431,7 @@ export class DynamoDBService {
         zoneinfo: item.zoneinfo || applicationId,
         applicantId: item.applicantId || applicationId,
         reference_id: item.reference_id,
+        role: item.role || 'applicant',
         form_data: item.form_data ? JSON.parse(item.form_data) : {},
         current_step: item.current_step || 0,
         last_updated: item.last_updated,
@@ -1496,6 +1501,7 @@ export class DynamoDBService {
         zoneinfo: item.zoneinfo || item.applicantId,
         applicantId: item.applicantId,
         reference_id: item.reference_id,
+        role: item.role || 'applicant',
         form_data: baseFormData,
         current_step: item.current_step || 0,
         last_updated: item.last_updated,

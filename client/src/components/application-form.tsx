@@ -5178,92 +5178,6 @@ export function ApplicationForm() {
             })),
           },
           
-          // Co-Applicants (nested objects)
-          coApplicants: (formData.coApplicants || []).map((coApplicant: any, index: number) => ({
-            coApplicant: (index + 1).toString(), // Dynamic type field
-            email: coApplicant.email || formData.coApplicantEmail,
-            phone: formatPhoneForPayload(coApplicant.phone || formData.coApplicantPhone),
-            zip: coApplicant.zip || formData.coApplicantZip,
-            landlordZipCode: coApplicant.landlordZipCode || formData.coApplicantLandlordZipCode,
-            landlordPhone: coApplicant.landlordPhone || formData.coApplicantLandlordPhone,
-            landlordEmail: coApplicant.landlordEmail || formData.coApplicantLandlordEmail,
-            city: coApplicant.city,
-            landlordCity: coApplicant.landlordCity,
-            name: coApplicant.name,
-            licenseState: coApplicant.licenseState,
-            state: coApplicant.state,
-            relationship: coApplicant.relationship,
-            dob: safeDateToISO(coApplicant.dob),
-            age: coApplicant.age || 0,
-            ssn: coApplicant.ssn || formData.coApplicantSsn,
-            license: coApplicant.license || formData.coApplicantLicense,
-            lengthAtAddressYears: coApplicant.lengthAtAddressYears,
-            lengthAtAddressMonths: coApplicant.lengthAtAddressMonths,
-            landlordName: coApplicant.landlordName,
-            landlordAddressLine1: coApplicant.landlordAddressLine1,
-            landlordAddressLine2: coApplicant.landlordAddressLine2,
-            landlordState: coApplicant.landlordState,
-            currentRent: coApplicant.currentRent,
-            reasonForMoving: coApplicant.reasonForMoving,
-            employmentType: coApplicant.employmentType,
-            employer: coApplicant.employer,
-            position: coApplicant.position,
-            employmentStart: safeDateToISO(coApplicant.employmentStart),
-            income: coApplicant.income,
-            incomeFrequency: coApplicant.incomeFrequency,
-            otherIncome: coApplicant.otherIncome,
-            otherIncomeSource: coApplicant.otherIncomeSource,
-            bankRecords: (coApplicant.bankRecords || []).map((record: any) => ({
-                bankName: record.bankName,
-                accountType: record.accountType,
-                accountNumber: record.accountNumber || ""
-              })),
-          })),
-          
-          // Guarantors (nested objects)
-          guarantors: (formData.guarantors || []).map((guarantor: any, index: number) => ({
-            guarantor: (index + 1).toString(), // Dynamic type field
-            email: guarantor.email || formData.guarantorEmail,
-            phone: formatPhoneForPayload(guarantor.phone || formData.guarantorPhone),
-            zip: guarantor.zip || formData.guarantorZip,
-            city: guarantor.city,
-            name: guarantor.name,
-            licenseState: guarantor.licenseState,
-            address: guarantor.address,
-            state: guarantor.state,
-            relationship: guarantor.relationship,
-            dob: safeDateToISO(guarantor.dob),
-            age: guarantor.age || 0,
-            ssn: guarantor.ssn || formData.guarantorSsn,
-            license: guarantor.license || formData.guarantorLicense,
-            lengthAtAddressYears: guarantor.lengthAtAddressYears,
-            lengthAtAddressMonths: guarantor.lengthAtAddressMonths,
-            landlordName: guarantor.landlordName,
-            landlordAddressLine1: guarantor.landlordAddressLine1,
-            landlordAddressLine2: guarantor.landlordAddressLine2,
-            landlordCity: guarantor.landlordCity,
-            landlordState: guarantor.landlordState,
-            landlordZipCode: guarantor.landlordZipCode,
-            landlordPhone: guarantor.landlordPhone,
-            landlordEmail: guarantor.landlordEmail,
-            currentRent: guarantor.currentRent,
-            reasonForMoving: guarantor.reasonForMoving,
-            employmentType: guarantor.employmentType,
-            businessName: guarantor.businessName,
-            businessType: guarantor.businessType,
-            yearsInBusiness: guarantor.yearsInBusiness,
-            income: guarantor.income,
-            incomeFrequency: guarantor.incomeFrequency,
-            otherIncome: guarantor.otherIncome,
-            otherIncomeFrequency: guarantor.otherIncomeFrequency || "monthly",
-            otherIncomeSource: guarantor.otherIncomeSource,
-            bankRecords: (guarantor.bankRecords || []).map((record: any) => ({
-                bankName: record.bankName,
-                accountType: record.accountType,
-                accountNumber: record.accountNumber || ""
-              })),
-
-          })),
           
           // Occupants (array)
           occupants: (formData.occupants || formData.otherOccupants || []).map((occupant: any) => ({
@@ -5272,8 +5186,7 @@ export function ApplicationForm() {
             dob: occupant.dob,
             ssn: occupant.ssn,
             license: occupant.license,
-            age: occupant.age || 0,
-            documents: occupant.documents || {}
+            age: occupant.age || 0
           })),
           
           // Core metadata fields
@@ -6016,8 +5929,6 @@ export function ApplicationForm() {
               hasGuarantor: formData.hasGuarantor || (formData.guarantors && formData.guarantors.length > 0),
               // Ensure webhook responses are properly included for form field documents
               webhookResponses: webhookResponses,
-              // Include uploaded files metadata for form field documents
-              uploadedFilesMetadata: uploadedFilesMetadata,
               // Include encrypted documents for form field documents
               encryptedDocuments: encryptedDocuments
             };
@@ -6027,7 +5938,8 @@ export function ApplicationForm() {
               referenceId,
               individualApplicantId,
               user?.zoneinfo,
-              uploadedFilesMetadata
+              uploadedFilesMetadata,
+              userRole || 'applicant'
             );
           }
           
