@@ -1072,6 +1072,48 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 </div>
               )
               })()}
+
+              {/* Application Information for context */}
+              <div className="mt-6 bg-white rounded-md border border-orange-200 p-3">
+                <div className="text-sm font-semibold text-orange-900 mb-2">Application Information</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <span className="font-medium">Building Address:</span>
+                    <span className="ml-2 text-orange-700">{formSummary.buildingAddress || 'Not specified'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Apartment:</span>
+                    <span className="ml-2 text-orange-700">{formSummary.apartmentNumber || 'Not specified'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Move-in Date:</span>
+                    <span className="ml-2 text-orange-700">{formSummary.moveInDate && formSummary.moveInDate !== 'Not specified' ? formatDate(formSummary.moveInDate) : 'Not specified'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Monthly Rent:</span>
+                    <span className="ml-2 text-orange-700">{formSummary.monthlyRent || 'Not specified'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Apartment Type:</span>
+                    <span className="ml-2 text-orange-700">{formSummary.apartmentType || 'Not specified'}</span>
+                  </div>
+                </div>
+                
+                {/* Applicant Information */}
+                <div className="mt-4 pt-3 border-t border-orange-200">
+                  <div className="text-sm font-semibold text-orange-900 mb-2">Primary Applicant</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="font-medium">Name:</span>
+                      <span className="ml-2 text-orange-700">{formSummary.applicantName || 'Not specified'}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Email:</span>
+                      <span className="ml-2 text-orange-700">{formSummary.applicantEmail || 'Not specified'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </TabsContent>
 
@@ -1340,11 +1382,26 @@ export const DraftCards = () => {
         } else if (userRole.startsWith('guarantor')) {
           // Guarantor: Show data from Guarantors_nyc table only
           if (allData.guarantor) {
-            // Fetch applications to resolve current_step by appid
+            // Fetch applications to resolve current_step and application data by appid
             const zoneApps = await dynamoDBSeparateTablesUtils.getApplicationsByZoneinfo();
             const matchedApp = (zoneApps || []).find(a => a.appid === (allData.guarantor as any).appid);
             const currentStepFromApp = matchedApp?.current_step ?? 0;
+            
+            // Fetch applicant data for context
+            let matchedApplicant: any = undefined;
+            try {
+              matchedApplicant = await dynamoDBSeparateTablesUtils.getApplicantByAppId((allData.guarantor as any).appid);
+            } catch {}
+            
             const guarantorFormData = {
+              // Include application for Application Information block
+              application: matchedApp?.application_info || {},
+              
+              // Include applicant for Primary Applicant block
+              applicant: matchedApplicant?.applicant_info || {},
+              applicantName: matchedApplicant?.applicant_info?.name,
+              applicantEmail: matchedApplicant?.applicant_info?.email,
+              
               // Guarantor data (from Guarantors_nyc)
               guarantors: [ (allData.guarantor as any).guarantor_info ],
               guarantor_occupants: [],
@@ -1353,6 +1410,13 @@ export const DraftCards = () => {
               application_id: (allData.guarantor as any).appid,
               zoneinfo: (allData.guarantor as any).zoneinfo
             };
+            
+            // Debug logging to see what's happening
+            console.log('🔍 DEBUG: Guarantor appid:', (allData.guarantor as any).appid);
+            console.log('🔍 DEBUG: ZoneApps found:', zoneApps?.length);
+            console.log('🔍 DEBUG: MatchedApp:', matchedApp);
+            console.log('🔍 DEBUG: MatchedApp.application_info:', matchedApp?.application_info);
+            console.log('🔍 DEBUG: GuarantorFormData.application:', guarantorFormData.application);
             
             drafts.push({
               zoneinfo: (allData.guarantor as any).zoneinfo,
