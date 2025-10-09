@@ -3327,21 +3327,8 @@ export function ApplicationForm() {
         saveResults.push(coApplicantSaveResult);
 
         // Also persist current_step for resume navigation (do not overwrite signatures/documents)
-        try {
-          const stepOnlyApplicationData = {
-            application_info: { zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '' },
-            current_step: currentStep,
-            status: 'draft' as const,
-            storage_mode: 'direct' as const,
-            flow_type: 'separate_webhooks' as const,
-            webhook_flow_version: '2.0',
-            last_updated: new Date().toISOString()
-          };
-          const stepSave = await dynamoDBSeparateTablesUtils.saveApplicationData(stepOnlyApplicationData as any);
-          saveResults.push(stepSave);
-        } catch (e) {
-          console.warn('⚠️ Failed to persist current_step for co-applicant resume:', e);
-        }
+        // Co-applicants should not update app_nyc table - only save to Co-Applicants table
+        console.log('ℹ️ Co-applicant draft saved to Co-Applicants table only (not updating app_nyc)');
 
         console.log('✅ Co-Applicant draft saved to Co-Applicants table');
 
@@ -3407,21 +3394,8 @@ export function ApplicationForm() {
         saveResults.push(guarantorSaveResult);
 
         // Also persist current_step for resume navigation (do not overwrite signatures/documents)
-        try {
-          const stepOnlyApplicationData = {
-            application_info: { zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '' },
-            current_step: currentStep,
-            status: 'draft' as const,
-            storage_mode: 'direct' as const,
-            flow_type: 'separate_webhooks' as const,
-            webhook_flow_version: '2.0',
-            last_updated: new Date().toISOString()
-          };
-          const stepSave = await dynamoDBSeparateTablesUtils.saveApplicationData(stepOnlyApplicationData as any);
-          saveResults.push(stepSave);
-        } catch (e) {
-          console.warn('⚠️ Failed to persist current_step for guarantor resume:', e);
-        }
+        // Guarantors should not update app_nyc table - only save to Guarantors table
+        console.log('ℹ️ Guarantor draft saved to Guarantors table only (not updating app_nyc)');
 
         console.log('✅ Guarantor draft saved to Guarantors_nyc table');
 
@@ -6328,27 +6302,32 @@ export function ApplicationForm() {
           } else {
             console.log('❓ Unknown role, saving to all tables as fallback...');
             
-            // Fallback: save to all tables if role is unknown
-            const submittedApplicationData = {
-              application_info: {
-                ...submittedFormRoleScoped.application,
-                reference_id: submissionResult?.reference_id || referenceId,
-                zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''
-              },
-              current_step: 12,
-              status: 'submitted' as const,
-              uploaded_files_metadata: (completeServerData as any).uploaded_files_metadata || {},
-              webhook_responses: (completeServerData as any).webhook_responses || {},
-              signatures: submittedSigsRoleScoped,
-              encrypted_documents: (completeServerData as any).encrypted_documents || {},
-              storage_mode: 'direct' as const,
-              flow_type: 'separate_webhooks' as const,
-              webhook_flow_version: '2.0',
-              last_updated: new Date().toISOString()
-            };
+            // Only save to app_nyc for primary applicants - co-applicants and guarantors should not overwrite app_nyc
+            if (!userRole || (!userRole.startsWith('coapplicant') && !userRole.startsWith('guarantor'))) {
+              // Fallback: save to all tables if role is unknown (but not for co-applicants/guarantors)
+              const submittedApplicationData = {
+                application_info: {
+                  ...submittedFormRoleScoped.application,
+                  reference_id: submissionResult?.reference_id || referenceId,
+                  zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''
+                },
+                current_step: 12,
+                status: 'submitted' as const,
+                uploaded_files_metadata: (completeServerData as any).uploaded_files_metadata || {},
+                webhook_responses: (completeServerData as any).webhook_responses || {},
+                signatures: submittedSigsRoleScoped,
+                encrypted_documents: (completeServerData as any).encrypted_documents || {},
+                storage_mode: 'direct' as const,
+                flow_type: 'separate_webhooks' as const,
+                webhook_flow_version: '2.0',
+                last_updated: new Date().toISOString()
+              };
 
-            const appSaveResult = await dynamoDBSeparateTablesUtils.saveApplicationData(submittedApplicationData);
-            saveResults.push(appSaveResult);
+              const appSaveResult = await dynamoDBSeparateTablesUtils.saveApplicationData(submittedApplicationData);
+              saveResults.push(appSaveResult);
+            } else {
+              console.log('ℹ️ Co-applicant/Guarantor role detected - skipping app_nyc table update to prevent overwrite');
+            }
           }
 
           const allSaved = saveResults.every(result => result);
@@ -9601,7 +9580,7 @@ export function ApplicationForm() {
                     return (
                     <div key={index} className="mb-8 last:mb-0">
                       <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
-                        Financial Information 3 - Guarantor {actualIndex + 1}
+                        Financial Information - Guarantor {actualIndex + 1}
                       </h3>
                       <FinancialSection
                         title={`Guarantor ${actualIndex + 1} Financial Information`}
