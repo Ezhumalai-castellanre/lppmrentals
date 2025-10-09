@@ -1751,29 +1751,42 @@ export class WebhookService {
 
       // Add co-applicants based on hasCoApplicant flag
       if (formData.hasCoApplicant) {
-        // Use actual co-applicant data if available, otherwise create placeholder
-        const coApplicantData = formData.coApplicants && formData.coApplicants.length > 0 ? formData.coApplicants[0] : null;
-        additionalPeople[`coApplicants1`] = {
-          coApplicant: `coapplicant1`,
-          url: `https://www.app.lppmrentals.com/login?role=coapplicant1&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
-          name: coApplicantData?.name || 'Co-Applicant',
-          email: coApplicantData?.email || ''
-        };
+        // Process all co-applicants, not just the first one
+        const coApplicants = formData.coApplicants || [];
+        console.log(`🔍 Processing ${coApplicants.length} co-applicants for webhook`);
+        coApplicants.forEach((coApplicantData: any, index: number) => {
+          const coApplicantNumber = index + 1;
+          console.log(`👥 Adding coApplicant${coApplicantNumber}:`, coApplicantData?.name || `Co-Applicant ${coApplicantNumber}`);
+          additionalPeople[`coApplicants${coApplicantNumber}`] = {
+            coApplicant: `coapplicant${coApplicantNumber}`,
+            url: `https://www.app.lppmrentals.com/login?role=coapplicant${coApplicantNumber}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+            name: coApplicantData?.name || `Co-Applicant ${coApplicantNumber}`,
+            email: coApplicantData?.email || ''
+          };
+        });
       }
 
       // Add guarantors based on hasGuarantor flag
       if (formData.hasGuarantor) {
-        // Use actual guarantor data if available, otherwise create placeholder
-        const guarantorData = formData.guarantors && formData.guarantors.length > 0 ? formData.guarantors[0] : null;
-        additionalPeople[`guarantor1`] = {
-          guarantor: `guarantor1`,
-          url: `https://www.app.lppmrentals.com/login?role=guarantor1&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
-          name: guarantorData?.name || 'Guarantor',
-          email: guarantorData?.email || ''
-        };
+        // Process all guarantors, not just the first one
+        const guarantors = formData.guarantors || [];
+        console.log(`🔍 Processing ${guarantors.length} guarantors for webhook`);
+        guarantors.forEach((guarantorData: any, index: number) => {
+          const guarantorNumber = index + 1;
+          console.log(`👥 Adding guarantor${guarantorNumber}:`, guarantorData?.name || `Guarantor ${guarantorNumber}`);
+          additionalPeople[`guarantor${guarantorNumber}`] = {
+            guarantor: `guarantor${guarantorNumber}`,
+            url: `https://www.app.lppmrentals.com/login?role=guarantor${guarantorNumber}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+            name: guarantorData?.name || `Guarantor ${guarantorNumber}`,
+            email: guarantorData?.email || ''
+          };
+        });
       }
 
       (transformedData as any)["Additional People"] = additionalPeople;
+      
+      // Debug log the complete Additional People section
+      console.log('📋 Complete Additional People section for webhook:', JSON.stringify(additionalPeople, null, 2));
     }
 
     // Debug logging for transformed income fields

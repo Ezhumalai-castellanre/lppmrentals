@@ -112,17 +112,23 @@ export default function MissingDocumentsPage() {
     }
   }, [pendingItems.length, uploadedItems.length]);
 
-      // Parse applicant ID from URL query parameters and auto-load
-    useEffect(() => {
-      // Always load all documents regardless of URL or saved state
-      const urlParams = new URLSearchParams(window.location.search);
-      const applicantIdFromUrl = urlParams.get('applicantId');
-      if (applicantIdFromUrl) {
-        setApplicantId(applicantIdFromUrl);
-        setLoadedFromUrl(true);
-      }
-      fetchMissingSubitems('');
-    }, [user]);
+  // Parse applicant ID from URL query parameters and auto-load; fallback to user's zoneinfo
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const applicantIdFromUrl = urlParams.get('applicantId');
+    if (applicantIdFromUrl) {
+      setApplicantId(applicantIdFromUrl);
+      setLoadedFromUrl(true);
+      fetchMissingSubitems(applicantIdFromUrl);
+      return;
+    }
+
+    const zoneApplicantId = user?.zoneinfo?.trim();
+    if (zoneApplicantId) {
+      setApplicantId(zoneApplicantId);
+      fetchMissingSubitems(zoneApplicantId);
+    }
+  }, [user]);
 
   const fetchMissingSubitems = async (id: string) => {
     setLoading(true);
@@ -130,9 +136,15 @@ export default function MissingDocumentsPage() {
     setSuccessMessage(null);
     
     try {
-      // Always show all documents; ignore provided applicantId
-      const apiId = '';
+      const apiId = (id || applicantId || '').trim();
+      if (!apiId) {
+        throw new Error('Applicant ID not available');
+      }
       console.log('Searching for applicant ID:', apiId);
+      const candidateIds = Array.from(new Set([apiId, ...getAllApplicantIdFormats(apiId)]))
+        .map(v => (v || '').trim())
+        .filter(v => !!v);
+      console.log('Candidate applicant IDs:', candidateIds);
 
       const MONDAY_API_TOKEN = environment.monday.apiToken;
       const BOARD_ID = environment.monday.documentsBoardId;
@@ -211,17 +223,16 @@ export default function MissingDocumentsPage() {
         }
       });
 
-      // Find items matching the applicant ID (check both new Lppm format and old formats)
-      const searchApplicantIds: string[] = [];
-      
-      // Applicant format cross-mapping removed when showing all
-      
-      // Applicant format cross-mapping removed when showing all
-      
-      console.log('🔍 Showing all documents (no applicant filter)');
-      
-      // Find items that have subitems matching any of the possible applicant IDs
-      const matchingItems = items;
+      // Find items matching the applicant ID (check item-level applicantId and subitem-level applicantId)
+      const matchingItems = items.filter((item: MondayItem) => {
+        const itemApplicantId = item.column_values.find(cv => cv.id === "text_mksxyax3")?.text?.trim();
+        if (itemApplicantId && candidateIds.includes(itemApplicantId)) return true;
+        const hasSubitemMatch = (item.subitems || []).some((subitem: MondaySubitem) => {
+          const subApplicantId = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mkt9gepz")?.text?.trim();
+          return !!subApplicantId && candidateIds.includes(subApplicantId);
+        });
+        return hasSubitemMatch;
+      });
 
       console.log('📊 Found', matchingItems.length, 'items matching applicant ID', `"${apiId}"`);
 
@@ -233,8 +244,8 @@ export default function MissingDocumentsPage() {
         
         subitems.forEach((subitem: MondaySubitem) => {
           const subitemApplicantId = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mkt9gepz")?.text;
-          // Always include all subitems
-          {
+          // Include only subitems belonging to this applicant (including legacy formats)
+          if (candidateIds.includes((subitemApplicantId || '').trim())) {
             const status = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "status")?.label || "Missing";
             const applicantType = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mkt9x4qd")?.text || "Applicant";
             const coApplicantName = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mktanfxj")?.text || undefined;
@@ -272,15 +283,12 @@ export default function MissingDocumentsPage() {
         if (v.includes('applicant')) return 'applicant';
         return null;
       };
-      const userRoleCandidate = normalizeRole(
-        (user as any)?.role ||
-        (user as any)?.profile ||
-        (user as any)?.['custom:role'] ||
-        (Array.isArray((user as any)?.['cognito:groups']) ? (user as any)['cognito:groups'][0] : null)
-      );
-      const itemsForUser = userRoleCandidate
-        ? missingSubitems.filter(item => normalizeRole(item.guarantorName) === userRoleCandidate)
-        : missingSubitems;
+      const rawRole = (user as any)?.role || (user as any)?.profile || (user as any)?.['custom:role'] || (Array.isArray((user as any)?.['cognito:groups']) ? (user as any)['cognito:groups'][0] : null);
+      const userRoleCandidate = normalizeRole(rawRole);
+      const isAdmin = typeof rawRole === 'string' && rawRole.toLowerCase().includes('admin');
+      const itemsForUser = isAdmin
+        ? missingSubitems
+        : (userRoleCandidate ? missingSubitems.filter(item => normalizeRole(item.guarantorName) === userRoleCandidate) : missingSubitems);
 
       setMissingItems(itemsForUser);
       setSearched(true);
