@@ -386,6 +386,21 @@ export class WebhookService {
   // BULLETPROOF: Hardcode AWS endpoints to fix CSP issue immediately
   // TODO: Remove these hardcoded URLs once environment detection is working
   private static readonly WEBHOOK_PROXY_URL = 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/webhook-proxy';
+
+  /**
+   * Extracts role from reference_id format: app_<timestamp>_<role>_<randomString>
+   * Example: app_1760041674884_applicant_h538ioszm -> "applicant"
+   */
+  private static extractRoleFromReferenceId(referenceId: string): string {
+    if (!referenceId) return 'applicant';
+    
+    const parts = referenceId.split('_');
+    if (parts.length >= 3) {
+      return parts[2]; // Role is the third part
+    }
+    
+    return 'applicant'; // Default fallback
+  }
   private static readonly S3_PRESIGN_URL = 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/s3-presign';
   // Direct Make.com hook for application submission
   private static readonly MAKE_COM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
@@ -869,10 +884,13 @@ export class WebhookService {
       // Create co-applicant-only payload
       const coApplicantPayload = this.createCoApplicantOnlyPayload(coApplicant, coApplicantIndex, formData, uploadedFiles, referenceId);
       
+      // Extract role from reference_id
+      const extractedRole = this.extractRoleFromReferenceId(referenceId);
+      
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: zoneinfo || applicationId,
-        role: `coapplicant${coApplicantIndex + 1}`,
+        role: extractedRole, // Extract role from reference_id
         position: coApplicantIndex + 1, // Add position extracted from reference_id
         form_data: coApplicantPayload,
         uploaded_files: this.filterCoApplicantFiles(uploadedFiles, coApplicantIndex),
@@ -933,10 +951,13 @@ export class WebhookService {
       // Create guarantor-only payload
       const guarantorPayload = this.createGuarantorOnlyPayload(guarantor, guarantorIndex, formData, uploadedFiles, referenceId);
       
+      // Extract role from reference_id
+      const extractedRole = this.extractRoleFromReferenceId(referenceId);
+      
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: zoneinfo || applicationId,
-        role: `guarantor${guarantorIndex + 1}`,
+        role: extractedRole, // Extract role from reference_id
         position: guarantorIndex + 1, // Add position extracted from reference_id
         form_data: guarantorPayload,
         uploaded_files: this.filterGuarantorFiles(uploadedFiles, guarantorIndex),
@@ -1170,18 +1191,14 @@ export class WebhookService {
       // Transform the data into the exact structure needed for the webhook
       const transformedData = this.transformFormDataToWebhookFormat(formData, uploadedFiles);
       
-      // Debug: Log the role parameter
-      console.log('🔍 DEBUG: Role parameter received:', role);
-      console.log('🔍 DEBUG: Role value being set:', role || 'applicant');
-      
-      // Format data for external webhook
-      const roleValue = role || 'applicant';
-      console.log('🔍 DEBUG: Final role value before webhook data creation:', roleValue);
+      // Extract role from reference_id
+      const extractedRole = this.extractRoleFromReferenceId(referenceId);
       
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: zoneinfo || applicationId,
-        role: roleValue,
+        role: extractedRole, // Extract role from reference_id
+        position: 1, // Default position for main form data
         form_data: transformedData,
         submission_type: 'form_data'
       };
@@ -1329,8 +1346,6 @@ export class WebhookService {
     }
 
     return {
-      role: 'coApplicant', // Add role attribute at top level
-      position: position, // Add position extracted from reference_id
       application: transformedData.application,
       // Include only the specific co-applicant
       coApplicants: [safeCoApplicant],
@@ -1370,8 +1385,6 @@ export class WebhookService {
     }
     
     return {
-      role: 'Guarantor', // Add role attribute at top level
-      position: position, // Add position extracted from reference_id
       application: transformedData.application,
       // Include only the specific guarantor
       guarantors: [safeGuarantor],

@@ -7265,7 +7265,7 @@ export function ApplicationForm() {
                             <FormControl>
                               <ZIPInput
                                 name="applicantZip"
-                                label="ZIP Code*"
+                                label="ZIP Code"
                                 placeholder="ZIP code"
                                 value={field.value || ''}
                                 onChange={(value: string) => {
@@ -7298,8 +7298,8 @@ export function ApplicationForm() {
                       updateFormData('applicant', 'city', city);
                       form.setValue('applicantCity', city);
                     }}
-                    stateLabel="State*"
-                    cityLabel="City*"
+                    stateLabel="State"
+                    cityLabel="City"
                     required={true}
                     error={form.formState.errors.applicantState?.message || form.formState.errors.applicantCity?.message}
                     className="mb-4"
@@ -8326,7 +8326,7 @@ export function ApplicationForm() {
                           <FormControl>
                             <ZIPInput
                              name={`coApplicants.${actualIndex}.zip`}
-                            label="ZIP Code*"
+                            label="ZIP Code"
                             placeholder="ZIP code"
                               value={formData.coApplicants?.[actualIndex]?.zip || ''}
                               onChange={(value: string) => {
@@ -8359,8 +8359,8 @@ export function ApplicationForm() {
                        updateArrayItem('coApplicants', actualIndex, 'city', city);
                        form.setValue(`coApplicants.${actualIndex}.city`, city);
                       }}
-                    stateLabel="State*"
-                    cityLabel="City*"
+                    stateLabel="State"
+                    cityLabel="City"
                     required={true}
                     className="mb-4"
                   />
@@ -9329,7 +9329,7 @@ export function ApplicationForm() {
                         <FormControl>
                           <ZIPInput
                              name={`guarantors.${actualIndex}.zip`}
-                            label="ZIP Code*"
+                            label="ZIP Code"
                             placeholder="ZIP code"
                             value={formData.guarantors[actualIndex]?.zip || ''}
                             onChange={(value: string) => {
@@ -9352,7 +9352,7 @@ export function ApplicationForm() {
                                updateArrayItem('guarantors', actualIndex, 'city', '');
                                form.setValue(`guarantors.${actualIndex}.city`, '');
                              }}
-                            label="State*"
+                            label="State"
                             className="w-full mt-1"
                           />
                         </FormControl>
@@ -9366,7 +9366,7 @@ export function ApplicationForm() {
                                updateArrayItem('guarantors', actualIndex, 'city', city);
                                form.setValue(`guarantors.${actualIndex}.city`, city);
                              }}
-                            label="City*"
+                            label="City"
                             className="w-full mt-1"
                           />
                         </FormControl>
