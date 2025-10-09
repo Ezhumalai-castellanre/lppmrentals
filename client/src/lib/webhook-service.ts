@@ -185,7 +185,7 @@ export interface FormDataWebhookData {
       webhookResponses?: Record<string, string>;
     };
   };
-  uploaded_files: {
+  uploaded_files?: {
     supporting_w9_forms: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
     supporting_photo_id: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
     supporting_social_security: { file_name: string; file_size: number; mime_type: string; upload_date: string; }[];
@@ -386,6 +386,8 @@ export class WebhookService {
   // TODO: Remove these hardcoded URLs once environment detection is working
   private static readonly WEBHOOK_PROXY_URL = 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/webhook-proxy';
   private static readonly S3_PRESIGN_URL = 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/s3-presign';
+  // Direct Make.com hook for application submission
+  private static readonly MAKE_COM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
   
   // Comment out the dynamic URL methods for now
   // private static readonly WEBHOOK_PROXY_URL = this.getWebhookProxyUrl();
@@ -1178,33 +1180,6 @@ export class WebhookService {
         application_id: zoneinfo || applicationId,
         role: roleValue,
         form_data: transformedData,
-        uploaded_files: {
-          supporting_w9_forms: uploadedFiles?.supporting_w9_forms || [],
-          supporting_photo_id: uploadedFiles?.supporting_photo_id || [],
-          supporting_social_security: uploadedFiles?.supporting_social_security || [],
-          supporting_bank_statement: uploadedFiles?.supporting_bank_statement || [],
-          supporting_tax_returns: uploadedFiles?.supporting_tax_returns || [],
-          supporting_employment_letter: uploadedFiles?.supporting_employment_letter || [],
-          supporting_pay_stubs: uploadedFiles?.supporting_pay_stubs || [],
-          supporting_credit_report: uploadedFiles?.supporting_credit_report || [],
-          coApplicant_w9_forms: uploadedFiles?.coApplicant_w9_forms || [],
-          coApplicant_photo_id: uploadedFiles?.coApplicant_photo_id || [],
-          coApplicant_social_security: uploadedFiles?.coApplicant_social_security || [],
-          coApplicant_bank_statement: uploadedFiles?.coApplicant_bank_statement || [],
-          coApplicant_tax_returns: uploadedFiles?.coApplicant_tax_returns || [],
-          coApplicant_employment_letter: uploadedFiles?.coApplicant_employment_letter || [],
-          coApplicant_pay_stubs: uploadedFiles?.coApplicant_pay_stubs || [],
-          coApplicant_credit_report: uploadedFiles?.coApplicant_credit_report || [],
-          guarantor_w9_forms: uploadedFiles?.guarantor_w9_forms || [],
-          guarantor_photo_id: uploadedFiles?.guarantor_photo_id || [],
-          guarantor_social_security: uploadedFiles?.guarantor_social_security || [],
-          guarantor_bank_statement: uploadedFiles?.guarantor_bank_statement || [],
-          guarantor_tax_returns: uploadedFiles?.guarantor_tax_returns || [],
-          guarantor_employment_letter: uploadedFiles?.guarantor_employment_letter || [],
-          guarantor_pay_stubs: uploadedFiles?.guarantor_pay_stubs || [],
-          guarantor_credit_report: uploadedFiles?.guarantor_credit_report || [],
-          other_occupants_identity: uploadedFiles?.other_occupants_identity || []
-        },
         submission_type: 'form_data'
       };
 
@@ -1232,15 +1207,14 @@ export class WebhookService {
         console.log('🔍 DEBUG: Role attribute exists:', 'role' in webhookData);
         console.log('🔍 DEBUG: Role value type:', typeof webhookData.role);
         
-        const response = await fetch(this.WEBHOOK_PROXY_URL, {
+        // Send directly to Make.com for main application submission
+        const response = await fetch(this.MAKE_COM_WEBHOOK_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            webhookType: 'form_data',
-            webhookData: webhookData
-          }),
+          // Post the payload directly without wrapper for Make.com
+          body: JSON.stringify(webhookData),
           signal: controller.signal,
         });
         
@@ -1256,8 +1230,8 @@ export class WebhookService {
         }
 
         const responseTime = Date.now() - startTime;
-        console.log(`✅ Form data sent to Netlify function successfully in ${responseTime}ms`);
-        console.log(`📊 Netlify Performance: ${payloadSizeMB}MB payload, ${responseTime}ms response time`);
+        console.log(`✅ Form data sent to Make.com successfully in ${responseTime}ms`);
+        console.log(`📊 Make.com Performance: ${payloadSizeMB}MB payload, ${responseTime}ms response time`);
         
         // Remove from ongoing submissions
         this.ongoingSubmissions.delete(submissionId);
@@ -1676,7 +1650,7 @@ export class WebhookService {
     const guarantorDocuments = buildDocumentsFromWebhookResponses('guarantor');
 
     // Transform the data into the exact structure needed
-    const transformedData = {
+    const transformedData: any = {
       // Application section - use new nested structure if available
       application: formData.application || {
         buildingAddress: formData.buildingAddress,
