@@ -9066,8 +9066,10 @@ export function ApplicationForm() {
                 )}
                 {(hasGuarantor || (userRole.startsWith('guarantor') && specificIndex !== null)) && (
                   <div className="space-y-4">
-                    <div className="flex items-center space-x-4">
-                      <Label className="text-sm font-medium">How many Guarantors?</Label>
+                    {/* Hide "How many Guarantors?" section for guarantor and co-applicant roles */}
+                    {!userRole.startsWith('guarantor') && !userRole.startsWith('coapplicant') && (
+                      <div className="flex items-center space-x-4">
+                        <Label className="text-sm font-medium">How many Guarantors?</Label>
                       <Select
                         value={formData.guarantorCount?.toString() || '1'}
                         onValueChange={(value) => {
@@ -9147,6 +9149,7 @@ export function ApplicationForm() {
                         </SelectContent>
                       </Select>
                     </div>
+                    )}
 
                     {/* Render guarantor forms based on count */}
                     {Array.from({ length: (userRole.startsWith('guarantor') && specificIndex !== null) ? 1 : Math.max(1, formData.guarantorCount || 1) }, (_, index) => {
@@ -9658,9 +9661,6 @@ export function ApplicationForm() {
                           
                           <div className="form-field">
                             <Label htmlFor={`guarantor-${actualIndex}-employmentType`}>Employment Type *</Label>
-                            <div className="text-sm text-amber-600 dark:text-amber-400 mb-2">
-                              Guarantor cannot be a student, only employment/ self-employment options
-                            </div>
                             <Select
                               value={formData.guarantors?.[actualIndex]?.employmentType || ''}
                               onValueChange={(value) => {

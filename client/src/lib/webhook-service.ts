@@ -1299,7 +1299,6 @@ export class WebhookService {
     
     // For applicant role, only include applicant data - exclude co-applicants and guarantors
     return {
-      role: 'applicant', // Add role attribute at top level
       application: transformedData.application,
       applicant: transformedData.applicant,
       // Include occupants with proper structure
