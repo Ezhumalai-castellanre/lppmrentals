@@ -610,7 +610,7 @@ export default function MissingDocumentsPage() {
             {/* Summary Statistics */}
             <Card className="mb-6">
               <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">{missingItems.length}</div>
                     <div className="text-sm text-gray-600">Total Documents</div>
