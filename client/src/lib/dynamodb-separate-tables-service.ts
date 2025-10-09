@@ -37,6 +37,7 @@ export interface ApplicantData {
   signature: any; // Applicant signature
   co_applicants?: any[]; // Array of co-applicant data
   guarantors?: any[]; // Array of guarantor data
+  additional_people?: any; // Additional People structure for webhook compatibility
   timestamp: string; // Creation timestamp
   last_updated: string;
   status: 'draft' | 'submitted';
@@ -51,6 +52,7 @@ export interface CoApplicantData {
   coapplicant_info: any; // Co-applicant form data
   webhookSummary: any; // Webhook summary
   signature: any; // Co-applicant signature
+  additional_people?: any; // Additional People structure for webhook compatibility
   timestamp: string; // Creation timestamp (sort key)
   last_updated: string;
   status: 'draft' | 'submitted';
@@ -65,6 +67,7 @@ export interface GuarantorData {
   guarantor_info: any; // Guarantor form data
   webhookSummary: any; // Webhook summary
   signature: any; // Guarantor signature
+  additional_people?: any; // Additional People structure for webhook compatibility
   timestamp: string; // Creation timestamp (sort key)
   last_updated: string;
   status: 'draft' | 'submitted';

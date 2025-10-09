@@ -3199,6 +3199,46 @@ export function ApplicationForm() {
         const appSaveResult = await dynamoDBSeparateTablesUtils.saveApplicationData(applicationData);
         saveResults.push(appSaveResult);
         
+        // Generate Additional People data for draft storage
+        const generateAdditionalPeopleDataForDraft = () => {
+          const additionalPeople: any = {
+            zoneinfo: (user as any)?.zoneinfo || 'unknown',
+            role: 'applicant',
+            applicant: enhancedFormDataSnapshot.applicant?.name || 'unknown',
+            applicantEmail: enhancedFormDataSnapshot.applicant?.email || ''
+          };
+
+          // Add co-applicants
+          const coApplicants = enhancedFormDataSnapshot.coApplicants || [];
+          coApplicants.forEach((coApplicant: any, index: number) => {
+            const coApplicantNumber = index + 1;
+            additionalPeople[`coApplicants${coApplicantNumber}`] = {
+              coApplicant: `coapplicant${coApplicantNumber}`,
+              url: `https://www.app.lppmrentals.com/login?role=coapplicant${coApplicantNumber}&zoneinfo=${(user as any)?.zoneinfo || 'unknown'}`,
+              name: coApplicant?.name || `Co-Applicant ${coApplicantNumber}`,
+              email: coApplicant?.email || ''
+            };
+          });
+
+          // Add guarantors
+          const guarantors = enhancedFormDataSnapshot.guarantors || [];
+          guarantors.forEach((guarantor: any, index: number) => {
+            const guarantorNumber = index + 1;
+            additionalPeople[`guarantor${guarantorNumber}`] = {
+              guarantor: `guarantor${guarantorNumber}`,
+              url: `https://www.app.lppmrentals.com/login?role=guarantor${guarantorNumber}&zoneinfo=${(user as any)?.zoneinfo || 'unknown'}`,
+              name: guarantor?.name || `Guarantor ${guarantorNumber}`,
+              email: guarantor?.email || ''
+            };
+          });
+
+          return additionalPeople;
+        };
+
+        // Generate Additional People data for draft
+        const additionalPeopleDataForDraft = generateAdditionalPeopleDataForDraft();
+        console.log('📋 Additional People data for draft storage:', JSON.stringify(additionalPeopleDataForDraft, null, 2));
+
         // Save Primary Applicant data to applicant_nyc table (including co-applicants and guarantors)
         const applicantData = {
           applicant_info: enhancedFormDataSnapshot.applicant || {},
@@ -3210,6 +3250,7 @@ export function ApplicationForm() {
             : (roleScopedSign.applicant ?? null),
           co_applicants: enhancedFormDataSnapshot.coApplicants || [], // Include co-applicants data
           guarantors: enhancedFormDataSnapshot.guarantors || [], // Include guarantors data
+          additional_people: additionalPeopleDataForDraft, // Add Additional People structure for draft
           timestamp: new Date().toISOString(), // Add timestamp field
           status: 'draft' as const,
           last_updated: new Date().toISOString()
@@ -3239,6 +3280,30 @@ export function ApplicationForm() {
         const coApplicantData = (enhancedFormDataSnapshot.coApplicants || [])[coApplicantIndex] || {};
         console.log('👥 Co-Applicant data being saved:', coApplicantData);
         
+        // Generate Additional People data for co-applicant draft (only this co-applicant)
+        const generateAdditionalPeopleDataForCoApplicantDraft = () => {
+          const additionalPeople: any = {
+            zoneinfo: (user as any)?.zoneinfo || 'unknown',
+            role: 'coapplicant',
+            coApplicant: coApplicantData?.name || 'unknown',
+            coApplicantEmail: coApplicantData?.email || ''
+          };
+
+          // Add this specific co-applicant
+          const coApplicantNumber = coApplicantIndex + 1;
+          additionalPeople[`coApplicants${coApplicantNumber}`] = {
+            coApplicant: `coapplicant${coApplicantNumber}`,
+            url: `https://www.app.lppmrentals.com/login?role=coapplicant${coApplicantNumber}&zoneinfo=${(user as any)?.zoneinfo || 'unknown'}`,
+            name: coApplicantData?.name || `Co-Applicant ${coApplicantNumber}`,
+            email: coApplicantData?.email || ''
+          };
+
+          return additionalPeople;
+        };
+
+        const additionalPeopleDataForCoApplicantDraft = generateAdditionalPeopleDataForCoApplicantDraft();
+        console.log('📋 Additional People data for co-applicant draft storage:', JSON.stringify(additionalPeopleDataForCoApplicantDraft, null, 2));
+
         const submittedCoApplicantData = {
           role: 'coApplicant', // Add role attribute at top level
           coapplicant_info: coApplicantData,
@@ -3250,6 +3315,7 @@ export function ApplicationForm() {
             if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
             return sig ?? null;
           })(),
+          additional_people: additionalPeopleDataForCoApplicantDraft, // Add Additional People structure for co-applicant draft
           status: 'draft' as const,
           last_updated: new Date().toISOString()
         };
@@ -3295,6 +3361,30 @@ export function ApplicationForm() {
         const guarantorData = (enhancedFormDataSnapshot.guarantors || [])[guarantorIndex] || {};
         console.log('🛡️ Guarantor data being saved:', guarantorData);
         
+        // Generate Additional People data for guarantor draft (only this guarantor)
+        const generateAdditionalPeopleDataForGuarantorDraft = () => {
+          const additionalPeople: any = {
+            zoneinfo: (user as any)?.zoneinfo || 'unknown',
+            role: 'guarantor',
+            guarantor: guarantorData?.name || 'unknown',
+            guarantorEmail: guarantorData?.email || ''
+          };
+
+          // Add this specific guarantor
+          const guarantorNumber = guarantorIndex + 1;
+          additionalPeople[`guarantor${guarantorNumber}`] = {
+            guarantor: `guarantor${guarantorNumber}`,
+            url: `https://www.app.lppmrentals.com/login?role=guarantor${guarantorNumber}&zoneinfo=${(user as any)?.zoneinfo || 'unknown'}`,
+            name: guarantorData?.name || `Guarantor ${guarantorNumber}`,
+            email: guarantorData?.email || ''
+          };
+
+          return additionalPeople;
+        };
+
+        const additionalPeopleDataForGuarantorDraft = generateAdditionalPeopleDataForGuarantorDraft();
+        console.log('📋 Additional People data for guarantor draft storage:', JSON.stringify(additionalPeopleDataForGuarantorDraft, null, 2));
+
         const submittedGuarantorData = {
           role: 'Guarantor', // Add role attribute at top level
           guarantor_info: guarantorData,
@@ -3306,6 +3396,7 @@ export function ApplicationForm() {
             if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
             return sig ?? null;
           })(),
+          additional_people: additionalPeopleDataForGuarantorDraft, // Add Additional People structure for guarantor draft
           status: 'draft' as const,
           last_updated: new Date().toISOString()
         };
@@ -5994,6 +6085,48 @@ export function ApplicationForm() {
             const appSaveResult = await dynamoDBSeparateTablesUtils.saveApplicationData(submittedApplicationData);
             saveResults.push(appSaveResult);
             
+            // Generate Additional People data structure for DynamoDB storage
+            const generateAdditionalPeopleData = () => {
+              const additionalPeople: any = {
+                zoneinfo: user?.zoneinfo || 'unknown',
+                role: 'applicant',
+                applicant: submittedFormRoleScoped.applicant?.name || 'unknown',
+                applicantEmail: submittedFormRoleScoped.applicant?.email || ''
+              };
+
+              // Add co-applicants
+              const coApplicants = submittedFormRoleScoped.coApplicants || [];
+              coApplicants.forEach((coApplicant: any, index: number) => {
+                const coApplicantNumber = index + 1;
+                additionalPeople[`coApplicants${coApplicantNumber}`] = {
+                  coApplicant: `coapplicant${coApplicantNumber}`,
+                  url: `https://www.app.lppmrentals.com/login?role=coapplicant${coApplicantNumber}&zoneinfo=${user?.zoneinfo || 'unknown'}`,
+                  name: coApplicant?.name || `Co-Applicant ${coApplicantNumber}`,
+                  email: coApplicant?.email || ''
+                };
+              });
+
+              // Add guarantors
+              const guarantors = submittedFormRoleScoped.guarantors || [];
+              guarantors.forEach((guarantor: any, index: number) => {
+                const guarantorNumber = index + 1;
+                additionalPeople[`guarantor${guarantorNumber}`] = {
+                  guarantor: `guarantor${guarantorNumber}`,
+                  url: `https://www.app.lppmrentals.com/login?role=guarantor${guarantorNumber}&zoneinfo=${user?.zoneinfo || 'unknown'}`,
+                  name: guarantor?.name || `Guarantor ${guarantorNumber}`,
+                  email: guarantor?.email || ''
+                };
+              });
+
+              return additionalPeople;
+            };
+
+            // Generate Additional People data
+            const additionalPeopleData = generateAdditionalPeopleData();
+            console.log('📋 Additional People data for DynamoDB storage:', JSON.stringify(additionalPeopleData, null, 2));
+            console.log('📊 Co-applicants count:', (submittedFormRoleScoped.coApplicants || []).length);
+            console.log('📊 Guarantors count:', (submittedFormRoleScoped.guarantors || []).length);
+
             // Save Primary Applicant data to applicant_nyc table
             const submittedApplicantData = {
               applicant_info: submittedFormRoleScoped.applicant || {},
@@ -6007,10 +6140,21 @@ export function ApplicationForm() {
               })(),
               co_applicants: submittedFormRoleScoped.coApplicants || [], // Include co-applicants data
               guarantors: submittedFormRoleScoped.guarantors || [], // Include guarantors data
+              additional_people: additionalPeopleData, // Add Additional People structure
               timestamp: new Date().toISOString(), // Add timestamp field
               status: 'submitted' as const,
               last_updated: new Date().toISOString()
             };
+
+            // Debug: Log the complete data structure being saved
+            console.log('🔍 Complete submittedApplicantData being saved:', JSON.stringify(submittedApplicantData, null, 2));
+            console.log('🔍 Additional People field specifically:', JSON.stringify(submittedApplicantData.additional_people, null, 2));
+            
+            // Check data size
+            const dataSize = JSON.stringify(submittedApplicantData).length;
+            console.log('📏 Total data size being saved:', dataSize, 'bytes');
+            const additionalPeopleSize = JSON.stringify(submittedApplicantData.additional_people).length;
+            console.log('📏 Additional People data size:', additionalPeopleSize, 'bytes');
 
             const createdAppFinal = await dynamoDBSeparateTablesUtils.getApplicationDataByUserId();
             const finalAppId = createdAppFinal?.appid || undefined;

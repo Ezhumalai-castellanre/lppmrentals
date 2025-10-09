@@ -17,6 +17,7 @@ interface DraftData {
   current_step: number;
   last_updated: string;
   status: 'draft' | 'submitted';
+  role?: string; // User role for this draft
   uploaded_files_metadata?: any;
   webhook_responses?: any;
   signatures?: any;
@@ -1261,10 +1262,16 @@ export const DraftCards = () => {
               let guarantorsForApp: any[] = [];
               try {
                 coApplicantsForApp = await dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(application.appid);
+                console.log('🔍 Co-applicants from separate table:', coApplicantsForApp.length);
               } catch {}
               try {
                 guarantorsForApp = await dynamoDBSeparateTablesUtils.getGuarantorsByAppId(application.appid);
+                console.log('🔍 Guarantors from separate table:', guarantorsForApp.length);
               } catch {}
+              
+              // Debug: Check co-applicants in applicant_nyc table
+              console.log('🔍 Co-applicants in applicant_nyc:', matchedApplicant?.co_applicants?.length || 0);
+              console.log('🔍 Co-applicants data in applicant_nyc:', matchedApplicant?.co_applicants);
             const applicantFormData = {
               // Application Information (from app_nyc)
                 application: application.application_info || {},
@@ -1273,8 +1280,14 @@ export const DraftCards = () => {
                 applicant: matchedApplicant?.applicant_info || allData.applicant?.applicant_info || {},
                 applicant_occupants: matchedApplicant?.occupants || allData.applicant?.occupants || [],
               
-                // Co-Applicants (from Co-Applicants table) - all records for this app
-                coApplicants: (coApplicantsForApp || []).map((c: any) => c?.coapplicant_info).filter(Boolean),
+                // Co-Applicants (from Co-Applicants table + applicant_nyc table) - all records for this app
+                coApplicants: (() => {
+                  const fromSeparateTable = (coApplicantsForApp || []).map((c: any) => c?.coapplicant_info).filter(Boolean);
+                  const fromApplicantTable = matchedApplicant?.co_applicants || [];
+                  const combined = [...fromSeparateTable, ...fromApplicantTable];
+                  console.log('🔍 Final co-applicants array:', combined.length, combined);
+                  return combined;
+                })(),
                 coApplicant_occupants: (coApplicantsForApp || []).flatMap((c: any) => c?.occupants || []),
 
                 // Guarantors (from Guarantors table + applicant_nyc table) - all records for this app
