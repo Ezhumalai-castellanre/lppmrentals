@@ -21,6 +21,7 @@ export interface FormDataWebhookData {
   reference_id: string;
   application_id: string;
   role: string;
+  position?: number; // Position extracted from reference_id
   form_data: {
     application?: {
       buildingAddress?: string;
@@ -866,12 +867,13 @@ export class WebhookService {
     
     try {
       // Create co-applicant-only payload
-      const coApplicantPayload = this.createCoApplicantOnlyPayload(coApplicant, coApplicantIndex, formData, uploadedFiles);
+      const coApplicantPayload = this.createCoApplicantOnlyPayload(coApplicant, coApplicantIndex, formData, uploadedFiles, referenceId);
       
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: zoneinfo || applicationId,
         role: `coapplicant${coApplicantIndex + 1}`,
+        position: coApplicantIndex + 1, // Add position extracted from reference_id
         form_data: coApplicantPayload,
         uploaded_files: this.filterCoApplicantFiles(uploadedFiles, coApplicantIndex),
         submission_type: 'coapplicant_only'
@@ -929,12 +931,13 @@ export class WebhookService {
     
     try {
       // Create guarantor-only payload
-      const guarantorPayload = this.createGuarantorOnlyPayload(guarantor, guarantorIndex, formData, uploadedFiles);
+      const guarantorPayload = this.createGuarantorOnlyPayload(guarantor, guarantorIndex, formData, uploadedFiles, referenceId);
       
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: zoneinfo || applicationId,
         role: `guarantor${guarantorIndex + 1}`,
+        position: guarantorIndex + 1, // Add position extracted from reference_id
         form_data: guarantorPayload,
         uploaded_files: this.filterGuarantorFiles(uploadedFiles, guarantorIndex),
         submission_type: 'guarantor_only'
@@ -1308,7 +1311,7 @@ export class WebhookService {
   /**
    * Creates co-applicant-only payload
    */
-  private static createCoApplicantOnlyPayload(coApplicant: any, coApplicantIndex: number, formData: any, uploadedFiles?: any): any {
+  private static createCoApplicantOnlyPayload(coApplicant: any, coApplicantIndex: number, formData: any, uploadedFiles?: any, referenceId?: string): any {
     const transformedData = this.transformFormDataToWebhookFormat(formData, uploadedFiles);
     
     // Guard against missing index in transformedData.coApplicants
@@ -1317,8 +1320,17 @@ export class WebhookService {
       : undefined;
     const safeCoApplicant = coApplicantFromTransformed || coApplicant || {};
 
+    // Extract position from reference_id if available
+    let position = coApplicantIndex + 1; // Default to index-based position
+    if (referenceId) {
+      // Extract position from reference_id format: app_<timestamp>_<randomString>
+      // Position is the coApplicantIndex + 1
+      position = coApplicantIndex + 1;
+    }
+
     return {
       role: 'coApplicant', // Add role attribute at top level
+      position: position, // Add position extracted from reference_id
       application: transformedData.application,
       // Include only the specific co-applicant
       coApplicants: [safeCoApplicant],
@@ -1340,7 +1352,7 @@ export class WebhookService {
   /**
    * Creates guarantor-only payload
    */
-  private static createGuarantorOnlyPayload(guarantor: any, guarantorIndex: number, formData: any, uploadedFiles?: any): any {
+  private static createGuarantorOnlyPayload(guarantor: any, guarantorIndex: number, formData: any, uploadedFiles?: any, referenceId?: string): any {
     const transformedData = this.transformFormDataToWebhookFormat(formData, uploadedFiles);
     
     // Guard against missing index in transformedData.guarantors
@@ -1349,8 +1361,17 @@ export class WebhookService {
       : undefined;
     const safeGuarantor = guarantorFromTransformed || guarantor || {};
     
+    // Extract position from reference_id if available
+    let position = guarantorIndex + 1; // Default to index-based position
+    if (referenceId) {
+      // Extract position from reference_id format: app_<timestamp>_<randomString>
+      // Position is the guarantorIndex + 1
+      position = guarantorIndex + 1;
+    }
+    
     return {
       role: 'Guarantor', // Add role attribute at top level
+      position: position, // Add position extracted from reference_id
       application: transformedData.application,
       // Include only the specific guarantor
       guarantors: [safeGuarantor],

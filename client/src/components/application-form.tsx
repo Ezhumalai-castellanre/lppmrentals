@@ -5270,6 +5270,96 @@ export function ApplicationForm() {
             age: occupant.age || 0
           })),
           
+          // Co-Applicants (array)
+          coApplicants: (formData.coApplicants || []).map((coApplicant: any) => ({
+            name: coApplicant.name,
+            email: coApplicant.email,
+            phone: coApplicant.phone,
+            address: coApplicant.address,
+            city: coApplicant.city,
+            state: coApplicant.state,
+            zip: coApplicant.zip,
+            dob: coApplicant.dob,
+            ssn: coApplicant.ssn,
+            license: coApplicant.license,
+            licenseState: coApplicant.licenseState,
+            lengthAtAddressYears: coApplicant.lengthAtAddressYears,
+            lengthAtAddressMonths: coApplicant.lengthAtAddressMonths,
+            landlordName: coApplicant.landlordName,
+            landlordAddressLine1: coApplicant.landlordAddressLine1,
+            landlordAddressLine2: coApplicant.landlordAddressLine2,
+            landlordCity: coApplicant.landlordCity,
+            landlordState: coApplicant.landlordState,
+            landlordZipCode: coApplicant.landlordZipCode,
+            landlordPhone: coApplicant.landlordPhone,
+            landlordEmail: coApplicant.landlordEmail,
+            currentRent: coApplicant.currentRent,
+            reasonForMoving: coApplicant.reasonForMoving,
+            age: coApplicant.age || 0,
+            employmentType: coApplicant.employmentType,
+            employer: coApplicant.employer,
+            position: coApplicant.position,
+            employmentStart: coApplicant.employmentStart,
+            income: coApplicant.income,
+            incomeFrequency: coApplicant.incomeFrequency,
+            businessName: coApplicant.businessName,
+            businessType: coApplicant.businessType,
+            yearsInBusiness: coApplicant.yearsInBusiness,
+            otherIncome: coApplicant.otherIncome,
+            otherIncomeFrequency: coApplicant.otherIncomeFrequency,
+            otherIncomeSource: coApplicant.otherIncomeSource,
+            bankRecords: (coApplicant.bankRecords || []).map((record: any) => ({
+              bankName: record.bankName,
+              accountType: record.accountType,
+              accountNumber: record.accountNumber || ""
+            })),
+          })),
+          
+          // Guarantors (array)
+          guarantors: (formData.guarantors || []).map((guarantor: any) => ({
+            name: guarantor.name,
+            email: guarantor.email,
+            phone: guarantor.phone,
+            address: guarantor.address,
+            city: guarantor.city,
+            state: guarantor.state,
+            zip: guarantor.zip,
+            dob: guarantor.dob,
+            ssn: guarantor.ssn,
+            license: guarantor.license,
+            licenseState: guarantor.licenseState,
+            lengthAtAddressYears: guarantor.lengthAtAddressYears,
+            lengthAtAddressMonths: guarantor.lengthAtAddressMonths,
+            landlordName: guarantor.landlordName,
+            landlordAddressLine1: guarantor.landlordAddressLine1,
+            landlordAddressLine2: guarantor.landlordAddressLine2,
+            landlordCity: guarantor.landlordCity,
+            landlordState: guarantor.landlordState,
+            landlordZipCode: guarantor.landlordZipCode,
+            landlordPhone: guarantor.landlordPhone,
+            landlordEmail: guarantor.landlordEmail,
+            currentRent: guarantor.currentRent,
+            reasonForMoving: guarantor.reasonForMoving,
+            age: guarantor.age || 0,
+            employmentType: guarantor.employmentType,
+            employer: guarantor.employer,
+            position: guarantor.position,
+            employmentStart: guarantor.employmentStart,
+            income: guarantor.income,
+            incomeFrequency: guarantor.incomeFrequency,
+            businessName: guarantor.businessName,
+            businessType: guarantor.businessType,
+            yearsInBusiness: guarantor.yearsInBusiness,
+            otherIncome: guarantor.otherIncome,
+            otherIncomeFrequency: guarantor.otherIncomeFrequency,
+            otherIncomeSource: guarantor.otherIncomeSource,
+            bankRecords: (guarantor.bankRecords || []).map((record: any) => ({
+              bankName: record.bankName,
+              accountType: record.accountType,
+              accountNumber: record.accountNumber || ""
+            })),
+          })),
+
           // Core metadata fields
           applicantName: data.applicantName || formData.applicant?.name,
           applicantEmail: data.applicantEmail || formData.applicant?.email,
@@ -5287,6 +5377,12 @@ export function ApplicationForm() {
 
         console.log("🔍 COMPLETE SERVER DATA BEING SENT:");
         console.log(JSON.stringify(completeServerData, null, 2));
+        
+        // Debug: Check co-applicants and guarantors in completeServerData
+        console.log('🔍 Co-applicants in completeServerData:', (completeServerData as any).coApplicants?.length || 0);
+        console.log('🔍 Guarantors in completeServerData:', (completeServerData as any).guarantors?.length || 0);
+        console.log('🔍 Co-applicants data:', (completeServerData as any).coApplicants);
+        console.log('🔍 Guarantors data:', (completeServerData as any).guarantors);
         
         console.log('📊 Complete server data structure created (same as webhook)');
           console.log('🔍 Debug - uploadedDocuments type:', typeof uploadedDocuments);
