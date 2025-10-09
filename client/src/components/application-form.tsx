@@ -3019,8 +3019,12 @@ export function ApplicationForm() {
       }
       
       console.log('🛡️ Guarantor role detected, using index:', index);
+      console.log('🛡️ Available guarantors in data:', data.guarantors);
+      console.log('🛡️ Total guarantors count:', (data.guarantors || []).length);
       const guarantor = (data.guarantors || [])[index] || {};
       console.log('🛡️ Guarantor data for index', index, ':', guarantor);
+      console.log('🛡️ Guarantor data keys:', Object.keys(guarantor));
+      console.log('🛡️ Guarantor data values:', Object.values(guarantor));
       
       // Return simplified JSON structure as requested
       return {
@@ -5384,10 +5388,21 @@ export function ApplicationForm() {
           }
         } else if (userRole.startsWith('guarantor') && specificIndex !== null) {
           // For specific guarantor, only include that guarantor's data
-          const specificGuarantor = (formData.guarantors || [])[specificIndex];
-          if (specificGuarantor) {
+          let specificGuarantor = (formData.guarantors || [])[specificIndex];
+          
+          // If guarantor data is not in the array, collect it from form fields
+          if (!specificGuarantor || Object.keys(specificGuarantor).length === 0) {
+            console.log(`⚠️ Guarantor data not found in formData.guarantors[${specificIndex}], collecting from form fields...`);
+            const formValues = form.getValues();
+            specificGuarantor = formValues.guarantors?.[specificIndex] || {};
+            console.log(`🔍 Collected guarantor data from form.getValues():`, specificGuarantor);
+          }
+          
+          if (specificGuarantor && Object.keys(specificGuarantor).length > 0) {
             (completeServerData as any).guarantors = [specificGuarantor];
             console.log(`🎯 Filtered data for guarantor ${specificIndex + 1}:`, specificGuarantor);
+          } else {
+            console.error(`❌ No guarantor data found for index ${specificIndex}`);
           }
         }
         
@@ -6124,7 +6139,10 @@ export function ApplicationForm() {
           console.log('🔍 User role:', userRole, 'Specific index:', specificIndex);
           
           // Persist role-scoped data and signatures on submit
+          console.log('🔍 completeServerData before buildRoleScopedFormData:', completeServerData);
+          console.log('🔍 completeServerData.guarantors:', completeServerData.guarantors);
           const submittedFormRoleScoped = buildRoleScopedFormData(completeServerData, userRole || '', specificIndex ?? undefined);
+          console.log('🔍 submittedFormRoleScoped after buildRoleScopedFormData:', submittedFormRoleScoped);
           const submittedSigsRoleScoped = buildRoleScopedSignatures((completeServerData as any).signatures || signatures, userRole || '', specificIndex ?? undefined);
 
           let saveResults: boolean[] = [];
@@ -6272,6 +6290,10 @@ export function ApplicationForm() {
             // Get the specific guarantor data from the role-scoped form
             const guarantorData = submittedFormRoleScoped.guarantors?.[0] || {};
             console.log('📊 Guarantor data to save:', guarantorData);
+            console.log('📊 submittedFormRoleScoped structure:', submittedFormRoleScoped);
+            console.log('📊 submittedFormRoleScoped.guarantors:', submittedFormRoleScoped.guarantors);
+            console.log('📊 Guarantor data keys:', Object.keys(guarantorData));
+            console.log('📊 Guarantor data values:', Object.values(guarantorData));
             
             // Save Guarantor data to Guarantors_nyc table with simplified structure
             const submittedGuarantorData = {
