@@ -971,10 +971,22 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                 });
                 return uniqueList.length > 0 ? (
                 <div className="space-y-4">
-                  {uniqueList.map((guar: any, index: number) => (
+                  {uniqueList.map((guar: any, index: number) => {
+                // Extract guarantor number from user role (e.g., "guarantor4" -> "4")
+                const userRole = (user as any)?.role || '';
+                let guarantorNumber = index + 1; // Default to array index + 1
+                
+                if (userRole.startsWith('guarantor') && /guarantor\d+/.test(userRole)) {
+                  const match = userRole.match(/guarantor(\d+)/);
+                  if (match) {
+                    guarantorNumber = parseInt(match[1], 10);
+                  }
+                }
+                
+                return (
                     <div key={index} className="bg-white rounded-lg p-4 border border-orange-300 border-l-4 border-l-orange-500">
                       <div className="flex items-center justify-between mb-3">
-                        <h6 className="font-semibold text-orange-900">Guarantor {index + 1}</h6>
+                        <h6 className="font-semibold text-orange-900">Guarantor {guarantorNumber}</h6>
                         <Badge variant="outline" className="border-orange-300 text-orange-700">Guarantor</Badge>
                       </div>
                       
@@ -1053,7 +1065,8 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                         </div>
                       )}
                     </div>
-                  ))}
+                  );
+                })}
                 </div>
               ) : (
                 <div className="text-center py-8">

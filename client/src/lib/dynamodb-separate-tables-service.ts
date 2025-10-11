@@ -1642,6 +1642,9 @@ export class DynamoDBSeparateTablesService {
 
   // Save guarantor data (overwrites existing if found)
   async saveGuarantorDataNew(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
+    console.log('🛡️ saveGuarantorDataNew called with data:', data);
+    console.log('🛡️ appid parameter:', appid);
+    
     if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return false;
@@ -1677,6 +1680,8 @@ export class DynamoDBSeparateTablesService {
         }
       }
 
+      console.log('🛡️ Using userId:', baseUserId, 'role:', role, 'zoneinfo:', zoneinfo, 'appid:', applicationAppid);
+
       // Use the logged-in user's sub for userId (no suffix)
       const uniqueUserId = baseUserId;
 
@@ -1693,6 +1698,9 @@ export class DynamoDBSeparateTablesService {
         // Keep original timestamp if overwriting (using last_updated as reference)
         last_updated: new Date().toISOString()
       });
+
+      console.log('🛡️ Final guarantorData to save:', guarantorData);
+      console.log('🛡️ guarantor_info:', guarantorData.guarantor_info);
 
       const command = new PutItemCommand({
         TableName: this.tables.guarantors,

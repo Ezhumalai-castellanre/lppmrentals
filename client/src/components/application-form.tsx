@@ -496,6 +496,37 @@ export function ApplicationForm() {
     return filteredSteps[filteredIndex]?.id ?? filteredIndex;
   };
 
+  // Helper functions for sequential step mapping (for better UX)
+  const getSequentialStepNumber = (actualStepId: number, role: string) => {
+    if (role.startsWith('guarantor')) {
+      // Map guarantor steps to sequential numbers: 0->1, 9->2, 10->3, 11->4, 12->5
+      const guarantorStepMap: { [key: number]: number } = { 0: 1, 9: 2, 10: 3, 11: 4, 12: 5 };
+      return guarantorStepMap[actualStepId] || 1;
+    }
+    if (role.startsWith('coapplicant')) {
+      // Map co-applicant steps to sequential numbers: 0->1, 5->2, 6->3, 7->4, 12->5
+      const coApplicantStepMap: { [key: number]: number } = { 0: 1, 5: 2, 6: 3, 7: 4, 12: 5 };
+      return coApplicantStepMap[actualStepId] || 1;
+    }
+    // For applicant role, use actual step ID (no mapping needed)
+    return actualStepId;
+  };
+
+  const getActualStepFromSequential = (sequentialStep: number, role: string) => {
+    if (role.startsWith('guarantor')) {
+      // Map sequential numbers back to actual step IDs: 1->0, 2->9, 3->10, 4->11, 5->12
+      const guarantorReverseMap: { [key: number]: number } = { 1: 0, 2: 9, 3: 10, 4: 11, 5: 12 };
+      return guarantorReverseMap[sequentialStep] || 0;
+    }
+    if (role.startsWith('coapplicant')) {
+      // Map sequential numbers back to actual step IDs: 1->0, 2->5, 3->6, 4->7, 5->12
+      const coApplicantReverseMap: { [key: number]: number } = { 1: 0, 2: 5, 3: 6, 4: 7, 5: 12 };
+      return coApplicantReverseMap[sequentialStep] || 0;
+    }
+    // For applicant role, use sequential step as-is (no mapping needed)
+    return sequentialStep;
+  };
+
 
   // Read selected rental from sessionStorage
   const [selectedRental, setSelectedRental] = useState<any>(null);
@@ -1129,7 +1160,7 @@ export function ApplicationForm() {
     }
   }, [formData.webhookSummary?.webhookResponses]);
 
-  // When webhookResponses contains direct file URLs (from saved drafts), seed preview slots and map URLs
+  // When webhookResponses contains direct file URLs, seed preview slots and map URLs
   useEffect(() => {
     if (!webhookResponses || Object.keys(webhookResponses).length === 0) return;
 
@@ -1417,10 +1448,12 @@ export function ApplicationForm() {
           
           setFormData(parsedFormData);
           
-          // Restore current step only if restoreStep is true
-        if (restoreStep && allData.application?.current_step !== undefined) {
-          setCurrentStep(allData.application.current_step);
-          }
+           // Restore current step only if restoreStep is true
+           if (restoreStep && allData.application?.current_step !== undefined) {
+             // Convert sequential step back to actual step for navigation
+             const actualStep = getActualStepFromSequential(allData.application.current_step, userRole);
+             setCurrentStep(actualStep);
+           }
           
           // Restore signatures
         if (parsedFormData.signatures) {
@@ -2013,10 +2046,12 @@ export function ApplicationForm() {
               };
             }
 
-            setFormData(parsedFormData);
-            if (restoreStep) {
-              setCurrentStep(parsedFormData.current_step || 0);
-            }
+             setFormData(parsedFormData);
+             if (restoreStep) {
+               // Convert sequential step back to actual step for navigation
+               const actualStep = getActualStepFromSequential(parsedFormData.current_step || 0, userRole);
+               setCurrentStep(actualStep);
+             }
             if (parsedFormData.signatures) setSignatures(parsedFormData.signatures);
             if (parsedFormData.webhook_responses) setWebhookResponses(parsedFormData.webhook_responses);
 
@@ -2280,15 +2315,16 @@ export function ApplicationForm() {
             loadDraftData(user.applicantId, true); // Restore step when continuing
           }
           
-          // If a specific step is provided, navigate to it after draft is loaded
-          if (stepParam) {
-            const targetStep = parseInt(stepParam, 10);
-            if (!isNaN(targetStep) && targetStep >= 0 && targetStep < filteredSteps.length) {
-              console.log('🎯 Step parameter detected, will navigate to step:', targetStep);
-              // Set the target step - it will be applied after draft data is loaded
-              setCurrentStep(targetStep);
-            }
-          }
+           // If a specific step is provided, navigate to it after draft is loaded
+           if (stepParam) {
+             const targetStep = parseInt(stepParam, 10);
+             if (!isNaN(targetStep) && targetStep >= 0 && targetStep < filteredSteps.length) {
+               console.log('🎯 Step parameter detected, will navigate to step:', targetStep);
+               // Convert sequential step to actual step for navigation
+               const actualStep = getActualStepFromSequential(targetStep, userRole);
+               setCurrentStep(actualStep);
+             }
+           }
         } else {
           console.log('🆕 No continue parameter, starting fresh application...');
           // Clear any existing draft data and start fresh, regardless of whether draft exists
@@ -2515,7 +2551,6 @@ export function ApplicationForm() {
       return newFormData;
     });
 
-  // Remove automatic draft saving - only save when Next button is clicked
   // This prevents unnecessary saves on every field change
   };
 
@@ -3019,8 +3054,19 @@ export function ApplicationForm() {
       }
       
       console.log('🛡️ Guarantor role detected, using index:', index);
+      console.log('🛡️ Data structure:', { 
+        hasGuarantors: !!data.guarantors, 
+        guarantorsLength: data.guarantors?.length || 0,
+        guarantorsData: data.guarantors 
+      });
+      console.log('🛡️ Full data object keys:', Object.keys(data));
+      console.log('🛡️ Full data object:', data);
+      
       const guarantor = (data.guarantors || [])[index] || {};
       console.log('🛡️ Guarantor data for index', index, ':', guarantor);
+      console.log('🛡️ Guarantor data keys:', Object.keys(guarantor));
+      console.log('🛡️ Guarantor has name:', !!guarantor.name);
+      console.log('🛡️ Guarantor has email:', !!guarantor.email);
       
       // Return simplified JSON structure as requested
       return {
@@ -3081,8 +3127,19 @@ export function ApplicationForm() {
     return safe;
   }, []);
 
-  // Save draft to DynamoDB function with updated flow type
+  // Save draft to DynamoDB function - ONLY for Applicant role
   const saveDraftToDynamoDB = useCallback(async () => {
+    // Only allow save draft for Applicant role
+    if (userRole !== 'applicant') {
+      console.log('⚠️ Save draft is only available for Applicant role. Current role:', userRole);
+      toast({
+        title: 'Save Draft Not Available',
+        description: 'Save draft functionality is only available for the primary applicant.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const currentUserZoneinfo = getCurrentUserZoneinfo();
     
     if (!currentUserZoneinfo) {
@@ -3122,30 +3179,8 @@ export function ApplicationForm() {
         guarantorCount: currentFormData.guarantorCount || (currentFormData.guarantors?.length || 0)
       };
       
-      // Debug: Log what's in the enhancedFormData before cleaning
-      console.log('🔍 === DEBUG: ENHANCED FORM DATA BEFORE CLEANING ===');
-      console.log('📊 enhancedFormData.coApplicants:', enhancedFormData.coApplicants);
-      console.log('📊 enhancedFormData.coApplicant:', enhancedFormData.coApplicant);
-      console.log('📊 enhancedFormData.hasCoApplicant:', enhancedFormData.hasCoApplicant);
-      console.log('📊 enhancedFormData.coApplicantCount:', enhancedFormData.coApplicantCount);
-      console.log('📊 enhancedFormData.guarantors:', enhancedFormData.guarantors);
-      console.log('📊 enhancedFormData.guarantor:', enhancedFormData.guarantor);
-      console.log('📊 enhancedFormData.hasGuarantor:', enhancedFormData.hasGuarantor);
-      console.log('=== END DEBUG ===');
-      
       // Clean up the form data before saving to remove empty values and ensure consistency
       const cleanedFormData = cleanFormDataForStorage(enhancedFormData);
-      
-      // Debug: Log what's in the cleanedFormData after cleaning
-      console.log('🔍 === DEBUG: CLEANED FORM DATA AFTER CLEANING ===');
-      console.log('📊 cleanedFormData.coApplicants:', cleanedFormData.coApplicants);
-      console.log('📊 cleanedFormData.coApplicant:', cleanedFormData.coApplicant);
-      console.log('📊 cleanedFormData.hasCoApplicant:', cleanedFormData.hasCoApplicant);
-      console.log('📊 cleanedFormData.coApplicantCount:', cleanedFormData.coApplicantCount);
-      console.log('📊 cleanedFormData.guarantors:', cleanedFormData.guarantors);
-      console.log('📊 cleanedFormData.guarantor:', cleanedFormData.guarantor);
-      console.log('📊 cleanedFormData.hasGuarantor:', cleanedFormData.hasGuarantor);
-      console.log('=== END DEBUG ===');
       
       // Build role-scoped data to avoid overwriting unrelated sections
       const roleScopedForm = buildRoleScopedFormData(cleanedFormData, userRole || '', specificIndex ?? undefined);
@@ -3167,210 +3202,68 @@ export function ApplicationForm() {
         userApplicantId: user?.applicantId
       });
 
-      // Save data to separate tables
-      console.log('💾 Role-based draft saving to separate DynamoDB tables...');
-      console.log('🔍 User role:', userRole, 'Specific index:', specificIndex);
+      // Save data to separate tables - ONLY for Applicant role
+      console.log('💾 Applicant draft saving to separate DynamoDB tables...');
       
       let saveResults: boolean[] = [];
 
-      // Role-based draft saving logic
-      if (userRole === 'applicant') {
-        console.log('👤 Primary Applicant saving draft to app_nyc and applicant_nyc tables...');
-        
-        // Save Application Information to app_nyc table
-        const applicationData = {
-          application_info: {
-            ...enhancedFormDataSnapshot.application,
-            reference_id: referenceId,
-            zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''
-          },
-          current_step: currentStep,
-          status: 'draft' as const,
-          uploaded_files_metadata: uploadedFilesMetadata,
-          webhook_responses: webhookResponses,
-          signatures: roleScopedSign,
-          encrypted_documents: encryptedDocuments,
-          storage_mode: 'direct' as const,
-          flow_type: 'separate_webhooks' as const,
-          webhook_flow_version: '2.0',
-          last_updated: new Date().toISOString()
-        };
+      // Save Application Information to app_nyc table
+      const applicationData = {
+        application_info: {
+          ...enhancedFormDataSnapshot.application,
+          reference_id: referenceId,
+          zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''
+        },
+        current_step: currentStep,
+        status: 'draft' as const,
+        uploaded_files_metadata: uploadedFilesMetadata,
+        webhook_responses: webhookResponses,
+        signatures: roleScopedSign,
+        encrypted_documents: encryptedDocuments,
+        storage_mode: 'direct' as const,
+        flow_type: 'separate_webhooks' as const,
+        webhook_flow_version: '2.0',
+        last_updated: new Date().toISOString()
+      };
 
-        const appSaveResult = await dynamoDBSeparateTablesUtils.saveApplicationData(applicationData);
-        saveResults.push(appSaveResult);
-        
-        // Save Primary Applicant data to applicant_nyc table (including co-applicants and guarantors)
-        const applicantData = {
-          applicant_info: enhancedFormDataSnapshot.applicant || {},
-          occupants: enhancedFormDataSnapshot.occupants || [],
-          webhookSummary: getWebhookSummary(),
-          // Store applicant signature as base64 string or null (never empty object)
-          signature: (typeof roleScopedSign.applicant === 'string' && roleScopedSign.applicant.startsWith('data:image/'))
-            ? roleScopedSign.applicant
-            : (roleScopedSign.applicant ?? null),
-          co_applicants: enhancedFormDataSnapshot.coApplicants || [], // Include co-applicants data
-          guarantors: enhancedFormDataSnapshot.guarantors || [], // Include guarantors data
-          timestamp: new Date().toISOString(), // Add timestamp field
-          status: 'draft' as const,
-          last_updated: new Date().toISOString()
-        };
+      const appSaveResult = await dynamoDBSeparateTablesUtils.saveApplicationData(applicationData);
+      saveResults.push(appSaveResult);
+      
+      // Save Primary Applicant data to applicant_nyc table (including co-applicants and guarantors)
+      const applicantData = {
+        applicant_info: enhancedFormDataSnapshot.applicant || {},
+        occupants: enhancedFormDataSnapshot.occupants || [],
+        webhookSummary: getWebhookSummary(),
+        // Store applicant signature as base64 string or null (never empty object)
+        signature: (typeof roleScopedSign.applicant === 'string' && roleScopedSign.applicant.startsWith('data:image/'))
+          ? roleScopedSign.applicant
+          : (roleScopedSign.applicant ?? null),
+        co_applicants: enhancedFormDataSnapshot.coApplicants || [], // Include co-applicants data
+        guarantors: enhancedFormDataSnapshot.guarantors || [], // Include guarantors data
+        timestamp: new Date().toISOString(), // Add timestamp field
+        status: 'draft' as const,
+        last_updated: new Date().toISOString()
+      };
 
-        // Get the appid we just created for app_nyc and pass it to applicant_nyc
-        const createdApp = await dynamoDBSeparateTablesUtils.getApplicationDataByUserId();
-        const newAppId = createdApp?.appid || undefined;
-        const applicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicantDataNew(applicantData, newAppId);
-        saveResults.push(applicantSaveResult);
-        
-        console.log('✅ Primary Applicant draft with co-applicants and guarantors saved to app_nyc and applicant_nyc tables');
-
-      } else if (userRole && userRole.startsWith('coapplicant')) {
-        console.log('👥 Co-Applicant saving draft to Co-Applicants table...');
-
-        // Build co-applicant record with proper index handling
-        let coApplicantIndex = 0;
-        if (/^coapplicant\d+$/.test(userRole)) {
-          const match = userRole.match(/coapplicant(\d+)/);
-          coApplicantIndex = match ? parseInt(match[1]) - 1 : 0; // Convert 1-based to 0-based index
-        } else if (typeof specificIndex === 'number') {
-          coApplicantIndex = specificIndex;
-        }
-        
-        console.log('👥 Co-Applicant save using index:', coApplicantIndex);
-        const coApplicantData = (enhancedFormDataSnapshot.coApplicants || [])[coApplicantIndex] || {};
-        console.log('👥 Co-Applicant data being saved:', coApplicantData);
-        
-        const submittedCoApplicantData = {
-          role: 'coApplicant', // Add role attribute at top level
-          coapplicant_info: coApplicantData,
-          occupants: enhancedFormDataSnapshot.occupants || [],
-          webhookSummary: enhancedFormDataSnapshot.webhookSummary || getWebhookSummary(),
-          // Store only this co-applicant's signature as base64 string or null
-          signature: (() => {
-            const sig = (roleScopedSign as any)?.coApplicants?.[coApplicantIndex];
-            if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
-            return sig ?? null;
-          })(),
-          status: 'draft' as const,
-          last_updated: new Date().toISOString()
-        };
-
-        // Link to current application id if available
-        const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
-        const appid = existingApp?.appid;
-        const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantDataNew(submittedCoApplicantData as any, appid);
-        saveResults.push(coApplicantSaveResult);
-
-        // Also persist current_step for resume navigation (do not overwrite signatures/documents)
-        try {
-          const stepOnlyApplicationData = {
-            application_info: { zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '' },
-            current_step: currentStep,
-            status: 'draft' as const,
-            storage_mode: 'direct' as const,
-            flow_type: 'separate_webhooks' as const,
-            webhook_flow_version: '2.0',
-            last_updated: new Date().toISOString()
-          };
-          const stepSave = await dynamoDBSeparateTablesUtils.saveApplicationData(stepOnlyApplicationData as any);
-          saveResults.push(stepSave);
-        } catch (e) {
-          console.warn('⚠️ Failed to persist current_step for co-applicant resume:', e);
-        }
-
-        console.log('✅ Co-Applicant draft saved to Co-Applicants table');
-
-      } else if (userRole && userRole.startsWith('guarantor')) {
-        console.log('🛡️ Guarantor saving draft to Guarantors_nyc table...');
-
-        // Build guarantor record with proper index handling
-        let guarantorIndex = 0;
-        if (/^guarantor\d+$/.test(userRole)) {
-          const match = userRole.match(/guarantor(\d+)/);
-          guarantorIndex = match ? parseInt(match[1]) - 1 : 0; // Convert 1-based to 0-based index
-        } else if (typeof specificIndex === 'number') {
-          guarantorIndex = specificIndex;
-        }
-        
-        console.log('🛡️ Guarantor save using index:', guarantorIndex);
-        const guarantorData = (enhancedFormDataSnapshot.guarantors || [])[guarantorIndex] || {};
-        console.log('🛡️ Guarantor data being saved:', guarantorData);
-        
-        const submittedGuarantorData = {
-          role: 'Guarantor', // Add role attribute at top level
-          guarantor_info: guarantorData,
-          occupants: enhancedFormDataSnapshot.occupants || [],
-          webhookSummary: enhancedFormDataSnapshot.webhookSummary || getWebhookSummary(),
-          // Store only this guarantor's signature as base64 string or null
-          signature: (() => {
-            const sig = (roleScopedSign as any)?.guarantors?.[guarantorIndex];
-            if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
-            return sig ?? null;
-          })(),
-          status: 'draft' as const,
-          last_updated: new Date().toISOString()
-        };
-
-        const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
-        const appid = existingApp?.appid;
-        const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorDataNew(submittedGuarantorData as any, appid);
-        saveResults.push(guarantorSaveResult);
-
-        // Also persist current_step for resume navigation (do not overwrite signatures/documents)
-        try {
-          const stepOnlyApplicationData = {
-            application_info: { zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '' },
-            current_step: currentStep,
-            status: 'draft' as const,
-            storage_mode: 'direct' as const,
-            flow_type: 'separate_webhooks' as const,
-            webhook_flow_version: '2.0',
-            last_updated: new Date().toISOString()
-          };
-          const stepSave = await dynamoDBSeparateTablesUtils.saveApplicationData(stepOnlyApplicationData as any);
-          saveResults.push(stepSave);
-        } catch (e) {
-          console.warn('⚠️ Failed to persist current_step for guarantor resume:', e);
-        }
-
-        console.log('✅ Guarantor draft saved to Guarantors_nyc table');
-
-      } else {
-        console.log('❓ Unknown role, saving to all tables as fallback...');
-        
-        // Fallback: save to all tables if role is unknown
-        const applicationData = {
-          application_info: {
-            ...enhancedFormDataSnapshot.application,
-            reference_id: referenceId,
-            zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''
-          },
-          current_step: currentStep,
-          status: 'draft' as const,
-          uploaded_files_metadata: uploadedFilesMetadata,
-          webhook_responses: webhookResponses,
-          signatures: roleScopedSign,
-          encrypted_documents: encryptedDocuments,
-          storage_mode: 'direct' as const,
-          flow_type: 'separate_webhooks' as const,
-          webhook_flow_version: '2.0',
-          last_updated: new Date().toISOString()
-        };
-
-        const appSaveResult = await dynamoDBSeparateTablesUtils.saveApplicationData(applicationData);
-        saveResults.push(appSaveResult);
-      }
+      // Get the appid we just created for app_nyc and pass it to applicant_nyc
+      const createdApp = await dynamoDBSeparateTablesUtils.getApplicationDataByUserId();
+      const newAppId = createdApp?.appid || undefined;
+      const applicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicantDataNew(applicantData, newAppId);
+      saveResults.push(applicantSaveResult);
+      
+      console.log('✅ Primary Applicant draft with co-applicants and guarantors saved to app_nyc and applicant_nyc tables');
 
       const allSaved = saveResults.every(result => result);
       if (allSaved) {
-        console.log('💾 Role-based draft saved successfully');
+        console.log('💾 Applicant draft saved successfully');
         setHasExistingDraft(true);
         toast({
           title: 'Draft Saved Successfully',
-          description: 'Your application draft has been saved to the appropriate table. You can continue working on it later.',
+          description: 'Your application draft has been saved. You can continue working on it later.',
           variant: 'default',
         });
       } else {
-        console.warn('⚠️ Failed to save some parts of role-based draft');
+        console.warn('⚠️ Failed to save some parts of applicant draft');
         toast({
           title: 'Partially Saved Draft',
           description: 'Some parts of your draft were saved, but there may have been issues. Please try saving again.',
@@ -3720,8 +3613,7 @@ export function ApplicationForm() {
       return newMetadata;
     });
 
-    // Note: Draft saving is now manual - only when Save Draft button is clicked
-    console.log('📁 File uploaded successfully for:', actualPerson, actualDocumentType, '- Draft will be saved when Save Draft button is clicked');
+    console.log('📁 File uploaded successfully for:', actualPerson, actualDocumentType);
   };
 
   const handleSignatureChange = async (person: string, index?: string, signature?: string) => {
@@ -3755,7 +3647,7 @@ export function ApplicationForm() {
           [actualIndex]: new Date().toISOString(),
         },
       }));
-      console.log(`✍️ Signature updated for: ${actualPerson}[${actualIndex}] - Draft will be saved when Save Draft button is clicked`);
+      console.log(`✍️ Signature updated for: ${actualPerson}[${actualIndex}]`);
     } else {
       // Old format: person is the identifier (e.g., 'applicant')
       setSignatures((prev: any) => {
@@ -3770,7 +3662,7 @@ export function ApplicationForm() {
         ...prev,
         [actualPerson]: new Date().toISOString(),
       }));
-      console.log(`✍️ Signature updated for: ${actualPerson} - Draft will be saved when Save Draft button is clicked`);
+      console.log(`✍️ Signature updated for: ${actualPerson}`);
     }
   };
 
@@ -4372,8 +4264,7 @@ export function ApplicationForm() {
       console.log('➡️ Moving to step:', nextPlannedStep);
       console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
 
-      // Note: Draft saving is now manual - only when Save Draft button is clicked
-      console.log('➡️ Moving to step:', nextPlannedStep, '- Draft will be saved when Save Draft button is clicked');
+      console.log('➡️ Moving to step:', nextPlannedStep);
 
     } catch (err) {
       console.warn('FormData logging failed:', err);
@@ -4408,8 +4299,7 @@ export function ApplicationForm() {
       console.log('⬅️ Going back to step:', getNextAllowedStep(currentStep, -1));
       console.log('=== END ENHANCED FORM DATA SNAPSHOT ===');
 
-      // Note: Draft saving is now manual - only when Save Draft button is clicked
-      console.log('⬅️ Going back to step:', getNextAllowedStep(currentStep, -1), '- Draft will be saved when Save Draft button is clicked');
+      console.log('⬅️ Going back to step:', getNextAllowedStep(currentStep, -1));
 
     } catch (err) {
       console.warn('FormData logging failed:', err);
@@ -4550,8 +4440,7 @@ export function ApplicationForm() {
       occupants: [...(prev.occupants || []), newOccupant]
     }));
 
-    // Note: Draft saving is now manual - only when Save Draft button is clicked
-    console.log('👤 Occupant added - Draft will be saved when Save Draft button is clicked');
+    console.log('👤 Occupant added');
   };
 
   const removeOccupant = async (index: number) => {
@@ -4560,8 +4449,7 @@ export function ApplicationForm() {
       occupants: prev.occupants.filter((_: any, i: number) => i !== index)
     }));
 
-    // Note: Draft saving is now manual - only when Save Draft button is clicked
-    console.log('👤 Occupant removed - Draft will be saved when Save Draft button is clicked');
+    console.log('👤 Occupant removed');
   };
 
   const updateOccupant = async (index: number, field: string, value: any) => {
@@ -4572,8 +4460,7 @@ export function ApplicationForm() {
       )
     }));
 
-    // Note: Draft saving is now manual - only when Save Draft button is clicked
-    console.log('👤 Occupant updated:', index, field, '- Draft will be saved when Save Draft button is clicked');
+    console.log('👤 Occupant updated:', index, field);
   };
 
   const handleOccupantDocumentChange = async (index: number, documentType: string, files: File[]) => {
@@ -4592,8 +4479,7 @@ export function ApplicationForm() {
       )
     }));
 
-    // Note: Draft saving is now manual - only when Save Draft button is clicked
-    console.log('📁 Occupant document updated:', index, documentType, '- Draft will be saved when Save Draft button is clicked');
+    console.log('📁 Occupant document updated:', index, documentType);
   };
 
   // Removed handleOccupantEncryptedDocumentChange - no longer needed
@@ -5223,10 +5109,43 @@ export function ApplicationForm() {
           }
         } else if (userRole.startsWith('guarantor') && specificIndex !== null) {
           // For specific guarantor, only include that guarantor's data
+          console.log('🛡️ Processing guarantor data for submission...');
+          console.log('🛡️ formData.guarantors:', formData.guarantors);
+          console.log('🛡️ specificIndex:', specificIndex);
+          console.log('🛡️ userRole:', userRole);
+          
           const specificGuarantor = (formData.guarantors || [])[specificIndex];
-          if (specificGuarantor) {
+          console.log('🛡️ specificGuarantor at index', specificIndex, ':', specificGuarantor);
+          
+          if (specificGuarantor && Object.keys(specificGuarantor).length > 0) {
             (completeServerData as any).guarantors = [specificGuarantor];
             console.log(`🎯 Filtered data for guarantor ${specificIndex + 1}:`, specificGuarantor);
+          } else {
+            // Fallback: if no specific guarantor found, try to get from the form data directly
+            console.log('⚠️ No specific guarantor found at index', specificIndex, 'trying fallback');
+            const fallbackGuarantor = (formData.guarantors || [])[0] || {};
+            console.log('🛡️ fallbackGuarantor:', fallbackGuarantor);
+            
+            // If still no data, try to get from the form values directly
+            if (!fallbackGuarantor || Object.keys(fallbackGuarantor).length === 0) {
+              console.log('⚠️ No guarantor data in formData.guarantors, trying form values...');
+              const formValues = form.getValues();
+              console.log('🛡️ Form values guarantors:', formValues.guarantors);
+              
+              if (formValues.guarantors && formValues.guarantors[specificIndex]) {
+                (completeServerData as any).guarantors = [formValues.guarantors[specificIndex]];
+                console.log(`🎯 Using form values for guarantor ${specificIndex + 1}:`, formValues.guarantors[specificIndex]);
+              } else if (formValues.guarantors && formValues.guarantors[0]) {
+                (completeServerData as any).guarantors = [formValues.guarantors[0]];
+                console.log(`🎯 Using form values fallback for guarantor:`, formValues.guarantors[0]);
+              } else {
+                console.error('❌ No guarantor data found anywhere!');
+                (completeServerData as any).guarantors = [{}];
+              }
+            } else {
+              (completeServerData as any).guarantors = [fallbackGuarantor];
+              console.log(`🎯 Fallback guarantor data:`, fallbackGuarantor);
+            }
           }
         }
         
@@ -6054,10 +5973,41 @@ export function ApplicationForm() {
 
           } else if (userRole && userRole.startsWith('guarantor')) {
             console.log('🛡️ Guarantor submitting to Guarantors_nyc table...');
+            console.log('🛡️ submittedFormRoleScoped:', submittedFormRoleScoped);
             
             // Get the specific guarantor data from the role-scoped form
-            const guarantorData = submittedFormRoleScoped.guarantors?.[0] || {};
-            console.log('📊 Guarantor data to save:', guarantorData);
+            let guarantorData = submittedFormRoleScoped.guarantors?.[0] || {};
+            console.log('📊 Initial guarantor data to save:', guarantorData);
+            console.log('📊 Initial guarantor data keys:', Object.keys(guarantorData));
+            console.log('📊 Initial guarantor data is empty:', Object.keys(guarantorData).length === 0);
+            
+            // If the guarantor data is empty, try to get it from the form data directly
+            if (!guarantorData || Object.keys(guarantorData).length === 0) {
+              console.log('⚠️ Guarantor data is empty, trying to get from formData directly...');
+              const formDataGuarantor = (formData.guarantors || [])[specificIndex || 0];
+              if (formDataGuarantor && Object.keys(formDataGuarantor).length > 0) {
+                guarantorData = formDataGuarantor;
+                console.log('✅ Found guarantor data in formData:', guarantorData);
+              } else {
+                console.log('⚠️ No guarantor data in formData, trying form values...');
+                const formValues = form.getValues();
+                const formValuesGuarantor = (formValues.guarantors || [])[specificIndex || 0];
+                if (formValuesGuarantor && Object.keys(formValuesGuarantor).length > 0) {
+                  guarantorData = formValuesGuarantor;
+                  console.log('✅ Found guarantor data in form values:', guarantorData);
+                } else {
+                  console.error('❌ No guarantor data found anywhere!');
+                }
+              }
+            }
+            
+            console.log('📊 Final guarantor data to save:', guarantorData);
+            console.log('📊 Final guarantor data keys:', Object.keys(guarantorData));
+            console.log('📊 Final guarantor data has name:', !!guarantorData.name);
+            console.log('📊 Final guarantor data has email:', !!guarantorData.email);
+            console.log('📊 Final guarantor data has phone:', !!guarantorData.phone);
+            console.log('📊 Final guarantor data has address:', !!guarantorData.address);
+            console.log('📊 Final guarantor data is empty:', Object.keys(guarantorData).length === 0);
             
             // Save Guarantor data to Guarantors_nyc table with simplified structure
             const submittedGuarantorData = {
@@ -6071,9 +6021,12 @@ export function ApplicationForm() {
                 if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
                 return sig ?? null;
               })(),
+              current_step: getSequentialStepNumber(12, userRole), // Final step when submitted (5 for guarantor)
               status: 'submitted' as const,
               last_updated: new Date().toISOString()
             };
+            
+            console.log('📊 Final submittedGuarantorData:', submittedGuarantorData);
 
             // Get the appid from the application data to link guarantor to application
             const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
@@ -9833,7 +9786,10 @@ export function ApplicationForm() {
 
 
               
-              {renderStep()}
+
+               <div data-form-content>
+                 {renderStep()}
+               </div>
               
               {/* Student Documents Skip Notice */}
               {formData?.applicant?.employmentType === 'student' && currentStep === 3 && (
@@ -9896,21 +9852,24 @@ export function ApplicationForm() {
                   </Button>
               
             <div className="flex space-x-3">
+              {/* Save Draft Button - Only show for Applicant role */}
+              {userRole === 'applicant' && (
                 <Button
                   type="button"
                   variant="outline"
                   onClick={saveDraftToDynamoDB}
                   disabled={isSavingDraft}
-                className="flex items-center"
+                  className="flex items-center"
                 >
                   {isSavingDraft ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
                   ) : (
-                  <Save className="w-4 h-4 mr-2" />
+                    <Save className="w-4 h-4 mr-2" />
                   )}
-                Save Draft
+                  Save Draft
                 </Button>
-                
+              )}
+              
               {currentStep === filteredSteps.length - 1 ? (
                   <Button
                     type="submit"
