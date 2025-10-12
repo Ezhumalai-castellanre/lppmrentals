@@ -109,7 +109,9 @@ const applicationSchema = z.object({
   applicantLengthAtAddressMonths: z.union([
     z.number().optional(),
     z.string().optional().transform((val) => val ? Number(val) : undefined)
-  ]).or(z.undefined()),
+  ]).or(z.undefined()).refine((val) => !val || (val >= 0 && val <= 11), {
+    message: "Months must be between 0 and 11"
+  }),
   applicantLandlordName: z.string().optional(),
   applicantLandlordAddressLine1: z.string().optional(),
   applicantLandlordAddressLine2: z.string().optional(),
@@ -172,7 +174,9 @@ const applicationSchema = z.object({
     lengthAtAddressMonths: z.union([
       z.number().optional(),
       z.string().optional().transform((val) => val ? Number(val) : undefined)
-    ]).or(z.undefined()),
+    ]).or(z.undefined()).refine((val) => !val || (val >= 0 && val <= 11), {
+      message: "Months must be between 0 and 11"
+    }),
     landlordName: z.string().optional(),
     landlordAddressLine1: z.string().optional(),
     landlordAddressLine2: z.string().optional(),
@@ -251,7 +255,9 @@ const applicationSchema = z.object({
     lengthAtAddressMonths: z.union([
       z.number().optional(),
       z.string().optional().transform((val) => val ? Number(val) : undefined)
-    ]).or(z.undefined()),
+    ]).or(z.undefined()).refine((val) => !val || (val >= 0 && val <= 11), {
+      message: "Months must be between 0 and 11"
+    }),
     landlordName: z.string().optional(),
     landlordAddressLine1: z.string().optional(),
     landlordAddressLine2: z.string().optional(),
@@ -482,7 +488,7 @@ export function ApplicationForm() {
   const { user } = useAuth();
   
   // Parse role from URL query parameters
-  const [userRole, setUserRole] = useState<string>('applicant');
+  const [userRole, setUserRole] = useState<string>('');
   const [specificIndex, setSpecificIndex] = useState<number | null>(null);
   // Step 1 helpers
   const [appOptions, setAppOptions] = useState<Array<{ appid: string; apartmentNumber?: string; buildingAddress?: string; zoneinfo: string }>>([]);
@@ -1139,6 +1145,22 @@ export function ApplicationForm() {
     });
   }, []);
 
+  // Debug: Monitor form data changes for co-applicants
+  useEffect(() => {
+    console.log('######### formData:', formData);
+    
+    if (formData.coApplicants && Array.isArray(formData.coApplicants)) {
+      console.log('📊 Co-applicants in form data:', formData.coApplicants);
+      console.log('📊 Co-applicants count:', formData.coApplicants.length);
+      formData.coApplicants.forEach((coApp: any, index: number) => {
+        if (coApp && Object.keys(coApp).length > 0) {
+          console.log(`📊 Co-applicant ${index}:`, coApp);
+        }
+      });
+    }
+  }, [formData.coApplicants]);
+
+
   // Handle webhook responses from formData when it changes
   useEffect(() => {
     if (formData.webhookSummary?.webhookResponses) {
@@ -1157,6 +1179,68 @@ export function ApplicationForm() {
       // Update webhook responses state
       setWebhookResponses(mergedWebhookResponses);
       console.log('🔗 Merged webhook responses from webhookSummary in useEffect:', mergedWebhookResponses);
+      console.log('######### prev document (merged):', mergedWebhookResponses);
+      console.log('######### webhookSummary.webhookResponses (source):', formData.webhookSummary?.webhookResponses);
+      
+      // Auto-map webhook responses to form fields
+      const webhookResponses = formData.webhookSummary.webhookResponses;
+      if (webhookResponses && typeof webhookResponses === 'object') {
+        console.log('🔄 Auto-mapping webhook responses to form fields...');
+        
+        // Process each webhook response
+        Object.entries(webhookResponses).forEach(([key, value]) => {
+          if (typeof value === 'string' && value.startsWith('http')) {
+            console.log(`📎 Mapping webhook response: ${key} -> ${value}`);
+            
+            // Map to appropriate form field based on key pattern
+            if (key.includes('coApplicants_') && key.includes('_photo_id')) {
+              // This is a co-applicant photo ID document
+              const coApplicantIndex = key.match(/coApplicants_(\d+)_/)?.[1];
+              if (coApplicantIndex !== undefined) {
+                const index = parseInt(coApplicantIndex);
+                setFormData((prevData: any) => {
+                  const updated = { ...prevData };
+                  if (!updated.coApplicants) updated.coApplicants = [];
+                  if (!updated.coApplicants[index]) updated.coApplicants[index] = {};
+                  
+                  // Map to the appropriate field in co-applicant data
+                  updated.coApplicants[index].photoIdUrl = value;
+                  
+                  console.log(`✅ Mapped co-applicant ${index} photo ID URL:`, value);
+                  return updated;
+                });
+              }
+            } else if (key.includes('applicant_') && key.includes('_photo_id')) {
+              // This is an applicant photo ID document
+              setFormData((prevData: any) => {
+                const updated = { ...prevData };
+                if (!updated.applicant) updated.applicant = {};
+                updated.applicant.photoIdUrl = value;
+                
+                console.log(`✅ Mapped applicant photo ID URL:`, value);
+                return updated;
+              });
+            } else if (key.includes('guarantor_') && key.includes('_photo_id')) {
+              // This is a guarantor photo ID document
+              const guarantorIndex = key.match(/guarantor_(\d+)_/)?.[1];
+              if (guarantorIndex !== undefined) {
+                const index = parseInt(guarantorIndex);
+                setFormData((prevData: any) => {
+                  const updated = { ...prevData };
+                  if (!updated.guarantors) updated.guarantors = [];
+                  if (!updated.guarantors[index]) updated.guarantors[index] = {};
+                  
+                  // Map to the appropriate field in guarantor data
+                  updated.guarantors[index].photoIdUrl = value;
+                  
+                  console.log(`✅ Mapped guarantor ${index} photo ID URL:`, value);
+                  return updated;
+                });
+              }
+            }
+          }
+        });
+      }
     }
   }, [formData.webhookSummary?.webhookResponses]);
 
@@ -1242,7 +1326,26 @@ export function ApplicationForm() {
       console.log('🔄 Loading draft data from separate tables for application ID:', applicationId);
       
       // Load data from all separate tables
-      const allData = await dynamoDBSeparateTablesUtils.getAllUserData();
+      let allData = await dynamoDBSeparateTablesUtils.getAllUserData();
+      console.log('🔍 All data structure:', allData, userRole);
+      console.log('🔍 Applicant webhookSummary:', allData.applicant?.webhookSummary);
+      console.log('🔍 CoApplicant webhookSummary:', allData.coApplicant?.webhookSummary);
+      console.log('🔍 Guarantor webhookSummary:', allData.guarantor?.webhookSummary);
+      
+      // If we have a specific application ID, try to load data for that specific application
+      if (applicationId && applicationId !== user?.applicantId) {
+        console.log('🔍 Loading data for specific application ID:', applicationId);
+        try {
+          const specificApplication = await dynamoDBSeparateTablesUtils.getApplicationByAppId(applicationId);
+          if (specificApplication) {
+            console.log('📊 Found specific application data:', specificApplication);
+            // Override the application data with the specific one
+            allData.application = specificApplication;
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to load specific application data, using current user data:', error);
+        }
+      }
       
       if (allData.application || allData.applicant || allData.coApplicant || allData.guarantor) {
         console.log('📊 Draft data loaded from separate tables');
@@ -1260,17 +1363,23 @@ export function ApplicationForm() {
         try {
           const appIdToUse = allData.application?.appid;
           if (appIdToUse) {
+            console.log('🔍 Loading co-applicants and guarantors for appId:', appIdToUse);
             const [coAppsByAppId, guarantorsByAppId] = await Promise.all([
               dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(appIdToUse),
               dynamoDBSeparateTablesUtils.getGuarantorsByAppId(appIdToUse)
             ]);
+            console.log('📊 Loaded co-applicants:', coAppsByAppId);
+            console.log('📊 Loaded guarantors:', guarantorsByAppId);
+            
             if (Array.isArray(coAppsByAppId) && coAppsByAppId.length > 0) {
               // Normalize to plain co-applicant_info objects
               coApplicantsArray = coAppsByAppId.map((c: any) => c?.coapplicant_info || c || {});
+              console.log('📊 Normalized co-applicants array:', coApplicantsArray);
             }
             if (Array.isArray(guarantorsByAppId) && guarantorsByAppId.length > 0) {
               // Normalize to plain guarantor_info objects
               guarantorsArray = guarantorsByAppId.map((g: any) => g?.guarantor_info || g || {});
+              console.log('📊 Normalized guarantors array:', guarantorsArray);
             }
           }
         } catch (e) {
@@ -1284,6 +1393,54 @@ export function ApplicationForm() {
           coApplicant: {},
           guarantor: {}
         };
+        if (user && user.role && user.role.startsWith('coapplicant')) {
+          console.log('🔄 Processing Co-Applicant role data mapping...');
+          console.log('🔍 Current specificIndex:', specificIndex);
+
+          // Check if data was saved as applicant type (in Applications table)
+          if (allData.application && allData.application.application_info) {
+            console.log('📊 Mapping application_info to coApplicants array for Co-Applicant role (applicant type)');
+            coApplicantsArray = [allData.application.application_info]; // Map single application_info to coApplicants array
+          }
+          // Check if data was saved in Co-Applicants table
+          else if (allData.coApplicant && allData.coApplicant.coapplicant_info) {
+            console.log('📊 Using coapplicant_info from Co-Applicants table for Co-Applicant role');
+            coApplicantsArray = [allData.coApplicant.coapplicant_info];
+            // Also load webhookSummary from co-applicant data
+            if (allData.coApplicant.webhookSummary) {
+              parsedFormData.webhookSummary = allData.coApplicant.webhookSummary;
+              console.log('🔍 Loaded webhookSummary from co-applicant data:', parsedFormData.webhookSummary);
+            }
+          }
+          // Check if data exists in coApplicantsArray from previous loading
+          else if (coApplicantsArray.length > 0) {
+            console.log('📊 Using existing coApplicantsArray for Co-Applicant role');
+            // coApplicantsArray already populated from previous logic
+          }
+          
+          // Handle specific index for coapplicant1, coapplicant2, etc.
+          if (specificIndex !== null && specificIndex !== undefined && coApplicantsArray.length > 0) {
+            console.log(`📊 Mapping data for specific Co-Applicant index: ${specificIndex}`);
+            // Ensure the array has enough elements for the specific index
+            while (coApplicantsArray.length <= specificIndex) {
+              coApplicantsArray.push({});
+            }
+            // If we have data, put it at the specific index
+            if (coApplicantsArray[0] && Object.keys(coApplicantsArray[0]).length > 0) {
+              coApplicantsArray[specificIndex] = coApplicantsArray[0];
+              if (specificIndex > 0) {
+                coApplicantsArray[0] = {}; // Clear the first element if we moved it
+              }
+            }
+          }
+          
+          // For Co-Applicant role, also clear the applicant data to avoid confusion
+          // since the data should be in coApplicants array, not applicant object
+          if (parsedFormData.applicant) {
+            console.log('🧹 Clearing applicant data for Co-Applicant role to avoid confusion');
+            parsedFormData.applicant = {};
+          }
+        }
         
         // Restore application data
         if (allData.application) {
@@ -1349,7 +1506,17 @@ export function ApplicationForm() {
           ap.landlordPhone = ap.landlordPhone || ap.landlord_phone || '';
           ap.landlordEmail = ap.landlordEmail || ap.landlord_email || '';
           parsedFormData.occupants = selectedApplicantOccupants || [];
-          parsedFormData.webhookSummary = allData.applicant?.webhookSummary || parsedFormData.webhookSummary || {};
+          // Load webhookSummary from any available source (applicant, coApplicant, guarantor)
+          parsedFormData.webhookSummary = allData.applicant?.webhookSummary || 
+                                        allData.coApplicant?.webhookSummary || 
+                                        allData.guarantor?.webhookSummary || 
+                                        parsedFormData.webhookSummary || {};
+          console.log('🔍 Loaded webhookSummary from data sources:', {
+            applicant: allData.applicant?.webhookSummary,
+            coApplicant: allData.coApplicant?.webhookSummary,
+            guarantor: allData.guarantor?.webhookSummary,
+            final: parsedFormData.webhookSummary
+          });
           parsedFormData.signatures = {
             ...parsedFormData.signatures,
             applicant: selectedApplicantSignature || {}
@@ -1376,6 +1543,7 @@ export function ApplicationForm() {
         // Restore co-applicant data into form structure
         if (coApplicantsArray.length > 0) {
           parsedFormData.coApplicants = coApplicantsArray;
+          console.log('📊 Set parsedFormData.coApplicants:', coApplicantsArray);
         }
         
         // Restore guarantor data into form structure
@@ -1406,6 +1574,56 @@ export function ApplicationForm() {
               ...parsedFormData.webhookSummary.webhookResponses
             };
             console.log('🔗 Merged webhook responses from webhookSummary:', parsedFormData.webhookResponses);
+            console.log('######### prev document (loaded):', parsedFormData.webhookResponses);
+            console.log('######### webhookSummary.webhookResponses (loaded source):', parsedFormData.webhookSummary?.webhookResponses);
+            
+            // Auto-map webhook responses to form fields during data loading
+            const webhookResponses = parsedFormData.webhookSummary.webhookResponses;
+            if (webhookResponses && typeof webhookResponses === 'object') {
+              console.log('🔄 Auto-mapping webhook responses during data loading...');
+              
+              // Process each webhook response
+              Object.entries(webhookResponses).forEach(([key, value]) => {
+                if (typeof value === 'string' && value.startsWith('http')) {
+                  console.log(`📎 Mapping webhook response during load: ${key} -> ${value}`);
+                  
+                  // Map to appropriate form field based on key pattern
+                  if (key.includes('coApplicants_') && key.includes('_photo_id')) {
+                    // This is a co-applicant photo ID document
+                    const coApplicantIndex = key.match(/coApplicants_(\d+)_/)?.[1];
+                    if (coApplicantIndex !== undefined) {
+                      const index = parseInt(coApplicantIndex);
+                      if (!parsedFormData.coApplicants) parsedFormData.coApplicants = [];
+                      if (!parsedFormData.coApplicants[index]) parsedFormData.coApplicants[index] = {};
+                      
+                      // Map to the appropriate field in co-applicant data
+                      parsedFormData.coApplicants[index].photoIdUrl = value;
+                      
+                      console.log(`✅ Mapped co-applicant ${index} photo ID URL during load:`, value);
+                    }
+                  } else if (key.includes('applicant_') && key.includes('_photo_id')) {
+                    // This is an applicant photo ID document
+                    if (!parsedFormData.applicant) parsedFormData.applicant = {};
+                    parsedFormData.applicant.photoIdUrl = value;
+                    
+                    console.log(`✅ Mapped applicant photo ID URL during load:`, value);
+                  } else if (key.includes('guarantor_') && key.includes('_photo_id')) {
+                    // This is a guarantor photo ID document
+                    const guarantorIndex = key.match(/guarantor_(\d+)_/)?.[1];
+                    if (guarantorIndex !== undefined) {
+                      const index = parseInt(guarantorIndex);
+                      if (!parsedFormData.guarantors) parsedFormData.guarantors = [];
+                      if (!parsedFormData.guarantors[index]) parsedFormData.guarantors[index] = {};
+                      
+                      // Map to the appropriate field in guarantor data
+                      parsedFormData.guarantors[index].photoIdUrl = value;
+                      
+                      console.log(`✅ Mapped guarantor ${index} photo ID URL during load:`, value);
+                    }
+                  }
+                }
+              });
+            }
           }
 
           // Also merge indexed webhook responses from co-applicants and guarantors arrays so previews show
@@ -1446,6 +1664,14 @@ export function ApplicationForm() {
             console.warn('⚠️ Failed to merge indexed webhook responses from separate tables', e);
           }
           
+          console.log('📊 Final parsedFormData before setting formData:', {
+            hasApplication: !!parsedFormData.application,
+            hasApplicant: !!parsedFormData.applicant,
+            hasCoApplicants: !!parsedFormData.coApplicants,
+            coApplicantsLength: parsedFormData.coApplicants?.length || 0,
+            coApplicantsData: parsedFormData.coApplicants,
+            userRole: userRole
+          });
           setFormData(parsedFormData);
           
            // Restore current step only if restoreStep is true
@@ -1663,7 +1889,12 @@ export function ApplicationForm() {
             }
             
             // Set form values for each co-applicant
+            console.log('🔄 Setting form values for coApplicants:', parsedFormData.coApplicants);
+            console.log('🔄 Co-applicants array length:', parsedFormData.coApplicants.length);
             parsedFormData.coApplicants.forEach((coApplicant: any, index: number) => {
+              console.log(`📝 Setting form values for coApplicant[${index}]:`, coApplicant);
+              console.log(`📝 Co-applicant ${index} has name:`, coApplicant.name);
+              console.log(`📝 Co-applicant ${index} has email:`, coApplicant.email);
               if (coApplicant.name) form.setValue(`coApplicants.${index}.name`, coApplicant.name);
               if (coApplicant.relationship) form.setValue(`coApplicants.${index}.relationship`, coApplicant.relationship);
               if (coApplicant.dob) form.setValue(`coApplicants.${index}.dob`, new Date(coApplicant.dob));
@@ -1704,6 +1935,15 @@ export function ApplicationForm() {
                 form.setValue(`coApplicants.${index}.bankRecords`, coApplicant.bankRecords);
               }
             });
+            
+            // Debug: Check if form values were set correctly
+            console.log('🔍 Debug: Checking form values after setting co-applicants...');
+            for (let i = 0; i < parsedFormData.coApplicants.length; i++) {
+              const nameValue = form.getValues(`coApplicants.${i}.name`);
+              const emailValue = form.getValues(`coApplicants.${i}.email`);
+              console.log(`🔍 Form value coApplicants.${i}.name:`, nameValue);
+              console.log(`🔍 Form value coApplicants.${i}.email:`, emailValue);
+            }
           }
           
           // Restore guarantor information (only fields that exist in schema)
@@ -1934,7 +2174,6 @@ export function ApplicationForm() {
         guarantorDataExists: parsedFormData.guarantor ? hasGuarantorData(parsedFormData.guarantor) : false,
         guarantorsDataExists: parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0
       });
-      
       // Force a re-render by updating the formData state
       setFormData((prev: any) => ({
         ...prev,
@@ -2044,6 +2283,54 @@ export function ApplicationForm() {
                 ...parsedFormData.webhook_responses,
                 ...parsedFormData.webhookSummary.webhookResponses
               };
+              
+              // Auto-map webhook responses to form fields during legacy data loading
+              const webhookResponses = parsedFormData.webhookSummary.webhookResponses;
+              if (webhookResponses && typeof webhookResponses === 'object') {
+                console.log('🔄 Auto-mapping webhook responses during legacy data loading...');
+                
+                // Process each webhook response
+                Object.entries(webhookResponses).forEach(([key, value]) => {
+                  if (typeof value === 'string' && value.startsWith('http')) {
+                    console.log(`📎 Mapping webhook response during legacy load: ${key} -> ${value}`);
+                    
+                    // Map to appropriate form field based on key pattern
+                    if (key.includes('coApplicants_') && key.includes('_photo_id')) {
+                      // This is a co-applicant photo ID document
+                      const coApplicantIndex = key.match(/coApplicants_(\d+)_/)?.[1];
+                      if (coApplicantIndex !== undefined) {
+                        const index = parseInt(coApplicantIndex);
+                        if (!parsedFormData.coApplicants) parsedFormData.coApplicants = [];
+                        if (!parsedFormData.coApplicants[index]) parsedFormData.coApplicants[index] = {};
+                        
+                        // Map to the appropriate field in co-applicant data
+                        parsedFormData.coApplicants[index].photoIdUrl = value;
+                        
+                        console.log(`✅ Mapped co-applicant ${index} photo ID URL during legacy load:`, value);
+                      }
+                    } else if (key.includes('applicant_') && key.includes('_photo_id')) {
+                      // This is an applicant photo ID document
+                      if (!parsedFormData.applicant) parsedFormData.applicant = {};
+                      parsedFormData.applicant.photoIdUrl = value;
+                      
+                      console.log(`✅ Mapped applicant photo ID URL during legacy load:`, value);
+                    } else if (key.includes('guarantor_') && key.includes('_photo_id')) {
+                      // This is a guarantor photo ID document
+                      const guarantorIndex = key.match(/guarantor_(\d+)_/)?.[1];
+                      if (guarantorIndex !== undefined) {
+                        const index = parseInt(guarantorIndex);
+                        if (!parsedFormData.guarantors) parsedFormData.guarantors = [];
+                        if (!parsedFormData.guarantors[index]) parsedFormData.guarantors[index] = {};
+                        
+                        // Map to the appropriate field in guarantor data
+                        parsedFormData.guarantors[index].photoIdUrl = value;
+                        
+                        console.log(`✅ Mapped guarantor ${index} photo ID URL during legacy load:`, value);
+                      }
+                    }
+                  }
+                });
+              }
             }
 
              setFormData(parsedFormData);
@@ -2094,8 +2381,9 @@ export function ApplicationForm() {
       const stepParam = urlParams.get('step');
       const roleParam = urlParams.get('role');
       
-      // Set role and update filtered steps
+      // Set role and update filtered steps - prioritize URL param over user role
       if (roleParam) {
+        console.log('🔍 Setting user role from URL parameter:', roleParam);
         setUserRole(roleParam);
         setFilteredSteps(getFilteredSteps(roleParam));
         
@@ -2202,6 +2490,7 @@ export function ApplicationForm() {
       } else if (user && user.role) {
         // Fallback to Cognito custom:role when URL param is absent
         const roleFromUser = user.role;
+        console.log('🔍 Setting user role from logged-in user (fallback):', roleFromUser);
         setUserRole(roleFromUser);
         setFilteredSteps(getFilteredSteps(roleFromUser));
 
@@ -2302,6 +2591,12 @@ export function ApplicationForm() {
         } else {
           setSpecificIndex(null);
         }
+      } else {
+        // Default fallback: set role to 'applicant' if no role is specified
+        console.log('🔍 No role specified, defaulting to applicant');
+        setUserRole('applicant');
+        setFilteredSteps(getFilteredSteps('applicant'));
+        setSpecificIndex(null);
       }
       
       // Check for existing draft data first and handle initialization
@@ -2310,8 +2605,17 @@ export function ApplicationForm() {
         
         if (shouldContinue) {
           console.log('🔄 Continue parameter detected, loading existing draft...');
-          // Load draft data from DynamoDB if available
-          if (user.applicantId) {
+          
+          // Check if there's a specific draft to load from sessionStorage
+          const draftToLoad = sessionStorage.getItem('draftToLoad');
+          if (draftToLoad) {
+            console.log('📝 Loading specific draft from sessionStorage:', draftToLoad);
+            // Clear the sessionStorage after reading
+            sessionStorage.removeItem('draftToLoad');
+            // Load the specific draft data
+            loadDraftData(draftToLoad, true); // Restore step when continuing
+          } else if (user.applicantId) {
+            // Fallback to user's applicantId if no specific draft
             loadDraftData(user.applicantId, true); // Restore step when continuing
           }
           
@@ -2508,6 +2812,7 @@ export function ApplicationForm() {
     // console.log(`🔄 updateFormData: ${section}.${indexOrField} = ${fieldOrValue || value}`);
     
     setFormData((prev: any) => {
+      console.log('######### prev: ', prev);
       let newFormData;
       
       if (section === '') {
@@ -2605,6 +2910,7 @@ export function ApplicationForm() {
   const updateArrayItem = (arrayName: string, index: number, field: string, value: any) => {
     setFormData((prev: any) => {
       const currentArray = prev[arrayName] || [];
+      console.log('######### currentArray:', currentArray);
       
       // Ensure array has enough elements to accommodate the index
       let newArray = [...currentArray];
@@ -2997,13 +3303,58 @@ export function ApplicationForm() {
       totalResponses: Object.keys(webhookResponses).length,
       responsesByPerson: {
         applicant: Object.keys(webhookResponses).filter(key => key.startsWith('applicant_')).length,
-        coApplicant: Object.keys(webhookResponses).filter(key => key.startsWith('coApplicant_')).length,
-        guarantor: Object.keys(webhookResponses).filter(key => key.startsWith('guarantor_')).length,
+        coApplicant: Object.keys(webhookResponses).filter(key => 
+          key.startsWith('coApplicant_') || key.startsWith('coApplicants_')
+        ).length,
+        guarantor: Object.keys(webhookResponses).filter(key => 
+          key.startsWith('guarantor_') || key.startsWith('guarantors_')
+        ).length,
         occupants: Object.keys(webhookResponses).filter(key => key.startsWith('occupants_')).length
       },
       webhookResponses: webhookResponses
     };
     
+    console.log('📊 Generated webhook summary:', summary);
+    return summary;
+  };
+
+  // Helper function to get role-specific webhook summary
+  const getRoleSpecificWebhookSummary = (role: string, index?: number) => {
+    if (!role) return getWebhookSummary();
+    
+    let filteredResponses: any = {};
+    
+    if (role === 'applicant') {
+      filteredResponses = Object.fromEntries(
+        Object.entries(webhookResponses).filter(([key]) => key.startsWith('applicant_'))
+      );
+    } else if (role.startsWith('coapplicant')) {
+      const coAppIndex = index !== undefined ? index : 0;
+      filteredResponses = Object.fromEntries(
+        Object.entries(webhookResponses).filter(([key]) => 
+          key.startsWith(`coApplicants_${coAppIndex}_`) || key.startsWith(`coApplicant_${coAppIndex}_`)
+        )
+      );
+    } else if (role.startsWith('guarantor')) {
+      const guarIndex = index !== undefined ? index : 0;
+      filteredResponses = Object.fromEntries(
+        Object.entries(webhookResponses).filter(([key]) => 
+          key.startsWith(`guarantors_${guarIndex}_`) || key.startsWith(`guarantor_${guarIndex}_`)
+        )
+      );
+    } else {
+      filteredResponses = webhookResponses;
+    }
+    
+    const summary = {
+      totalResponses: Object.keys(filteredResponses).length,
+      responsesByPerson: {
+        [role]: Object.keys(filteredResponses).length
+      },
+      webhookResponses: filteredResponses
+    };
+    
+    console.log(`📊 Generated role-specific webhook summary for ${role}:`, summary);
     return summary;
   };
 
@@ -3032,11 +3383,34 @@ export function ApplicationForm() {
       console.log('👥 Co-applicant role detected, using index:', index);
       const coApplicant = (data.coApplicants || [])[index] || {};
       console.log('👥 Co-applicant data for index', index, ':', coApplicant);
+      console.log('👥 Available webhookResponses in data:', data.webhookResponses);
+      console.log('👥 WebhookResponses keys:', Object.keys(data.webhookResponses || {}));
+      
+      // Filter webhook responses to only include this co-applicant's responses
+      const coApplicantWebhookResponses = Object.fromEntries(
+        Object.entries(data.webhookResponses || {}).filter(([key]) => 
+          key.startsWith(`coApplicants_${index}_`) || key.startsWith(`coApplicant_${index}_`)
+        )
+      );
+      
+      console.log('👥 Filtered co-applicant webhook responses:', coApplicantWebhookResponses);
+      console.log('👥 Filtered responses count:', Object.keys(coApplicantWebhookResponses).length);
+      
+      // Create webhook summary for this specific co-applicant
+      const coApplicantWebhookSummary = {
+        totalResponses: Object.keys(coApplicantWebhookResponses).length,
+        responsesByPerson: {
+          coApplicant: Object.keys(coApplicantWebhookResponses).length
+        },
+        webhookResponses: coApplicantWebhookResponses
+      };
+      
+      console.log('👥 Co-applicant webhook summary generated:', coApplicantWebhookSummary);
       
       // Return simplified JSON structure as requested
       return {
         coApplicants: [coApplicant],
-        webhookSummary: data.webhookSummary || {},
+        webhookSummary: coApplicantWebhookSummary,
         // Include the original index for reference
         coApplicantIndex: index,
       };
@@ -3068,10 +3442,28 @@ export function ApplicationForm() {
       console.log('🛡️ Guarantor has name:', !!guarantor.name);
       console.log('🛡️ Guarantor has email:', !!guarantor.email);
       
+      // Filter webhook responses to only include this guarantor's responses
+      const guarantorWebhookResponses = Object.fromEntries(
+        Object.entries(data.webhookResponses || {}).filter(([key]) => 
+          key.startsWith(`guarantors_${index}_`) || key.startsWith(`guarantor_${index}_`)
+        )
+      );
+      
+      // Create webhook summary for this specific guarantor
+      const guarantorWebhookSummary = {
+        totalResponses: Object.keys(guarantorWebhookResponses).length,
+        responsesByPerson: {
+          guarantor: Object.keys(guarantorWebhookResponses).length
+        },
+        webhookResponses: guarantorWebhookResponses
+      };
+      
+      console.log('🛡️ Guarantor webhook summary generated:', guarantorWebhookSummary);
+      
       // Return simplified JSON structure as requested
       return {
         guarantors: [guarantor],
-        webhookSummary: data.webhookSummary || {},
+        webhookSummary: guarantorWebhookSummary,
         // Include the original index for reference
         guarantorIndex: index,
       };
@@ -3281,6 +3673,290 @@ export function ApplicationForm() {
       setIsSavingDraft(false);
     }
   }, [getCurrentUserZoneinfo, formData, referenceId, currentStep, uploadedFilesMetadata, webhookResponses, signatures, encryptedDocuments, getWebhookSummary, userRole, specificIndex, buildRoleScopedFormData, buildRoleScopedSignatures]);
+
+  // Save draft to DynamoDB function - ONLY for Co-Applicant role
+  const saveCoApplicantDraftToDynamoDB = useCallback(async () => {
+    // Only allow save draft for Co-Applicant role
+    if (!userRole || !userRole.startsWith('coapplicant')) {
+      console.log('⚠️ Save draft is only available for Co-Applicant role. Current role:', userRole);
+      toast({
+        title: 'Save Draft Not Available',
+        description: 'Save draft functionality is only available for co-applicants.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const currentUserZoneinfo = getCurrentUserZoneinfo();
+    
+    if (!currentUserZoneinfo) {
+      console.log('⚠️ No zoneinfo/applicantId available, skipping draft save');
+      toast({
+        title: 'Cannot Save Draft',
+        description: 'No applicant ID available. Please ensure you are properly authenticated.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!currentUserZoneinfo.trim()) {
+      console.log('⚠️ Empty zoneinfo/applicantId, skipping draft save');
+      toast({
+        title: 'Cannot Save Draft',
+        description: 'Invalid applicant ID. Please ensure you are properly authenticated.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingDraft(true);
+    try {
+      // Get the latest form data from state
+      const currentFormData = formData;
+      console.log('🔍 Current form data structure for Co-Applicant:', {
+        hasCoApplicants: !!currentFormData.coApplicants,
+        coApplicantsLength: currentFormData.coApplicants?.length || 0,
+        specificIndex: specificIndex,
+        userRole: userRole,
+        coApplicantsData: currentFormData.coApplicants,
+        webhookResponsesCount: Object.keys(webhookResponses).length,
+        webhookResponses: webhookResponses
+      });
+      
+      // Build role-scoped data to avoid overwriting unrelated sections
+      // Pass webhookResponses to the function so it can filter them properly
+      const formDataWithWebhooks = {
+        ...currentFormData,
+        webhookResponses: webhookResponses
+      };
+      console.log('🔍 FormDataWithWebhooks for regular co-applicant save:', {
+        hasWebhookResponses: !!formDataWithWebhooks.webhookResponses,
+        webhookResponsesKeys: Object.keys(formDataWithWebhooks.webhookResponses || {}),
+        webhookResponses: formDataWithWebhooks.webhookResponses,
+        userRole: userRole,
+        specificIndex: specificIndex
+      });
+      const roleScopedForm = buildRoleScopedFormData(formDataWithWebhooks, userRole || '', specificIndex ?? undefined);
+      const roleScopedSign = buildRoleScopedSignatures(signatures, userRole || '', specificIndex ?? undefined);
+
+      // Get the specific co-applicant data from the role-scoped form
+      const coApplicantData = roleScopedForm.coApplicants?.[0] || {};
+      console.log('🔍 RoleScopedForm result:', {
+        hasWebhookSummary: !!roleScopedForm.webhookSummary,
+        webhookSummary: roleScopedForm.webhookSummary,
+        coApplicantsCount: roleScopedForm.coApplicants?.length || 0
+      });
+      console.log('📊 Co-Applicant draft data to save:', coApplicantData);
+      console.log('📊 Role-scoped form structure:', {
+        hasCoApplicants: !!roleScopedForm.coApplicants,
+        coApplicantsLength: roleScopedForm.coApplicants?.length || 0,
+        hasOccupants: !!roleScopedForm.occupants,
+        occupantsLength: roleScopedForm.occupants?.length || 0,
+        hasWebhookSummary: !!roleScopedForm.webhookSummary,
+        coApplicantDataKeys: Object.keys(coApplicantData)
+      });
+      
+      // Save Co-Applicant data to Co-Applicants table with simplified structure
+      const coApplicantDraftData = {
+        role: 'coApplicant',
+        coapplicant_info: coApplicantData,
+        occupants: roleScopedForm.occupants || [],
+        webhookSummary: roleScopedForm.webhookSummary || getRoleSpecificWebhookSummary(userRole || '', specificIndex ?? undefined),
+        signature: (() => {
+          const sig = (roleScopedSign as any)?.coApplicants?.[0];
+          if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
+          return sig ?? null;
+        })(),
+        current_step: getSequentialStepNumber(currentStep, userRole || ''),
+        last_updated: new Date().toISOString(),
+        status: 'draft' as const
+      };
+
+      // Get the appid from the application data to link co-applicant to application
+      const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
+      const appid = selectedAppId || existingApp?.appid || referenceId;
+      console.log('🔗 Linking co-applicant draft to appid:', appid);
+      console.log('💾 Final co-applicant draft data being saved:', {
+        role: coApplicantDraftData.role,
+        coapplicant_info_keys: Object.keys(coApplicantDraftData.coapplicant_info || {}),
+        occupants_count: coApplicantDraftData.occupants?.length || 0,
+        has_signature: !!coApplicantDraftData.signature,
+        current_step: coApplicantDraftData.current_step,
+        status: coApplicantDraftData.status,
+        has_webhookSummary: !!coApplicantDraftData.webhookSummary,
+        webhookSummary_totalResponses: coApplicantDraftData.webhookSummary?.totalResponses || 0,
+        webhookSummary_responsesByPerson: coApplicantDraftData.webhookSummary?.responsesByPerson || {},
+        webhookSummary_webhookResponses_keys: Object.keys(coApplicantDraftData.webhookSummary?.webhookResponses || {}),
+        webhookSummary_webhookResponses: coApplicantDraftData.webhookSummary?.webhookResponses || {}
+      });
+      console.log('🔍 About to save co-applicant data to DynamoDB:', {
+        hasWebhookSummary: !!coApplicantDraftData.webhookSummary,
+        webhookSummaryType: typeof coApplicantDraftData.webhookSummary,
+        webhookSummaryKeys: coApplicantDraftData.webhookSummary ? Object.keys(coApplicantDraftData.webhookSummary) : [],
+        webhookSummary: coApplicantDraftData.webhookSummary
+      });
+
+      const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveCoApplicantDataNew(coApplicantDraftData, appid);
+      
+      if (coApplicantSaveResult) {
+        console.log('💾 Co-Applicant draft saved successfully');
+        setHasExistingDraft(true);
+        toast({
+          title: 'Draft Saved Successfully',
+          description: 'Your co-applicant draft has been saved. You can continue working on it later.',
+          variant: 'default',
+        });
+      } else {
+        console.warn('⚠️ Failed to save co-applicant draft');
+        toast({
+          title: 'Failed to Save Draft',
+          description: 'There was an issue saving your draft. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error saving co-applicant draft to DynamoDB:', error);
+      toast({
+        title: 'Error Saving Draft',
+        description: 'An unexpected error occurred while saving your draft. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }, [getCurrentUserZoneinfo, formData, referenceId, currentStep, uploadedFilesMetadata, webhookResponses, signatures, encryptedDocuments, getWebhookSummary, userRole, specificIndex, buildRoleScopedFormData, buildRoleScopedSignatures, selectedAppId]);
+
+  // Save draft to DynamoDB function - ONLY for Co-Applicant role with applicant type
+  const saveCoApplicantApplicantTypeDraftToDynamoDB = useCallback(async () => {
+    // Only allow save draft for Co-Applicant role
+    if (!userRole || !userRole.startsWith('coapplicant')) {
+      console.log('⚠️ Save draft is only available for Co-Applicant role. Current role:', userRole);
+      toast({
+        title: 'Save Draft Not Available',
+        description: 'Save draft functionality is only available for co-applicants.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const currentUserZoneinfo = getCurrentUserZoneinfo();
+    
+    if (!currentUserZoneinfo) {
+      console.log('⚠️ No zoneinfo/applicantId available, skipping draft save');
+      toast({
+        title: 'Cannot Save Draft',
+        description: 'No applicant ID available. Please ensure you are properly authenticated.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!currentUserZoneinfo.trim()) {
+      console.log('⚠️ Empty zoneinfo/applicantId, skipping draft save');
+      toast({
+        title: 'Cannot Save Draft',
+        description: 'Invalid applicant ID. Please ensure you are properly authenticated.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingDraft(true);
+    try {
+      // Get the latest form data from state
+      const currentFormData = formData;
+      console.log('🔍 Current form data structure for Co-Applicant (Applicant Type):', {
+        hasCoApplicants: !!currentFormData.coApplicants,
+        coApplicantsLength: currentFormData.coApplicants?.length || 0,
+        specificIndex: specificIndex,
+        userRole: userRole,
+        coApplicantsData: currentFormData.coApplicants,
+        webhookResponsesCount: Object.keys(webhookResponses).length,
+        webhookResponses: webhookResponses
+      });
+      
+      // Build role-scoped data to avoid overwriting unrelated sections
+      // Pass webhookResponses to the function so it can filter them properly
+      const formDataWithWebhooks = {
+        ...currentFormData,
+        webhookResponses: webhookResponses
+      };
+      const roleScopedForm = buildRoleScopedFormData(formDataWithWebhooks, userRole || '', specificIndex ?? undefined);
+      const roleScopedSign = buildRoleScopedSignatures(signatures, userRole || '', specificIndex ?? undefined);
+
+      // Get the specific co-applicant data from the role-scoped form
+      const coApplicantData = roleScopedForm.coApplicants?.[0] || {};
+      console.log('📊 Co-Applicant (Applicant Type) draft data to save:', coApplicantData);
+      console.log('📊 Role-scoped form structure:', {
+        hasCoApplicants: !!roleScopedForm.coApplicants,
+        coApplicantsLength: roleScopedForm.coApplicants?.length || 0,
+        hasOccupants: !!roleScopedForm.occupants,
+        occupantsLength: roleScopedForm.occupants?.length || 0,
+        hasWebhookSummary: !!roleScopedForm.webhookSummary,
+        coApplicantDataKeys: Object.keys(coApplicantData)
+      });
+      
+      // Save Co-Applicant data to Applications table with applicant type structure
+      const webhookSummary = roleScopedForm.webhookSummary || getRoleSpecificWebhookSummary(userRole || '', specificIndex ?? undefined);
+      const coApplicantApplicantTypeDraftData = {
+        application_info: coApplicantData, // Map coapplicant_info to application_info
+        occupants: roleScopedForm.occupants || [],
+        webhook_responses: webhookSummary?.webhookResponses || {}, // Map webhookSummary.webhookResponses to webhook_responses
+        signatures: (() => {
+          const sig = (roleScopedSign as any)?.coApplicants?.[0];
+          if (typeof sig === 'string' && sig.startsWith('data:image/')) return { coApplicants: [sig] };
+          return { coApplicants: [sig ?? null] };
+        })(),
+        current_step: getSequentialStepNumber(currentStep, userRole || ''),
+        last_updated: new Date().toISOString(),
+        status: 'draft' as const
+      };
+
+      // Get the appid from the application data to link co-applicant to application
+      const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
+      const appid = selectedAppId || existingApp?.appid || referenceId;
+      console.log('🔗 Linking co-applicant (applicant type) draft to appid:', appid);
+      console.log('💾 Final co-applicant (applicant type) draft data being saved:', {
+        application_info_keys: Object.keys(coApplicantApplicantTypeDraftData.application_info || {}),
+        occupants_count: coApplicantApplicantTypeDraftData.occupants?.length || 0,
+        has_signature: !!coApplicantApplicantTypeDraftData.signatures,
+        current_step: coApplicantApplicantTypeDraftData.current_step,
+        status: coApplicantApplicantTypeDraftData.status,
+        has_webhook_responses: !!coApplicantApplicantTypeDraftData.webhook_responses,
+        webhook_responses_keys: Object.keys(coApplicantApplicantTypeDraftData.webhook_responses || {}),
+        webhook_responses: coApplicantApplicantTypeDraftData.webhook_responses
+      });
+
+      // Save to Applications table instead of Co-Applicants table for applicant type
+      const coApplicantSaveResult = await dynamoDBSeparateTablesUtils.saveApplicationData(coApplicantApplicantTypeDraftData);
+      
+      if (coApplicantSaveResult) {
+        console.log('💾 Co-Applicant (Applicant Type) draft saved successfully');
+        setHasExistingDraft(true);
+        toast({
+          title: 'Draft Saved Successfully',
+          description: 'Your co-applicant draft has been saved as applicant type. You can continue working on it later.',
+          variant: 'default',
+        });
+      } else {
+        console.warn('⚠️ Failed to save co-applicant (applicant type) draft');
+        toast({
+          title: 'Failed to Save Draft',
+          description: 'There was an issue saving your draft. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error saving co-applicant (applicant type) draft to DynamoDB:', error);
+      toast({
+        title: 'Error Saving Draft',
+        description: 'An unexpected error occurred while saving your draft. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }, [getCurrentUserZoneinfo, formData, referenceId, currentStep, uploadedFilesMetadata, webhookResponses, signatures, encryptedDocuments, getWebhookSummary, userRole, specificIndex, buildRoleScopedFormData, buildRoleScopedSignatures, selectedAppId]);
 
   // Function to log current webhook state (useful for debugging)
   const logCurrentWebhookState = () => {
@@ -3568,6 +4244,7 @@ export function ApplicationForm() {
         [actualDocumentType]: encryptedFiles,
       },
     }));
+console.log('######docsEncrypted documents:', encryptedDocuments);
 
     // Track uploadedDocuments for webhook
     const sectionKey = `${actualPerson}_${actualDocumentType}`;
@@ -7065,6 +7742,42 @@ export function ApplicationForm() {
                               field.onChange(val);
                               updateFormData('applicant', 'lengthAtAddressMonths', val);
                             }}
+                            onKeyDown={(e) => {
+                              // Allow: backspace, delete, tab, escape, enter, decimal point
+                              if ([8, 9, 27, 13, 46, 110, 190].indexOf(e.keyCode) !== -1 ||
+                                  // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                                  (e.keyCode === 65 && e.ctrlKey === true) ||
+                                  (e.keyCode === 67 && e.ctrlKey === true) ||
+                                  (e.keyCode === 86 && e.ctrlKey === true) ||
+                                  (e.keyCode === 88 && e.ctrlKey === true) ||
+                                  // Allow: home, end, left, right, down, up
+                                  (e.keyCode >= 35 && e.keyCode <= 40)) {
+                                return;
+                              }
+                              // Ensure that it is a number and stop the keypress
+                              if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                                e.preventDefault();
+                              }
+                            }}
+                            onInput={(e) => {
+                              const target = e.target as HTMLInputElement;
+                              let value = parseInt(target.value);
+                              if (isNaN(value)) {
+                                target.value = '';
+                                return;
+                              }
+                              if (value < 0) {
+                                target.value = '0';
+                                const val = 0;
+                                field.onChange(val);
+                                updateFormData('applicant', 'lengthAtAddressMonths', val);
+                              } else if (value > 11) {
+                                target.value = '11';
+                                const val = 11;
+                                field.onChange(val);
+                                updateFormData('applicant', 'lengthAtAddressMonths', val);
+                              }
+                            }}
                             placeholder="e.g. 4 months"
                             className="w-full mt-1"
                           />
@@ -8105,6 +8818,42 @@ export function ApplicationForm() {
                            updateArrayItem('coApplicants', actualIndex, 'lengthAtAddressMonths', value);
                            form.setValue(`coApplicants.${actualIndex}.lengthAtAddressMonths`, value);
                          }}
+                         onKeyDown={(e) => {
+                           // Allow: backspace, delete, tab, escape, enter, decimal point
+                           if ([8, 9, 27, 13, 46, 110, 190].indexOf(e.keyCode) !== -1 ||
+                               // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                               (e.keyCode === 65 && e.ctrlKey === true) ||
+                               (e.keyCode === 67 && e.ctrlKey === true) ||
+                               (e.keyCode === 86 && e.ctrlKey === true) ||
+                               (e.keyCode === 88 && e.ctrlKey === true) ||
+                               // Allow: home, end, left, right, down, up
+                               (e.keyCode >= 35 && e.keyCode <= 40)) {
+                             return;
+                           }
+                           // Ensure that it is a number and stop the keypress
+                           if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                             e.preventDefault();
+                           }
+                         }}
+                         onInput={(e) => {
+                           const target = e.target as HTMLInputElement;
+                           let value = parseInt(target.value);
+                           if (isNaN(value)) {
+                             target.value = '';
+                             return;
+                           }
+                           if (value < 0) {
+                             target.value = '0';
+                             const val = 0;
+                             updateArrayItem('coApplicants', actualIndex, 'lengthAtAddressMonths', val);
+                             form.setValue(`coApplicants.${actualIndex}.lengthAtAddressMonths`, val);
+                           } else if (value > 11) {
+                             target.value = '11';
+                             const val = 11;
+                             updateArrayItem('coApplicants', actualIndex, 'lengthAtAddressMonths', val);
+                             form.setValue(`coApplicants.${actualIndex}.lengthAtAddressMonths`, val);
+                           }
+                         }}
                         placeholder="e.g. 4 months"
                           className="w-full mt-1"
                       />
@@ -9111,6 +9860,42 @@ export function ApplicationForm() {
                              updateArrayItem('guarantors', actualIndex, 'lengthAtAddressMonths', value);
                              form.setValue(`guarantors.${actualIndex}.lengthAtAddressMonths`, value);
                            }}
+                           onKeyDown={(e) => {
+                             // Allow: backspace, delete, tab, escape, enter, decimal point
+                             if ([8, 9, 27, 13, 46, 110, 190].indexOf(e.keyCode) !== -1 ||
+                                 // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                                 (e.keyCode === 65 && e.ctrlKey === true) ||
+                                 (e.keyCode === 67 && e.ctrlKey === true) ||
+                                 (e.keyCode === 86 && e.ctrlKey === true) ||
+                                 (e.keyCode === 88 && e.ctrlKey === true) ||
+                                 // Allow: home, end, left, right, down, up
+                                 (e.keyCode >= 35 && e.keyCode <= 40)) {
+                               return;
+                             }
+                             // Ensure that it is a number and stop the keypress
+                             if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                               e.preventDefault();
+                             }
+                           }}
+                           onInput={(e) => {
+                             const target = e.target as HTMLInputElement;
+                             let value = parseInt(target.value);
+                             if (isNaN(value)) {
+                               target.value = '';
+                               return;
+                             }
+                             if (value < 0) {
+                               target.value = '0';
+                               const val = 0;
+                               updateArrayItem('guarantors', actualIndex, 'lengthAtAddressMonths', val);
+                               form.setValue(`guarantors.${actualIndex}.lengthAtAddressMonths`, val);
+                             } else if (value > 11) {
+                               target.value = '11';
+                               const val = 11;
+                               updateArrayItem('guarantors', actualIndex, 'lengthAtAddressMonths', val);
+                               form.setValue(`guarantors.${actualIndex}.lengthAtAddressMonths`, val);
+                             }
+                           }}
                           placeholder="e.g. 4 months"
                           className="w-full mt-1"
                         />
@@ -9852,12 +10637,16 @@ export function ApplicationForm() {
                   </Button>
               
             <div className="flex space-x-3">
-              {/* Save Draft Button - Only show for Applicant role */}
-              {userRole === 'applicant' && (
+              {/* Save Draft Button - Show for Applicant and Co-Applicant roles */}
+              {(userRole === 'applicant' || (userRole && userRole.startsWith('coapplicant'))) && (
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={saveDraftToDynamoDB}
+                  onClick={
+                    userRole === 'applicant' 
+                      ? saveDraftToDynamoDB 
+                      : saveCoApplicantDraftToDynamoDB
+                  }
                   disabled={isSavingDraft}
                   className="flex items-center"
                 >

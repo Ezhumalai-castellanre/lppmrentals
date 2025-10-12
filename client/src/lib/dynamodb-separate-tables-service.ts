@@ -811,6 +811,56 @@ export class DynamoDBSeparateTablesService {
       return [];
     }
   }
+
+  // Get application data by appid
+  async getApplicationByAppId(appid: string): Promise<ApplicationData | null> {
+    if (!this.client) {
+      console.error('❌ DynamoDB client not initialized');
+      return null;
+    }
+
+    try {
+      const zoneinfo = await this.getCurrentUserZoneinfo();
+      if (!zoneinfo) {
+        console.error('❌ No zoneinfo available for current user');
+        return null;
+      }
+
+      const command = new ScanCommand({
+        TableName: this.tables.app_nyc,
+        FilterExpression: 'appid = :appid AND zoneinfo = :zoneinfo',
+        ExpressionAttributeValues: marshall({
+          ':appid': appid,
+          ':zoneinfo': zoneinfo
+        }, { convertClassInstanceToMap: true })
+      });
+
+      let result;
+      try {
+        result = await this.client.send(command);
+      } catch (err: any) {
+        if (err?.name === 'NotAuthorizedException' || err?.name === 'ExpiredTokenException') {
+          console.warn('🔄 Auth error during getApplicationByAppId; refreshing and retrying once...');
+          await this.initializeClientWithRetry();
+          result = await this.client!.send(command);
+        } else {
+          throw err;
+        }
+      }
+      
+      if (result.Items && result.Items.length > 0) {
+        // If multiple, pick the most recent by last_updated
+        const items = result.Items.map(i => unmarshall(i) as ApplicationData);
+        items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
+        return items[0];
+      }
+      return null;
+    } catch (error) {
+      console.error('❌ Error getting application by appid:', error);
+      return null;
+    }
+  }
+
   // APPLICANT DATA METHODS
 
   // Reduce applicant data size to fit within DynamoDB limits
@@ -1338,6 +1388,14 @@ export class DynamoDBSeparateTablesService {
 
       // Preserve existing timestamp if a draft already exists to avoid duplicate records
       const existingCoApplicant = await this.getCoApplicantData();
+      
+      console.log('🔍 Co-applicant data before sanitization:', {
+        hasWebhookSummary: !!data.webhookSummary,
+        webhookSummary: data.webhookSummary,
+        webhookSummaryKeys: data.webhookSummary ? Object.keys(data.webhookSummary) : [],
+        webhookSummaryTotalResponses: data.webhookSummary?.totalResponses || 0
+      });
+      
       const coApplicantData: CoApplicantData = this.sanitizeForDynamo({
         ...data,
         coapplicant_info: this.normalizePersonInfo((data as any).coapplicant_info),
@@ -1349,10 +1407,48 @@ export class DynamoDBSeparateTablesService {
         // Keep original timestamp if overwriting (using last_updated as reference)
         last_updated: new Date().toISOString()
       });
+      
+      console.log('🔍 Co-applicant data after sanitization:', {
+        hasWebhookSummary: !!coApplicantData.webhookSummary,
+        webhookSummary: coApplicantData.webhookSummary,
+        webhookSummaryKeys: coApplicantData.webhookSummary ? Object.keys(coApplicantData.webhookSummary) : [],
+        webhookSummaryTotalResponses: coApplicantData.webhookSummary?.totalResponses || 0
+      });
+
+      // Check data size and reduce if necessary
+      const marshalledData = marshall(coApplicantData, { 
+        removeUndefinedValues: true,
+        convertClassInstanceToMap: true 
+      });
+      
+      const dataSize = JSON.stringify(marshalledData).length;
+      console.log('📏 Co-applicant data size:', dataSize, 'bytes (DynamoDB limit: 400KB)');
+      
+      if (dataSize > 400 * 1024) {
+        console.warn('⚠️ Co-applicant data exceeds DynamoDB 400KB limit, reducing data size...');
+        const reducedData = this.reduceCoApplicantDataSize(coApplicantData);
+        
+        // Re-check size after reduction
+        const reducedMarshalledData = marshall(reducedData, { 
+          removeUndefinedValues: true,
+          convertClassInstanceToMap: true 
+        });
+        const reducedDataSize = JSON.stringify(reducedMarshalledData).length;
+        console.log('📏 Co-applicant data size after reduction:', reducedDataSize, 'bytes');
+        
+        const command = new PutItemCommand({
+          TableName: this.tables.coapplicants,
+          Item: reducedMarshalledData
+        });
+        
+        await client.send(command);
+        console.log('✅ Co-applicant data saved successfully (reduced size) with userId:', uniqueUserId);
+        return true;
+      }
 
       const command = new PutItemCommand({
         TableName: this.tables.coapplicants,
-        Item: marshall(coApplicantData, { removeUndefinedValues: true, convertClassInstanceToMap: true })
+        Item: marshalledData
       });
 
       await client.send(command);
@@ -1949,6 +2045,10 @@ export const dynamoDBSeparateTablesUtils = {
 
   async getApplicationsByZoneinfo(): Promise<ApplicationData[]> {
     return dynamoDBSeparateTablesService.getApplicationsByZoneinfo();
+  },
+  
+  async getApplicationByAppId(appid: string): Promise<ApplicationData | null> {
+    return dynamoDBSeparateTablesService.getApplicationByAppId(appid);
   },
   
   async getApplicationDataByZoneinfo(): Promise<ApplicationData | null> {

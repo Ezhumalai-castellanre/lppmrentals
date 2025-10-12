@@ -370,7 +370,7 @@ export default function MissingDocumentsPage() {
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case 'missing':
-        return <Badge variant="destructive">Missing</Badge>;
+        return null;
       case 'received':
         return <Badge variant="default" className="bg-green-500">Received</Badge>;
       case 'pending':
@@ -625,7 +625,7 @@ export default function MissingDocumentsPage() {
             {/* Summary Statistics */}
             <Card className="mb-6">
               <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">{missingItems.length}</div>
                     <div className="text-sm text-gray-600">Total Documents</div>
@@ -637,12 +637,6 @@ export default function MissingDocumentsPage() {
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600">{uploadedItems.length}</div>
                     <div className="text-sm text-gray-600">Uploaded</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-red-600">
-                      {pendingItems.filter(item => getDocumentPriority(item.name, item.status) === 'High').length}
-                    </div>
-                    <div className="text-sm text-gray-600">High Priority</div>
                   </div>
                 </div>
               </CardContent>
@@ -712,18 +706,6 @@ export default function MissingDocumentsPage() {
                               <Badge variant="outline" className="text-xs" style={{ fontSize: '10px' }}>
                                 {item.applicantType}
                               </Badge>
-                              {item.status === 'Missing' && (
-                                <Badge 
-                                  variant="destructive" 
-                                  className={`text-xs ${
-                                    getDocumentPriority(item.name, item.status) === 'High' 
-                                      ? 'bg-red-500' 
-                                      : 'bg-orange-500'
-                                  }`}
-                                >
-                                  {getDocumentPriority(item.name, item.status)} Priority
-                                </Badge>
-                              )}
                               {uploadedDocuments[item.id] ? (
                                 <Badge variant="default" className="bg-green-500">
                                   <CheckCircle className="w-3 h-3 mr-1" />
@@ -739,25 +721,9 @@ export default function MissingDocumentsPage() {
                             {item.status === 'Received' && (item.publicUrl || item.previewText) ? (
                               <div className="flex flex-col gap-2">
                                 {item.previewText && (
-                                  isUrl(item.previewText) ? (
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
-                                        onClick={() => {
-                                          setModalUrl(item.previewText!);
-                                          setModalTitle(item.name);
-                                          setIframeError(false);
-                                        }}
-                                      >
-                                        <Link className="w-4 h-4" />
-                                        Preview
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
-                                      {item.previewText}
-                                    </div>
-                                  )
+                                  <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
+                                    {item.previewText}
+                                  </div>
                                 )}
                                 {item.publicUrl && (
                                   <div className="flex items-center gap-3">
@@ -944,25 +910,9 @@ export default function MissingDocumentsPage() {
                             {item.status === 'Received' && (item.publicUrl || item.previewText) ? (
                               <div className="flex flex-col gap-2">
                                 {item.previewText && (
-                                  isUrl(item.previewText) ? (
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        className="text-blue-600 underline text-xs font-medium flex items-center gap-1 w-fit"
-                                        onClick={() => {
-                                          setModalUrl(item.previewText!);
-                                          setModalTitle(item.name);
-                                          setIframeError(false);
-                                        }}
-                                      >
-                                        <Link className="w-4 h-4" />
-                                        Preview
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
-                                      {item.previewText}
-                                    </div>
-                                  )
+                                  <div className="text-xs text-gray-700 bg-gray-100 rounded px-2 py-1 mb-1">
+                                    {item.previewText}
+                                  </div>
                                 )}
                                 {item.publicUrl && (
                                   <div className="flex items-center gap-3">
