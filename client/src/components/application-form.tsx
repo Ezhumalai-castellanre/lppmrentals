@@ -1790,6 +1790,69 @@ export function ApplicationForm() {
           guarantorsLength: parsedFormData.guarantors ? parsedFormData.guarantors.length : 0
         });
         
+        // Load additional people data for auto-population
+        let additionalPeopleData: any = null;
+        try {
+          // Try to get additional people from application_info first
+          if (allData.application?.application_info && (allData.application.application_info as any)["Additional People"]) {
+            additionalPeopleData = (allData.application.application_info as any)["Additional People"];
+            console.log('📊 Loaded Additional People from application_info:', additionalPeopleData);
+          }
+          // Fallback to applicant_nyc additionalPeople field
+          else if (allData.applicant?.additionalPeople) {
+            additionalPeopleData = allData.applicant.additionalPeople;
+            console.log('📊 Loaded additionalPeople from applicant_nyc:', additionalPeopleData);
+          }
+        } catch (e) {
+          console.warn('⚠️ Failed to load additional people data:', e);
+        }
+
+        // Auto-populate co-applicants and guarantors from additional people data
+        if (additionalPeopleData && typeof additionalPeopleData === 'object') {
+          console.log('🔄 Auto-populating form from additional people data...');
+          
+          // Parse co-applicants from additional people
+          const invitedCoApplicants: any[] = [];
+          const invitedGuarantors: any[] = [];
+          
+          for (const [key, value] of Object.entries(additionalPeopleData)) {
+            if (key.startsWith('coApplicants') && value && typeof value === 'object') {
+              const coAppData = value as any;
+              if (coAppData.name && coAppData.email) {
+                invitedCoApplicants.push({
+                  name: coAppData.name,
+                  email: coAppData.email
+                });
+              }
+            } else if (key.startsWith('guarantor') && value && typeof value === 'object') {
+              const guarData = value as any;
+              if (guarData.name && guarData.email) {
+                invitedGuarantors.push({
+                  name: guarData.name,
+                  email: guarData.email
+                });
+              }
+            }
+          }
+          
+          // Merge invited people with existing data (invited people take precedence for auto-population)
+          if (invitedCoApplicants.length > 0) {
+            console.log('📊 Auto-populating co-applicants from additional people:', invitedCoApplicants);
+            parsedFormData.coApplicants = invitedCoApplicants;
+            parsedFormData.coApplicant = invitedCoApplicants[0] || {};
+            parsedFormData.hasCoApplicant = true;
+            parsedFormData.coApplicantCount = invitedCoApplicants.length;
+          }
+          
+          if (invitedGuarantors.length > 0) {
+            console.log('📊 Auto-populating guarantors from additional people:', invitedGuarantors);
+            parsedFormData.guarantors = invitedGuarantors;
+            parsedFormData.guarantor = invitedGuarantors[0] || {};
+            parsedFormData.hasGuarantor = true;
+            parsedFormData.guarantorCount = invitedGuarantors.length;
+          }
+        }
+
         // Auto-set checkbox states based on data presence - RELIABLE APPROACH
         const hasCoApplicantDataFlag = parsedFormData.coApplicant && Object.keys(parsedFormData.coApplicant).length > 0;
         const hasCoApplicantsArray = parsedFormData.coApplicants && Array.isArray(parsedFormData.coApplicants) && parsedFormData.coApplicants.length > 0;
