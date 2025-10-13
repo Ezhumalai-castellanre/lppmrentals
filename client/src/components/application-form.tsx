@@ -1247,20 +1247,19 @@ export function ApplicationForm() {
     });
   }, []);
 
-  // Debug: Monitor form data changes for co-applicants
-  useEffect(() => {
-    console.log('######### formData:', formData);
-    
-    if (formData.coApplicants && Array.isArray(formData.coApplicants)) {
-      console.log('📊 Co-applicants in form data:', formData.coApplicants);
-      console.log('📊 Co-applicants count:', formData.coApplicants.length);
-      formData.coApplicants.forEach((coApp: any, index: number) => {
-        if (coApp && Object.keys(coApp).length > 0) {
-          console.log(`📊 Co-applicant ${index}:`, coApp);
-        }
-      });
-    }
-  }, [formData.coApplicants]);
+  // Debug: Monitor form data changes for co-applicants (disabled to prevent log spam)
+  // useEffect(() => {
+  //   console.log('######### formData:', formData);
+  //   if (formData.coApplicants && Array.isArray(formData.coApplicants)) {
+  //     console.log('📊 Co-applicants in form data:', formData.coApplicants);
+  //     console.log('📊 Co-applicants count:', formData.coApplicants.length);
+  //     formData.coApplicants.forEach((coApp: any, index: number) => {
+  //       if (coApp && Object.keys(coApp).length > 0) {
+  //         console.log(`📊 Co-applicant ${index}:`, coApp);
+  //       }
+  //     });
+  //   }
+  // }, [formData.coApplicants]);
 
 
   // Handle webhook responses from formData when it changes
@@ -1272,17 +1271,22 @@ export function ApplicationForm() {
         ...formData.webhookSummary.webhookResponses
       };
       
-      // Update formData with merged webhook responses
-      setFormData((prevData: any) => ({
-        ...prevData,
-        webhookResponses: mergedWebhookResponses
-      }));
-      
-      // Update webhook responses state
-      setWebhookResponses(mergedWebhookResponses);
-      console.log('🔗 Merged webhook responses from webhookSummary in useEffect:', mergedWebhookResponses);
-      console.log('######### prev document (merged):', mergedWebhookResponses);
-      console.log('######### webhookSummary.webhookResponses (source):', formData.webhookSummary?.webhookResponses);
+      // Only update when changed to avoid loops
+      const prevString = JSON.stringify(formData.webhookResponses || {});
+      const nextString = JSON.stringify(mergedWebhookResponses || {});
+      if (prevString !== nextString) {
+        // Update formData with merged webhook responses
+        setFormData((prevData: any) => ({
+          ...prevData,
+          webhookResponses: mergedWebhookResponses
+        }));
+        
+        // Update webhook responses state
+        setWebhookResponses(mergedWebhookResponses);
+        // console.log('🔗 Merged webhook responses from webhookSummary in useEffect:', mergedWebhookResponses);
+        // console.log('######### prev document (merged):', mergedWebhookResponses);
+        // console.log('######### webhookSummary.webhookResponses (source):', formData.webhookSummary?.webhookResponses);
+      }
       
       // Auto-map webhook responses to form fields
       const webhookResponses = formData.webhookSummary.webhookResponses;
@@ -1422,7 +1426,12 @@ export function ApplicationForm() {
     }
   }, []);
   // Load draft data from separate DynamoDB tables
+  const hasRestoredFromDraftRef = useRef(false);
   const loadDraftData = useCallback(async (applicationId: string, restoreStep: boolean = true) => {
+    if (hasRestoredFromDraftRef.current) {
+      console.log('⏭️ Draft restoration already performed; skipping duplicate load');
+      return;
+    }
     try {
       console.log('🔄 Loading draft data from separate tables for application ID:', applicationId);
       
@@ -2109,6 +2118,8 @@ export function ApplicationForm() {
             coApplicantsData: parsedFormData.coApplicants,
             userRole: userRole
           });
+          // Mark as restored before state updates to avoid duplicate triggers
+          hasRestoredFromDraftRef.current = true;
           setFormData(parsedFormData);
           
            // Restore current step only if restoreStep is true
@@ -3535,7 +3546,6 @@ export function ApplicationForm() {
     // console.log(`🔄 updateFormData: ${section}.${indexOrField} = ${fieldOrValue || value}`);
     
     setFormData((prev: any) => {
-      console.log('######### prev: ', prev);
       let newFormData;
       
       if (section === '') {
@@ -3581,12 +3591,14 @@ export function ApplicationForm() {
 
   // This prevents unnecessary saves on every field change
   };
-  console.log("######### formData: ", formData);
+  // console.log("######### formData: ", formData);
   
   // Auto-populate specific co-applicant data when role parameter is set
+  const coAppPopulateDoneRef = useRef<{ [index: number]: boolean }>({});
   useEffect(() => {
     if (!userRole.startsWith('coapplicant')) return;
     if (specificIndex === null || typeof specificIndex === 'undefined') return;
+    if (coAppPopulateDoneRef.current[specificIndex]) return;
 
     const coApplicantsArr = formData.coApplicants || [];
 
@@ -3701,6 +3713,8 @@ export function ApplicationForm() {
     // Mark presence
     setHasCoApplicant(true);
     form.setValue('hasCoApplicant', true);
+    // Prevent reruns for the same index
+    coAppPopulateDoneRef.current[specificIndex] = true;
   }, [userRole, specificIndex, form, setHasCoApplicant, formData.coApplicants]);
 
   useEffect(() => {
@@ -3730,7 +3744,6 @@ export function ApplicationForm() {
   const updateArrayItem = (arrayName: string, index: number, field: string, value: any) => {
     setFormData((prev: any) => {
       const currentArray = prev[arrayName] || [];
-      console.log('######### currentArray:', currentArray);
       
       // Ensure array has enough elements to accommodate the index
       let newArray = [...currentArray];
