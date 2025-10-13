@@ -373,7 +373,18 @@ export class DynamoDBService {
         formData.form_data = this.cleanFormDataForConsistency(formData.form_data);
       }
       
-      // 4. Log the final cleaned state
+      // 4. Normalize Additional People key to camelCase additionalPeople for internal use
+      try {
+        if (formData && typeof formData === 'object') {
+          const hasSpaced = Object.prototype.hasOwnProperty.call(formData, 'Additional People');
+          const hasCamel = Object.prototype.hasOwnProperty.call(formData, 'additionalPeople');
+          if (hasSpaced && !hasCamel) {
+            (formData as any).additionalPeople = (formData as any)['Additional People'];
+          }
+        }
+      } catch {}
+
+      // 5. Log the final cleaned state
       console.log('✅ Form data cleaning completed. Final state:', {
         zoneinfo: formData.zoneinfo,
         application_id: formData.application_id,

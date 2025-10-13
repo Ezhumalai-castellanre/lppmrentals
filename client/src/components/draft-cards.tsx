@@ -520,16 +520,21 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                   </Badge>
                 </div>
                 <div className="space-y-1 text-sm">
-                  {Array.isArray(formSummary.coApplicants) && formSummary.coApplicants.length > 0 ? (
-                    (formSummary.coApplicants as any[]).map((c, i) => (
-                      <div key={i} className="flex justify-between">
-                        <span className="text-purple-900">Co-Applicant{i + 1}: {c?.name || 'Unnamed'}</span>
-                        <span className="text-purple-700">{c?.email || 'No email'}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-purple-700">No co-applicants</div>
-                  )}
+                  {(() => {
+                    const invited = Array.isArray(formSummary.coApplicants)
+                      ? (formSummary.coApplicants as any[]).filter((c: any) => c?.inviteRole || c?.inviteUrl)
+                      : [];
+                    return invited.length > 0 ? (
+                      invited.map((c: any, i: number) => (
+                        <div key={i} className="flex justify-between">
+                          <span className="text-purple-900">Co-Applicant{i + 1}: {c?.name || 'Unnamed'}</span>
+                          <span className="text-purple-700">{c?.email || 'No email'}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-purple-700">No co-applicants</div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -545,16 +550,21 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
                   </Badge>
                 </div>
                 <div className="space-y-1 text-sm">
-                  {Array.isArray(formSummary.guarantors) && formSummary.guarantors.length > 0 ? (
-                    (formSummary.guarantors as any[]).map((g, i) => (
-                      <div key={i} className="flex justify-between">
-                        <span className="text-orange-900">Guarantor{i + 1}: {g?.name || 'Unnamed'}</span>
-                        <span className="text-orange-700">{g?.email || 'No email'}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-orange-700">No guarantors</div>
-                  )}
+                  {(() => {
+                    const invited = Array.isArray(formSummary.guarantors)
+                      ? (formSummary.guarantors as any[]).filter((g: any) => g?.inviteRole || g?.inviteUrl)
+                      : [];
+                    return invited.length > 0 ? (
+                      invited.map((g: any, i: number) => (
+                        <div key={i} className="flex justify-between">
+                          <span className="text-orange-900">Guarantor{i + 1}: {g?.name || 'Unnamed'}</span>
+                          <span className="text-orange-700">{g?.email || 'No email'}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-orange-700">No guarantors</div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -1278,7 +1288,40 @@ export const DraftCards = () => {
               try {
                 guarantorsForApp = await dynamoDBSeparateTablesUtils.getGuarantorsByAppId(application.appid);
               } catch {}
-            const applicantFormData = {
+              // Extract invited parties from additionalPeople (application_info or applicant_nyc)
+              const additionalFromAppInfo = (application?.application_info && (application.application_info as any)["Additional People"]) || undefined;
+              const additionalFromApplicant = matchedApplicant?.additionalPeople || undefined;
+              const additionalPeople = additionalFromAppInfo || additionalFromApplicant || undefined;
+
+              const parseInvites = (ap: any) => {
+                const co: any[] = [];
+                const gu: any[] = [];
+                if (ap && typeof ap === 'object') {
+                  for (const [k, v] of Object.entries(ap)) {
+                    if (!v || typeof v !== 'object') continue;
+                    if (k.startsWith('coApplicants')) {
+                      co.push({
+                        name: (v as any).name || '',
+                        email: (v as any).email || '',
+                        inviteRole: (v as any).coApplicant || '',
+                        inviteUrl: (v as any).url || ''
+                      });
+                    } else if (k.startsWith('guarantor')) {
+                      gu.push({
+                        name: (v as any).name || '',
+                        email: (v as any).email || '',
+                        inviteRole: (v as any).guarantor || '',
+                        inviteUrl: (v as any).url || ''
+                      });
+                    }
+                  }
+                }
+                return { co, gu };
+              };
+
+              const { co: invitedCoApplicants, gu: invitedGuarantors } = parseInvites(additionalPeople);
+
+              const applicantFormData = {
               // Application Information (from app_nyc)
                 application: application.application_info || {},
               
@@ -1287,13 +1330,17 @@ export const DraftCards = () => {
                 applicant_occupants: matchedApplicant?.occupants || allData.applicant?.occupants || [],
               
                 // Co-Applicants (from Co-Applicants table) - all records for this app
-                coApplicants: (coApplicantsForApp || []).map((c: any) => c?.coapplicant_info).filter(Boolean),
+                coApplicants: [
+                  ...(coApplicantsForApp || []).map((c: any) => c?.coapplicant_info).filter(Boolean),
+                  ...invitedCoApplicants
+                ],
                 coApplicant_occupants: (coApplicantsForApp || []).flatMap((c: any) => c?.occupants || []),
 
                 // Guarantors (from Guarantors table + applicant_nyc table) - all records for this app
                 guarantors: [
                   ...(guarantorsForApp || []).map((g: any) => g?.guarantor_info).filter(Boolean),
-                  ...(matchedApplicant?.guarantors || [])
+                  ...(matchedApplicant?.guarantors || []),
+                  ...invitedGuarantors
                 ],
                 guarantor_occupants: (guarantorsForApp || []).flatMap((g: any) => g?.occupants || []),
 
@@ -1351,7 +1398,7 @@ export const DraftCards = () => {
           if (allCoApplicants && allCoApplicants.length > 0) {
             for (const coApp of allCoApplicants) {
               const matchedApp = (zoneApps || []).find(a => a.appid === coApp.appid);
-              const currentStepFromApp = allCoApplicants.current_step ?? 0;
+              const currentStepFromApp = matchedApp?.current_step ?? 0;
               // Try to fetch the primary applicant for this application to show name/email in previews
               let matchedApplicant: any = undefined;
               try {
@@ -1398,7 +1445,7 @@ export const DraftCards = () => {
             // Fetch applications to resolve current_step and application data by appid
             const zoneApps = await dynamoDBSeparateTablesUtils.getApplicationsByZoneinfo();
             const matchedApp = (zoneApps || []).find(a => a.appid === (allData.guarantor as any).appid);
-            const currentStepFromApp = allData.guarantor.current_step ?? 0;
+            const currentStepFromApp = matchedApp?.current_step ?? 0;
             
             // Fetch applicant data for context
             let matchedApplicant: any = undefined;
@@ -1512,7 +1559,6 @@ export const DraftCards = () => {
               zoneinfo: allData.application.zoneinfo,
               applicantId: allData.application.appid,
               reference_id: allData.application.appid,
-              role: 'applicant',
               form_data: comprehensiveFormData,
               current_step: allData.application.current_step || 0,
               last_updated: allData.application.last_updated,

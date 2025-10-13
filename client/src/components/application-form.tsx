@@ -4501,6 +4501,42 @@ export function ApplicationForm() {
           : (roleScopedSign.applicant ?? null),
         co_applicants: enhancedFormDataSnapshot.coApplicants || [], // Include co-applicants data
         guarantors: enhancedFormDataSnapshot.guarantors || [], // Include guarantors data
+        // Also include Additional People summary for quick access by backoffice
+        additionalPeople: ((): any => {
+          const zone = (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '';
+          const applicantName = (enhancedFormDataSnapshot.applicant?.name) || (form.getValues() as any)?.applicantName || 'unknown';
+          const applicantEmail = (enhancedFormDataSnapshot.applicant?.email) || (form.getValues() as any)?.applicantEmail || '';
+          const coBlocks = Array.isArray(enhancedFormDataSnapshot.coApplicants) && enhancedFormDataSnapshot.coApplicants.length > 0
+            ? enhancedFormDataSnapshot.coApplicants.reduce((acc: any, coApp: any, idx: number) => {
+                const i = idx + 1;
+                acc[`coApplicants${i}`] = {
+                  coApplicant: `coapplicant${i}`,
+                  url: `https://www.app.lppmrentals.com/login?role=coapplicant${i}&zoneinfo=${zone}`,
+                  name: coApp?.name || '',
+                  email: coApp?.email || ''
+                };
+                return acc;
+              }, {}) : {};
+          const guarBlocks = Array.isArray(enhancedFormDataSnapshot.guarantors) && enhancedFormDataSnapshot.guarantors.length > 0
+            ? enhancedFormDataSnapshot.guarantors.reduce((acc: any, guar: any, idx: number) => {
+                const i = idx + 1;
+                acc[`guarantor${i}`] = {
+                  guarantor: `guarantor${i}`,
+                  url: `https://www.app.lppmrentals.com/login?role=guarantor${i}&zoneinfo=${zone}`,
+                  name: guar?.name || '',
+                  email: guar?.email || ''
+                };
+                return acc;
+              }, {}) : {};
+          return {
+            zoneinfo: zone,
+            role: 'applicant',
+            applicant: applicantName,
+            applicantEmail: applicantEmail,
+            ...coBlocks,
+            ...guarBlocks
+          };
+        })(),
         timestamp: new Date().toISOString(), // Add timestamp field
         status: 'draft' as const,
         last_updated: new Date().toISOString()
@@ -7648,6 +7684,42 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                 const sig = (submittedSigsRoleScoped as any)?.applicant;
                 if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
                 return sig ?? null;
+              })(),
+              // Include Additional People on submit as camelCase field
+              additionalPeople: ((): any => {
+                const zone = (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '';
+                const applicantName = ((completeServerData as any)?.applicant?.name) || (form.getValues() as any)?.applicantName || 'unknown';
+                const applicantEmail = ((completeServerData as any)?.applicant?.email) || (form.getValues() as any)?.applicantEmail || '';
+                const coBlocks = (Array.isArray((completeServerData as any)?.coApplicants) && (completeServerData as any).coApplicants.length > 0)
+                  ? (completeServerData as any).coApplicants.reduce((acc: any, coApp: any, idx: number) => {
+                      const i = idx + 1;
+                      acc[`coApplicants${i}`] = {
+                        coApplicant: `coapplicant${i}`,
+                        url: `https://www.app.lppmrentals.com/login?role=coapplicant${i}&zoneinfo=${zone}`,
+                        name: coApp?.name || '',
+                        email: coApp?.email || ''
+                      };
+                      return acc;
+                    }, {}) : {};
+                const guarBlocks = (Array.isArray((completeServerData as any)?.guarantors) && (completeServerData as any).guarantors.length > 0)
+                  ? (completeServerData as any).guarantors.reduce((acc: any, guar: any, idx: number) => {
+                      const i = idx + 1;
+                      acc[`guarantor${i}`] = {
+                        guarantor: `guarantor${i}`,
+                        url: `https://www.app.lppmrentals.com/login?role=guarantor${i}&zoneinfo=${zone}`,
+                        name: guar?.name || '',
+                        email: guar?.email || ''
+                      };
+                      return acc;
+                    }, {}) : {};
+                return {
+                  zoneinfo: zone,
+                  role: 'applicant',
+                  applicant: applicantName,
+                  applicantEmail: applicantEmail,
+                  ...coBlocks,
+                  ...guarBlocks
+                };
               })(),
               co_applicants: submittedFormRoleScoped.coApplicants || [], // Include co-applicants data
               guarantors: submittedFormRoleScoped.guarantors || [], // Include guarantors data

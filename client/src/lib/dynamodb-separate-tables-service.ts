@@ -37,6 +37,7 @@ export interface ApplicantData {
   signature: any; // Applicant signature
   co_applicants?: any[]; // Array of co-applicant data
   guarantors?: any[]; // Array of guarantor data
+  additionalPeople?: any; // Optional invites/links for co-applicants/guarantors
   timestamp: string; // Creation timestamp
   last_updated: string;
   status: 'draft' | 'submitted';
@@ -277,6 +278,13 @@ export class DynamoDBSeparateTablesService {
       await this.initializeClientWithRetry();
     }
     return !!this.client;
+  }
+
+  // Safely pick unified additionalPeople from multiple possible inputs
+  private pickAdditionalPeople(input: any): any | undefined {
+    if (!input || typeof input !== 'object') return undefined;
+    // Prefer camelCase, fall back to space variant used in some payloads
+    return input.additionalPeople ?? input["Additional People"] ?? undefined;
   }
 
   // Check if user needs to re-authenticate
@@ -953,6 +961,8 @@ export class DynamoDBSeparateTablesService {
       const existingApplicant = await this.getApplicantData();
       let applicantData: ApplicantData = this.sanitizeForDynamo({
         ...data,
+        // Normalize additionalPeople from either key variant
+        additionalPeople: this.pickAdditionalPeople(data),
         userId,
         role,
         zoneinfo,
@@ -1057,6 +1067,8 @@ export class DynamoDBSeparateTablesService {
 
       const applicantData: ApplicantData = this.sanitizeForDynamo({
         ...data,
+        // Normalize additionalPeople from either key variant
+        additionalPeople: this.pickAdditionalPeople(data),
         userId: uniqueUserId,
         role,
         zoneinfo,
