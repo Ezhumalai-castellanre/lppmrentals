@@ -7584,7 +7584,44 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
               application_info: {
                 ...submittedFormRoleScoped.application,
                 reference_id: submissionResult?.reference_id || referenceId,
-                zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''
+                zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '',
+                // Persist Additional People on submit so DynamoDB record includes all invited parties
+                ...((Array.isArray((completeServerData as any)?.coApplicants) || Array.isArray((completeServerData as any)?.guarantors))
+                  ? {
+                      "Additional People": {
+                        zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '',
+                        role: 'applicant',
+                        applicant: ((completeServerData as any)?.applicant?.name) || (form.getValues() as any)?.applicantName || 'unknown',
+                        applicantEmail: ((completeServerData as any)?.applicant?.email) || (form.getValues() as any)?.applicantEmail || '',
+                        // All co-applicants
+                        ...((Array.isArray((completeServerData as any)?.coApplicants) && (completeServerData as any).coApplicants.length > 0)
+                          ? (completeServerData as any).coApplicants.reduce((acc: any, coApp: any, idx: number) => {
+                              const i = idx + 1;
+                              acc[`coApplicants${i}`] = {
+                                coApplicant: `coapplicant${i}`,
+                                url: `https://www.app.lppmrentals.com/login?role=coapplicant${i}&zoneinfo=${(user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''}`,
+                                name: coApp?.name || '',
+                                email: coApp?.email || ''
+                              };
+                              return acc;
+                            }, {})
+                          : {}),
+                        // All guarantors
+                        ...((Array.isArray((completeServerData as any)?.guarantors) && (completeServerData as any).guarantors.length > 0)
+                          ? (completeServerData as any).guarantors.reduce((acc: any, guar: any, idx: number) => {
+                              const i = idx + 1;
+                              acc[`guarantor${i}`] = {
+                                guarantor: `guarantor${i}`,
+                                url: `https://www.app.lppmrentals.com/login?role=guarantor${i}&zoneinfo=${(user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''}`,
+                                name: guar?.name || '',
+                                email: guar?.email || ''
+                              };
+                              return acc;
+                            }, {})
+                          : {})
+                      }
+                    }
+                  : {})
               },
             current_step: 12, // Mark as completed
             status: 'submitted' as const,
