@@ -1175,6 +1175,25 @@ export class WebhookService {
       const roleValue = role || 'applicant';
       console.log('🔍 DEBUG: Final role value before webhook data creation:', roleValue);
       
+      // Normalize counterpart sections to be explicitly empty based on submitting role
+      try {
+        if (typeof roleValue === 'string') {
+          if (roleValue.toLowerCase().startsWith('coapplicant')) {
+            // Co-Applicant submission → send empty guarantor section
+            (transformedData as any).hasGuarantor = false;
+            (transformedData as any).guarantorCount = 0;
+            (transformedData as any).guarantors = [];
+          } else if (roleValue.toLowerCase().startsWith('guarantor')) {
+            // Guarantor submission → send empty co-applicant section
+            (transformedData as any).hasCoApplicant = false;
+            (transformedData as any).coApplicantCount = 0;
+            (transformedData as any).coApplicants = [];
+          }
+        }
+      } catch (e) {
+        console.warn('Role-based empty section normalization failed', e);
+      }
+      
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: zoneinfo || applicationId,
