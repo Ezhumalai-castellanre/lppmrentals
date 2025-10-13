@@ -99,6 +99,42 @@ const normalizeGuarantorInfo = (guarantorInfo: any) => {
   return normalized;
 };
 
+// Helper function to normalize coapplicant_info field names to match form schema
+const normalizeCoApplicantInfo = (coApplicantInfo: any) => {
+  const normalized = { ...coApplicantInfo };
+  try {
+    if (normalized.fullName && !normalized.name) normalized.name = normalized.fullName;
+    if (normalized.full_name && !normalized.name) normalized.name = normalized.full_name;
+    if (normalized.phoneNumber && !normalized.phone) normalized.phone = normalized.phoneNumber;
+    if (normalized.phone_number && !normalized.phone) normalized.phone = normalized.phone_number;
+    if (normalized.mail && !normalized.email) normalized.email = normalized.mail;
+    if (normalized.addressLine1 && !normalized.address) normalized.address = normalized.addressLine1;
+    if (normalized.address1 && !normalized.address) normalized.address = normalized.address1;
+    if (normalized.street && !normalized.address) normalized.address = normalized.street;
+    if (normalized.town && !normalized.city) normalized.city = normalized.town;
+    if (normalized.region && !normalized.state) normalized.state = normalized.region;
+    if (normalized.zipCode && !normalized.zip) normalized.zip = normalized.zipCode;
+    if (normalized.postalCode && !normalized.zip) normalized.zip = normalized.postalCode;
+    if (normalized.postal_code && !normalized.zip) normalized.zip = normalized.postal_code;
+    if (normalized.date_of_birth && !normalized.dob) normalized.dob = normalized.date_of_birth;
+    if (normalized.driverLicense && !normalized.license) normalized.license = normalized.driverLicense;
+    if (normalized.driver_license && !normalized.license) normalized.license = normalized.driver_license;
+    if (normalized.license_state && !normalized.licenseState) normalized.licenseState = normalized.license_state;
+    if (normalized.current_rent && !normalized.currentRent) normalized.currentRent = normalized.current_rent;
+    if (normalized.reason_for_moving && !normalized.reasonForMoving) normalized.reasonForMoving = normalized.reason_for_moving;
+    if (normalized.employment_type && !normalized.employmentType) normalized.employmentType = normalized.employment_type;
+    if (normalized.employment && !normalized.employmentType) normalized.employmentType = normalized.employment;
+    if (normalized.employment_start && !normalized.employmentStart) normalized.employmentStart = normalized.employment_start;
+    if (normalized.years_in_business && !normalized.yearsInBusiness) normalized.yearsInBusiness = normalized.years_in_business;
+    if (normalized.other_income && !normalized.otherIncome) normalized.otherIncome = normalized.other_income;
+    if (normalized.other_income_frequency && !normalized.otherIncomeFrequency) normalized.otherIncomeFrequency = normalized.other_income_frequency;
+    if (normalized.other_income_source && !normalized.otherIncomeSource) normalized.otherIncomeSource = normalized.other_income_source;
+    if (normalized.credit_score && !normalized.creditScore) normalized.creditScore = normalized.credit_score;
+    if (normalized.bank_records && !normalized.bankRecords) normalized.bankRecords = normalized.bank_records;
+  } catch {}
+  return normalized;
+};
+
 // Resolve an effective role from state or Cognito user as a fallback
 const getEffectiveRole = (): string => {
   try {
@@ -1437,8 +1473,11 @@ export function ApplicationForm() {
             console.log('📊 Loaded guarantors:', guarantorsByAppId);
             
             if (Array.isArray(coAppsByAppId) && coAppsByAppId.length > 0) {
-              // Normalize to plain co-applicant_info objects
-              coApplicantsArray = coAppsByAppId.map((c: any) => c?.coapplicant_info || c || {});
+              // Normalize to plain co-applicant_info objects with field name normalization
+              coApplicantsArray = coAppsByAppId.map((c: any) => {
+                const coInfo = c?.coapplicant_info || c || {};
+                return normalizeCoApplicantInfo(coInfo);
+              });
               console.log('📊 Normalized co-applicants array:', coApplicantsArray);
             }
             if (Array.isArray(guarantorsByAppId) && guarantorsByAppId.length > 0) {
@@ -1471,15 +1510,10 @@ export function ApplicationForm() {
           console.log('🔄 Processing Co-Applicant role data mapping...');
           console.log('🔍 Current specificIndex:', specificIndex);
 
-          // Check if data was saved as applicant type (in Applications table)
-          if (allData.application && allData.application.application_info) {
-            console.log('📊 Mapping application_info to coApplicants array for Co-Applicant role (applicant type)');
-            coApplicantsArray = [allData.application.application_info]; // Map single application_info to coApplicants array
-          }
-          // Check if data was saved in Co-Applicants table
-          else if (allData.coApplicant && allData.coApplicant.coapplicant_info) {
+          // Prefer Co-Applicants table data for co-applicant role
+          if (allData.coApplicant && allData.coApplicant.coapplicant_info) {
             console.log('📊 Using coapplicant_info from Co-Applicants table for Co-Applicant role');
-            coApplicantsArray = [allData.coApplicant.coapplicant_info];
+            coApplicantsArray = [normalizeCoApplicantInfo(allData.coApplicant.coapplicant_info)];
             // Also load webhookSummary from co-applicant data
             if (allData.coApplicant.webhookSummary) {
               parsedFormData.webhookSummary = allData.coApplicant.webhookSummary;
@@ -1665,7 +1699,7 @@ export function ApplicationForm() {
           if ((!coApplicantsArray || coApplicantsArray.length === 0) && currentAppId) {
             const coApps = await dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(currentAppId);
             if (coApps && coApps.length > 0) {
-              coApplicantsArray = coApps.map((c: any) => c.coapplicant_info || {});
+              coApplicantsArray = coApps.map((c: any) => normalizeCoApplicantInfo(c.coapplicant_info || {}));
             }
           }
           if ((!guarantorsArray || guarantorsArray.length === 0) && currentAppId) {
@@ -1698,10 +1732,15 @@ export function ApplicationForm() {
           parsedFormData.coApplicants = coApplicantsArray;
           parsedFormData.coApplicant = coApplicantsArray[0] || {};
           console.log('📊 Using coApplicantsArray for co-applicant data:', coApplicantsArray.length, 'items');
+          // Ensure checkbox/counts align so Co-Applicant steps render
+          if (!parsedFormData.hasCoApplicant) parsedFormData.hasCoApplicant = true;
+          parsedFormData.coApplicantCount = Math.max(parsedFormData.coApplicantCount || 0, coApplicantsArray.length);
         } else if (parsedFormData.coApplicant && Object.keys(parsedFormData.coApplicant).length > 0) {
           // If no coApplicantsArray but we have coApplicant data, map it to coApplicants array
           console.log('📊 Mapping singular coApplicant data to coApplicants array');
-          parsedFormData.coApplicants = [parsedFormData.coApplicant];
+          parsedFormData.coApplicants = [normalizeCoApplicantInfo(parsedFormData.coApplicant)];
+          if (!parsedFormData.hasCoApplicant) parsedFormData.hasCoApplicant = true;
+          parsedFormData.coApplicantCount = Math.max(parsedFormData.coApplicantCount || 0, 1);
         } else {
           // Ensure coApplicants array exists even if empty
           parsedFormData.coApplicants = [];
@@ -3306,9 +3345,16 @@ export function ApplicationForm() {
              }
            }
         } else {
-          console.log('🆕 No continue parameter, starting fresh application...');
-          // Clear any existing draft data and start fresh, regardless of whether draft exists
-          setHasExistingDraft(false); // Force fresh start behavior
+          console.log('🆕 No continue parameter. Deciding between loading existing draft or starting fresh...');
+          if (hasExistingDraft) {
+            console.log('📄 Existing draft detected; loading draft instead of starting fresh');
+            // Load the user's draft and restore step when continuing without explicit continue param
+            if (user?.applicantId) {
+              loadDraftData(user.applicantId, true);
+            }
+          } else {
+            console.log('✨ No existing draft; starting fresh application');
+            setHasExistingDraft(false);
         setFormData({
           // Application Info
           buildingAddress: '',
@@ -3444,6 +3490,7 @@ export function ApplicationForm() {
           occupants: []
         });
         setCurrentStep(0);
+          }
         }
         
         // Hide welcome message after 5 minutes
@@ -3534,29 +3581,127 @@ export function ApplicationForm() {
 
   // This prevents unnecessary saves on every field change
   };
-  // Auto-populate specific co-applicant/guarantor data when role parameter is set
+  console.log("######### formData: ", formData);
+  
+  // Auto-populate specific co-applicant data when role parameter is set
   useEffect(() => {
-    if (userRole.startsWith('coapplicant') && specificIndex !== null) {
-      const specificCoApplicant = (formData.coApplicants || [])[specificIndex];
-      if (specificCoApplicant) {
-        if (specificCoApplicant.name) {
-          form.setValue(`coApplicants.${specificIndex}.name`, specificCoApplicant.name);
-          updateFormData('coApplicants', specificIndex.toString(), 'name', specificCoApplicant.name);
+    if (!userRole.startsWith('coapplicant')) return;
+    if (specificIndex === null || typeof specificIndex === 'undefined') return;
+
+    const coApplicantsArr = formData.coApplicants || [];
+
+    // Ensure array has enough elements for the index
+    if (coApplicantsArr.length <= specificIndex) {
+      setFormData((prev: any) => {
+        const current = Array.isArray(prev.coApplicants) ? [...prev.coApplicants] : [];
+        while (current.length <= specificIndex) {
+          current.push({
+            name: '',
+            email: '',
+            phone: '',
+            relationship: '',
+            dob: undefined,
+            ssn: '',
+            license: '',
+            licenseState: '',
+            address: '',
+            city: '',
+            state: '',
+            zip: '',
+            lengthAtAddressYears: undefined,
+            lengthAtAddressMonths: undefined,
+            landlordName: '',
+            landlordAddressLine1: '',
+            landlordAddressLine2: '',
+            landlordCity: '',
+            landlordState: '',
+            landlordZipCode: '',
+            landlordPhone: '',
+            landlordEmail: '',
+            currentRent: undefined,
+            reasonForMoving: '',
+            employmentType: '',
+            employer: '',
+            position: '',
+            employmentStart: undefined,
+            income: '',
+            incomeFrequency: 'yearly',
+            businessName: '',
+            businessType: '',
+            yearsInBusiness: '',
+            otherIncome: '',
+            otherIncomeFrequency: 'monthly',
+            otherIncomeSource: '',
+            bankRecords: []
+          });
         }
-        if (specificCoApplicant.email) {
-          form.setValue(`coApplicants.${specificIndex}.email`, specificCoApplicant.email);
-          updateFormData('coApplicants', specificIndex.toString(), 'email', specificCoApplicant.email);
-        }
-        if (specificCoApplicant.phone) {
-          form.setValue(`coApplicants.${specificIndex}.phone`, specificCoApplicant.phone);
-          updateFormData('coApplicants', specificIndex.toString(), 'phone', specificCoApplicant.phone);
-        }
-        // Set hasCoApplicant to true for specific role
-        setHasCoApplicant(true);
-        form.setValue('hasCoApplicant', true);
-      }
+        return { ...prev, coApplicants: current };
+      });
     }
-  }, [userRole, specificIndex, form, setHasCoApplicant]);
+
+    // Prefer data at specificIndex; fallback to index 0 if empty
+    const candidateAtIndex = (formData.coApplicants || [])[specificIndex];
+    const fallbackFirst = (formData.coApplicants || [])[0];
+    const source = (candidateAtIndex && Object.keys(candidateAtIndex).length > 0)
+      ? candidateAtIndex
+      : (fallbackFirst && Object.keys(fallbackFirst).length > 0 ? fallbackFirst : undefined);
+
+    if (!source) return;
+
+    // Populate key fields
+    if (source.name) {
+      form.setValue(`coApplicants.${specificIndex}.name`, source.name);
+      updateFormData('coApplicants', specificIndex.toString(), 'name', source.name);
+    }
+    if (source.relationship) {
+      form.setValue(`coApplicants.${specificIndex}.relationship`, source.relationship);
+      updateFormData('coApplicants', specificIndex.toString(), 'relationship', source.relationship);
+    }
+    if (source.dob) {
+      form.setValue(`coApplicants.${specificIndex}.dob`, new Date(source.dob));
+      updateFormData('coApplicants', specificIndex.toString(), 'dob', source.dob);
+    }
+    if (source.ssn) {
+      form.setValue(`coApplicants.${specificIndex}.ssn`, source.ssn);
+      updateFormData('coApplicants', specificIndex.toString(), 'ssn', source.ssn);
+    }
+    if (source.phone) {
+      form.setValue(`coApplicants.${specificIndex}.phone`, source.phone);
+      updateFormData('coApplicants', specificIndex.toString(), 'phone', source.phone);
+    }
+    if (source.email) {
+      form.setValue(`coApplicants.${specificIndex}.email`, source.email);
+      updateFormData('coApplicants', specificIndex.toString(), 'email', source.email);
+    }
+    if (source.address) {
+      form.setValue(`coApplicants.${specificIndex}.address`, source.address);
+      updateFormData('coApplicants', specificIndex.toString(), 'address', source.address);
+    }
+    if (source.city) {
+      form.setValue(`coApplicants.${specificIndex}.city`, source.city);
+      updateFormData('coApplicants', specificIndex.toString(), 'city', source.city);
+    }
+    if (source.state) {
+      form.setValue(`coApplicants.${specificIndex}.state`, source.state);
+      updateFormData('coApplicants', specificIndex.toString(), 'state', source.state);
+    }
+    if (source.zip) {
+      form.setValue(`coApplicants.${specificIndex}.zip`, source.zip);
+      updateFormData('coApplicants', specificIndex.toString(), 'zip', source.zip);
+    }
+    if (source.license) {
+      form.setValue(`coApplicants.${specificIndex}.license`, source.license);
+      updateFormData('coApplicants', specificIndex.toString(), 'license', source.license);
+    }
+    if (source.licenseState) {
+      form.setValue(`coApplicants.${specificIndex}.licenseState`, source.licenseState);
+      updateFormData('coApplicants', specificIndex.toString(), 'licenseState', source.licenseState);
+    }
+
+    // Mark presence
+    setHasCoApplicant(true);
+    form.setValue('hasCoApplicant', true);
+  }, [userRole, specificIndex, form, setHasCoApplicant, formData.coApplicants]);
 
   useEffect(() => {
     if (userRole.startsWith('guarantor') && specificIndex !== null) {
