@@ -1351,7 +1351,7 @@ export const DraftCards = () => {
           if (allCoApplicants && allCoApplicants.length > 0) {
             for (const coApp of allCoApplicants) {
               const matchedApp = (zoneApps || []).find(a => a.appid === coApp.appid);
-              const currentStepFromApp = matchedApp?.current_step ?? 0;
+              const currentStepFromApp = allCoApplicants.current_step ?? 0;
               // Try to fetch the primary applicant for this application to show name/email in previews
               let matchedApplicant: any = undefined;
               try {
@@ -1398,7 +1398,7 @@ export const DraftCards = () => {
             // Fetch applications to resolve current_step and application data by appid
             const zoneApps = await dynamoDBSeparateTablesUtils.getApplicationsByZoneinfo();
             const matchedApp = (zoneApps || []).find(a => a.appid === (allData.guarantor as any).appid);
-            const currentStepFromApp = matchedApp?.current_step ?? 0;
+            const currentStepFromApp = allData.guarantor.current_step ?? 0;
             
             // Fetch applicant data for context
             let matchedApplicant: any = undefined;

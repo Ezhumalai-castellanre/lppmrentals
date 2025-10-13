@@ -99,6 +99,19 @@ const normalizeGuarantorInfo = (guarantorInfo: any) => {
   return normalized;
 };
 
+// Resolve an effective role from state or Cognito user as a fallback
+const getEffectiveRole = (): string => {
+  try {
+    // Prefer explicitly selected role
+    // @ts-ignore userRole is in component scope
+    if (typeof userRole === 'string' && userRole.trim().length > 0) return userRole;
+    // Fallback to Cognito custom:role
+    // @ts-ignore user is in component scope
+    if (user && typeof user.role === 'string' && user.role.trim().length > 0) return user.role;
+  } catch {}
+  return 'applicant';
+};
+
 const toStringValue = (val: unknown) => {
   if (val == null) return '';
   if (typeof val === 'string') return val;
@@ -482,7 +495,6 @@ const STEPS = [
   { id: 11, title: "Guarantor Documents", icon: FolderOpen },
   { id: 12, title: "Digital Signatures", icon: Check },
 ];
-
 // Function to get filtered steps based on role
 const getFilteredSteps = (role: string) => {
   if (role === 'applicant') {
@@ -578,6 +590,13 @@ export function ApplicationForm() {
     }
     // For applicant role, use sequential step as-is (no mapping needed)
     return sequentialStep;
+  };
+
+  // Helper: map an actual step ID to the filtered step index for a role
+  const getFilteredIndexForActualId = (actualStepId: number, role: string) => {
+    const stepsForRole = getFilteredSteps(role || 'applicant');
+    const idx = stepsForRole.findIndex(step => step.id === actualStepId);
+    return idx >= 0 ? idx : 0;
   };
 
 
@@ -1366,7 +1385,6 @@ export function ApplicationForm() {
       return false;
     }
   }, []);
-
   // Load draft data from separate DynamoDB tables
   const loadDraftData = useCallback(async (applicationId: string, restoreStep: boolean = true) => {
     try {
@@ -1760,7 +1778,6 @@ export function ApplicationForm() {
             console.log('🔍 GUARANTOR MAPPING DEBUG: Using effective specific index from user role:', effectiveSpecificIndex);
           }
         }
-        
         if (parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0) {
           console.log('🔧 GUARANTOR MAPPING DEBUG: Condition met - populating guarantor form fields from mapped data');
           console.log('🔧 GUARANTOR MAPPING DEBUG: Processing', parsedFormData.guarantors.length, 'guarantors');
@@ -2056,10 +2073,48 @@ export function ApplicationForm() {
           setFormData(parsedFormData);
           
            // Restore current step only if restoreStep is true
-           if (restoreStep && allData.application?.current_step !== undefined) {
-             // Convert sequential step back to actual step for navigation
-             const actualStep = getActualStepFromSequential(allData.application.current_step, userRole);
-             setCurrentStep(actualStep);
+           if (restoreStep) {
+             // Determine role-scoped sequential step from separate tables when available
+             let sequentialStep: number = 0;
+             try {
+               if (userRole?.startsWith('coapplicant')) {
+                 const appId = (allData.application as any)?.appid as string | undefined;
+                 if (specificIndex != null && appId) {
+                   try {
+                     const coAppsArr = await dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(appId);
+                     if (Array.isArray(coAppsArr) && coAppsArr[specificIndex]) {
+                       sequentialStep = ((coAppsArr[specificIndex] as any)?.current_step ?? 0) as number;
+                     }
+                   } catch (_e2) {}
+                 }
+                 if (sequentialStep === 0) {
+                   sequentialStep = (((allData.coApplicant as any)?.current_step ?? (allData.application as any)?.current_step ?? 0)) as number;
+                 }
+               } else if (userRole?.startsWith('guarantor')) {
+                 const appId = (allData.application as any)?.appid as string | undefined;
+                 if (specificIndex != null && appId) {
+                   try {
+                     const guarantorsArr = await dynamoDBSeparateTablesUtils.getGuarantorsByAppId(appId);
+                     if (Array.isArray(guarantorsArr) && guarantorsArr[specificIndex]) {
+                       sequentialStep = ((guarantorsArr[specificIndex] as any)?.current_step ?? 0) as number;
+                     }
+                   } catch (_e3) {}
+                 }
+                 if (sequentialStep === 0) {
+                   sequentialStep = (((allData.guarantor as any)?.current_step ?? (allData.application as any)?.current_step ?? 0)) as number;
+                 }
+               } else {
+                 // Primary applicant or default
+                 sequentialStep = ((allData.application as any)?.current_step ?? 0) as number;
+               }
+             } catch (_e) {
+               sequentialStep = ((allData.application as any)?.current_step ?? 0) as number;
+             }
+             
+             // Convert sequential step -> actual step id -> filtered index
+             const actualStepId = getActualStepFromSequential(sequentialStep, userRole);
+             const targetFilteredIndex = getFilteredIndexForActualId(actualStepId, userRole);
+             setCurrentStep(targetFilteredIndex);
            }
           
           // Restore signatures
@@ -2545,7 +2600,6 @@ export function ApplicationForm() {
       form.setValue('applicantLengthAtAddressMonths', parsedFormData.applicant.lengthAtAddressMonths);
       console.log('⏰ Re-syncing applicantLengthAtAddressMonths after form reset:', parsedFormData.applicant.lengthAtAddressMonths);
     }
-    
         // Ensure guarantor fields are properly synchronized after form reset
         console.log('🔧 GUARANTOR RE-SYNC DEBUG: Starting guarantor re-sync after form reset...');
         console.log('🔧 GUARANTOR RE-SYNC DEBUG: parsedFormData.guarantors:', parsedFormData.guarantors);
@@ -2923,11 +2977,12 @@ export function ApplicationForm() {
             }
 
              setFormData(parsedFormData);
-             if (restoreStep) {
-               // Convert sequential step back to actual step for navigation
-               const actualStep = getActualStepFromSequential(parsedFormData.current_step || 0, userRole);
-               setCurrentStep(actualStep);
-             }
+            if (restoreStep) {
+              // Convert sequential step -> actual step id -> filtered index
+              const actualStepId = getActualStepFromSequential(parsedFormData.current_step || 0, userRole);
+              const targetFilteredIndex = getFilteredIndexForActualId(actualStepId, userRole);
+              setCurrentStep(targetFilteredIndex);
+            }
             if (parsedFormData.signatures) setSignatures(parsedFormData.signatures);
             if (parsedFormData.webhook_responses) setWebhookResponses(parsedFormData.webhook_responses);
 
@@ -2958,7 +3013,6 @@ export function ApplicationForm() {
       });
     }
   }, [user, userRole, specificIndex, form, toast, setHasExistingDraft, setFormData, setCurrentStep, setSignatures, setWebhookResponses, setUploadedFilesMetadata, setEncryptedDocuments, setHasCoApplicant, setHasGuarantor, hasCoApplicantData, hasGuarantorData, getActualStepFromSequential]);
-  
   // Track if initial load has happened to prevent multiple triggers
   const initialLoadRef = useRef(false);
   
@@ -3127,6 +3181,17 @@ export function ApplicationForm() {
                     currentRent: undefined,
                     reasonForMoving: '',
                     employmentType: '',
+                    employer: '',
+                    position: '',
+                    employmentStart: undefined,
+                    income: '',
+                    incomeFrequency: 'yearly',
+                    businessName: '',
+                    businessType: '',
+                    yearsInBusiness: '',
+                    otherIncome: '',
+                    otherIncomeFrequency: 'monthly',
+                    otherIncomeSource: '',
                     bankRecords: []
                   };
                 }
@@ -3169,6 +3234,17 @@ export function ApplicationForm() {
                     lengthAtAddressYears: undefined,
                     lengthAtAddressMonths: undefined,
                     employmentType: '',
+                    employer: '',
+                    position: '',
+                    employmentStart: undefined,
+                    income: '',
+                    incomeFrequency: 'yearly',
+                    businessName: '',
+                    businessType: '',
+                    yearsInBusiness: '',
+                    otherIncome: '',
+                    otherIncomeFrequency: 'monthly',
+                    otherIncomeSource: '',
                     bankRecords: []
                   };
                 }
@@ -3215,12 +3291,18 @@ export function ApplicationForm() {
           
            // If a specific step is provided, navigate to it after draft is loaded
            if (stepParam) {
-             const targetStep = parseInt(stepParam, 10);
-             if (!isNaN(targetStep) && targetStep >= 0 && targetStep < filteredSteps.length) {
-               console.log('🎯 Step parameter detected, will navigate to step:', targetStep);
-               // Convert sequential step to actual step for navigation
-               const actualStep = getActualStepFromSequential(targetStep, userRole);
-               setCurrentStep(actualStep);
+             if (stepParam === 'current_step') {
+               // Rely on restoreStep=true behavior in loadDraftData which already restored current_step
+               console.log('🎯 Step parameter is current_step; using restored draft current_step for navigation');
+             } else {
+               const targetStep = parseInt(stepParam, 10);
+               if (!isNaN(targetStep) && targetStep >= 0) {
+                 console.log('🎯 Step parameter detected, will navigate to step:', targetStep);
+                 // Convert sequential step -> actual step id -> filtered index
+                 const actualStepId = getActualStepFromSequential(targetStep, userRole);
+                 const targetFilteredIndex = getFilteredIndexForActualId(actualStepId, userRole);
+                 setCurrentStep(targetFilteredIndex);
+               }
              }
            }
         } else {
@@ -3452,7 +3534,6 @@ export function ApplicationForm() {
 
   // This prevents unnecessary saves on every field change
   };
-
   // Auto-populate specific co-applicant/guarantor data when role parameter is set
   useEffect(() => {
     if (userRole.startsWith('coapplicant') && specificIndex !== null) {
@@ -3951,7 +4032,6 @@ export function ApplicationForm() {
     console.log(`📊 Generated role-specific webhook summary for ${role}:`, summary);
     return summary;
   };
-
   // Build role-scoped copies of form data and signatures for saving
   const buildRoleScopedFormData = useCallback((data: any, role: string, coGuarIndex?: number): any => {
     if (!role) return data;
@@ -4361,7 +4441,7 @@ export function ApplicationForm() {
           if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
           return sig ?? null;
         })(),
-        current_step: getSequentialStepNumber(currentStep, userRole || ''),
+        current_step: getSequentialStepNumber(currentStep, getEffectiveRole() || ''),
         last_updated: new Date().toISOString(),
         status: 'draft' as const
       };
@@ -4419,7 +4499,6 @@ export function ApplicationForm() {
       setIsSavingDraft(false);
     }
   }, [getCurrentUserZoneinfo, formData, referenceId, currentStep, uploadedFilesMetadata, webhookResponses, signatures, encryptedDocuments, getWebhookSummary, userRole, specificIndex, buildRoleScopedFormData, buildRoleScopedSignatures, selectedAppId]);
-
   // Save draft to DynamoDB function - ONLY for Co-Applicant role with applicant type
   const saveCoApplicantApplicantTypeDraftToDynamoDB = useCallback(async () => {
     // Only allow save draft for Co-Applicant role
@@ -4501,7 +4580,7 @@ export function ApplicationForm() {
           if (typeof sig === 'string' && sig.startsWith('data:image/')) return { coApplicants: [sig] };
           return { coApplicants: [sig ?? null] };
         })(),
-        current_step: getSequentialStepNumber(currentStep, userRole || ''),
+        current_step: getSequentialStepNumber(currentStep, getEffectiveRole() || ''),
         last_updated: new Date().toISOString(),
         status: 'draft' as const
       };
@@ -4645,7 +4724,7 @@ export function ApplicationForm() {
           if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
           return sig ?? null;
         })(),
-        current_step: getSequentialStepNumber(currentStep, userRole || ''),
+        current_step: getSequentialStepNumber(currentStep, getEffectiveRole() || ''),
         last_updated: new Date().toISOString(),
         status: 'draft' as const
       };
@@ -4918,7 +4997,6 @@ export function ApplicationForm() {
     console.log(`📁 Final uploaded docs array:`, uploadedDocs);
     return uploadedDocs;
   };
-
   // Function to handle occupant document preview
   const handlePreviewOccupantDocument = (filename: string, fileUrl: string, documentName: string) => {
     console.log(`👁️ Previewing occupant document:`, { filename, fileUrl, documentName });
@@ -5396,7 +5474,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
     const maxStep = filteredSteps.length - 1;
     return Math.max(0, Math.min(maxStep, next));
   };
-
   // Step validation functions
   const validateStep = (step: number): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
@@ -5653,11 +5730,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
       const urlParams = new URLSearchParams(window.location.search);
       const isContinuing = urlParams.get('continue') === 'true';
       if (isContinuing) {
-        toast({
-          title: 'Some fields are incomplete',
-          description: 'You can continue editing your restored draft and fill these later.',
-          variant: 'default',
-        });
+        
       } else {
         toast({
           title: 'Required fields missing',
@@ -5885,7 +5958,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
 
     console.log('👤 Occupant updated:', index, field);
   };
-
   const handleOccupantDocumentChange = async (index: number, documentType: string, files: File[]) => {
     console.log(`📁 Occupant ${index + 1} document change:`, { documentType, filesCount: files.length });
     
@@ -5904,8 +5976,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
 
     console.log('📁 Occupant document updated:', index, documentType);
   };
-
-  // Removed handleOccupantEncryptedDocumentChange - no longer needed
 
   // Handle role-specific form submission (bypasses schema validation)
   const handleRoleSpecificSubmit = async (e: React.FormEvent) => {
@@ -6364,7 +6434,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
         currentRent: formData.guarantor?.currentRent,
         reasonForMoving: formData.guarantor?.reasonForMoving
       });
-      
       console.log("📊 DATA SUMMARY:");
       console.log("- Application Info Fields:", Object.keys(data).filter(k => k.includes('building') || k.includes('apartment') || k.includes('moveIn') || k.includes('monthly') || k.includes('howDid')).length);
       console.log("- Primary Applicant Fields:", Object.keys(data).filter(k => k.startsWith('applicant')).length);
@@ -7267,7 +7336,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
               userRole || 'applicant'
             );
           }
-          
           console.log('📥 Webhook result:', JSON.stringify(webhookResult, null, 2));
           console.log('=== END WEBHOOK SUBMISSION ===');
           
@@ -8401,7 +8469,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                             <FormControl>
                               <ZIPInput
                                 name="applicantZip"
-                                label="ZIP Code*"
+                                label="ZIP Code"
                                 placeholder="ZIP code"
                                 value={field.value || ''}
                                 onChange={(value: string) => {
@@ -8434,8 +8502,8 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                       updateFormData('applicant', 'city', city);
                       form.setValue('applicantCity', city);
                     }}
-                    stateLabel="State*"
-                    cityLabel="City*"
+                    stateLabel="State"
+                    cityLabel="City"
                     required={true}
                     error={form.formState.errors.applicantState?.message || form.formState.errors.applicantCity?.message}
                     className="mb-4"
@@ -9498,7 +9566,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                           <FormControl>
                             <ZIPInput
                              name={`coApplicants.${actualIndex}.zip`}
-                            label="ZIP Code*"
+                            label="ZIP Code"
                             placeholder="ZIP code"
                               value={formData.coApplicants?.[actualIndex]?.zip || ''}
                               onChange={(value: string) => {
@@ -9531,13 +9599,12 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                        updateArrayItem('coApplicants', actualIndex, 'city', city);
                        form.setValue(`coApplicants.${actualIndex}.city`, city);
                       }}
-                    stateLabel="State*"
-                    cityLabel="City*"
+                   stateLabel="State"
+                   cityLabel="City"
                     required={true}
                     className="mb-4"
                   />
                         </div>
-                        
               </div>
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                     <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
@@ -10537,7 +10604,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                         <FormControl>
                           <ZIPInput
                              name={`guarantors.${actualIndex}.zip`}
-                            label="ZIP Code*"
+                            label="ZIP Code"
                             placeholder="ZIP code"
                             value={formData.guarantors[actualIndex]?.zip || ''}
                             onChange={(value: string) => {
@@ -10560,7 +10627,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                                updateArrayItem('guarantors', actualIndex, 'city', '');
                                form.setValue(`guarantors.${actualIndex}.city`, '');
                              }}
-                            label="State*"
+                           label="State"
                             className="w-full mt-1"
                           />
                         </FormControl>
@@ -10574,13 +10641,12 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                                updateArrayItem('guarantors', actualIndex, 'city', city);
                                form.setValue(`guarantors.${actualIndex}.city`, city);
                              }}
-                            label="City*"
+                           label="City"
                             className="w-full mt-1"
                           />
                         </FormControl>
                       </FormItem>
                     </div>
-                    
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                       <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-x-6 gap-y-4">
                         <FormLabel className="mb-0.5 col-span-2">Length of Stay at Current Address</FormLabel>
@@ -10842,7 +10908,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                     return (
                     <div key={index} className="mb-8 last:mb-0">
                       <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">
-                        Financial Information 3 - Guarantor {actualIndex + 1}
+                        Financial Information - Guarantor {actualIndex + 1}
                       </h3>
                       <FinancialSection
                         title={`Guarantor ${actualIndex + 1} Financial Information`}
@@ -10902,9 +10968,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                           
                           <div className="form-field">
                             <Label htmlFor={`guarantor-${actualIndex}-employmentType`}>Employment Type *</Label>
-                            <div className="text-sm text-amber-600 dark:text-amber-400 mb-2">
-                              Guarantor cannot be a student, only employment/ self-employment options
-                            </div>
                             <Select
                               value={formData.guarantors?.[actualIndex]?.employmentType || ''}
                               onValueChange={(value) => {
@@ -11068,7 +11131,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
       // Don't set undefined for required date field
     }
   }, [formData.applicant?.dob, form]);
-
   // Helper to robustly convert to Date or undefined (preserving local date)
   const toValidDate = (val: any): Date | undefined => {
     if (!val) return undefined;
@@ -11131,11 +11193,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
       const urlParams = new URLSearchParams(window.location.search);
       const isContinuing = urlParams.get('continue') === 'true';
       if (isContinuing) {
-        toast({
-          title: 'Some fields are incomplete',
-          description: 'Keep going; you can complete these before submission.',
-          variant: 'default',
-        });
+        
       } else {
         toast({
           title: 'Required fields missing',
