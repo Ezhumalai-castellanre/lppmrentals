@@ -116,7 +116,10 @@ exports.handler = async (event, context) => {
       webhookPayload = {
         reference_id: webhookData.reference_id,
         application_id: webhookData.application_id,
+        role: webhookData.role,
+        submission_type: webhookData.submission_type || 'form_data',
         form_data: webhookData.form_data,
+        uploaded_files: webhookData.uploaded_files,
       };
     } else {
       return {
