@@ -52,6 +52,53 @@ const toDate = (val: unknown) => {
   return undefined;
 };
 
+// Helper function to normalize guarantor_info field names to match form schema
+const normalizeGuarantorInfo = (guarantorInfo: any) => {
+  const normalized = { ...guarantorInfo };
+  
+  // Normalize field names from database to form field names
+  if (normalized.fullName && !normalized.name) normalized.name = normalized.fullName;
+  if (normalized.full_name && !normalized.name) normalized.name = normalized.full_name;
+  if (normalized.phoneNumber && !normalized.phone) normalized.phone = normalized.phoneNumber;
+  if (normalized.phone_number && !normalized.phone) normalized.phone = normalized.phone_number;
+  if (normalized.mail && !normalized.email) normalized.email = normalized.mail;
+  if (normalized.addressLine1 && !normalized.address) normalized.address = normalized.addressLine1;
+  if (normalized.address1 && !normalized.address) normalized.address = normalized.address1;
+  if (normalized.street && !normalized.address) normalized.address = normalized.street;
+  if (normalized.town && !normalized.city) normalized.city = normalized.town;
+  if (normalized.region && !normalized.state) normalized.state = normalized.region;
+  if (normalized.zipCode && !normalized.zip) normalized.zip = normalized.zipCode;
+  if (normalized.postalCode && !normalized.zip) normalized.zip = normalized.postalCode;
+  if (normalized.postal_code && !normalized.zip) normalized.zip = normalized.postal_code;
+  if (normalized.date_of_birth && !normalized.dob) normalized.dob = normalized.date_of_birth;
+  if (normalized.driverLicense && !normalized.license) normalized.license = normalized.driverLicense;
+  if (normalized.driver_license && !normalized.license) normalized.license = normalized.driver_license;
+  if (normalized.license_state && !normalized.licenseState) normalized.licenseState = normalized.license_state;
+  if (normalized.landlord_name && !normalized.landlordName) normalized.landlordName = normalized.landlord_name;
+  if (normalized.landlord_address_line1 && !normalized.landlordAddressLine1) normalized.landlordAddressLine1 = normalized.landlord_address_line1;
+  if (normalized.landlord_address && !normalized.landlordAddressLine1) normalized.landlordAddressLine1 = normalized.landlord_address;
+  if (normalized.landlord_address_line2 && !normalized.landlordAddressLine2) normalized.landlordAddressLine2 = normalized.landlord_address_line2;
+  if (normalized.landlord_city && !normalized.landlordCity) normalized.landlordCity = normalized.landlord_city;
+  if (normalized.landlord_state && !normalized.landlordState) normalized.landlordState = normalized.landlord_state;
+  if (normalized.landlord_zip && !normalized.landlordZipCode) normalized.landlordZipCode = normalized.landlord_zip;
+  if (normalized.landlord_zip_code && !normalized.landlordZipCode) normalized.landlordZipCode = normalized.landlord_zip_code;
+  if (normalized.landlord_phone && !normalized.landlordPhone) normalized.landlordPhone = normalized.landlord_phone;
+  if (normalized.landlord_email && !normalized.landlordEmail) normalized.landlordEmail = normalized.landlord_email;
+  if (normalized.current_rent && !normalized.currentRent) normalized.currentRent = normalized.current_rent;
+  if (normalized.reason_for_moving && !normalized.reasonForMoving) normalized.reasonForMoving = normalized.reason_for_moving;
+  if (normalized.employment_type && !normalized.employmentType) normalized.employmentType = normalized.employment_type;
+  if (normalized.employment && !normalized.employmentType) normalized.employmentType = normalized.employment;
+  if (normalized.employment_start && !normalized.employmentStart) normalized.employmentStart = normalized.employment_start;
+  if (normalized.years_in_business && !normalized.yearsInBusiness) normalized.yearsInBusiness = normalized.years_in_business;
+  if (normalized.other_income && !normalized.otherIncome) normalized.otherIncome = normalized.other_income;
+  if (normalized.other_income_frequency && !normalized.otherIncomeFrequency) normalized.otherIncomeFrequency = normalized.other_income_frequency;
+  if (normalized.other_income_source && !normalized.otherIncomeSource) normalized.otherIncomeSource = normalized.other_income_source;
+  if (normalized.credit_score && !normalized.creditScore) normalized.creditScore = normalized.credit_score;
+  if (normalized.bank_records && !normalized.bankRecords) normalized.bankRecords = normalized.bank_records;
+  
+  return normalized;
+};
+
 const toStringValue = (val: unknown) => {
   if (val == null) return '';
   if (typeof val === 'string') return val;
@@ -1047,11 +1094,11 @@ export function ApplicationForm() {
     if (!coApplicant) return false;
     
     // Check for any meaningful co-applicant data
-    const hasBasicInfo = coApplicant.name || coApplicant.email || coApplicant.phone || coApplicant.ssn;
-    const hasAddressInfo = coApplicant.address || coApplicant.city || coApplicant.state || coApplicant.zip;
-    const hasEmploymentInfo = coApplicant.employmentType || coApplicant.employerName || coApplicant.employerPhone;
-    const hasFinancialInfo = coApplicant.monthlyIncome || coApplicant.bankRecords;
-    const hasDocuments = coApplicant.documents && Object.keys(coApplicant.documents).length > 0;
+    const hasBasicInfo = !!(coApplicant.name || coApplicant.email || coApplicant.phone || coApplicant.ssn);
+    const hasAddressInfo = !!(coApplicant.address || coApplicant.city || coApplicant.state || coApplicant.zip);
+    const hasEmploymentInfo = !!(coApplicant.employmentType || coApplicant.employerName || coApplicant.employerPhone);
+    const hasFinancialInfo = !!(coApplicant.monthlyIncome || coApplicant.bankRecords);
+    const hasDocuments = !!(coApplicant.documents && Object.keys(coApplicant.documents).length > 0);
     
     return hasBasicInfo || hasAddressInfo || hasEmploymentInfo || hasFinancialInfo || hasDocuments;
   }, []);
@@ -1061,11 +1108,11 @@ export function ApplicationForm() {
     if (!guarantor) return false;
     
     // Check for any meaningful guarantor data
-    const hasBasicInfo = guarantor.name || guarantor.email || guarantor.phone || guarantor.ssn;
-    const hasAddressInfo = guarantor.address || guarantor.city || guarantor.state || guarantor.zip;
-    const hasEmploymentInfo = guarantor.employmentType || guarantor.employerName || guarantor.employerPhone;
-    const hasFinancialInfo = guarantor.monthlyIncome || guarantor.bankRecords;
-    const hasDocuments = guarantor.documents && Object.keys(guarantor.documents).length > 0;
+    const hasBasicInfo = !!(guarantor.name || guarantor.email || guarantor.phone || guarantor.ssn);
+    const hasAddressInfo = !!(guarantor.address || guarantor.city || guarantor.state || guarantor.zip);
+    const hasEmploymentInfo = !!(guarantor.employmentType || guarantor.employerName || guarantor.employerPhone);
+    const hasFinancialInfo = !!(guarantor.monthlyIncome || guarantor.bankRecords);
+    const hasDocuments = !!(guarantor.documents && Object.keys(guarantor.documents).length > 0);
     
     return hasBasicInfo || hasAddressInfo || hasEmploymentInfo || hasFinancialInfo || hasDocuments;
   }, []);
@@ -1377,8 +1424,17 @@ export function ApplicationForm() {
               console.log('📊 Normalized co-applicants array:', coApplicantsArray);
             }
             if (Array.isArray(guarantorsByAppId) && guarantorsByAppId.length > 0) {
-              // Normalize to plain guarantor_info objects
-              guarantorsArray = guarantorsByAppId.map((g: any) => g?.guarantor_info || g || {});
+              // Normalize to plain guarantor_info objects with field name normalization
+              guarantorsArray = guarantorsByAppId.map((g: any) => {
+                const guarantorInfo = g?.guarantor_info || g || {};
+                console.log('🔍 GUARANTOR_INFO DEBUG: Raw guarantor_info from guarantorsByAppId:', guarantorInfo);
+                
+                // Normalize field names from database to form field names
+                const normalizedGuarantorInfo = normalizeGuarantorInfo(guarantorInfo);
+                
+                console.log('🔍 GUARANTOR_INFO DEBUG: Normalized guarantor_info from guarantorsByAppId:', normalizedGuarantorInfo);
+                return normalizedGuarantorInfo;
+              });
               console.log('📊 Normalized guarantors array:', guarantorsArray);
             }
           }
@@ -1438,6 +1494,68 @@ export function ApplicationForm() {
           // since the data should be in coApplicants array, not applicant object
           if (parsedFormData.applicant) {
             console.log('🧹 Clearing applicant data for Co-Applicant role to avoid confusion');
+            parsedFormData.applicant = {};
+          }
+        }
+        
+        // Handle guarantor role data loading
+        if (user && user.role && user.role.startsWith('guarantor')) {
+          console.log('🔄 Processing Guarantor role data mapping...');
+          console.log('🔍 Current specificIndex:', specificIndex);
+          
+          // Determine specific index from user role if not already set
+          let currentSpecificIndex = specificIndex;
+          if (currentSpecificIndex === null && user.role && /guarantor\d+/.test(user.role)) {
+            const match = user.role.match(/guarantor(\d+)/);
+            if (match) {
+              currentSpecificIndex = parseInt(match[1], 10) - 1; // Convert to 0-based index
+              console.log('🔍 GUARANTOR ROLE DEBUG: Detected specific guarantor index from user role:', currentSpecificIndex);
+            }
+          }
+
+          // Check if data was saved in Guarantors_nyc table
+          if (allData.guarantor && allData.guarantor.guarantor_info) {
+            console.log('📊 Using guarantor_info from Guarantors_nyc table for Guarantor role');
+            console.log('🔍 GUARANTOR_INFO DEBUG: Raw guarantor_info data:', allData.guarantor.guarantor_info);
+            
+            // Normalize guarantor_info field names to match form schema
+            const normalizedGuarantorInfo = normalizeGuarantorInfo(allData.guarantor.guarantor_info);
+            
+            console.log('🔍 GUARANTOR_INFO DEBUG: Normalized guarantor_info data:', normalizedGuarantorInfo);
+            guarantorsArray = [normalizedGuarantorInfo];
+            
+            // Also load webhookSummary from guarantor data
+            if (allData.guarantor.webhookSummary) {
+              parsedFormData.webhookSummary = allData.guarantor.webhookSummary;
+              console.log('🔍 Loaded webhookSummary from guarantor data:', parsedFormData.webhookSummary);
+            }
+          }
+          // Check if data exists in guarantorsArray from previous loading
+          else if (guarantorsArray.length > 0) {
+            console.log('📊 Using existing guarantorsArray for Guarantor role');
+            // guarantorsArray already populated from previous logic
+          }
+          
+          // Handle specific index for guarantor1, guarantor2, etc.
+          if (currentSpecificIndex !== null && currentSpecificIndex !== undefined && guarantorsArray.length > 0) {
+            console.log(`📊 Mapping data for specific Guarantor index: ${currentSpecificIndex}`);
+            // Ensure the array has enough elements for the specific index
+            while (guarantorsArray.length <= currentSpecificIndex) {
+              guarantorsArray.push({});
+            }
+            // If we have data, put it at the specific index
+            if (guarantorsArray[0] && Object.keys(guarantorsArray[0]).length > 0) {
+              guarantorsArray[currentSpecificIndex] = guarantorsArray[0];
+              if (currentSpecificIndex > 0) {
+                guarantorsArray[0] = {}; // Clear the first element if we moved it
+              }
+            }
+          }
+          
+          // For Guarantor role, also clear the applicant data to avoid confusion
+          // since the data should be in guarantors array, not applicant object
+          if (parsedFormData.applicant) {
+            console.log('🧹 Clearing applicant data for Guarantor role to avoid confusion');
             parsedFormData.applicant = {};
           }
         }
@@ -1535,37 +1653,300 @@ export function ApplicationForm() {
           if ((!guarantorsArray || guarantorsArray.length === 0) && currentAppId) {
             const gs = await dynamoDBSeparateTablesUtils.getGuarantorsByAppId(currentAppId);
             if (gs && gs.length > 0) {
-              guarantorsArray = gs.map((g: any) => g.guarantor_info || {});
+              guarantorsArray = gs.map((g: any) => {
+                const guarantorInfo = g.guarantor_info || {};
+                console.log('🔍 GUARANTOR_INFO DEBUG: Raw guarantor_info from getGuarantorsByAppId:', guarantorInfo);
+                
+                // Normalize field names from database to form field names
+                const normalizedGuarantorInfo = normalizeGuarantorInfo(guarantorInfo);
+                
+                console.log('🔍 GUARANTOR_INFO DEBUG: Normalized guarantor_info from getGuarantorsByAppId:', normalizedGuarantorInfo);
+                return normalizedGuarantorInfo;
+              });
             }
           }
         } catch {}
 
-        // Restore co-applicant data into form structure
+        // Ensure all required sections exist first
+        parsedFormData.application = parsedFormData.application || {};
+        parsedFormData.applicant = parsedFormData.applicant || {};
+        parsedFormData.coApplicant = parsedFormData.coApplicant || {};
+        parsedFormData.guarantor = parsedFormData.guarantor || {};
+        parsedFormData.occupants = parsedFormData.occupants || [];
+        
+        // Restore co-applicant data into form structure - CONSOLIDATED LOGIC
         if (coApplicantsArray.length > 0) {
+          // Use data from coApplicantsArray (from separate tables)
           parsedFormData.coApplicants = coApplicantsArray;
-          console.log('📊 Set parsedFormData.coApplicants:', coApplicantsArray);
+          parsedFormData.coApplicant = coApplicantsArray[0] || {};
+          console.log('📊 Using coApplicantsArray for co-applicant data:', coApplicantsArray.length, 'items');
+        } else if (parsedFormData.coApplicant && Object.keys(parsedFormData.coApplicant).length > 0) {
+          // If no coApplicantsArray but we have coApplicant data, map it to coApplicants array
+          console.log('📊 Mapping singular coApplicant data to coApplicants array');
+          parsedFormData.coApplicants = [parsedFormData.coApplicant];
+        } else {
+          // Ensure coApplicants array exists even if empty
+          parsedFormData.coApplicants = [];
         }
         
-        // Restore guarantor data into form structure
+        // Restore guarantor data into form structure - CONSOLIDATED LOGIC WITH DEBUG
+        console.log('🔍 GUARANTOR DATA MAPPING DEBUG: Starting guarantor data mapping...');
+        console.log('🔍 GUARANTOR DATA MAPPING DEBUG: guarantorsArray.length:', guarantorsArray.length);
+        console.log('🔍 GUARANTOR DATA MAPPING DEBUG: guarantorsArray:', guarantorsArray);
+        console.log('🔍 GUARANTOR DATA MAPPING DEBUG: parsedFormData.guarantor:', parsedFormData.guarantor);
+        console.log('🔍 GUARANTOR DATA MAPPING DEBUG: parsedFormData.guarantor keys:', parsedFormData.guarantor ? Object.keys(parsedFormData.guarantor) : []);
+        
         if (guarantorsArray.length > 0) {
-          parsedFormData.guarantor = guarantorsArray[0] || {};
+          // Use data from guarantorsArray (from separate tables)
           parsedFormData.guarantors = guarantorsArray;
+          parsedFormData.guarantor = guarantorsArray[0] || {};
+          console.log('📊 GUARANTOR DATA MAPPING DEBUG: Using guarantorsArray for guarantor data:', guarantorsArray.length, 'items');
+          console.log('📊 GUARANTOR DATA MAPPING DEBUG: Set parsedFormData.guarantors to:', parsedFormData.guarantors);
+        } else if (parsedFormData.guarantor && Object.keys(parsedFormData.guarantor).length > 0) {
+          // If no guarantorsArray but we have guarantor data, map it to guarantors array
+          console.log('📊 GUARANTOR DATA MAPPING DEBUG: Mapping singular guarantor data to guarantors array');
+          parsedFormData.guarantors = [parsedFormData.guarantor];
+          console.log('📊 GUARANTOR DATA MAPPING DEBUG: Set parsedFormData.guarantors to:', parsedFormData.guarantors);
+        } else {
+          // Ensure guarantors array exists even if empty
+          parsedFormData.guarantors = [];
+          console.log('📊 GUARANTOR DATA MAPPING DEBUG: No guarantor data found, setting empty array');
         }
-              
-              // Ensure all required sections exist
-              parsedFormData.application = parsedFormData.application || {};
-              parsedFormData.applicant = parsedFormData.applicant || {};
-              parsedFormData.coApplicant = parsedFormData.coApplicant || {};
-              parsedFormData.guarantor = parsedFormData.guarantor || {};
-              parsedFormData.occupants = parsedFormData.occupants || [];
+        
+        console.log('🔍 GUARANTOR DATA MAPPING DEBUG: Final parsedFormData.guarantors:', parsedFormData.guarantors);
+        console.log('🔍 GUARANTOR DATA MAPPING DEBUG: Final parsedFormData.guarantors.length:', parsedFormData.guarantors.length);
+        
+        // Final consistency check and logging
+        console.log('🔍 Final data mapping results:', {
+          coApplicantKeys: parsedFormData.coApplicant ? Object.keys(parsedFormData.coApplicant) : [],
+          coApplicantsLength: parsedFormData.coApplicants ? parsedFormData.coApplicants.length : 0,
+          guarantorKeys: parsedFormData.guarantor ? Object.keys(parsedFormData.guarantor) : [],
+          guarantorsLength: parsedFormData.guarantors ? parsedFormData.guarantors.length : 0
+        });
+        
+        // Auto-set checkbox states based on data presence - RELIABLE APPROACH
+        const hasCoApplicantDataFlag = parsedFormData.coApplicant && Object.keys(parsedFormData.coApplicant).length > 0;
+        const hasCoApplicantsArray = parsedFormData.coApplicants && Array.isArray(parsedFormData.coApplicants) && parsedFormData.coApplicants.length > 0;
+        const hasGuarantorDataFlag = parsedFormData.guarantor && Object.keys(parsedFormData.guarantor).length > 0;
+        const hasGuarantorsArray = parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0;
+        
+        // Set co-applicant checkbox if data exists
+        if ((hasCoApplicantDataFlag || hasCoApplicantsArray) && parsedFormData.hasCoApplicant === undefined) {
+          console.log('🔧 Auto-setting hasCoApplicant to true based on data presence');
+          parsedFormData.hasCoApplicant = true;
+        }
+        
+        // Set guarantor checkbox if data exists
+        if ((hasGuarantorDataFlag || hasGuarantorsArray) && parsedFormData.hasGuarantor === undefined) {
+          console.log('🔧 Auto-setting hasGuarantor to true based on data presence');
+          parsedFormData.hasGuarantor = true;
+        }
+        
+        // Ensure form fields are populated from mapped data - RELIABLE APPROACH WITH DEBUG
+        console.log('🔍 GUARANTOR MAPPING DEBUG: Starting form field population check...');
+        console.log('🔍 GUARANTOR MAPPING DEBUG: parsedFormData.guarantors:', parsedFormData.guarantors);
+        console.log('🔍 GUARANTOR MAPPING DEBUG: Array.isArray(parsedFormData.guarantors):', Array.isArray(parsedFormData.guarantors));
+        console.log('🔍 GUARANTOR MAPPING DEBUG: parsedFormData.guarantors.length:', parsedFormData.guarantors?.length || 0);
+        console.log('🔍 GUARANTOR MAPPING DEBUG: specificIndex:', specificIndex);
+        console.log('🔍 GUARANTOR MAPPING DEBUG: userRole:', userRole);
+        console.log('🔍 GUARANTOR MAPPING DEBUG: user.role:', user?.role);
+        
+        // Determine the effective specific index for guarantor role
+        let effectiveSpecificIndex = specificIndex;
+        if (user && user.role && user.role.startsWith('guarantor') && /guarantor\d+/.test(user.role)) {
+          const match = user.role.match(/guarantor(\d+)/);
+          if (match) {
+            effectiveSpecificIndex = parseInt(match[1], 10) - 1; // Convert to 0-based index
+            console.log('🔍 GUARANTOR MAPPING DEBUG: Using effective specific index from user role:', effectiveSpecificIndex);
+          }
+        }
+        
+        if (parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0) {
+          console.log('🔧 GUARANTOR MAPPING DEBUG: Condition met - populating guarantor form fields from mapped data');
+          console.log('🔧 GUARANTOR MAPPING DEBUG: Processing', parsedFormData.guarantors.length, 'guarantors');
           
-          // Attach multi-applicant arrays if present
-          if (coApplicantsArray.length > 0) {
-            parsedFormData.coApplicants = coApplicantsArray;
+          // For specific role (guarantor4, guarantor3, etc.), only populate the specific index
+          if (effectiveSpecificIndex !== null && effectiveSpecificIndex !== undefined) {
+            console.log(`🔧 GUARANTOR MAPPING DEBUG: Specific role detected - populating only guarantor ${effectiveSpecificIndex}`);
+            const guarantor = parsedFormData.guarantors[effectiveSpecificIndex];
+            if (guarantor && Object.keys(guarantor).length > 0) {
+              console.log(`🔧 GUARANTOR MAPPING DEBUG: Setting form values for specific guarantor ${effectiveSpecificIndex}`);
+              
+              // Set basic guarantor fields with detailed logging
+              if (guarantor.name) {
+                form.setValue(`guarantors.${effectiveSpecificIndex}.name`, guarantor.name);
+                console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${effectiveSpecificIndex}.name = ${guarantor.name}`);
+              }
+              if (guarantor.relationship) {
+                form.setValue(`guarantors.${effectiveSpecificIndex}.relationship`, guarantor.relationship);
+                console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${effectiveSpecificIndex}.relationship = ${guarantor.relationship}`);
+              }
+              if (guarantor.dob) {
+                form.setValue(`guarantors.${effectiveSpecificIndex}.dob`, new Date(guarantor.dob));
+                console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${effectiveSpecificIndex}.dob = ${guarantor.dob}`);
+              }
+              if (guarantor.ssn) {
+                form.setValue(`guarantors.${effectiveSpecificIndex}.ssn`, guarantor.ssn);
+                console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${effectiveSpecificIndex}.ssn = ${guarantor.ssn}`);
+              }
+              if (guarantor.phone) {
+                form.setValue(`guarantors.${effectiveSpecificIndex}.phone`, guarantor.phone);
+                console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${effectiveSpecificIndex}.phone = ${guarantor.phone}`);
+              }
+              if (guarantor.email) {
+                form.setValue(`guarantors.${effectiveSpecificIndex}.email`, guarantor.email);
+                console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${effectiveSpecificIndex}.email = ${guarantor.email}`);
+              }
+              if (guarantor.address) {
+                form.setValue(`guarantors.${effectiveSpecificIndex}.address`, guarantor.address);
+                console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${effectiveSpecificIndex}.address = ${guarantor.address}`);
+              }
+              if (guarantor.city) {
+                form.setValue(`guarantors.${effectiveSpecificIndex}.city`, guarantor.city);
+                console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${effectiveSpecificIndex}.city = ${guarantor.city}`);
+              }
+              if (guarantor.state) {
+                form.setValue(`guarantors.${effectiveSpecificIndex}.state`, guarantor.state);
+                console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${effectiveSpecificIndex}.state = ${guarantor.state}`);
+              }
+              if (guarantor.zip) {
+                form.setValue(`guarantors.${effectiveSpecificIndex}.zip`, guarantor.zip);
+                console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${effectiveSpecificIndex}.zip = ${guarantor.zip}`);
+              }
+              if (guarantor.license) {
+                form.setValue(`guarantors.${effectiveSpecificIndex}.license`, guarantor.license);
+                console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${effectiveSpecificIndex}.license = ${guarantor.license}`);
+              }
+              if (guarantor.licenseState) {
+                form.setValue(`guarantors.${effectiveSpecificIndex}.licenseState`, guarantor.licenseState);
+                console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${effectiveSpecificIndex}.licenseState = ${guarantor.licenseState}`);
+              }
+              
+              // Verify form values were set
+              setTimeout(() => {
+                const formName = form.getValues(`guarantors.${effectiveSpecificIndex}.name`);
+                const formEmail = form.getValues(`guarantors.${effectiveSpecificIndex}.email`);
+                const formPhone = form.getValues(`guarantors.${effectiveSpecificIndex}.phone`);
+                console.log(`🔍 GUARANTOR MAPPING DEBUG: Verification for specific guarantor ${effectiveSpecificIndex}:`, {
+                  formName: formName,
+                  formEmail: formEmail,
+                  formPhone: formPhone,
+                  expectedName: guarantor.name,
+                  expectedEmail: guarantor.email,
+                  expectedPhone: guarantor.phone,
+                  formValuesMatch: formName === guarantor.name && formEmail === guarantor.email && formPhone === guarantor.phone
+                });
+                
+                // If form values don't match, log a warning
+                if (formName !== guarantor.name || formEmail !== guarantor.email || formPhone !== guarantor.phone) {
+                  console.warn(`⚠️ GUARANTOR MAPPING DEBUG: Form values don't match expected values for guarantor ${effectiveSpecificIndex}!`);
+                  console.warn(`⚠️ GUARANTOR MAPPING DEBUG: This suggests form fields are being overwritten after population`);
+                }
+              }, 100);
+              
+              console.log(`✅ GUARANTOR MAPPING DEBUG: Completed populating specific guarantor ${effectiveSpecificIndex} form fields`);
+            } else {
+              console.log(`⚠️ GUARANTOR MAPPING DEBUG: No data found for specific guarantor ${effectiveSpecificIndex}`);
+            }
+          } else {
+            // For general loading, populate all guarantors
+            console.log('🔧 GUARANTOR MAPPING DEBUG: General loading - populating all guarantors');
+            parsedFormData.guarantors.forEach((guarantor: any, index: number) => {
+              console.log(`🔧 GUARANTOR MAPPING DEBUG: Processing guarantor ${index}:`, {
+                hasGuarantor: !!guarantor,
+                guarantorKeys: guarantor ? Object.keys(guarantor) : [],
+                guarantorName: guarantor?.name || 'NO NAME'
+              });
+              
+              if (guarantor && Object.keys(guarantor).length > 0) {
+                console.log(`🔧 GUARANTOR MAPPING DEBUG: Setting form values for guarantor ${index}`);
+                
+                // Set basic guarantor fields with detailed logging
+                if (guarantor.name) {
+                  form.setValue(`guarantors.${index}.name`, guarantor.name);
+                  console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${index}.name = ${guarantor.name}`);
+                }
+                if (guarantor.relationship) {
+                  form.setValue(`guarantors.${index}.relationship`, guarantor.relationship);
+                  console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${index}.relationship = ${guarantor.relationship}`);
+                }
+                if (guarantor.dob) {
+                  form.setValue(`guarantors.${index}.dob`, new Date(guarantor.dob));
+                  console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${index}.dob = ${guarantor.dob}`);
+                }
+                if (guarantor.ssn) {
+                  form.setValue(`guarantors.${index}.ssn`, guarantor.ssn);
+                  console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${index}.ssn = ${guarantor.ssn}`);
+                }
+                if (guarantor.phone) {
+                  form.setValue(`guarantors.${index}.phone`, guarantor.phone);
+                  console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${index}.phone = ${guarantor.phone}`);
+                }
+                if (guarantor.email) {
+                  form.setValue(`guarantors.${index}.email`, guarantor.email);
+                  console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${index}.email = ${guarantor.email}`);
+                }
+                if (guarantor.address) {
+                  form.setValue(`guarantors.${index}.address`, guarantor.address);
+                  console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${index}.address = ${guarantor.address}`);
+                }
+                if (guarantor.city) {
+                  form.setValue(`guarantors.${index}.city`, guarantor.city);
+                  console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${index}.city = ${guarantor.city}`);
+                }
+                if (guarantor.state) {
+                  form.setValue(`guarantors.${index}.state`, guarantor.state);
+                  console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${index}.state = ${guarantor.state}`);
+                }
+                if (guarantor.zip) {
+                  form.setValue(`guarantors.${index}.zip`, guarantor.zip);
+                  console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${index}.zip = ${guarantor.zip}`);
+                }
+                if (guarantor.license) {
+                  form.setValue(`guarantors.${index}.license`, guarantor.license);
+                  console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${index}.license = ${guarantor.license}`);
+                }
+                if (guarantor.licenseState) {
+                  form.setValue(`guarantors.${index}.licenseState`, guarantor.licenseState);
+                  console.log(`✅ GUARANTOR MAPPING DEBUG: Set guarantors.${index}.licenseState = ${guarantor.licenseState}`);
+                }
+                
+                console.log(`✅ GUARANTOR MAPPING DEBUG: Completed populating guarantor ${index} form fields`);
+              } else {
+                console.log(`⚠️ GUARANTOR MAPPING DEBUG: Skipping guarantor ${index} - no data or empty object`);
+              }
+            });
           }
-          if (guarantorsArray.length > 0) {
-            parsedFormData.guarantors = guarantorsArray;
-          }
+        } else {
+          console.log('⚠️ GUARANTOR MAPPING DEBUG: Condition not met - not populating guarantor form fields');
+          console.log('⚠️ GUARANTOR MAPPING DEBUG: Reasons:', {
+            hasGuarantors: !!parsedFormData.guarantors,
+            isArray: Array.isArray(parsedFormData.guarantors),
+            length: parsedFormData.guarantors?.length || 0
+          });
+        }
+        
+        if (parsedFormData.coApplicants && Array.isArray(parsedFormData.coApplicants) && parsedFormData.coApplicants.length > 0) {
+          console.log('🔧 Populating co-applicant form fields from mapped data');
+          parsedFormData.coApplicants.forEach((coApplicant: any, index: number) => {
+            if (coApplicant && Object.keys(coApplicant).length > 0) {
+              // Set basic co-applicant fields
+              if (coApplicant.name) form.setValue(`coApplicants.${index}.name`, coApplicant.name);
+              if (coApplicant.relationship) form.setValue(`coApplicants.${index}.relationship`, coApplicant.relationship);
+              if (coApplicant.dob) form.setValue(`coApplicants.${index}.dob`, new Date(coApplicant.dob));
+              if (coApplicant.ssn) form.setValue(`coApplicants.${index}.ssn`, coApplicant.ssn);
+              if (coApplicant.phone) form.setValue(`coApplicants.${index}.phone`, coApplicant.phone);
+              if (coApplicant.email) form.setValue(`coApplicants.${index}.email`, coApplicant.email);
+              if (coApplicant.address) form.setValue(`coApplicants.${index}.address`, coApplicant.address);
+              if (coApplicant.city) form.setValue(`coApplicants.${index}.city`, coApplicant.city);
+              if (coApplicant.state) form.setValue(`coApplicants.${index}.state`, coApplicant.state);
+              if (coApplicant.zip) form.setValue(`coApplicants.${index}.zip`, coApplicant.zip);
+              if (coApplicant.license) form.setValue(`coApplicants.${index}.license`, coApplicant.license);
+              if (coApplicant.licenseState) form.setValue(`coApplicants.${index}.licenseState`, coApplicant.licenseState);
+              console.log(`✅ Populated co-applicant ${index} form fields`);
+            }
+          });
+        }
 
           // Merge webhookSummary.webhookResponses into the main formData.webhookResponses
           if (parsedFormData.webhookSummary?.webhookResponses) {
@@ -2165,6 +2546,210 @@ export function ApplicationForm() {
       console.log('⏰ Re-syncing applicantLengthAtAddressMonths after form reset:', parsedFormData.applicant.lengthAtAddressMonths);
     }
     
+        // Ensure guarantor fields are properly synchronized after form reset
+        console.log('🔧 GUARANTOR RE-SYNC DEBUG: Starting guarantor re-sync after form reset...');
+        console.log('🔧 GUARANTOR RE-SYNC DEBUG: parsedFormData.guarantors:', parsedFormData.guarantors);
+        console.log('🔧 GUARANTOR RE-SYNC DEBUG: Array.isArray(parsedFormData.guarantors):', Array.isArray(parsedFormData.guarantors));
+        console.log('🔧 GUARANTOR RE-SYNC DEBUG: parsedFormData.guarantors.length:', parsedFormData.guarantors?.length || 0);
+        console.log('🔧 GUARANTOR RE-SYNC DEBUG: Current userRole:', userRole);
+        console.log('🔧 GUARANTOR RE-SYNC DEBUG: Current specificIndex:', specificIndex);
+        console.log('🔧 GUARANTOR RE-SYNC DEBUG: User object role:', user?.role);
+        
+        // Determine the effective specific index for guarantor role in re-sync
+        let effectiveSpecificIndexReSync = specificIndex;
+        if (user && user.role && user.role.startsWith('guarantor') && /guarantor\d+/.test(user.role)) {
+          const match = user.role.match(/guarantor(\d+)/);
+          if (match) {
+            effectiveSpecificIndexReSync = parseInt(match[1], 10) - 1; // Convert to 0-based index
+            console.log('🔧 GUARANTOR RE-SYNC DEBUG: Using effective specific index from user role:', effectiveSpecificIndexReSync);
+          }
+        }
+    
+    if (parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0) {
+      console.log('🔧 GUARANTOR RE-SYNC DEBUG: Re-syncing guarantor data after form reset...');
+      
+      // For specific role (guarantor1, guarantor2, etc.), only re-sync the specific index
+      if (effectiveSpecificIndexReSync !== null && effectiveSpecificIndexReSync !== undefined) {
+        console.log(`🔧 GUARANTOR RE-SYNC DEBUG: Specific role detected - re-syncing only guarantor ${effectiveSpecificIndexReSync}`);
+        const guarantor = parsedFormData.guarantors[effectiveSpecificIndexReSync];
+        if (guarantor && Object.keys(guarantor).length > 0) {
+          console.log(`🔧 GUARANTOR RE-SYNC DEBUG: Re-setting form values for specific guarantor ${effectiveSpecificIndexReSync}`);
+          
+          // Re-set basic guarantor fields with detailed logging
+          if (guarantor.name) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.name`, guarantor.name);
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.name = ${guarantor.name}`);
+          }
+          if (guarantor.relationship) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.relationship`, guarantor.relationship);
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.relationship = ${guarantor.relationship}`);
+          }
+          if (guarantor.dob) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.dob`, new Date(guarantor.dob));
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.dob = ${guarantor.dob}`);
+          }
+          if (guarantor.ssn) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.ssn`, guarantor.ssn);
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.ssn = ${guarantor.ssn}`);
+          }
+          if (guarantor.phone) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.phone`, guarantor.phone);
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.phone = ${guarantor.phone}`);
+          }
+          if (guarantor.email) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.email`, guarantor.email);
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.email = ${guarantor.email}`);
+          }
+          if (guarantor.address) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.address`, guarantor.address);
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.address = ${guarantor.address}`);
+          }
+          if (guarantor.city) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.city`, guarantor.city);
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.city = ${guarantor.city}`);
+          }
+          if (guarantor.state) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.state`, guarantor.state);
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.state = ${guarantor.state}`);
+          }
+          if (guarantor.zip) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.zip`, guarantor.zip);
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.zip = ${guarantor.zip}`);
+          }
+          if (guarantor.license) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.license`, guarantor.license);
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.license = ${guarantor.license}`);
+          }
+          if (guarantor.licenseState) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.licenseState`, guarantor.licenseState);
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.licenseState = ${guarantor.licenseState}`);
+          }
+          if (guarantor.lengthAtAddressYears !== undefined) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.lengthAtAddressYears`, guarantor.lengthAtAddressYears);
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.lengthAtAddressYears = ${guarantor.lengthAtAddressYears}`);
+          }
+          if (guarantor.lengthAtAddressMonths !== undefined) {
+            form.setValue(`guarantors.${effectiveSpecificIndexReSync}.lengthAtAddressMonths`, guarantor.lengthAtAddressMonths);
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${effectiveSpecificIndexReSync}.lengthAtAddressMonths = ${guarantor.lengthAtAddressMonths}`);
+          }
+          
+          console.log(`✅ GUARANTOR RE-SYNC DEBUG: Completed re-syncing specific guarantor ${effectiveSpecificIndexReSync} form fields`);
+        } else {
+          console.log(`⚠️ GUARANTOR RE-SYNC DEBUG: No data found for specific guarantor ${effectiveSpecificIndexReSync}`);
+        }
+      } else {
+        // For general loading, re-sync all guarantors
+        console.log('🔧 GUARANTOR RE-SYNC DEBUG: General loading - re-syncing all guarantors');
+        parsedFormData.guarantors.forEach((guarantor: any, index: number) => {
+          console.log(`🔧 GUARANTOR RE-SYNC DEBUG: Re-processing guarantor ${index}:`, {
+            hasGuarantor: !!guarantor,
+            guarantorKeys: guarantor ? Object.keys(guarantor) : [],
+            guarantorName: guarantor?.name || 'NO NAME'
+          });
+          
+          if (guarantor && Object.keys(guarantor).length > 0) {
+            console.log(`🔧 GUARANTOR RE-SYNC DEBUG: Re-setting form values for guarantor ${index}`);
+            
+            // Re-set basic guarantor fields with detailed logging
+            if (guarantor.name) {
+              form.setValue(`guarantors.${index}.name`, guarantor.name);
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.name = ${guarantor.name}`);
+            }
+            if (guarantor.relationship) {
+              form.setValue(`guarantors.${index}.relationship`, guarantor.relationship);
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.relationship = ${guarantor.relationship}`);
+            }
+            if (guarantor.dob) {
+              form.setValue(`guarantors.${index}.dob`, new Date(guarantor.dob));
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.dob = ${guarantor.dob}`);
+            }
+            if (guarantor.ssn) {
+              form.setValue(`guarantors.${index}.ssn`, guarantor.ssn);
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.ssn = ${guarantor.ssn}`);
+            }
+            if (guarantor.phone) {
+              form.setValue(`guarantors.${index}.phone`, guarantor.phone);
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.phone = ${guarantor.phone}`);
+            }
+            if (guarantor.email) {
+              form.setValue(`guarantors.${index}.email`, guarantor.email);
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.email = ${guarantor.email}`);
+            }
+            if (guarantor.address) {
+              form.setValue(`guarantors.${index}.address`, guarantor.address);
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.address = ${guarantor.address}`);
+            }
+            if (guarantor.city) {
+              form.setValue(`guarantors.${index}.city`, guarantor.city);
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.city = ${guarantor.city}`);
+            }
+            if (guarantor.state) {
+              form.setValue(`guarantors.${index}.state`, guarantor.state);
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.state = ${guarantor.state}`);
+            }
+            if (guarantor.zip) {
+              form.setValue(`guarantors.${index}.zip`, guarantor.zip);
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.zip = ${guarantor.zip}`);
+            }
+            if (guarantor.license) {
+              form.setValue(`guarantors.${index}.license`, guarantor.license);
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.license = ${guarantor.license}`);
+            }
+            if (guarantor.licenseState) {
+              form.setValue(`guarantors.${index}.licenseState`, guarantor.licenseState);
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.licenseState = ${guarantor.licenseState}`);
+            }
+            if (guarantor.lengthAtAddressYears !== undefined) {
+              form.setValue(`guarantors.${index}.lengthAtAddressYears`, guarantor.lengthAtAddressYears);
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.lengthAtAddressYears = ${guarantor.lengthAtAddressYears}`);
+            }
+            if (guarantor.lengthAtAddressMonths !== undefined) {
+              form.setValue(`guarantors.${index}.lengthAtAddressMonths`, guarantor.lengthAtAddressMonths);
+              console.log(`✅ GUARANTOR RE-SYNC DEBUG: Re-set guarantors.${index}.lengthAtAddressMonths = ${guarantor.lengthAtAddressMonths}`);
+            }
+            
+            console.log(`✅ GUARANTOR RE-SYNC DEBUG: Completed re-syncing guarantor ${index} form fields`);
+          } else {
+            console.log(`⚠️ GUARANTOR RE-SYNC DEBUG: No data found for guarantor ${index}`);
+          }
+        });
+      }
+    } else {
+      console.log('⚠️ GUARANTOR RE-SYNC DEBUG: No guarantor data to re-sync after form reset');
+    }
+    
+    // Final verification of guarantor form values after re-sync
+    setTimeout(() => {
+      console.log('🔍 GUARANTOR FINAL VERIFICATION: Checking form values after re-sync...');
+      if (parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0) {
+        parsedFormData.guarantors.forEach((guarantor: any, index: number) => {
+          if (guarantor && Object.keys(guarantor).length > 0) {
+            const formName = form.getValues(`guarantors.${index}.name`);
+            const formEmail = form.getValues(`guarantors.${index}.email`);
+            const formPhone = form.getValues(`guarantors.${index}.phone`);
+            console.log(`🔍 GUARANTOR FINAL VERIFICATION: Guarantor ${index} form values:`, {
+              formName: formName,
+              formEmail: formEmail,
+              formPhone: formPhone,
+              expectedName: guarantor.name,
+              expectedEmail: guarantor.email,
+              expectedPhone: guarantor.phone,
+              nameMatch: formName === guarantor.name,
+              emailMatch: formEmail === guarantor.email,
+              phoneMatch: formPhone === guarantor.phone
+            });
+            
+            // Log success or warning
+            if (formName === guarantor.name && formEmail === guarantor.email && formPhone === guarantor.phone) {
+              console.log(`✅ GUARANTOR FINAL VERIFICATION: Guarantor ${index} form values match expected values - SUCCESS!`);
+            } else {
+              console.warn(`⚠️ GUARANTOR FINAL VERIFICATION: Guarantor ${index} form values don't match expected values - ISSUE DETECTED!`);
+            }
+          }
+        });
+      }
+    }, 200);
+    
           // Log the final checkbox states after restoration
       console.log('🎯 Final checkbox states after restoration:', {
         hasCoApplicant: parsedFormData.hasCoApplicant,
@@ -2172,7 +2757,11 @@ export function ApplicationForm() {
         coApplicantDataExists: parsedFormData.coApplicant ? hasCoApplicantData(parsedFormData.coApplicant) : false,
         coApplicantsDataExists: parsedFormData.coApplicants && Array.isArray(parsedFormData.coApplicants) && parsedFormData.coApplicants.length > 0,
         guarantorDataExists: parsedFormData.guarantor ? hasGuarantorData(parsedFormData.guarantor) : false,
-        guarantorsDataExists: parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0
+        guarantorsDataExists: parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0,
+        coApplicantKeys: parsedFormData.coApplicant ? Object.keys(parsedFormData.coApplicant) : [],
+        guarantorKeys: parsedFormData.guarantor ? Object.keys(parsedFormData.guarantor) : [],
+        coApplicantsLength: parsedFormData.coApplicants ? parsedFormData.coApplicants.length : 0,
+        guarantorsLength: parsedFormData.guarantors ? parsedFormData.guarantors.length : 0
       });
       // Force a re-render by updating the formData state
       setFormData((prev: any) => ({
@@ -2368,10 +2957,15 @@ export function ApplicationForm() {
         variant: "destructive",
       });
     }
-  }, []);
+  }, [user, userRole, specificIndex, form, toast, setHasExistingDraft, setFormData, setCurrentStep, setSignatures, setWebhookResponses, setUploadedFilesMetadata, setEncryptedDocuments, setHasCoApplicant, setHasGuarantor, hasCoApplicantData, hasGuarantorData, getActualStepFromSequential]);
+  
+  // Track if initial load has happened to prevent multiple triggers
+  const initialLoadRef = useRef(false);
+  
   // Set up welcome message and load draft data
   useEffect(() => {
-    if (user) {
+    if (user && !initialLoadRef.current) {
+      initialLoadRef.current = true;
       const userName = user.name || user.given_name || user.email?.split('@')[0] || 'User';
       setWelcomeMessage(`Welcome back, ${userName}!`);
       
@@ -3948,6 +4542,158 @@ export function ApplicationForm() {
       }
     } catch (error) {
       console.error('❌ Error saving co-applicant (applicant type) draft to DynamoDB:', error);
+      toast({
+        title: 'Error Saving Draft',
+        description: 'An unexpected error occurred while saving your draft. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }, [getCurrentUserZoneinfo, formData, referenceId, currentStep, uploadedFilesMetadata, webhookResponses, signatures, encryptedDocuments, getWebhookSummary, userRole, specificIndex, buildRoleScopedFormData, buildRoleScopedSignatures, selectedAppId]);
+
+  // Save draft to DynamoDB function - ONLY for Guarantor role
+  const saveGuarantorDraftToDynamoDB = useCallback(async () => {
+    // Only allow save draft for Guarantor role
+    if (!userRole || !userRole.startsWith('guarantor')) {
+      console.log('⚠️ Save draft is only available for Guarantor role. Current role:', userRole);
+      toast({
+        title: 'Save Draft Not Available',
+        description: 'Save draft functionality is only available for guarantors.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const currentUserZoneinfo = getCurrentUserZoneinfo();
+    
+    if (!currentUserZoneinfo) {
+      console.log('⚠️ No zoneinfo/applicantId available, skipping draft save');
+      toast({
+        title: 'Cannot Save Draft',
+        description: 'No applicant ID available. Please ensure you are properly authenticated.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!currentUserZoneinfo.trim()) {
+      console.log('⚠️ Empty zoneinfo/applicantId, skipping draft save');
+      toast({
+        title: 'Cannot Save Draft',
+        description: 'Invalid applicant ID. Please ensure you are properly authenticated.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingDraft(true);
+    try {
+      // Get the latest form data from state
+      const currentFormData = formData;
+      console.log('🔍 Current form data structure for Guarantor:', {
+        hasGuarantors: !!currentFormData.guarantors,
+        guarantorsLength: currentFormData.guarantors?.length || 0,
+        specificIndex: specificIndex,
+        userRole: userRole,
+        guarantorsData: currentFormData.guarantors,
+        webhookResponsesCount: Object.keys(webhookResponses).length,
+        webhookResponses: webhookResponses
+      });
+      
+      // Build role-scoped data to avoid overwriting unrelated sections
+      // Pass webhookResponses to the function so it can filter them properly
+      const formDataWithWebhooks = {
+        ...currentFormData,
+        webhookResponses: webhookResponses
+      };
+      console.log('🔍 FormDataWithWebhooks for regular guarantor save:', {
+        hasWebhookResponses: !!formDataWithWebhooks.webhookResponses,
+        webhookResponsesKeys: Object.keys(formDataWithWebhooks.webhookResponses || {}),
+        webhookResponses: formDataWithWebhooks.webhookResponses,
+        userRole: userRole,
+        specificIndex: specificIndex
+      });
+      const roleScopedForm = buildRoleScopedFormData(formDataWithWebhooks, userRole || '', specificIndex ?? undefined);
+      const roleScopedSign = buildRoleScopedSignatures(signatures, userRole || '', specificIndex ?? undefined);
+
+      // Get the specific guarantor data from the role-scoped form
+      const guarantorData = roleScopedForm.guarantors?.[0] || {};
+      console.log('🔍 RoleScopedForm result:', {
+        hasWebhookSummary: !!roleScopedForm.webhookSummary,
+        webhookSummary: roleScopedForm.webhookSummary,
+        guarantorsCount: roleScopedForm.guarantors?.length || 0
+      });
+      console.log('📊 Guarantor draft data to save:', guarantorData);
+      console.log('📊 Role-scoped form structure:', {
+        hasGuarantors: !!roleScopedForm.guarantors,
+        guarantorsLength: roleScopedForm.guarantors?.length || 0,
+        hasOccupants: !!roleScopedForm.occupants,
+        occupantsLength: roleScopedForm.occupants?.length || 0,
+        hasWebhookSummary: !!roleScopedForm.webhookSummary,
+        guarantorDataKeys: Object.keys(guarantorData)
+      });
+      
+      // Save Guarantor data to Guarantors_nyc table with simplified structure
+      const guarantorDraftData = {
+        role: 'guarantor',
+        guarantor_info: guarantorData,
+        occupants: roleScopedForm.occupants || [],
+        webhookSummary: roleScopedForm.webhookSummary || getRoleSpecificWebhookSummary(userRole || '', specificIndex ?? undefined),
+        signature: (() => {
+          const sig = (roleScopedSign as any)?.guarantors?.[0];
+          if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
+          return sig ?? null;
+        })(),
+        current_step: getSequentialStepNumber(currentStep, userRole || ''),
+        last_updated: new Date().toISOString(),
+        status: 'draft' as const
+      };
+
+      // Get the appid from the application data to link guarantor to application
+      const existingApp = await dynamoDBSeparateTablesUtils.getApplicationDataByZoneinfo();
+      const appid = selectedAppId || existingApp?.appid || referenceId;
+      console.log('🔗 Linking guarantor draft to appid:', appid);
+      console.log('💾 Final guarantor draft data being saved:', {
+        role: guarantorDraftData.role,
+        guarantor_info_keys: Object.keys(guarantorDraftData.guarantor_info || {}),
+        occupants_count: guarantorDraftData.occupants?.length || 0,
+        has_signature: !!guarantorDraftData.signature,
+        current_step: guarantorDraftData.current_step,
+        status: guarantorDraftData.status,
+        has_webhookSummary: !!guarantorDraftData.webhookSummary,
+        webhookSummary_totalResponses: guarantorDraftData.webhookSummary?.totalResponses || 0,
+        webhookSummary_responsesByPerson: guarantorDraftData.webhookSummary?.responsesByPerson || {},
+        webhookSummary_webhookResponses_keys: Object.keys(guarantorDraftData.webhookSummary?.webhookResponses || {}),
+        webhookSummary_webhookResponses: guarantorDraftData.webhookSummary?.webhookResponses || {}
+      });
+      console.log('🔍 About to save guarantor data to DynamoDB:', {
+        hasWebhookSummary: !!guarantorDraftData.webhookSummary,
+        webhookSummaryType: typeof guarantorDraftData.webhookSummary,
+        webhookSummaryKeys: guarantorDraftData.webhookSummary ? Object.keys(guarantorDraftData.webhookSummary) : [],
+        webhookSummary: guarantorDraftData.webhookSummary
+      });
+
+      const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorDataNew(guarantorDraftData, appid);
+      
+      if (guarantorSaveResult) {
+        console.log('💾 Guarantor draft saved successfully');
+        setHasExistingDraft(true);
+        toast({
+          title: 'Draft Saved Successfully',
+          description: 'Your guarantor draft has been saved. You can continue working on it later.',
+          variant: 'default',
+        });
+      } else {
+        console.warn('⚠️ Failed to save guarantor draft');
+        toast({
+          title: 'Failed to Save Draft',
+          description: 'There was an issue saving your draft. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error saving guarantor draft to DynamoDB:', error);
       toast({
         title: 'Error Saving Draft',
         description: 'An unexpected error occurred while saving your draft. Please try again.',
@@ -10637,15 +11383,17 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                   </Button>
               
             <div className="flex space-x-3">
-              {/* Save Draft Button - Show for Applicant and Co-Applicant roles */}
-              {(userRole === 'applicant' || (userRole && userRole.startsWith('coapplicant'))) && (
+              {/* Save Draft Button - Show for Applicant, Co-Applicant, and Guarantor roles */}
+              {(userRole === 'applicant' || (userRole && userRole.startsWith('coapplicant')) || (userRole && userRole.startsWith('guarantor'))) && (
                 <Button
                   type="button"
                   variant="outline"
                   onClick={
                     userRole === 'applicant' 
                       ? saveDraftToDynamoDB 
-                      : saveCoApplicantDraftToDynamoDB
+                      : userRole && userRole.startsWith('coapplicant')
+                      ? saveCoApplicantDraftToDynamoDB
+                      : saveGuarantorDraftToDynamoDB
                   }
                   disabled={isSavingDraft}
                   className="flex items-center"
