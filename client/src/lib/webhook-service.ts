@@ -1189,6 +1189,14 @@ export class WebhookService {
             (transformedData as any).coApplicantCount = 0;
             (transformedData as any).coApplicants = [];
           }
+
+          // Ensure role is also present INSIDE form_data with normalized label
+          const normalizedRoleLabel = roleValue.toLowerCase().startsWith('guarantor')
+            ? 'Guarantor'
+            : roleValue.toLowerCase().startsWith('coapplicant')
+              ? 'coApplicant'
+              : 'applicant';
+          (transformedData as any).role = normalizedRoleLabel;
         }
       } catch (e) {
         console.warn('Role-based empty section normalization failed', e);
@@ -1341,6 +1349,8 @@ export class WebhookService {
       application: transformedData.application,
       // Include only the specific co-applicant
       coApplicants: [safeCoApplicant],
+      // Explicit empty counterpart array as required by receiver
+      guarantors: [],
       // Include webhook summary so receivers see it inside form_data
       webhookSummary: transformedData.webhookSummary,
       // Include basic application info
@@ -1373,6 +1383,8 @@ export class WebhookService {
       application: transformedData.application,
       // Include only the specific guarantor
       guarantors: [safeGuarantor],
+      // Explicit empty counterpart array as required by receiver
+      coApplicants: [],
       // Include webhook summary so receivers see it inside form_data
       webhookSummary: transformedData.webhookSummary,
       // Include basic application info
