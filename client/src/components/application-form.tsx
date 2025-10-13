@@ -4436,7 +4436,44 @@ export function ApplicationForm() {
         application_info: {
           ...enhancedFormDataSnapshot.application,
           reference_id: referenceId,
-          zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''
+          zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '',
+          // Persist Additional People to DynamoDB so Make.com can pick it up later
+          ...(Array.isArray(enhancedFormDataSnapshot.coApplicants) || Array.isArray(enhancedFormDataSnapshot.guarantors)
+            ? {
+                "Additional People": {
+                  zoneinfo: (user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || '',
+                  role: 'applicant',
+                  applicant: (enhancedFormDataSnapshot.applicant?.name) || (form.getValues() as any)?.applicantName || 'unknown',
+                  applicantEmail: (enhancedFormDataSnapshot.applicant?.email) || (form.getValues() as any)?.applicantEmail || '',
+                  // All co-applicants
+                  ...(Array.isArray(enhancedFormDataSnapshot.coApplicants) && enhancedFormDataSnapshot.coApplicants.length > 0
+                    ? enhancedFormDataSnapshot.coApplicants.reduce((acc: any, coApp: any, idx: number) => {
+                        const i = idx + 1;
+                        acc[`coApplicants${i}`] = {
+                          coApplicant: `coapplicant${i}`,
+                          url: `https://www.app.lppmrentals.com/login?role=coapplicant${i}&zoneinfo=${(user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''}`,
+                          name: coApp?.name || '',
+                          email: coApp?.email || ''
+                        };
+                        return acc;
+                      }, {})
+                    : {}),
+                  // All guarantors
+                  ...(Array.isArray(enhancedFormDataSnapshot.guarantors) && enhancedFormDataSnapshot.guarantors.length > 0
+                    ? enhancedFormDataSnapshot.guarantors.reduce((acc: any, guar: any, idx: number) => {
+                        const i = idx + 1;
+                        acc[`guarantor${i}`] = {
+                          guarantor: `guarantor${i}`,
+                          url: `https://www.app.lppmrentals.com/login?role=guarantor${i}&zoneinfo=${(user as any)?.zoneinfo || (form.getValues() as any)?.zoneinfo || ''}`,
+                          name: guar?.name || '',
+                          email: guar?.email || ''
+                        };
+                        return acc;
+                      }, {})
+                    : {})
+                }
+              }
+            : {})
         },
         current_step: currentStep,
         status: 'draft' as const,
@@ -7280,33 +7317,35 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
             // Additional People in Application data - Always include this section
             "Additional People": {
               zoneinfo: user?.zoneinfo || 'unknown',
+              role: 'applicant',
               applicant: data.applicantName || 'unknown',
-              // Include co-applicants if they exist
-              ...(formData.coApplicantCount > 0 && formData.coApplicants && formData.coApplicants.length > 0 ? {
-                coApplicants1: {
-                  coApplicants: 'coapplicants1',
-                  url: `https://www.app.lppmrentals.com/login?role=coapplicants1&zoneinfo=${user?.zoneinfo || 'unknown'}`,
-                  name: formData.coApplicants[0]?.name || '',
-                  email: formData.coApplicants[0]?.email || ''
-                }
-              } : {}),
-              ...(formData.coApplicantCount > 1 && formData.coApplicants && formData.coApplicants.length > 1 ? {
-                coApplicants2: {
-                  coApplicants: 'coapplicants2',
-                  url: `https://www.app.lppmrentals.com/login?role=coapplicants2&zoneinfo=${user?.zoneinfo || 'unknown'}`,
-                  name: formData.coApplicants[1]?.name || '',
-                  email: formData.coApplicants[1]?.email || ''
-                }
-              } : {}),
-              // Include guarantors if they exist
-              ...(formData.guarantorCount > 0 && formData.guarantors && formData.guarantors.length > 0 ? {
-                guarantor1: {
-                  guarantor: 'guarantor1',
-                  url: `https://www.app.lppmrentals.com/login?role=guarantor1&zoneinfo=${user?.zoneinfo || 'unknown'}`,
-                  name: formData.guarantors[0]?.name || '',
-                  email: formData.guarantors[0]?.email || ''
-                }
-              } : {})
+              applicantEmail: data.applicantEmail || '',
+              // Dynamically include all co-applicants
+              ...(Array.isArray(formData.coApplicants) && formData.coApplicants.length > 0
+                ? formData.coApplicants.reduce((acc: any, coApp: any, idx: number) => {
+                    const i = idx + 1;
+                    acc[`coApplicants${i}`] = {
+                      coApplicant: `coapplicant${i}`,
+                      url: `https://www.app.lppmrentals.com/login?role=coapplicant${i}&zoneinfo=${user?.zoneinfo || 'unknown'}`,
+                      name: coApp?.name || '',
+                      email: coApp?.email || ''
+                    };
+                    return acc;
+                  }, {})
+                : {}),
+              // Dynamically include all guarantors
+              ...(Array.isArray(formData.guarantors) && formData.guarantors.length > 0
+                ? formData.guarantors.reduce((acc: any, guar: any, idx: number) => {
+                    const i = idx + 1;
+                    acc[`guarantor${i}`] = {
+                      guarantor: `guarantor${i}`,
+                      url: `https://www.app.lppmrentals.com/login?role=guarantor${i}&zoneinfo=${user?.zoneinfo || 'unknown'}`,
+                      name: guar?.name || '',
+                      email: guar?.email || ''
+                    };
+                    return acc;
+                  }, {})
+                : {})
             }
 
           };

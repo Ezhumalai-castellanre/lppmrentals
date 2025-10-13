@@ -1749,28 +1749,32 @@ export class WebhookService {
         applicantEmail: transformedData.applicant?.email || formData.applicantEmail || ''
       };
 
-      // Add co-applicants based on hasCoApplicant flag
-      if (formData.hasCoApplicant) {
-        // Use actual co-applicant data if available, otherwise create placeholder
-        const coApplicantData = formData.coApplicants && formData.coApplicants.length > 0 ? formData.coApplicants[0] : null;
-        additionalPeople[`coApplicants1`] = {
-          coApplicant: `coapplicant1`,
-          url: `https://www.app.lppmrentals.com/login?role=coapplicant1&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
-          name: coApplicantData?.name || 'Co-Applicant',
-          email: coApplicantData?.email || ''
-        };
+      // Add all co-applicants as numbered entries
+      if (formData.hasCoApplicant && Array.isArray(formData.coApplicants)) {
+        formData.coApplicants.forEach((coApp: any, index: number) => {
+          const idx = index + 1;
+          const key = `coApplicants${idx}`;
+          additionalPeople[key] = {
+            coApplicant: `coapplicant${idx}`,
+            url: `https://www.app.lppmrentals.com/login?role=coapplicant${idx}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+            name: coApp?.name || 'Co-Applicant',
+            email: coApp?.email || ''
+          };
+        });
       }
 
-      // Add guarantors based on hasGuarantor flag
-      if (formData.hasGuarantor) {
-        // Use actual guarantor data if available, otherwise create placeholder
-        const guarantorData = formData.guarantors && formData.guarantors.length > 0 ? formData.guarantors[0] : null;
-        additionalPeople[`guarantor1`] = {
-          guarantor: `guarantor1`,
-          url: `https://www.app.lppmrentals.com/login?role=guarantor1&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
-          name: guarantorData?.name || 'Guarantor',
-          email: guarantorData?.email || ''
-        };
+      // Add all guarantors as numbered entries
+      if (formData.hasGuarantor && Array.isArray(formData.guarantors)) {
+        formData.guarantors.forEach((guar: any, index: number) => {
+          const idx = index + 1;
+          const key = `guarantor${idx}`;
+          additionalPeople[key] = {
+            guarantor: `guarantor${idx}`,
+            url: `https://www.app.lppmrentals.com/login?role=guarantor${idx}&zoneinfo=${formData.zoneinfo || formData.applicantId || 'unknown'}`,
+            name: guar?.name || 'Guarantor',
+            email: guar?.email || ''
+          };
+        });
       }
 
       (transformedData as any)["Additional People"] = additionalPeople;

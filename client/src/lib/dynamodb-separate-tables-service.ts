@@ -499,6 +499,7 @@ export class DynamoDBSeparateTablesService {
       const appInfo = { ...reduced.application_info };
       
       // Remove large arrays or objects that might be causing size issues
+      // Keep "Additional PeopleCollection" intact so downstream systems can use it
       const fieldsToRemove = ['coApplicants', 'guarantors', 'occupants', 'bankRecords', 'documents'];
       fieldsToRemove.forEach(field => {
         if (appInfo[field]) {
@@ -510,7 +511,9 @@ export class DynamoDBSeparateTablesService {
       // Keep only essential application fields
       const essentialFields = [
         'buildingAddress', 'apartmentNumber', 'apartmentType', 'monthlyRent', 
-        'moveInDate', 'howDidYouHear', 'reference_id', 'zoneinfo'
+        'moveInDate', 'howDidYouHear', 'reference_id', 'zoneinfo',
+        // Preserve the Additional People summary block
+        'Additional People'
       ];
       const essentialAppInfo: any = {};
       essentialFields.forEach(field => {
@@ -571,13 +574,16 @@ export class DynamoDBSeparateTablesService {
       flow_type: ultraReduced.flow_type || 'separate_webhooks',
       webhook_flow_version: ultraReduced.webhook_flow_version || '2.0',
       
-      // Minimal application_info with only essential fields
+      // Minimal application_info with only essential fields (preserve Additional People)
       application_info: {
         buildingAddress: ultraReduced.application_info?.buildingAddress || 'Not specified',
         apartmentNumber: ultraReduced.application_info?.apartmentNumber || 'Not specified',
         monthlyRent: ultraReduced.application_info?.monthlyRent || 'Not specified',
         reference_id: ultraReduced.application_info?.reference_id || ultraReduced.appid,
-        zoneinfo: ultraReduced.zoneinfo
+        zoneinfo: ultraReduced.zoneinfo,
+        ...(ultraReduced.application_info && (ultraReduced.application_info as any)["Additional People"]
+          ? { "Additional People": (ultraReduced.application_info as any)["Additional People"] }
+          : {})
       },
       
       // Minimal metadata
