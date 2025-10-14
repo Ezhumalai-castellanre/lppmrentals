@@ -388,6 +388,9 @@ export class WebhookService {
   private static readonly S3_PRESIGN_URL = 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/s3-presign';
   // Direct Make.com hook for application submission
   private static readonly MAKE_COM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
+  // Dedicated Make.com hooks for co-applicant and guarantor submissions
+  private static readonly MAKE_COM_COAPPLICANT_WEBHOOK_URL = 'https://hook.us1.make.com/q6e6ymjzkuag21kdga9mm0ljhkcv2gmz';
+  private static readonly MAKE_COM_GUARANTOR_WEBHOOK_URL = 'https://hook.us1.make.com/bl1jvz9qn6we0b6w9wrkxgms0ljkyh38';
   
   // Comment out the dynamic URL methods for now
   // private static readonly WEBHOOK_PROXY_URL = this.getWebhookProxyUrl();
@@ -1175,28 +1178,59 @@ export class WebhookService {
       const roleValue = role || 'applicant';
       console.log('🔍 DEBUG: Final role value before webhook data creation:', roleValue);
       
-      // Normalize counterpart sections to be explicitly empty based on submitting role
-      try {
-        if (typeof roleValue === 'string') {
-          if (roleValue.toLowerCase().startsWith('coapplicant')) {
-            // Co-Applicant submission → send empty guarantor section
-            (transformedData as any).hasGuarantor = false;
-            (transformedData as any).guarantorCount = 0;
-            (transformedData as any).guarantors = [];
-          } else if (roleValue.toLowerCase().startsWith('guarantor')) {
-            // Guarantor submission → send empty co-applicant section
-            (transformedData as any).hasCoApplicant = false;
-            (transformedData as any).coApplicantCount = 0;
-            (transformedData as any).coApplicants = [];
-          }
+      // If role is coapplicant* or guarantor*, build MINIMAL role-only payload and route to dedicated hooks
+      const roleLowerForBranch = String(roleValue).toLowerCase();
+      if (roleLowerForBranch.startsWith('coapplicant')) {
+        const idxMatch = roleLowerForBranch.match(/^coapplicant(\d+)/);
+        const index = idxMatch ? Math.max(0, parseInt(idxMatch[1], 10) - 1) : 0;
 
-          // Ensure role is also present INSIDE form_data mirroring login role (e.g., guarantor1)
-          (transformedData as any).role = roleValue;
-        }
-      } catch (e) {
-        console.warn('Role-based empty section normalization failed', e);
+        const coApp = Array.isArray(formData?.coApplicants) && formData.coApplicants[index]
+          ? formData.coApplicants[index]
+          : (Array.isArray(transformedData?.coApplicants) ? transformedData.coApplicants[index] : undefined) || {};
+
+        const coApplicantPayload = this.createCoApplicantOnlyPayload(coApp, index, formData, uploadedFiles);
+        const coApplicantWebhookData: FormDataWebhookData = {
+          reference_id: referenceId,
+          application_id: zoneinfo || applicationId,
+          role: `coapplicant${index + 1}`,
+          form_data: coApplicantPayload,
+          uploaded_files: this.filterCoApplicantFiles(uploadedFiles, index),
+          submission_type: 'coapplicant_only'
+        };
+
+        console.log(`🔀 Role-based branch: sending co-applicant${index + 1} to dedicated hook`);
+        return await this.sendWebhookDirectToHook(
+          coApplicantWebhookData,
+          this.MAKE_COM_COAPPLICANT_WEBHOOK_URL
+        );
       }
-      
+
+      if (roleLowerForBranch.startsWith('guarantor')) {
+        const idxMatch = roleLowerForBranch.match(/^guarantor(\d+)/);
+        const index = idxMatch ? Math.max(0, parseInt(idxMatch[1], 10) - 1) : 0;
+
+        const guar = Array.isArray(formData?.guarantors) && formData.guarantors[index]
+          ? formData.guarantors[index]
+          : (Array.isArray(transformedData?.guarantors) ? transformedData.guarantors[index] : undefined) || {};
+
+        const guarantorPayload = this.createGuarantorOnlyPayload(guar, index, formData, uploadedFiles);
+        const guarantorWebhookData: FormDataWebhookData = {
+          reference_id: referenceId,
+          application_id: zoneinfo || applicationId,
+          role: `guarantor${index + 1}`,
+          form_data: guarantorPayload,
+          uploaded_files: this.filterGuarantorFiles(uploadedFiles, index),
+          submission_type: 'guarantor_only'
+        };
+
+        console.log(`🔀 Role-based branch: sending guarantor${index + 1} to dedicated hook`);
+        return await this.sendWebhookDirectToHook(
+          guarantorWebhookData,
+          this.MAKE_COM_GUARANTOR_WEBHOOK_URL
+        );
+      }
+
+      // Default applicant/general payload
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
         application_id: zoneinfo || applicationId,
@@ -1229,8 +1263,21 @@ export class WebhookService {
         console.log('🔍 DEBUG: Role attribute exists:', 'role' in webhookData);
         console.log('🔍 DEBUG: Role value type:', typeof webhookData.role);
         
-        // Send directly to Make.com for main application submission
-        const response = await fetch(this.MAKE_COM_WEBHOOK_URL, {
+        // Determine target hook based on role:
+        // - coapplicant* -> co-applicant hook
+        // - guarantor*   -> guarantor hook
+        // - applicant or unspecified -> general hook
+        const roleLower = String(roleValue || '').toLowerCase();
+        const targetHook = roleLower.startsWith('coapplicant')
+          ? this.MAKE_COM_COAPPLICANT_WEBHOOK_URL
+          : roleLower.startsWith('guarantor')
+            ? this.MAKE_COM_GUARANTOR_WEBHOOK_URL
+            : this.MAKE_COM_WEBHOOK_URL;
+
+        console.log(`🔀 Routing form submission to hook based on role='${roleValue}':`, targetHook);
+
+        // Send to the selected Make.com hook
+        const response = await fetch(targetHook, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1555,6 +1602,48 @@ export class WebhookService {
         success: false,
         error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
       };
+    }
+  }
+
+  /**
+   * Sends webhook payload directly to a specified Make.com hook
+   */
+  private static async sendWebhookDirectToHook(
+    webhookData: FormDataWebhookData,
+    hookUrl: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const payloadSize = JSON.stringify(webhookData).length;
+    const payloadSizeMB = Math.round(payloadSize / (1024 * 1024) * 100) / 100;
+    console.log(`📊 direct payload size: ${payloadSizeMB}MB`);
+
+    const startTime = Date.now();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+    try {
+      const response = await fetch(hookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(webhookData),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`direct webhook failed:`, response.status, errorText);
+        return { success: false, error: `direct webhook failed: ${response.status} - ${errorText}` };
+      }
+
+      const responseTime = Date.now() - startTime;
+      console.log(`✅ direct webhook sent successfully in ${responseTime}ms → ${hookUrl}`);
+      return { success: true };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === 'AbortError') {
+        return { success: false, error: 'direct webhook request timed out' };
+      }
+      return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
   }
 
