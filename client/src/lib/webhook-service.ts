@@ -892,7 +892,11 @@ export class WebhookService {
         console.warn('⚠️ Could not attach webhookSummary to co-applicant webhookData:', e instanceof Error ? e.message : String(e));
       }
 
-      const response = await this.sendWebhookRequest(webhookData, 'coapplicant_only');
+      // Send directly to Make.com co-applicant hook (avoid proxy)
+      const response = await this.sendWebhookDirectToHook(
+        webhookData,
+        this.MAKE_COM_COAPPLICANT_WEBHOOK_URL
+      );
       
       this.ongoingSubmissions.delete(submissionId);
       return response;
@@ -955,7 +959,11 @@ export class WebhookService {
 
       console.log(`📤 Sending guarantor ${guarantorIndex + 1} webhook for application ${applicationId}`);
       
-      const response = await this.sendWebhookRequest(webhookData, 'guarantor_only');
+      // Send directly to Make.com guarantor hook (avoid proxy)
+      const response = await this.sendWebhookDirectToHook(
+        webhookData,
+        this.MAKE_COM_GUARANTOR_WEBHOOK_URL
+      );
       
       this.ongoingSubmissions.delete(submissionId);
       return response;
