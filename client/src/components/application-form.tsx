@@ -2187,41 +2187,29 @@ export function ApplicationForm() {
           
            // Restore current step only if restoreStep is true
            if (restoreStep) {
-            // Determine role-scoped sequential step from separate tables when available
-            // Use URL role immediately to avoid relying on potentially stale state
-            const urlParamsNow = new URLSearchParams(window.location.search);
-            const roleFromUrl = urlParamsNow.get('role') || '';
-            const effectiveRole = roleFromUrl || userRole || (user?.role || 'applicant');
-            let effectiveSpecificIndex: number | null = specificIndex;
-            if (effectiveRole.startsWith('coapplicant')) {
-              const m = effectiveRole.match(/coapplicant(\d+)/);
-              if (m) effectiveSpecificIndex = parseInt(m[1], 10) - 1;
-            } else if (effectiveRole.startsWith('guarantor')) {
-              const m = effectiveRole.match(/guarantor(\d+)/);
-              if (m) effectiveSpecificIndex = parseInt(m[1], 10) - 1;
-            }
+             // Determine role-scoped sequential step from separate tables when available
              let sequentialStep: number = 0;
              try {
-              if (effectiveRole?.startsWith('coapplicant')) {
+               if (userRole?.startsWith('coapplicant')) {
                  const appId = (allData.application as any)?.appid as string | undefined;
-                if (effectiveSpecificIndex != null && appId) {
+                 if (specificIndex != null && appId) {
                    try {
                      const coAppsArr = await dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(appId);
-                    if (Array.isArray(coAppsArr) && coAppsArr[effectiveSpecificIndex]) {
-                      sequentialStep = ((coAppsArr[effectiveSpecificIndex] as any)?.current_step ?? 0) as number;
+                     if (Array.isArray(coAppsArr) && coAppsArr[specificIndex]) {
+                       sequentialStep = ((coAppsArr[specificIndex] as any)?.current_step ?? 0) as number;
                      }
                    } catch (_e2) {}
                  }
                  if (sequentialStep === 0) {
                    sequentialStep = (((allData.coApplicant as any)?.current_step ?? (allData.application as any)?.current_step ?? 0)) as number;
                  }
-              } else if (effectiveRole?.startsWith('guarantor')) {
+               } else if (userRole?.startsWith('guarantor')) {
                  const appId = (allData.application as any)?.appid as string | undefined;
-                if (effectiveSpecificIndex != null && appId) {
+                 if (specificIndex != null && appId) {
                    try {
                      const guarantorsArr = await dynamoDBSeparateTablesUtils.getGuarantorsByAppId(appId);
-                    if (Array.isArray(guarantorsArr) && guarantorsArr[effectiveSpecificIndex]) {
-                      sequentialStep = ((guarantorsArr[effectiveSpecificIndex] as any)?.current_step ?? 0) as number;
+                     if (Array.isArray(guarantorsArr) && guarantorsArr[specificIndex]) {
+                       sequentialStep = ((guarantorsArr[specificIndex] as any)?.current_step ?? 0) as number;
                      }
                    } catch (_e3) {}
                  }
@@ -2237,8 +2225,8 @@ export function ApplicationForm() {
              }
              
              // Convert sequential step -> actual step id -> filtered index
-            const actualStepId = getActualStepFromSequential(sequentialStep, effectiveRole);
-            const targetFilteredIndex = getFilteredIndexForActualId(actualStepId, effectiveRole);
+             const actualStepId = getActualStepFromSequential(sequentialStep, userRole);
+             const targetFilteredIndex = getFilteredIndexForActualId(actualStepId, userRole);
              setCurrentStep(targetFilteredIndex);
            }
           
@@ -3423,10 +3411,9 @@ export function ApplicationForm() {
                const targetStep = parseInt(stepParam, 10);
                if (!isNaN(targetStep) && targetStep >= 0) {
                  console.log('🎯 Step parameter detected, will navigate to step:', targetStep);
-                // Convert sequential step -> actual step id -> filtered index
-                const roleFromUrl = roleParam || userRole || (user?.role || 'applicant');
-                const actualStepId = getActualStepFromSequential(targetStep, roleFromUrl);
-                const targetFilteredIndex = getFilteredIndexForActualId(actualStepId, roleFromUrl);
+                 // Convert sequential step -> actual step id -> filtered index
+                 const actualStepId = getActualStepFromSequential(targetStep, userRole);
+                 const targetFilteredIndex = getFilteredIndexForActualId(actualStepId, userRole);
                  setCurrentStep(targetFilteredIndex);
                }
              }
@@ -4289,12 +4276,8 @@ export function ApplicationForm() {
       }
       
       console.log('👥 Co-applicant role detected, using index:', index);
-      console.log('👥 Available coApplicants in data:', data.coApplicants);
-      console.log('👥 coApplicants length:', data.coApplicants?.length || 0);
       const coApplicant = (data.coApplicants || [])[index] || {};
       console.log('👥 Co-applicant data for index', index, ':', coApplicant);
-      console.log('👥 Co-applicant data keys:', Object.keys(coApplicant));
-      console.log('👥 Co-applicant data has content:', Object.keys(coApplicant).length > 0);
       console.log('👥 Available webhookResponses in data:', data.webhookResponses);
       console.log('👥 WebhookResponses keys:', Object.keys(data.webhookResponses || {}));
       
@@ -6406,49 +6389,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
           } catch (emailErr) {
             console.warn('✉️ Email API call failed (non-blocking):', emailErr);
           }
-
-          // Payscore API call (non-blocking) for Applicant role
-          try {
-            const fullName = applicantName?.trim() || '';
-            const [firstName, ...lastParts] = fullName.split(' ');
-            const lastName = lastParts.join(' ').trim();
-            const applicantEmail = data.applicantEmail || formData.applicant?.email || '';
-            const applicantPhone = formatPhoneForPayload(formData.applicant?.phone || (data as any).applicantPhone || '');
-            const monthlyRent = Number(data.monthlyRent || formData.application?.monthlyRent || 0) || 0;
-
-            const payscorePayload = {
-              metadata: {
-                applicants: [
-                  {
-                    applicant_first_name: firstName || '',
-                    applicant_last_name: lastName || '',
-                    applicant_email: applicantEmail || '',
-                    applicant_phone_number: applicantPhone || ''
-                  }
-                ],
-                property: {
-                  name: 'CRP Affordable',
-                  street_address: '123 Pike St #101',
-                  city: 'Seattle',
-                  state: 'Washington',
-                  zip_code: '98101'
-                },
-                is_decision_maker_paying: true,
-                decision_maker_display_name: 'Liberty Place Property Management',
-                monthly_rent: monthlyRent,
-                is_invitation_disabled: false,
-                webhook_url: 'https://hook.us1.make.com/78cgvrcr4ifaitsii3dn4sza6ckibd29'
-              }
-            } as const;
-
-            await fetch('https://5sdpaqwf0f.execute-api.us-east-1.amazonaws.com/prod/payscore', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payscorePayload)
-            });
-          } catch (payscoreErr) {
-            console.warn('⚠️ Payscore API call failed (non-blocking):', payscoreErr);
-          }
         }
       } catch (summaryErr) {
         console.warn('⚠️ Failed to prepare/send Additional People summary (non-blocking):', summaryErr);
@@ -6911,149 +6851,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
             age: occupant.age || 0
           })),
           
-          // Co-Applicants (array) - try formData first, then form values as fallback
-          coApplicants: (() => {
-            const coApplicantsFromFormData = formData.coApplicants || [];
-            if (coApplicantsFromFormData.length > 0) {
-              return coApplicantsFromFormData.map((coApp: any) => ({
-            name: coApp.name,
-            relationship: coApp.relationship,
-            dob: safeDateToISO(coApp.dob),
-            ssn: coApp.ssn,
-            phone: formatPhoneForPayload(coApp.phone),
-            email: coApp.email,
-            address: coApp.address,
-            city: coApp.city,
-            state: coApp.state,
-            zip: coApp.zip,
-            license: coApp.license,
-            licenseState: coApp.licenseState,
-            lengthAtAddressYears: coApp.lengthAtAddressYears,
-            lengthAtAddressMonths: coApp.lengthAtAddressMonths,
-            landlordName: coApp.landlordName,
-            landlordAddressLine1: coApp.landlordAddressLine1,
-            landlordAddressLine2: coApp.landlordAddressLine2,
-            landlordCity: coApp.landlordCity,
-            landlordState: coApp.landlordState,
-            landlordZipCode: coApp.landlordZipCode,
-            landlordPhone: formatPhoneForPayload(coApp.landlordPhone),
-            landlordEmail: coApp.landlordEmail,
-            currentRent: coApp.currentRent,
-            reasonForMoving: coApp.reasonForMoving,
-            employmentType: coApp.employmentType,
-            employer: coApp.employer,
-            position: coApp.position,
-            employmentStart: safeDateToISO(coApp.employmentStart),
-            income: coApp.income,
-            incomeFrequency: coApp.incomeFrequency,
-            businessName: coApp.businessName,
-            businessType: coApp.businessType,
-            yearsInBusiness: coApp.yearsInBusiness,
-            otherIncome: coApp.otherIncome,
-            otherIncomeFrequency: coApp.otherIncomeFrequency,
-            otherIncomeSource: coApp.otherIncomeSource,
-            bankRecords: (coApp.bankRecords || []).map((record: any) => ({
-              bankName: record.bankName,
-              accountType: record.accountType,
-              accountNumber: record.accountNumber || ""
-            })),
-          }));
-            } else {
-              // Fallback: try to get co-applicants from form values
-              const formValues = form.getValues();
-              const coApplicantsFromFormValues = formValues.coApplicants || [];
-              console.log('🔍 DEBUG: Using form values for coApplicants:', coApplicantsFromFormValues);
-              return coApplicantsFromFormValues.map((coApp: any) => ({
-                name: coApp.name,
-                relationship: coApp.relationship,
-                dob: safeDateToISO(coApp.dob),
-                ssn: coApp.ssn,
-                phone: formatPhoneForPayload(coApp.phone),
-                email: coApp.email,
-                address: coApp.address,
-                city: coApp.city,
-                state: coApp.state,
-                zip: coApp.zip,
-                license: coApp.license,
-                licenseState: coApp.licenseState,
-                lengthAtAddressYears: coApp.lengthAtAddressYears,
-                lengthAtAddressMonths: coApp.lengthAtAddressMonths,
-                landlordName: coApp.landlordName,
-                landlordAddressLine1: coApp.landlordAddressLine1,
-                landlordAddressLine2: coApp.landlordAddressLine2,
-                landlordCity: coApp.landlordCity,
-                landlordState: coApp.landlordState,
-                landlordZipCode: coApp.landlordZipCode,
-                landlordPhone: formatPhoneForPayload(coApp.landlordPhone),
-                landlordEmail: coApp.landlordEmail,
-                currentRent: coApp.currentRent,
-                reasonForMoving: coApp.reasonForMoving,
-                employmentType: coApp.employmentType,
-                employer: coApp.employer,
-                position: coApp.position,
-                employmentStart: safeDateToISO(coApp.employmentStart),
-                income: coApp.income,
-                incomeFrequency: coApp.incomeFrequency,
-                businessName: coApp.businessName,
-                businessType: coApp.businessType,
-                yearsInBusiness: coApp.yearsInBusiness,
-                otherIncome: coApp.otherIncome,
-                otherIncomeFrequency: coApp.otherIncomeFrequency,
-                otherIncomeSource: coApp.otherIncomeSource,
-                bankRecords: (coApp.bankRecords || []).map((record: any) => ({
-                  bankName: record.bankName,
-                  accountType: record.accountType,
-                  accountNumber: record.accountNumber || ""
-                })),
-              }));
-            }
-          })(),
-          
-          // Guarantors (array)
-          guarantors: (formData.guarantors || []).map((guar: any) => ({
-            name: guar.name,
-            relationship: guar.relationship,
-            dob: safeDateToISO(guar.dob),
-            ssn: guar.ssn,
-            phone: formatPhoneForPayload(guar.phone),
-            email: guar.email,
-            address: guar.address,
-            city: guar.city,
-            state: guar.state,
-            zip: guar.zip,
-            license: guar.license,
-            licenseState: guar.licenseState,
-            lengthAtAddressYears: guar.lengthAtAddressYears,
-            lengthAtAddressMonths: guar.lengthAtAddressMonths,
-            landlordName: guar.landlordName,
-            landlordAddressLine1: guar.landlordAddressLine1,
-            landlordAddressLine2: guar.landlordAddressLine2,
-            landlordCity: guar.landlordCity,
-            landlordState: guar.landlordState,
-            landlordZipCode: guar.landlordZipCode,
-            landlordPhone: formatPhoneForPayload(guar.landlordPhone),
-            landlordEmail: guar.landlordEmail,
-            currentRent: guar.currentRent,
-            reasonForMoving: guar.reasonForMoving,
-            employmentType: guar.employmentType,
-            employer: guar.employer,
-            position: guar.position,
-            employmentStart: safeDateToISO(guar.employmentStart),
-            income: guar.income,
-            incomeFrequency: guar.incomeFrequency,
-            businessName: guar.businessName,
-            businessType: guar.businessType,
-            yearsInBusiness: guar.yearsInBusiness,
-            otherIncome: guar.otherIncome,
-            otherIncomeFrequency: guar.otherIncomeFrequency,
-            otherIncomeSource: guar.otherIncomeSource,
-            bankRecords: (guar.bankRecords || []).map((record: any) => ({
-              bankName: record.bankName,
-              accountType: record.accountType,
-              accountNumber: record.accountNumber || ""
-            })),
-          })),
-          
           // Core metadata fields
           applicantName: data.applicantName || formData.applicant?.name,
           applicantEmail: data.applicantEmail || formData.applicant?.email,
@@ -7073,23 +6870,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
         console.log(JSON.stringify(completeServerData, null, 2));
         
         console.log('📊 Complete server data structure created (same as webhook)');
-        console.log('🔍 DEBUG: formData.coApplicants:', formData.coApplicants);
-        console.log('🔍 DEBUG: formData.coApplicants length:', formData.coApplicants?.length || 0);
-        console.log('🔍 DEBUG: completeServerData.coApplicants:', completeServerData.coApplicants);
-        console.log('🔍 DEBUG: completeServerData.coApplicants length:', completeServerData.coApplicants?.length || 0);
-        
-        // Debug form values for co-applicant roles
-        if (userRole && userRole.startsWith('coapplicant')) {
-          const formValues = form.getValues();
-          console.log('🔍 DEBUG: Form values for co-applicant role:', formValues);
-          console.log('🔍 DEBUG: Form values coApplicants:', formValues.coApplicants);
-          console.log('🔍 DEBUG: Form values coApplicants length:', formValues.coApplicants?.length || 0);
-          if (formValues.coApplicants && formValues.coApplicants.length > 0) {
-            formValues.coApplicants.forEach((coApp: any, index: number) => {
-              console.log(`🔍 DEBUG: Form coApplicant[${index}]:`, coApp);
-            });
-          }
-        }
           console.log('🔍 Debug - uploadedDocuments type:', typeof uploadedDocuments);
           console.log('🔍 Debug - uploadedDocuments is array:', Array.isArray(uploadedDocuments));
           console.log('🔍 Debug - uploadedDocuments value:', uploadedDocuments);
@@ -7107,61 +6887,11 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
 
         // Filter data for specific co-applicant/guarantor roles
         if (userRole.startsWith('coapplicant') && specificIndex !== null) {
-          console.log('🔍 Processing co-applicant data for submission...');
-          console.log('🔍 formData.coApplicants:', formData.coApplicants);
-          console.log('🔍 specificIndex:', specificIndex);
-          console.log('🔍 userRole:', userRole);
-          
-          // For specific co-applicant, extract their own form data
+          // For specific co-applicant, only include that co-applicant's data
           const specificCoApplicant = (formData.coApplicants || [])[specificIndex];
-          console.log('🔍 specificCoApplicant at index', specificIndex, ':', specificCoApplicant);
-          
-          if (specificCoApplicant && Object.keys(specificCoApplicant).length > 0) {
+          if (specificCoApplicant) {
             (completeServerData as any).coApplicants = [specificCoApplicant];
             console.log(`🎯 Filtered data for co-applicant ${specificIndex + 1}:`, specificCoApplicant);
-          } else {
-            // Fallback: if no specific co-applicant found in array, extract from form values
-            console.log('⚠️ No specific co-applicant found at index', specificIndex, 'trying fallback');
-            const formValues = form.getValues();
-            console.log('👥 Form values coApplicants:', formValues.coApplicants);
-            
-            if (formValues.coApplicants && formValues.coApplicants[specificIndex]) {
-              (completeServerData as any).coApplicants = [formValues.coApplicants[specificIndex]];
-              console.log(`🎯 Using form values for co-applicant ${specificIndex + 1}:`, formValues.coApplicants[specificIndex]);
-            } else if (formValues.coApplicants && formValues.coApplicants[0]) {
-              (completeServerData as any).coApplicants = [formValues.coApplicants[0]];
-              console.log(`🎯 Using form values fallback for co-applicant:`, formValues.coApplicants[0]);
-            } else {
-              // Last resort: try to extract co-applicant data from individual form fields
-              console.log('⚠️ No co-applicant data in formData.coApplicants or formValues.coApplicants, trying individual fields...');
-              const formValuesAny = formValues as any;
-              const coApplicantFromFields = {
-                name: formValuesAny.coApplicantName || formValuesAny.name || '',
-                email: formValuesAny.coApplicantEmail || formValuesAny.email || '',
-                phone: formValuesAny.coApplicantPhone || formValuesAny.phone || '',
-                relationship: formValuesAny.coApplicantRelationship || formValuesAny.relationship || '',
-                // Add other fields as needed
-                ...formValuesAny
-              };
-              
-              // Remove non-co-applicant fields
-              const coApplicantFields = Object.keys(coApplicantFromFields).filter(key => 
-                key.includes('coApplicant') || 
-                ['name', 'email', 'phone', 'relationship', 'address', 'city', 'state', 'zip', 'employer', 'jobTitle', 'income'].includes(key)
-              );
-              
-              const filteredCoApplicant = Object.fromEntries(
-                coApplicantFields.map(key => [key, (coApplicantFromFields as any)[key]])
-              );
-              
-              if (Object.keys(filteredCoApplicant).length > 0) {
-                (completeServerData as any).coApplicants = [filteredCoApplicant];
-                console.log(`🎯 Using individual fields for co-applicant:`, filteredCoApplicant);
-              } else {
-                console.error('❌ No co-applicant data found anywhere!');
-                (completeServerData as any).coApplicants = [{}];
-              }
-            }
           }
         } else if (userRole.startsWith('guarantor') && specificIndex !== null) {
           // For specific guarantor, only include that guarantor's data
@@ -7939,17 +7669,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
           console.log('🔍 User role:', userRole, 'Specific index:', specificIndex);
           
           // Persist role-scoped data and signatures on submit
-          console.log('🔍 completeServerData before buildRoleScopedFormData:', {
-            hasCoApplicants: !!(completeServerData as any).coApplicants,
-            coApplicantsLength: (completeServerData as any).coApplicants?.length || 0,
-            coApplicants: (completeServerData as any).coApplicants
-          });
           const submittedFormRoleScoped = buildRoleScopedFormData(completeServerData, userRole || '', specificIndex ?? undefined);
-          console.log('🔍 submittedFormRoleScoped after buildRoleScopedFormData:', {
-            hasCoApplicants: !!submittedFormRoleScoped.coApplicants,
-            coApplicantsLength: submittedFormRoleScoped.coApplicants?.length || 0,
-            coApplicants: submittedFormRoleScoped.coApplicants
-          });
           const submittedSigsRoleScoped = buildRoleScopedSignatures((completeServerData as any).signatures || signatures, userRole || '', specificIndex ?? undefined);
 
           let saveResults: boolean[] = [];
@@ -8084,8 +7804,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
             // Get the specific co-applicant data from the role-scoped form
             const coApplicantData = submittedFormRoleScoped.coApplicants?.[0] || {};
             console.log('📊 Co-Applicant data to save:', coApplicantData);
-            console.log('📊 Co-Applicant data keys:', Object.keys(coApplicantData));
-            console.log('📊 Co-Applicant data has content:', Object.keys(coApplicantData).length > 0);
             
             // Save Co-Applicant data to Co-Applicants table with simplified structure
             const submittedCoApplicantData = {
@@ -8093,8 +7811,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
               coapplicant_info: coApplicantData,
               occupants: submittedFormRoleScoped.occupants || [],
               webhookSummary: submittedFormRoleScoped.webhookSummary || getWebhookSummary(),
-              // Persist webhook response URLs for this submission
-              webhook_responses: webhookResponses,
               // Use role-scoped coApplicants[0] signature (base64) or null
               signature: (() => {
                 const sig = (submittedSigsRoleScoped as any)?.coApplicants?.[0];
@@ -8159,8 +7875,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
               guarantor_info: guarantorData,
               occupants: submittedFormRoleScoped.occupants || [],
               webhookSummary: submittedFormRoleScoped.webhookSummary || getWebhookSummary(),
-              // Persist webhook response URLs for this submission
-              webhook_responses: webhookResponses,
               // Use role-scoped guarantors[0] signature (base64) or null
               signature: (() => {
                 const sig = (submittedSigsRoleScoped as any)?.guarantors?.[0];
