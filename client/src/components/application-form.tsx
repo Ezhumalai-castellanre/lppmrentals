@@ -2187,29 +2187,41 @@ export function ApplicationForm() {
           
            // Restore current step only if restoreStep is true
            if (restoreStep) {
-             // Determine role-scoped sequential step from separate tables when available
+            // Determine role-scoped sequential step from separate tables when available
+            // Use URL role immediately to avoid relying on potentially stale state
+            const urlParamsNow = new URLSearchParams(window.location.search);
+            const roleFromUrl = urlParamsNow.get('role') || '';
+            const effectiveRole = roleFromUrl || userRole || (user?.role || 'applicant');
+            let effectiveSpecificIndex: number | null = specificIndex;
+            if (effectiveRole.startsWith('coapplicant')) {
+              const m = effectiveRole.match(/coapplicant(\d+)/);
+              if (m) effectiveSpecificIndex = parseInt(m[1], 10) - 1;
+            } else if (effectiveRole.startsWith('guarantor')) {
+              const m = effectiveRole.match(/guarantor(\d+)/);
+              if (m) effectiveSpecificIndex = parseInt(m[1], 10) - 1;
+            }
              let sequentialStep: number = 0;
              try {
-               if (userRole?.startsWith('coapplicant')) {
+              if (effectiveRole?.startsWith('coapplicant')) {
                  const appId = (allData.application as any)?.appid as string | undefined;
-                 if (specificIndex != null && appId) {
+                if (effectiveSpecificIndex != null && appId) {
                    try {
                      const coAppsArr = await dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(appId);
-                     if (Array.isArray(coAppsArr) && coAppsArr[specificIndex]) {
-                       sequentialStep = ((coAppsArr[specificIndex] as any)?.current_step ?? 0) as number;
+                    if (Array.isArray(coAppsArr) && coAppsArr[effectiveSpecificIndex]) {
+                      sequentialStep = ((coAppsArr[effectiveSpecificIndex] as any)?.current_step ?? 0) as number;
                      }
                    } catch (_e2) {}
                  }
                  if (sequentialStep === 0) {
                    sequentialStep = (((allData.coApplicant as any)?.current_step ?? (allData.application as any)?.current_step ?? 0)) as number;
                  }
-               } else if (userRole?.startsWith('guarantor')) {
+              } else if (effectiveRole?.startsWith('guarantor')) {
                  const appId = (allData.application as any)?.appid as string | undefined;
-                 if (specificIndex != null && appId) {
+                if (effectiveSpecificIndex != null && appId) {
                    try {
                      const guarantorsArr = await dynamoDBSeparateTablesUtils.getGuarantorsByAppId(appId);
-                     if (Array.isArray(guarantorsArr) && guarantorsArr[specificIndex]) {
-                       sequentialStep = ((guarantorsArr[specificIndex] as any)?.current_step ?? 0) as number;
+                    if (Array.isArray(guarantorsArr) && guarantorsArr[effectiveSpecificIndex]) {
+                      sequentialStep = ((guarantorsArr[effectiveSpecificIndex] as any)?.current_step ?? 0) as number;
                      }
                    } catch (_e3) {}
                  }
@@ -2225,8 +2237,8 @@ export function ApplicationForm() {
              }
              
              // Convert sequential step -> actual step id -> filtered index
-             const actualStepId = getActualStepFromSequential(sequentialStep, userRole);
-             const targetFilteredIndex = getFilteredIndexForActualId(actualStepId, userRole);
+            const actualStepId = getActualStepFromSequential(sequentialStep, effectiveRole);
+            const targetFilteredIndex = getFilteredIndexForActualId(actualStepId, effectiveRole);
              setCurrentStep(targetFilteredIndex);
            }
           
@@ -3411,9 +3423,10 @@ export function ApplicationForm() {
                const targetStep = parseInt(stepParam, 10);
                if (!isNaN(targetStep) && targetStep >= 0) {
                  console.log('🎯 Step parameter detected, will navigate to step:', targetStep);
-                 // Convert sequential step -> actual step id -> filtered index
-                 const actualStepId = getActualStepFromSequential(targetStep, userRole);
-                 const targetFilteredIndex = getFilteredIndexForActualId(actualStepId, userRole);
+                // Convert sequential step -> actual step id -> filtered index
+                const roleFromUrl = roleParam || userRole || (user?.role || 'applicant');
+                const actualStepId = getActualStepFromSequential(targetStep, roleFromUrl);
+                const targetFilteredIndex = getFilteredIndexForActualId(actualStepId, roleFromUrl);
                  setCurrentStep(targetFilteredIndex);
                }
              }

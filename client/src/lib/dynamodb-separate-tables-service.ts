@@ -52,6 +52,7 @@ export interface CoApplicantData {
   coapplicant_info: any; // Co-applicant form data
   webhookSummary: any; // Webhook summary
   signature: any; // Co-applicant signature
+  current_step?: number; // Role-scoped sequential step
   timestamp: string; // Creation timestamp (sort key)
   last_updated: string;
   status: 'draft' | 'submitted';
@@ -66,6 +67,7 @@ export interface GuarantorData {
   guarantor_info: any; // Guarantor form data
   webhookSummary: any; // Webhook summary
   signature: any; // Guarantor signature
+  current_step?: number; // Role-scoped sequential step
   timestamp: string; // Creation timestamp (sort key)
   last_updated: string;
   status: 'draft' | 'submitted';

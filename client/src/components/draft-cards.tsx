@@ -1398,7 +1398,9 @@ export const DraftCards = () => {
           if (allCoApplicants && allCoApplicants.length > 0) {
             for (const coApp of allCoApplicants) {
               const matchedApp = (zoneApps || []).find(a => a.appid === coApp.appid);
+              const currentStepFromRole = (coApp as any)?.current_step;
               const currentStepFromApp = matchedApp?.current_step ?? 0;
+              const resolvedCurrentStep = typeof currentStepFromRole === 'number' ? currentStepFromRole : currentStepFromApp;
               // Try to fetch the primary applicant for this application to show name/email in previews
               let matchedApplicant: any = undefined;
               try {
@@ -1422,7 +1424,7 @@ export const DraftCards = () => {
                 applicantId: coApp.userId,
                 reference_id: coApp.userId,
                 form_data: coApplicantFormData,
-                current_step: currentStepFromApp,
+                current_step: resolvedCurrentStep,
                 last_updated: coApp.last_updated,
                 status: coApp.status,
                 uploaded_files_metadata: {},
@@ -1445,7 +1447,9 @@ export const DraftCards = () => {
             // Fetch applications to resolve current_step and application data by appid
             const zoneApps = await dynamoDBSeparateTablesUtils.getApplicationsByZoneinfo();
             const matchedApp = (zoneApps || []).find(a => a.appid === (allData.guarantor as any).appid);
+            const currentStepFromRole = (allData.guarantor as any)?.current_step;
             const currentStepFromApp = matchedApp?.current_step ?? 0;
+            const resolvedCurrentStep = typeof currentStepFromRole === 'number' ? currentStepFromRole : currentStepFromApp;
             
             // Fetch applicant data for context
             let matchedApplicant: any = undefined;
@@ -1483,7 +1487,7 @@ export const DraftCards = () => {
               applicantId: (allData.guarantor as any).userId,
               reference_id: (allData.guarantor as any).userId,
               form_data: guarantorFormData,
-              current_step: currentStepFromApp,
+              current_step: resolvedCurrentStep,
               last_updated: (allData.guarantor as any).last_updated,
               status: (allData.guarantor as any).status,
               uploaded_files_metadata: {},
@@ -1634,7 +1638,13 @@ export const DraftCards = () => {
     // Navigate to the application form with the current step parameter
     // This will ensure the user continues from where they left off
     const currentStep = draft.current_step || 0;
-    setLocation(`/application?step=${currentStep}&continue=true`);
+    // Try to infer role from role-specific table data attached to the draft
+    const tableData: any = (draft as any).table_data || {};
+    let roleParam = '';
+    if (tableData.guarantor) roleParam = 'guarantor';
+    else if (tableData.coApplicant) roleParam = 'coapplicant';
+    const roleQuery = roleParam ? `&role=${encodeURIComponent(roleParam)}` : '';
+    setLocation(`/application?step=${currentStep}&continue=true${roleQuery}`);
   };
 
   const handleDelete = async (draftId: string) => {
