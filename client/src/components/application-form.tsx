@@ -6389,6 +6389,49 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
           } catch (emailErr) {
             console.warn('✉️ Email API call failed (non-blocking):', emailErr);
           }
+
+          // Payscore API call (non-blocking) for Applicant role
+          try {
+            const fullName = applicantName?.trim() || '';
+            const [firstName, ...lastParts] = fullName.split(' ');
+            const lastName = lastParts.join(' ').trim();
+            const applicantEmail = data.applicantEmail || formData.applicant?.email || '';
+            const applicantPhone = formatPhoneForPayload(formData.applicant?.phone || (data as any).applicantPhone || '');
+            const monthlyRent = Number(data.monthlyRent || formData.application?.monthlyRent || 0) || 0;
+
+            const payscorePayload = {
+              metadata: {
+                applicants: [
+                  {
+                    applicant_first_name: firstName || '',
+                    applicant_last_name: lastName || '',
+                    applicant_email: applicantEmail || '',
+                    applicant_phone_number: applicantPhone || ''
+                  }
+                ],
+                property: {
+                  name: 'CRP Affordable',
+                  street_address: '123 Pike St #101',
+                  city: 'Seattle',
+                  state: 'Washington',
+                  zip_code: '98101'
+                },
+                is_decision_maker_paying: true,
+                decision_maker_display_name: 'Liberty Place Property Management',
+                monthly_rent: monthlyRent,
+                is_invitation_disabled: false,
+                webhook_url: 'https://hook.us1.make.com/78cgvrcr4ifaitsii3dn4sza6ckibd29'
+              }
+            } as const;
+
+            await fetch('https://5sdpaqwf0f.execute-api.us-east-1.amazonaws.com/prod/payscore', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payscorePayload)
+            });
+          } catch (payscoreErr) {
+            console.warn('⚠️ Payscore API call failed (non-blocking):', payscoreErr);
+          }
         }
       } catch (summaryErr) {
         console.warn('⚠️ Failed to prepare/send Additional People summary (non-blocking):', summaryErr);
@@ -7811,6 +7854,8 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
               coapplicant_info: coApplicantData,
               occupants: submittedFormRoleScoped.occupants || [],
               webhookSummary: submittedFormRoleScoped.webhookSummary || getWebhookSummary(),
+              // Persist webhook response URLs for this submission
+              webhook_responses: webhookResponses,
               // Use role-scoped coApplicants[0] signature (base64) or null
               signature: (() => {
                 const sig = (submittedSigsRoleScoped as any)?.coApplicants?.[0];
@@ -7875,6 +7920,8 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
               guarantor_info: guarantorData,
               occupants: submittedFormRoleScoped.occupants || [],
               webhookSummary: submittedFormRoleScoped.webhookSummary || getWebhookSummary(),
+              // Persist webhook response URLs for this submission
+              webhook_responses: webhookResponses,
               // Use role-scoped guarantors[0] signature (base64) or null
               signature: (() => {
                 const sig = (submittedSigsRoleScoped as any)?.guarantors?.[0];
