@@ -1413,12 +1413,15 @@ export class DynamoDBSeparateTablesService {
         hasWebhookSummary: !!data.webhookSummary,
         webhookSummary: data.webhookSummary,
         webhookSummaryKeys: data.webhookSummary ? Object.keys(data.webhookSummary) : [],
-        webhookSummaryTotalResponses: data.webhookSummary?.totalResponses || 0
+        webhookSummaryTotalResponses: data.webhookSummary?.totalResponses || 0,
+        hasCoapplicantInfo: !!data.coapplicant_info,
+        coapplicantInfoKeys: data.coapplicant_info ? Object.keys(data.coapplicant_info) : [],
+        coapplicantInfo: data.coapplicant_info
       });
       
       const coApplicantData: CoApplicantData = this.sanitizeForDynamo({
         ...data,
-        coapplicant_info: this.normalizePersonInfo((data as any).coapplicant_info),
+        coapplicant_info: this.normalizePersonInfo(data.coapplicant_info),
         userId: uniqueUserId,
         role,
         zoneinfo,
@@ -1432,7 +1435,10 @@ export class DynamoDBSeparateTablesService {
         hasWebhookSummary: !!coApplicantData.webhookSummary,
         webhookSummary: coApplicantData.webhookSummary,
         webhookSummaryKeys: coApplicantData.webhookSummary ? Object.keys(coApplicantData.webhookSummary) : [],
-        webhookSummaryTotalResponses: coApplicantData.webhookSummary?.totalResponses || 0
+        webhookSummaryTotalResponses: coApplicantData.webhookSummary?.totalResponses || 0,
+        hasCoapplicantInfo: !!coApplicantData.coapplicant_info,
+        coapplicantInfoKeys: coApplicantData.coapplicant_info ? Object.keys(coApplicantData.coapplicant_info) : [],
+        coapplicantInfo: coApplicantData.coapplicant_info
       });
 
       // Check data size and reduce if necessary
@@ -1463,6 +1469,7 @@ export class DynamoDBSeparateTablesService {
         
         await client.send(command);
         console.log('✅ Co-applicant data saved successfully (reduced size) with userId:', uniqueUserId);
+        console.log('🔍 Final saved coapplicant_info (reduced):', reducedData.coapplicant_info);
         return true;
       }
 
@@ -1473,6 +1480,7 @@ export class DynamoDBSeparateTablesService {
 
       await client.send(command);
       console.log('✅ Co-applicant data saved successfully (overwritten existing if found) with userId:', uniqueUserId);
+      console.log('🔍 Final saved coapplicant_info:', coApplicantData.coapplicant_info);
       return true;
     } catch (error) {
       console.error('❌ Error saving co-applicant data:', error);
