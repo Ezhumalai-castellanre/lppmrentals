@@ -605,8 +605,9 @@ export function ApplicationForm() {
       return guarantorStepMap[actualStepId] || 1;
     }
     if (role.startsWith('coapplicant')) {
-      // Map co-applicant steps to sequential numbers: 0->1, 5->2, 6->3, 7->4, 12->5
-      const coApplicantStepMap: { [key: number]: number } = { 0: 1, 5: 2, 6: 3, 7: 4, 12: 5 };
+      // Map co-applicant steps to sequential numbers: 0->1, 5->2, 6->3, 7->4
+      // Final submitted state should be 4
+      const coApplicantStepMap: { [key: number]: number } = { 0: 1, 5: 2, 6: 3, 7: 4 };
       return coApplicantStepMap[actualStepId] || 1;
     }
     // For applicant role, use actual step ID (no mapping needed)
@@ -620,8 +621,8 @@ export function ApplicationForm() {
       return guarantorReverseMap[sequentialStep] || 0;
     }
     if (role.startsWith('coapplicant')) {
-      // Map sequential numbers back to actual step IDs: 1->0, 2->5, 3->6, 4->7, 5->12
-      const coApplicantReverseMap: { [key: number]: number } = { 1: 0, 2: 5, 3: 6, 4: 7, 5: 12 };
+      // Map sequential numbers back to actual step IDs: 1->0, 2->5, 3->6, 4->7
+      const coApplicantReverseMap: { [key: number]: number } = { 1: 0, 2: 5, 3: 6, 4: 7 };
       return coApplicantReverseMap[sequentialStep] || 0;
     }
     // For applicant role, use sequential step as-is (no mapping needed)
@@ -819,6 +820,11 @@ export function ApplicationForm() {
   const handleRoleChange = (value: string) => {
     setUserRole(value);
     setFilteredSteps(getFilteredSteps(value));
+    // Ensure we land on the first step relevant for the selected role
+    const startActualId = value.startsWith('guarantor')
+      ? 9
+      : (value.startsWith('coapplicant') ? 5 : 1);
+    setCurrentStep(getFilteredIndexForActualId(startActualId, value));
     // Update specific index for coapplicantN/guarantorN
     if (/^coapplicant\d+$/.test(value)) {
       const match = value.match(/coapplicant(\d+)/);
@@ -3000,36 +3006,112 @@ console.log("#### alldata", allData);
             console.log('🔧 AUTO-POPULATION: Final form values after timeout:', form.getValues());
           }, 100);
           
-           // Restore current step only if restoreStep is true
-           if (restoreStep) {
-             // Determine role-scoped sequential step from separate tables when available
+            // Restore current step only if restoreStep is true
+            if (restoreStep) {
+              // Determine role-scoped sequential step from separate tables when available
+              // If continuing without explicit role, infer role from saved data to avoid landing on wrong section
+              let activeRole = userRole;
+              try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const continueFlag = urlParams.get('continue');
+                const roleParam = urlParams.get('role');
+                if (continueFlag === 'true' && !roleParam) {
+                  const hasGuarantorData = !!(allData.guarantor && (allData.guarantor as any).guarantor_info);
+                  const hasCoApplicantData = !!(allData.coApplicant && (allData.coApplicant as any).coapplicant_info);
+                  let inferredRole = userRole;
+                  if (hasGuarantorData && !hasCoApplicantData) inferredRole = 'guarantor1';
+                  else if (hasCoApplicantData && !hasGuarantorData) inferredRole = 'coapplicant1';
+                  if (inferredRole && inferredRole !== userRole) {
+                    setUserRole(inferredRole);
+                    setFilteredSteps(getFilteredSteps(inferredRole));
+                    activeRole = inferredRole; // use immediately; state update is async
+                    // Restore to the saved current step for the inferred role when available
+                    let inferredSequential = 0;
+                    try {
+                      if (inferredRole.startsWith('guarantor')) {
+                        const appId = (allData.application as any)?.appid as string | undefined;
+                        if (appId) {
+                          const guarantorsArr = await dynamoDBSeparateTablesUtils.getGuarantorsByAppId(appId);
+                          if (Array.isArray(guarantorsArr) && guarantorsArr[0]) {
+                            const gRec: any = guarantorsArr[0];
+                            inferredSequential = (gRec?.current_step ?? 0) as number;
+                          }
+                        }
+                        if (inferredSequential === 0) {
+                          inferredSequential = (((allData.guarantor as any)?.current_step ?? 0)) as number;
+                        }
+                      } else if (inferredRole.startsWith('coapplicant')) {
+                        const appId = (allData.application as any)?.appid as string | undefined;
+                        if (appId) {
+                          const coAppsArr = await dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(appId);
+                          if (Array.isArray(coAppsArr) && coAppsArr[0]) {
+                            const cRec: any = coAppsArr[0];
+                            inferredSequential = (cRec?.current_step ?? 0) as number;
+                          }
+                        }
+                        if (inferredSequential === 0) {
+                          inferredSequential = (((allData.coApplicant as any)?.current_step ?? 0)) as number;
+                        }
+                      }
+                    } catch {}
+                    const inferredActual = inferredSequential > 0 ? getActualStepFromSequential(inferredSequential, inferredRole) : (inferredRole.startsWith('guarantor') ? 9 : 5);
+                    setCurrentStep(getFilteredIndexForActualId(inferredActual, inferredRole));
+                  }
+                } else if (roleParam) {
+                  activeRole = roleParam;
+                }
+              } catch {}
              let sequentialStep: number = 0;
              try {
-               if (userRole?.startsWith('coapplicant')) {
-                 const appId = (allData.application as any)?.appid as string | undefined;
-                 if (specificIndex != null && appId) {
-                   try {
-                     const coAppsArr = await dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(appId);
-                     if (Array.isArray(coAppsArr) && coAppsArr[specificIndex]) {
-                       sequentialStep = ((coAppsArr[specificIndex] as any)?.current_step ?? 0) as number;
-                     }
-                   } catch (_e2) {}
-                 }
-                 if (sequentialStep === 0) {
-                   sequentialStep = (((allData.coApplicant as any)?.current_step ?? (allData.application as any)?.current_step ?? 0)) as number;
-                 }
-               } else if (userRole?.startsWith('guarantor')) {
+               if (activeRole?.startsWith('coapplicant')) {
+                  const appId = (allData.application as any)?.appid as string | undefined;
+                  if (specificIndex != null && appId) {
+                    try {
+                      const coAppsArr = await dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(appId);
+                      if (Array.isArray(coAppsArr) && coAppsArr[specificIndex]) {
+                        const coRec: any = coAppsArr[specificIndex];
+                        // If submitted, start from first step instead of final step
+                        if (coRec?.status === 'submitted') {
+                          sequentialStep = 1;
+                        } else {
+                          sequentialStep = (coRec?.current_step ?? 0) as number;
+                        }
+                      }
+                    } catch (_e2) {}
+                  }
+                  if (sequentialStep === 0) {
+                    const coObj: any = (allData.coApplicant as any);
+                    // If submitted, start from first step instead of final step
+                    if (coObj?.status === 'submitted') {
+                      sequentialStep = 1;
+                    } else {
+                      sequentialStep = ((coObj?.current_step ?? (allData.application as any)?.current_step ?? 0)) as number;
+                    }
+                  }
+               } else if (activeRole?.startsWith('guarantor')) {
                  const appId = (allData.application as any)?.appid as string | undefined;
                  if (specificIndex != null && appId) {
                    try {
                      const guarantorsArr = await dynamoDBSeparateTablesUtils.getGuarantorsByAppId(appId);
                      if (Array.isArray(guarantorsArr) && guarantorsArr[specificIndex]) {
-                       sequentialStep = ((guarantorsArr[specificIndex] as any)?.current_step ?? 0) as number;
+                       const gRec: any = guarantorsArr[specificIndex];
+                       // If submitted, start from first step instead of final step
+                       if (gRec?.status === 'submitted') {
+                         sequentialStep = 1;
+                       } else {
+                         sequentialStep = (gRec?.current_step ?? 0) as number;
+                       }
                      }
                    } catch (_e3) {}
                  }
                  if (sequentialStep === 0) {
-                   sequentialStep = (((allData.guarantor as any)?.current_step ?? (allData.application as any)?.current_step ?? 0)) as number;
+                   const gObj: any = (allData.guarantor as any);
+                   // If submitted, start from first step instead of final step
+                   if (gObj?.status === 'submitted') {
+                     sequentialStep = 1;
+                   } else {
+                     sequentialStep = ((gObj?.current_step ?? (allData.application as any)?.current_step ?? 0)) as number;
+                   }
                  }
                } else {
                  // Primary applicant or default
@@ -3039,9 +3121,24 @@ console.log("#### alldata", allData);
                sequentialStep = ((allData.application as any)?.current_step ?? 0) as number;
              }
              
-             // Convert sequential step -> actual step id -> filtered index
-             const actualStepId = getActualStepFromSequential(sequentialStep, userRole);
-             const targetFilteredIndex = getFilteredIndexForActualId(actualStepId, userRole);
+            // Convert sequential step -> actual step id
+             let actualStepId = getActualStepFromSequential(sequentialStep, activeRole || userRole);
+            // Role guard: ensure we never land on another role's steps during restoration
+             if ((activeRole || userRole)?.startsWith('guarantor')) {
+              // Valid guarantor steps: 0, 9, 10, 11, 12
+              if (![0, 9, 10, 11, 12].includes(actualStepId)) {
+                actualStepId = 9; // Start at Guarantor
+              }
+              // Force filtered steps to guarantor-only to hide other roles' steps
+              setFilteredSteps(getFilteredSteps('guarantor'));
+             } else if ((activeRole || userRole)?.startsWith('coapplicant')) {
+              // Valid co-applicant steps: 0, 5, 6, 7, 12
+              if (![0, 5, 6, 7, 12].includes(actualStepId)) {
+                actualStepId = 5; // Start at Co-Applicant
+              }
+              setFilteredSteps(getFilteredSteps('coapplicant'));
+            }
+             const targetFilteredIndex = getFilteredIndexForActualId(actualStepId, activeRole || userRole);
              setCurrentStep(targetFilteredIndex);
            }
           
@@ -3967,6 +4064,11 @@ console.log("#### alldata", allData);
         console.log('🔍 Setting user role from URL parameter:', roleParam);
         setUserRole(roleParam);
         setFilteredSteps(getFilteredSteps(roleParam));
+        // Jump to the first relevant step for the role
+        {
+          const startActualId = roleParam.startsWith('guarantor') ? 9 : (roleParam.startsWith('coapplicant') ? 5 : 1);
+          setCurrentStep(getFilteredIndexForActualId(startActualId, roleParam));
+        }
         
         // Parse specific index for coapplicant1, coapplicant2, guarantor1, guarantor2, etc.
         if (roleParam.startsWith('coapplicant') && /coapplicant\d+/.test(roleParam)) {
@@ -4074,6 +4176,11 @@ console.log("#### alldata", allData);
         console.log('🔍 Setting user role from logged-in user (fallback):', roleFromUser);
         setUserRole(roleFromUser);
         setFilteredSteps(getFilteredSteps(roleFromUser));
+        // Jump to the first relevant step for the role
+        {
+          const startActualId = roleFromUser.startsWith('guarantor') ? 9 : (roleFromUser.startsWith('coapplicant') ? 5 : 1);
+          setCurrentStep(getFilteredIndexForActualId(startActualId, roleFromUser));
+        }
 
         if (roleFromUser.startsWith('coapplicant') && /coapplicant\d+/.test(roleFromUser)) {
           const match = roleFromUser.match(/coapplicant(\d+)/);
@@ -5360,6 +5467,7 @@ console.log("#### alldata", allData);
         },
         current_step: currentStep,
         status: 'draft' as const,
+        last_updated_human: new Date().toLocaleString(),
         uploaded_files_metadata: uploadedFilesMetadata,
         webhook_responses: webhookResponses,
         signatures: roleScopedSign,
@@ -5422,6 +5530,7 @@ console.log("#### alldata", allData);
         })(),
         timestamp: new Date().toISOString(), // Add timestamp field
         status: 'draft' as const,
+        last_updated_human: new Date().toLocaleString(),
         last_updated: new Date().toISOString()
       };
 
@@ -5557,6 +5666,7 @@ console.log("#### alldata", allData);
         })(),
         current_step: getSequentialStepNumber(currentStep, getEffectiveRole() || ''),
         last_updated: new Date().toISOString(),
+        last_updated_human: new Date().toLocaleString(),
         status: 'draft' as const
       };
 
@@ -5696,6 +5806,7 @@ console.log("#### alldata", allData);
         })(),
         current_step: getSequentialStepNumber(currentStep, getEffectiveRole() || ''),
         last_updated: new Date().toISOString(),
+        last_updated_human: new Date().toLocaleString(),
         status: 'draft' as const
       };
 
@@ -5840,6 +5951,7 @@ console.log("#### alldata", allData);
         })(),
         current_step: getSequentialStepNumber(currentStep, getEffectiveRole() || ''),
         last_updated: new Date().toISOString(),
+        last_updated_human: new Date().toLocaleString(),
         status: 'draft' as const
       };
 
@@ -6552,7 +6664,8 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
     }
     
     // If moving forward and co-applicant is not checked, skip co-applicant financial and docs
-    if (direction === 1 && (nextStepId === 6 || nextStepId === 7) && !hasCoApplicant) {
+    // Do NOT apply this skip when the current role is co-applicant; co-applicants must see their own steps
+    if (direction === 1 && (nextStepId === 6 || nextStepId === 7) && !hasCoApplicant && !userRole.startsWith('coapplicant')) {
       // Find the next step that has ID 8 or higher
       const nextStepIndex = filteredSteps.findIndex(step => step.id >= 8);
       if (nextStepIndex !== -1) {
@@ -6560,7 +6673,8 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
       }
     }
     // If moving backward and co-applicant is not checked, skip co-applicant financial and docs
-    if (direction === -1 && (nextStepId === 6 || nextStepId === 7) && !hasCoApplicant) {
+    // Do NOT apply this skip when the current role is co-applicant
+    if (direction === -1 && (nextStepId === 6 || nextStepId === 7) && !hasCoApplicant && !userRole.startsWith('coapplicant')) {
       // Find the previous step that has ID 5 or lower
       const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 5);
       if (prevStepIndex !== -1) {
@@ -6568,7 +6682,8 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
       }
     }
     // If moving forward and guarantor is not checked, skip guarantor financial and docs
-    if (direction === 1 && (nextStepId === 10 || nextStepId === 11) && !hasGuarantor) {
+    // Do NOT apply this skip when the current role is guarantor
+    if (direction === 1 && (nextStepId === 10 || nextStepId === 11) && !hasGuarantor && !userRole.startsWith('guarantor')) {
       // Find the next step that has ID 12 or higher
       const nextStepIndex = filteredSteps.findIndex(step => step.id >= 12);
       if (nextStepIndex !== -1) {
@@ -6576,7 +6691,8 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
       }
     }
     // If moving backward and guarantor is not checked, skip guarantor financial and docs
-    if (direction === -1 && (nextStepId === 10 || nextStepId === 11) && !hasGuarantor) {
+    // Do NOT apply this skip when the current role is guarantor
+    if (direction === -1 && (nextStepId === 10 || nextStepId === 11) && !hasGuarantor && !userRole.startsWith('guarantor')) {
       // Find the previous step that has ID 9 or lower
       const prevStepIndex = filteredSteps.findLastIndex(step => step.id <= 9);
       if (prevStepIndex !== -1) {
@@ -8622,8 +8738,30 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
             console.log('👥 Co-Applicant submitting to Co-Applicants table...');
             
             // Get the specific co-applicant data from the role-scoped form
-            const coApplicantData = submittedFormRoleScoped.coApplicants?.[0] || {};
-            console.log('📊 Co-Applicant data to save:', coApplicantData);
+            let coApplicantData = submittedFormRoleScoped.coApplicants?.[0] || {};
+            console.log('📊 Initial co-applicant data to save:', coApplicantData);
+
+            // If the co-applicant data is empty, try to get it from the form data directly (mirror guarantor fallback logic)
+            if (!coApplicantData || Object.keys(coApplicantData).length === 0) {
+              console.log('⚠️ Co-Applicant data is empty, trying to get from formData directly...');
+              const formDataCoApplicant = (formData.coApplicants || [])[specificIndex || 0];
+              if (formDataCoApplicant && Object.keys(formDataCoApplicant).length > 0) {
+                coApplicantData = formDataCoApplicant;
+                console.log('✅ Found co-applicant data in formData:', coApplicantData);
+              } else {
+                console.log('⚠️ No co-applicant data in formData, trying form values...');
+                const formValues = form.getValues();
+                const formValuesCoApplicant = (formValues.coApplicants || [])[specificIndex || 0];
+                if (formValuesCoApplicant && Object.keys(formValuesCoApplicant).length > 0) {
+                  coApplicantData = formValuesCoApplicant;
+                  console.log('✅ Found co-applicant data in form values:', coApplicantData);
+                } else {
+                  console.error('❌ No co-applicant data found anywhere!');
+                }
+              }
+            }
+
+            console.log('📊 Final co-applicant data to save:', coApplicantData);
             
             // Save Co-Applicant data to Co-Applicants table with simplified structure
             const submittedCoApplicantData = {
@@ -8637,6 +8775,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                 if (typeof sig === 'string' && sig.startsWith('data:image/')) return sig;
                 return sig ?? null;
               })(),
+              current_step: 4, // Final step stored as 4 for co-applicant
               status: 'submitted' as const,
               last_updated: new Date().toISOString()
             };

@@ -52,6 +52,7 @@ export interface CoApplicantData {
   coapplicant_info: any; // Co-applicant form data
   webhookSummary: any; // Webhook summary
   signature: any; // Co-applicant signature
+  current_step: number; // Current step in the form
   timestamp: string; // Creation timestamp (sort key)
   last_updated: string;
   status: 'draft' | 'submitted';
@@ -66,6 +67,7 @@ export interface GuarantorData {
   guarantor_info: any; // Guarantor form data
   webhookSummary: any; // Webhook summary
   signature: any; // Guarantor signature
+  current_step: number; // Current step in the form
   timestamp: string; // Creation timestamp (sort key)
   last_updated: string;
   status: 'draft' | 'submitted';
@@ -1225,7 +1227,7 @@ export class DynamoDBSeparateTablesService {
   }
 
   // Save co-applicant data
-  async saveCoApplicantData(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
+  async saveCoApplicantData(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp' | 'current_step'>, appid?: string): Promise<boolean> {
     if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return false;
@@ -1269,6 +1271,7 @@ export class DynamoDBSeparateTablesService {
         role,
         zoneinfo,
         appid: applicationAppid,
+        current_step: (data as any).current_step || 0,
         timestamp: new Date().toISOString(),
         last_updated: new Date().toISOString()
       });
@@ -1365,7 +1368,7 @@ export class DynamoDBSeparateTablesService {
   }
 
   // Save co-applicant as NEW record by generating unique userId suffix
-  async saveCoApplicantDataNew(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
+  async saveCoApplicantDataNew(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp' | 'current_step'>, appid?: string): Promise<boolean> {
     if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return false;
@@ -1421,6 +1424,7 @@ export class DynamoDBSeparateTablesService {
         role,
         zoneinfo,
         appid: applicationAppid,
+        current_step: (data as any).current_step || 0,
         timestamp: existingCoApplicant?.timestamp || new Date().toISOString(),
         // Keep original timestamp if overwriting (using last_updated as reference)
         last_updated: new Date().toISOString()
@@ -1615,7 +1619,7 @@ export class DynamoDBSeparateTablesService {
   }
 
   // Save guarantor data
-  async saveGuarantorData(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
+  async saveGuarantorData(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp' | 'current_step'>, appid?: string): Promise<boolean> {
     if (!(await this.ensureClientReady())) {
       console.error('❌ DynamoDB client not initialized');
       return false;
@@ -1659,6 +1663,7 @@ export class DynamoDBSeparateTablesService {
         role,
         zoneinfo,
         appid: applicationAppid,
+        current_step: (data as any).current_step || 0,
         timestamp: new Date().toISOString(),
         last_updated: new Date().toISOString()
       });
@@ -1755,7 +1760,7 @@ export class DynamoDBSeparateTablesService {
   }
 
   // Save guarantor data (overwrites existing if found)
-  async saveGuarantorDataNew(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
+  async saveGuarantorDataNew(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp' | 'current_step'>, appid?: string): Promise<boolean> {
     console.log('🛡️ saveGuarantorDataNew called with data:', data);
     console.log('🛡️ appid parameter:', appid);
     
@@ -1789,8 +1794,9 @@ export class DynamoDBSeparateTablesService {
         const existingApp = await this.getApplicationData();
         applicationAppid = existingApp?.appid;
         if (!applicationAppid) {
-          console.error('❌ No appid available for guarantor data');
-          return false;
+          // Fallback: generate an appid so guarantor submission doesn't fail
+          applicationAppid = this.generateApplicationId();
+          console.warn('⚠️ No appid available for guarantor data; generating new appid:', applicationAppid);
         }
       }
 
@@ -1808,6 +1814,7 @@ export class DynamoDBSeparateTablesService {
         role,
         zoneinfo,
         appid: applicationAppid,
+        current_step: (data as any).current_step || 0,
         timestamp: existingGuarantor?.timestamp || new Date().toISOString(),
         // Keep original timestamp if overwriting (using last_updated as reference)
         last_updated: new Date().toISOString()
@@ -2089,7 +2096,7 @@ export const dynamoDBSeparateTablesUtils = {
     return dynamoDBSeparateTablesService.saveApplicantDataNew(data, appid);
   },
   
-  async saveCoApplicantData(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
+  async saveCoApplicantData(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp' | 'current_step'>, appid?: string): Promise<boolean> {
     return dynamoDBSeparateTablesService.saveCoApplicantData(data, appid);
   },
   
@@ -2106,19 +2113,19 @@ export const dynamoDBSeparateTablesUtils = {
   },
   
   async saveGuarantorData(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid'>, appid?: string): Promise<boolean> {
-    return dynamoDBSeparateTablesService.saveGuarantorData(data, appid);
+    return dynamoDBSeparateTablesService.saveGuarantorData(data as any, appid);
   },
   
   async getGuarantorData(): Promise<GuarantorData | null> {
     return dynamoDBSeparateTablesService.getGuarantorData();
   },
   
-  async saveCoApplicantDataNew(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
+  async saveCoApplicantDataNew(data: Omit<CoApplicantData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp' | 'current_step'>, appid?: string): Promise<boolean> {
     return dynamoDBSeparateTablesService.saveCoApplicantDataNew(data, appid);
   },
   
   async saveGuarantorDataNew(data: Omit<GuarantorData, 'userId' | 'role' | 'zoneinfo' | 'appid' | 'timestamp'>, appid?: string): Promise<boolean> {
-    return dynamoDBSeparateTablesService.saveGuarantorDataNew(data, appid);
+    return dynamoDBSeparateTablesService.saveGuarantorDataNew(data as any, appid);
   },
   
   async getGuarantorsByAppId(appid?: string): Promise<GuarantorData[]> {

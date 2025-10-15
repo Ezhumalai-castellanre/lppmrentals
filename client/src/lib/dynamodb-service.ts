@@ -13,6 +13,7 @@ export interface DraftData {
   form_data: any;
   current_step: number;
   last_updated: string;
+  last_updated_human?: string;
   status: 'draft' | 'submitted';
   uploaded_files_metadata?: any;
   webhook_responses?: any;
@@ -764,6 +765,7 @@ export class DynamoDBService {
               form_data: { S: JSON.stringify(hybridData.formData) },
               current_step: { N: (draftData.current_step || 0).toString() },
               last_updated: { S: draftData.last_updated || new Date().toISOString() },
+            last_updated_human: { S: draftData.last_updated_human || new Date().toLocaleString() },
               status: { S: draftData.status || 'draft' },
               uploaded_files_metadata: { S: JSON.stringify(hybridData.uploadedFiles) },
               webhook_responses: { S: JSON.stringify(hybridData.webhookResponses) },
@@ -794,6 +796,7 @@ export class DynamoDBService {
             form_data: { S: JSON.stringify(cleanFormData) },
             current_step: { N: (draftData.current_step || 0).toString() },
             last_updated: { S: draftData.last_updated || new Date().toISOString() },
+            last_updated_human: { S: draftData.last_updated_human || new Date().toLocaleString() },
             status: { S: draftData.status || 'draft' },
             uploaded_files_metadata: { S: JSON.stringify(cleanUploadedFiles) },
             webhook_responses: { S: JSON.stringify(cleanWebhookResponses) },

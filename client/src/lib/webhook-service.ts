@@ -388,6 +388,10 @@ export class WebhookService {
   private static readonly S3_PRESIGN_URL = 'https://9yo8506w4h.execute-api.us-east-1.amazonaws.com/prod/s3-presign';
   // Direct Make.com hook for application submission
   private static readonly MAKE_COM_WEBHOOK_URL = 'https://hook.us1.make.com/og5ih0pl1br72r1pko39iimh3hdl31hk';
+  // Direct Make.com hook for co-applicant submission
+  private static readonly COAPPLICANT_WEBHOOK_URL = 'https://hook.us1.make.com/q6e6ymjzkuag21kdga9mm0ljhkcv2gmz';
+  // Direct Make.com hook for guarantor submission
+  private static readonly GUARANTOR_WEBHOOK_URL = 'https://hook.us1.make.com/bl1jvz9qn6we0b6w9wrkxgms0ljkyh38';
   
   // Comment out the dynamic URL methods for now
   // private static readonly WEBHOOK_PROXY_URL = this.getWebhookProxyUrl();
@@ -398,6 +402,9 @@ export class WebhookService {
     console.log('🔗 WebhookService initialized with BULLETPROOF hardcoded AWS endpoints:');
     console.log('  - S3 Presign URL:', WebhookService.S3_PRESIGN_URL);
     console.log('  - Webhook Proxy URL:', WebhookService.WEBHOOK_PROXY_URL);
+    console.log('  - Main Application Webhook URL:', WebhookService.MAKE_COM_WEBHOOK_URL);
+    console.log('  - Co-Applicant Webhook URL:', WebhookService.COAPPLICANT_WEBHOOK_URL);
+    console.log('  - Guarantor Webhook URL:', WebhookService.GUARANTOR_WEBHOOK_URL);
     console.log('  - These URLs are HARDCODED and cannot be changed by any method calls');
   }
   
@@ -889,7 +896,8 @@ export class WebhookService {
         console.warn('⚠️ Could not attach webhookSummary to co-applicant webhookData:', e instanceof Error ? e.message : String(e));
       }
 
-      const response = await this.sendWebhookRequest(webhookData, 'coapplicant_only');
+      // Send directly to Make.com for co-applicant submission
+      const response = await this.sendCoApplicantWebhookRequest(webhookData, 'coapplicant_only');
       
       this.ongoingSubmissions.delete(submissionId);
       return response;
@@ -952,7 +960,8 @@ export class WebhookService {
 
       console.log(`📤 Sending guarantor ${guarantorIndex + 1} webhook for application ${applicationId}`);
       
-      const response = await this.sendWebhookRequest(webhookData, 'guarantor_only');
+      // Send directly to Make.com for guarantor submission
+      const response = await this.sendGuarantorWebhookRequest(webhookData, 'guarantor_only');
       
       this.ongoingSubmissions.delete(submissionId);
       return response;
@@ -1540,6 +1549,140 @@ export class WebhookService {
 
       const responseTime = Date.now() - startTime;
       console.log(`✅ ${webhookType} webhook sent successfully in ${responseTime}ms`);
+      
+      return { success: true };
+
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        console.error(`${webhookType} webhook request timed out after 90 seconds`);
+        return {
+          success: false,
+          error: `${webhookType} webhook request timed out`
+        };
+      }
+      
+      console.error(`Error sending ${webhookType} webhook:`, fetchError);
+      
+      return {
+        success: false,
+        error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Sends co-applicant webhook request directly to Make.com
+   */
+  private static async sendCoApplicantWebhookRequest(webhookData: FormDataWebhookData, webhookType: string): Promise<{ success: boolean; error?: string }> {
+    const payloadSize = JSON.stringify(webhookData).length;
+    const payloadSizeMB = Math.round(payloadSize / (1024 * 1024) * 100) / 100;
+    
+    console.log(`📊 ${webhookType} payload size: ${payloadSizeMB}MB`);
+    
+    if (payloadSizeMB > 5) {
+      console.warn(`⚠️ Large ${webhookType} payload detected:`, payloadSizeMB, 'MB');
+    }
+
+    const startTime = Date.now();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout
+    
+    try {
+      console.log(`📤 Sending co-applicant webhook directly to Make.com: ${this.COAPPLICANT_WEBHOOK_URL}`);
+      
+      const response = await fetch(this.COAPPLICANT_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Send payload directly without wrapper for Make.com
+        body: JSON.stringify(webhookData),
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`${webhookType} webhook failed:`, response.status, errorText);
+        return {
+          success: false,
+          error: `${webhookType} webhook failed: ${response.status} - ${errorText}`
+        };
+      }
+
+      const responseTime = Date.now() - startTime;
+      console.log(`✅ ${webhookType} webhook sent successfully to Make.com in ${responseTime}ms`);
+      console.log(`📊 Co-Applicant Make.com Performance: ${payloadSizeMB}MB payload, ${responseTime}ms response time`);
+      
+      return { success: true };
+
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        console.error(`${webhookType} webhook request timed out after 90 seconds`);
+        return {
+          success: false,
+          error: `${webhookType} webhook request timed out`
+        };
+      }
+      
+      console.error(`Error sending ${webhookType} webhook:`, fetchError);
+      
+      return {
+        success: false,
+        error: fetchError instanceof Error ? fetchError.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Sends guarantor webhook request directly to Make.com
+   */
+  private static async sendGuarantorWebhookRequest(webhookData: FormDataWebhookData, webhookType: string): Promise<{ success: boolean; error?: string }> {
+    const payloadSize = JSON.stringify(webhookData).length;
+    const payloadSizeMB = Math.round(payloadSize / (1024 * 1024) * 100) / 100;
+    
+    console.log(`📊 ${webhookType} payload size: ${payloadSizeMB}MB`);
+    
+    if (payloadSizeMB > 5) {
+      console.warn(`⚠️ Large ${webhookType} payload detected:`, payloadSizeMB, 'MB');
+    }
+
+    const startTime = Date.now();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout
+    
+    try {
+      console.log(`📤 Sending guarantor webhook directly to Make.com: ${this.GUARANTOR_WEBHOOK_URL}`);
+      
+      const response = await fetch(this.GUARANTOR_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Send payload directly without wrapper for Make.com
+        body: JSON.stringify(webhookData),
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`${webhookType} webhook failed:`, response.status, errorText);
+        return {
+          success: false,
+          error: `${webhookType} webhook failed: ${response.status} - ${errorText}`
+        };
+      }
+
+      const responseTime = Date.now() - startTime;
+      console.log(`✅ ${webhookType} webhook sent successfully to Make.com in ${responseTime}ms`);
+      console.log(`📊 Guarantor Make.com Performance: ${payloadSizeMB}MB payload, ${responseTime}ms response time`);
       
       return { success: true };
 
