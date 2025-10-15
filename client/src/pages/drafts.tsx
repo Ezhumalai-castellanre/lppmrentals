@@ -1,6 +1,5 @@
 import React from 'react';
 import DraftCards from '../components/draft-cards';
-import { IncomeVerificationWidget } from '@payscore/web-widget-sdk';
 
 export default function DraftsPage() {
   return (
@@ -48,6 +47,12 @@ function PayscoreEmbed() {
     }
 
     appendLog('Loading widget...');
+
+    // Dynamically import the Payscore SDK from CDN at runtime to avoid bundler resolution
+    const payscoreModule: any = await import(
+      /* @vite-ignore */ 'https://cdn.skypack.dev/@payscore/web-widget-sdk'
+    );
+    const { IncomeVerificationWidget } = payscoreModule;
 
     // Use the provided values
     const WIDGET_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzZTVhZDA5OS1iMmEwLTQ3ZTYtYmRiNi0xYzk0NDRjMTJiNDciLCJzY3AiOiJzY3JlZW5pbmciLCJhdWQiOm51bGwsImlhdCI6MTc2MDM5NjE0NCwiZXhwIjoxNzYxNjA1NzQ0LCJqdGkiOiIwMjQzMmRjOC1lZWUyLTRjMmItYTI3Yy0yNGU4MmM2NGRkOTIifQ.OVFU1cVz9pgkoX26ncAfu_U2G9D5dCBYzf-zbRqCLCg';
