@@ -41,6 +41,7 @@ applications:
             - echo "=== Checking available memory ==="
             - free -h || echo "Memory check not available"
             - echo "=== Starting Vite build ==="
+            - cd client
             - timeout 900 npm run build || echo "Build failed, attempting to continue..."
             - echo "=== Build completed, checking output ==="
             - ls -la dist/ || echo "Dist directory not found"
