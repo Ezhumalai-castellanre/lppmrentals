@@ -21,7 +21,8 @@ export default defineConfig({
   ],
   root: path.resolve(__dirname, "client"),
   build: {
-    outDir: path.resolve(__dirname, "dist/public"),
+    // Emit build output inside client/dist so Amplify (appRoot: client, baseDirectory: dist) can find it
+    outDir: path.resolve(__dirname, "client", "dist"),
     emptyOutDir: true,
   },
   server: {
