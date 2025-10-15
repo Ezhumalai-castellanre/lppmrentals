@@ -1,6 +1,6 @@
 import React from "react";
 import { dynamoDBUtils as legacyDraftUtils } from "../lib/dynamodb-service";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -1309,7 +1309,13 @@ export function ApplicationForm() {
     });
   }, []);
 
-      // AUTO-POPULATION: Ensure form fields are synced with formData
+  // AUTO-POPULATION: Ensure form fields are synced with formData
+  // Create a stable reference using JSON stringification to prevent infinite loops
+  const coApplicantsSnapshot = useMemo(() => 
+    JSON.stringify(formData.coApplicants || []), 
+    [formData.coApplicants]
+  );
+
   useEffect(() => {
     if (formData.coApplicants && Array.isArray(formData.coApplicants) && formData.coApplicants.length > 0) {
           console.log('🔧 AUTO-POPULATION: useEffect triggered - syncing form fields with formData');
@@ -1495,16 +1501,27 @@ export function ApplicationForm() {
             console.log(`🔧 AUTO-POPULATION: No co-applicant data found at index ${targetIndex}`);
           }
         }
-      }, [formData.coApplicants, form, specificIndex, user?.role]);
+      }, [coApplicantsSnapshot, form, specificIndex, user?.role]);
 
   // AUTO-POPULATION: Ensure guarantor form fields are synced with formData
+  // Create a stable reference using JSON stringification to prevent infinite loops
+  const guarantorsSnapshot = useMemo(() => 
+    JSON.stringify(formData.guarantors || []), 
+    [formData.guarantors]
+  );
+
   useEffect(() => {
+    if ((isSyncingGuarantorRef as any)?.current) {
+      console.log('🔧 AUTO-POPULATION: Skipping guarantor sync (already syncing)');
+      return;
+    }
     console.log('🔧 AUTO-POPULATION: useEffect triggered - checking guarantor form fields sync');
     console.log('🔧 AUTO-POPULATION: formData.guarantors exists:', !!formData.guarantors);
     console.log('🔧 AUTO-POPULATION: formData.guarantors is array:', Array.isArray(formData.guarantors));
     console.log('🔧 AUTO-POPULATION: formData.guarantors length:', formData.guarantors?.length);
     
     if (formData.guarantors && Array.isArray(formData.guarantors) && formData.guarantors.length > 0) {
+      (isSyncingGuarantorRef as any).current = true;
       console.log('🔧 AUTO-POPULATION: useEffect triggered - syncing guarantor form fields with formData');
       console.log('🔧 AUTO-POPULATION: formData.guarantors:', formData.guarantors);
       console.log('🔧 AUTO-POPULATION: formData.guarantors[0]:', formData.guarantors[0]);
@@ -1586,17 +1603,7 @@ export function ApplicationForm() {
               
               if (!valuesMatch) {
                 console.log(`🔧 AUTO-POPULATION: Syncing ${formFieldName}: ${currentFormValue} -> ${value}`);
-                form.setValue(formFieldName as any, value);
-                
-                // Also update formData state for UI display
-                setFormData((prevData: any) => {
-                  const updated = { ...prevData };
-                  if (!updated.guarantors) updated.guarantors = [];
-                  if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
-                  updated.guarantors[targetIndex][field] = value;
-                  console.log(`🔧 AUTO-POPULATION: Updated formData.guarantors[${targetIndex}].${field} = ${value}`);
-                  return updated;
-                });
+                form.setValue(formFieldName as any, value, { shouldValidate: false, shouldDirty: false });
               } else {
                 console.log(`🔧 AUTO-POPULATION: Values already match for ${formFieldName}: ${currentFormValue}`);
               }
@@ -1618,16 +1625,7 @@ export function ApplicationForm() {
               const currentFormValue = form.getValues(formFieldName as any);
               if (currentFormValue !== guarantorToSync[mapping.from]) {
                 console.log(`🔧 AUTO-POPULATION: Syncing mapped ${formFieldName}: ${currentFormValue} -> ${guarantorToSync[mapping.from]}`);
-                form.setValue(formFieldName as any, guarantorToSync[mapping.from]);
-                
-                // Also update formData state for UI display
-                setFormData((prevData: any) => {
-                  const updated = { ...prevData };
-                  if (!updated.guarantors) updated.guarantors = [];
-                  if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
-                  updated.guarantors[targetIndex][mapping.to] = guarantorToSync[mapping.from];
-                  return updated;
-                });
+                form.setValue(formFieldName as any, guarantorToSync[mapping.from], { shouldValidate: false, shouldDirty: false });
               }
             }
           });
@@ -1637,18 +1635,14 @@ export function ApplicationForm() {
             const dobValue = new Date(guarantorToSync.dob);
             const formFieldName = `guarantors.${targetIndex}.dob`;
             const currentFormValue = form.getValues(formFieldName as any);
-            if (!currentFormValue || (currentFormValue instanceof Date && currentFormValue.getTime() !== dobValue.getTime())) {
+            
+            // Compare dates properly - convert both to timestamps
+            const currentTime = currentFormValue instanceof Date ? currentFormValue.getTime() : (currentFormValue ? new Date(currentFormValue).getTime() : null);
+            const newTime = dobValue.getTime();
+            
+            if (!currentFormValue || currentTime !== newTime) {
               console.log(`🔧 AUTO-POPULATION: Syncing ${formFieldName}: ${currentFormValue} -> ${dobValue}`);
-              form.setValue(formFieldName as any, dobValue);
-              
-              // Also update formData state for UI display
-              setFormData((prevData: any) => {
-                const updated = { ...prevData };
-                if (!updated.guarantors) updated.guarantors = [];
-                if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
-                updated.guarantors[targetIndex].dob = dobValue;
-                return updated;
-              });
+              form.setValue(formFieldName as any, dobValue, { shouldValidate: false, shouldDirty: false });
             }
           }
 
@@ -1657,18 +1651,14 @@ export function ApplicationForm() {
             const employmentStartValue = new Date(guarantorToSync.employmentStart);
             const formFieldName = `guarantors.${targetIndex}.employmentStart`;
             const currentFormValue = form.getValues(formFieldName as any);
-            if (!currentFormValue || (currentFormValue instanceof Date && currentFormValue.getTime() !== employmentStartValue.getTime())) {
+            
+            // Compare dates properly - convert both to timestamps
+            const currentTime = currentFormValue instanceof Date ? currentFormValue.getTime() : (currentFormValue ? new Date(currentFormValue).getTime() : null);
+            const newTime = employmentStartValue.getTime();
+            
+            if (!currentFormValue || currentTime !== newTime) {
               console.log(`🔧 AUTO-POPULATION: Syncing ${formFieldName}: ${currentFormValue} -> ${employmentStartValue}`);
-              form.setValue(formFieldName as any, employmentStartValue);
-              
-              // Also update formData state for UI display
-              setFormData((prevData: any) => {
-                const updated = { ...prevData };
-                if (!updated.guarantors) updated.guarantors = [];
-                if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
-                updated.guarantors[targetIndex].employmentStart = employmentStartValue;
-                return updated;
-              });
+              form.setValue(formFieldName as any, employmentStartValue, { shouldValidate: false, shouldDirty: false });
             }
           }
 
@@ -1678,16 +1668,7 @@ export function ApplicationForm() {
             const currentFormValue = form.getValues(formFieldName as any);
             if (!currentFormValue || JSON.stringify(currentFormValue) !== JSON.stringify(guarantorToSync.bankRecords)) {
               console.log(`🔧 AUTO-POPULATION: Syncing ${formFieldName}:`, guarantorToSync.bankRecords);
-              form.setValue(formFieldName as any, guarantorToSync.bankRecords);
-              
-              // Also update formData state for UI display
-              setFormData((prevData: any) => {
-                const updated = { ...prevData };
-                if (!updated.guarantors) updated.guarantors = [];
-                if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
-                updated.guarantors[targetIndex].bankRecords = guarantorToSync.bankRecords;
-                return updated;
-              });
+              form.setValue(formFieldName as any, guarantorToSync.bankRecords, { shouldValidate: false, shouldDirty: false });
             }
           }
         } else {
@@ -1696,8 +1677,10 @@ export function ApplicationForm() {
       } else {
         console.log(`🔧 AUTO-POPULATION: No guarantor data found at index ${targetIndex}`);
       }
+      // Clear syncing flag synchronously to avoid re-entrancy loops
+      (isSyncingGuarantorRef as any).current = false;
     }
-  }, [formData.guarantors, form, specificIndex, userRole]);
+  }, [guarantorsSnapshot, form, specificIndex, userRole]);
 
   // Handle webhook responses from formData when it changes
   useEffect(() => {
@@ -2421,7 +2404,21 @@ console.log("#### alldata", allData);
           // For specific role (guarantor4, guarantor3, etc.), only populate the specific index
           if (effectiveSpecificIndex !== null && effectiveSpecificIndex !== undefined) {
             console.log(`🔧 GUARANTOR MAPPING DEBUG: Specific role detected - populating only guarantor ${effectiveSpecificIndex}`);
-            const guarantor = parsedFormData.guarantors[effectiveSpecificIndex];
+            let guarantor = parsedFormData.guarantors[effectiveSpecificIndex];
+
+            // Fallback: if only one guarantor exists at index 0, copy it to effective index
+            if ((!guarantor || Object.keys(guarantor || {}).length === 0) && parsedFormData.guarantors.length === 1 && effectiveSpecificIndex !== 0) {
+              console.log(`⚙️ GUARANTOR MAPPING DEBUG: Fallback engaged - copying guarantor[0] to guarantor[${effectiveSpecificIndex}]`);
+              const single = parsedFormData.guarantors[0];
+              if (single && Object.keys(single).length > 0) {
+                // Ensure array has the target slot
+                while (parsedFormData.guarantors.length <= effectiveSpecificIndex) {
+                  parsedFormData.guarantors.push({});
+                }
+                parsedFormData.guarantors[effectiveSpecificIndex] = { ...single };
+                guarantor = parsedFormData.guarantors[effectiveSpecificIndex];
+              }
+            }
             if (guarantor && Object.keys(guarantor).length > 0) {
               console.log(`🔧 GUARANTOR MAPPING DEBUG: Setting form values for specific guarantor ${effectiveSpecificIndex}`);
               
@@ -4107,6 +4104,7 @@ console.log("#### alldata", allData);
   }, [user, userRole, specificIndex, form, toast, setHasExistingDraft, setFormData, setCurrentStep, setSignatures, setWebhookResponses, setUploadedFilesMetadata, setEncryptedDocuments, setHasCoApplicant, setHasGuarantor, hasCoApplicantData, hasGuarantorData, getActualStepFromSequential]);
   // Track if initial load has happened to prevent multiple triggers
   const initialLoadRef = useRef(false);
+  const isSyncingGuarantorRef = useRef(false);
   
   // Set up welcome message and load draft data
   useEffect(() => {
@@ -5033,6 +5031,18 @@ console.log("#### alldata", allData);
           console.log(`🔍 handleWebhookFileUrl: Mapped guarantors to guarantor: ${searchPerson}`);
         }
       }
+
+      // Normalize documentType if it was passed with person/index prefix
+      // Examples to normalize:
+      // - guarantors_1_photo_id -> photo_id
+      // - coApplicants_0_payStubs -> payStubs
+      // - coApplicant_photo_id -> photo_id
+      const prefixedPattern = new RegExp(`^(?:${searchPerson}|coApplicants|guarantors|coApplicant|guarantor)(?:_\\d+)?_`);
+      if (prefixedPattern.test(searchDocumentType)) {
+        const normalized = searchDocumentType.replace(prefixedPattern, '');
+        console.log(`🔧 Normalized documentType from ${searchDocumentType} -> ${normalized}`);
+        searchDocumentType = normalized;
+      }
       
       console.log(`🔍 handleWebhookFileUrl: Searching for ${searchPerson}.${searchDocumentType}`);
       console.log(`🔍 Available keys in encryptedDocuments:`, Object.keys(updated));
@@ -5325,6 +5335,9 @@ console.log("#### alldata", allData);
       console.log('🛡️ Guarantor data keys:', Object.keys(guarantor));
       console.log('🛡️ Guarantor has name:', !!guarantor.name);
       console.log('🛡️ Guarantor has email:', !!guarantor.email);
+      console.log('🛡️ Guarantor has bankRecords:', !!guarantor.bankRecords);
+      console.log('🛡️ Guarantor bankRecords length:', guarantor.bankRecords?.length || 0);
+      console.log('🛡️ Guarantor bankRecords data:', guarantor.bankRecords);
       
       // Filter webhook responses to only include this guarantor's responses
       const guarantorWebhookResponses = Object.fromEntries(
@@ -5991,6 +6004,8 @@ console.log("#### alldata", allData);
         guarantorsCount: roleScopedForm.guarantors?.length || 0
       });
       console.log('📊 Guarantor draft data to save:', guarantorData);
+      console.log('📊 Guarantor bankRecords in draft data:', guarantorData.bankRecords);
+      console.log('📊 Guarantor bankRecords length:', guarantorData.bankRecords?.length || 0);
       console.log('📊 Role-scoped form structure:', {
         hasGuarantors: !!roleScopedForm.guarantors,
         guarantorsLength: roleScopedForm.guarantors?.length || 0,
@@ -6024,6 +6039,8 @@ console.log("#### alldata", allData);
       console.log('💾 Final guarantor draft data being saved:', {
         role: guarantorDraftData.role,
         guarantor_info_keys: Object.keys(guarantorDraftData.guarantor_info || {}),
+        guarantor_info_bankRecords: guarantorDraftData.guarantor_info?.bankRecords,
+        guarantor_info_bankRecords_length: guarantorDraftData.guarantor_info?.bankRecords?.length || 0,
         occupants_count: guarantorDraftData.occupants?.length || 0,
         has_signature: !!guarantorDraftData.signature,
         current_step: guarantorDraftData.current_step,
@@ -11731,6 +11748,8 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                 )}
                 {(hasGuarantor || (userRole.startsWith('guarantor') && specificIndex !== null)) && (
                   <div className="space-y-4">
+                    {/* Only show guarantor count selector for applicant role */}
+                    {userRole === 'applicant' && (
                     <div className="flex items-center space-x-4">
                       <Label className="text-sm font-medium">How many Guarantors?</Label>
                       <Select
@@ -11812,6 +11831,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                         </SelectContent>
                       </Select>
                     </div>
+                    )}
 
                     {/* Render guarantor forms based on count */}
                     {Array.from({ length: (userRole.startsWith('guarantor') && specificIndex !== null) ? 1 : Math.max(1, formData.guarantorCount || 1) }, (_, index) => {

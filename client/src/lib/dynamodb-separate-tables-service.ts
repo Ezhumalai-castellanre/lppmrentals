@@ -123,6 +123,15 @@ export class DynamoDBSeparateTablesService {
         const digits = String(normalized.landlordZipCode).replace(/\D/g, '');
         normalized.landlordZipCode = digits.slice(0, 5);
       }
+      
+      // Explicitly preserve important nested structures like bankRecords
+      // to ensure they are not lost during normalization
+      if (raw.bankRecords && Array.isArray(raw.bankRecords)) {
+        normalized.bankRecords = raw.bankRecords;
+      }
+      if (raw.bank_records && Array.isArray(raw.bank_records)) {
+        normalized.bankRecords = raw.bank_records;
+      }
     } catch {}
     return normalized;
   }
@@ -1416,10 +1425,17 @@ export class DynamoDBSeparateTablesService {
         webhookSummaryKeys: data.webhookSummary ? Object.keys(data.webhookSummary) : [],
         webhookSummaryTotalResponses: data.webhookSummary?.totalResponses || 0
       });
+      console.log('👥 Input data.coapplicant_info before normalization:', (data as any).coapplicant_info);
+      console.log('👥 Input data.coapplicant_info.bankRecords:', (data as any).coapplicant_info?.bankRecords);
+      
+      // Normalize coapplicant_info while preserving bankRecords
+      const normalizedCoApplicantInfo = this.normalizePersonInfo((data as any).coapplicant_info);
+      console.log('👥 Normalized coapplicant_info:', normalizedCoApplicantInfo);
+      console.log('👥 Normalized coapplicant_info.bankRecords:', normalizedCoApplicantInfo?.bankRecords);
       
       const coApplicantData: CoApplicantData = this.sanitizeForDynamo({
         ...data,
-        coapplicant_info: this.normalizePersonInfo((data as any).coapplicant_info),
+        coapplicant_info: normalizedCoApplicantInfo,
         userId: uniqueUserId,
         role,
         zoneinfo,
@@ -1436,6 +1452,8 @@ export class DynamoDBSeparateTablesService {
         webhookSummaryKeys: coApplicantData.webhookSummary ? Object.keys(coApplicantData.webhookSummary) : [],
         webhookSummaryTotalResponses: coApplicantData.webhookSummary?.totalResponses || 0
       });
+      console.log('👥 coapplicant_info after sanitization:', coApplicantData.coapplicant_info);
+      console.log('👥 coapplicant_info.bankRecords after sanitization:', coApplicantData.coapplicant_info?.bankRecords);
 
       // Check data size and reduce if necessary
       const marshalledData = marshall(coApplicantData, { 
@@ -1801,15 +1819,23 @@ export class DynamoDBSeparateTablesService {
       }
 
       console.log('🛡️ Using userId:', baseUserId, 'role:', role, 'zoneinfo:', zoneinfo, 'appid:', applicationAppid);
+      console.log('🛡️ Input data.guarantor_info before normalization:', (data as any).guarantor_info);
+      console.log('🛡️ Input data.guarantor_info.bankRecords:', (data as any).guarantor_info?.bankRecords);
 
       // Use the logged-in user's sub for userId (no suffix)
       const uniqueUserId = baseUserId;
 
       // Preserve existing timestamp if a draft already exists to avoid duplicate records
       const existingGuarantor = await this.getGuarantorData();
+      
+      // Normalize guarantor_info while preserving bankRecords
+      const normalizedGuarantorInfo = this.normalizePersonInfo((data as any).guarantor_info);
+      console.log('🛡️ Normalized guarantor_info:', normalizedGuarantorInfo);
+      console.log('🛡️ Normalized guarantor_info.bankRecords:', normalizedGuarantorInfo?.bankRecords);
+      
       const guarantorData: GuarantorData = this.sanitizeForDynamo({
         ...data,
-        guarantor_info: this.normalizePersonInfo((data as any).guarantor_info),
+        guarantor_info: normalizedGuarantorInfo,
         userId: uniqueUserId,
         role,
         zoneinfo,
@@ -1822,10 +1848,17 @@ export class DynamoDBSeparateTablesService {
 
       console.log('🛡️ Final guarantorData to save:', guarantorData);
       console.log('🛡️ guarantor_info:', guarantorData.guarantor_info);
+      console.log('🛡️ guarantor_info.bankRecords:', guarantorData.guarantor_info?.bankRecords);
+      console.log('🛡️ guarantor_info.bankRecords type:', typeof guarantorData.guarantor_info?.bankRecords);
+      console.log('🛡️ guarantor_info.bankRecords isArray:', Array.isArray(guarantorData.guarantor_info?.bankRecords));
+
+      const marshalledItem = marshall(guarantorData, { removeUndefinedValues: true, convertClassInstanceToMap: true });
+      console.log('🛡️ Marshalled item:', marshalledItem);
+      console.log('🛡️ Marshalled guarantor_info:', marshalledItem.guarantor_info);
 
       const command = new PutItemCommand({
         TableName: this.tables.guarantors,
-        Item: marshall(guarantorData, { removeUndefinedValues: true, convertClassInstanceToMap: true })
+        Item: marshalledItem
       });
 
       await client.send(command);
