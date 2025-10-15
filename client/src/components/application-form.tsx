@@ -5123,6 +5123,8 @@ console.log("#### alldata", allData);
         [responseKey]: response
       };
       console.log(`💾 Updated webhook responses:`, newResponses);
+      console.log(`💾 New response key added: ${responseKey}`);
+      console.log(`💾 Total webhook responses now:`, Object.keys(newResponses).length);
       return newResponses;
     });
     
@@ -5256,7 +5258,19 @@ console.log("#### alldata", allData);
   const buildRoleScopedFormData = useCallback((data: any, role: string, coGuarIndex?: number): any => {
     if (!role) return data;
     
-    console.log('🔍 buildRoleScopedFormData called with:', { role, coGuarIndex, dataKeys: Object.keys(data) });
+      console.log('🔍 buildRoleScopedFormData called with:', { role, coGuarIndex, dataKeys: Object.keys(data) });
+      console.log('🔍 buildRoleScopedFormData webhookResponses:', data.webhookResponses);
+      console.log('🔍 buildRoleScopedFormData webhookResponses keys:', Object.keys(data.webhookResponses || {}));
+      
+      // Debug: Check what's in the original data.guarantors
+      console.log('🔍 DEBUG: data.guarantors:', data.guarantors);
+      if (data.guarantors && data.guarantors.length > 0) {
+        data.guarantors.forEach((guarantor: any, index: number) => {
+          console.log(`🔍 DEBUG: data.guarantors[${index}]:`, guarantor);
+          console.log(`🔍 DEBUG: data.guarantors[${index}].bankRecords:`, guarantor.bankRecords);
+          console.log(`🔍 DEBUG: data.guarantors[${index}].bankRecords length:`, guarantor.bankRecords?.length || 0);
+        });
+      }
     
     // Applicant saves full dataset
     if (role === 'applicant') {
@@ -5317,9 +5331,19 @@ console.log("#### alldata", allData);
       if (/^guarantor\d+$/.test(role)) {
         const match = role.match(/guarantor(\d+)/);
         index = match ? parseInt(match[1]) - 1 : 0; // Convert 1-based to 0-based index
+        console.log('🛡️ DEBUG: Role-based index calculation:', { role, match, index });
       } else if (typeof coGuarIndex === 'number') {
         index = coGuarIndex;
+        console.log('🛡️ DEBUG: Using coGuarIndex:', { coGuarIndex, index });
       }
+      
+      // FIX: Use coGuarIndex if it's provided, as it's more reliable than role parsing
+      if (typeof coGuarIndex === 'number' && coGuarIndex >= 0) {
+        index = coGuarIndex;
+        console.log('🛡️ DEBUG: Overriding with coGuarIndex:', { coGuarIndex, index });
+      }
+      
+      console.log('🛡️ DEBUG: Final index to use:', index);
       
       console.log('🛡️ Guarantor role detected, using index:', index);
       console.log('🛡️ Data structure:', { 
@@ -5338,21 +5362,53 @@ console.log("#### alldata", allData);
       console.log('🛡️ Guarantor has bankRecords:', !!guarantor.bankRecords);
       console.log('🛡️ Guarantor bankRecords length:', guarantor.bankRecords?.length || 0);
       console.log('🛡️ Guarantor bankRecords data:', guarantor.bankRecords);
+      console.log('🛡️ Guarantor bankRecords type:', typeof guarantor.bankRecords);
+      console.log('🛡️ Guarantor bankRecords isArray:', Array.isArray(guarantor.bankRecords));
+      if (guarantor.bankRecords && guarantor.bankRecords.length > 0) {
+        console.log('🛡️ First bank record:', guarantor.bankRecords[0]);
+        console.log('🛡️ Bank record keys:', Object.keys(guarantor.bankRecords[0] || {}));
+      }
       
       // Filter webhook responses to only include this guarantor's responses
+      console.log('🛡️ Available webhookResponses in data:', data.webhookResponses);
+      console.log('🛡️ WebhookResponses keys:', Object.keys(data.webhookResponses || {}));
+      console.log('🛡️ Looking for keys starting with:', `guarantors_${index}_` + ' OR ' + `guarantor_`);
+      
       const guarantorWebhookResponses = Object.fromEntries(
         Object.entries(data.webhookResponses || {}).filter(([key]) => 
-          key.startsWith(`guarantors_${index}_`) || key.startsWith(`guarantor_${index}_`)
+          key.startsWith(`guarantors_${index}_`) || key.startsWith(`guarantor_`)
         )
       );
       
+      console.log('🛡️ Filtered guarantor webhook responses:', guarantorWebhookResponses);
+      console.log('🛡️ Filtered responses count:', Object.keys(guarantorWebhookResponses).length);
+      console.log('🛡️ All webhook response keys for debugging:', Object.keys(data.webhookResponses || {}));
+      console.log('🛡️ Keys matching guarantors_ pattern:', Object.keys(data.webhookResponses || {}).filter(key => key.startsWith('guarantors_')));
+      console.log('🛡️ Keys matching guarantor_ pattern:', Object.keys(data.webhookResponses || {}).filter(key => key.startsWith('guarantor_')));
+      
+      // Check if we need to include bank records from guarantor data in webhook summary
+      if (guarantor.bankRecords && guarantor.bankRecords.length > 0) {
+        console.log('🛡️ WARNING: Guarantor has bank records but no webhook responses found!');
+        console.log('🛡️ This suggests bank records are stored in guarantor data but not in webhook responses');
+        console.log('🛡️ Bank records count:', guarantor.bankRecords.length);
+        console.log('🛡️ Webhook responses count:', Object.keys(guarantorWebhookResponses).length);
+      }
+      
       // Create webhook summary for this specific guarantor
+      // Include bank records from guarantor data in the count
+      const bankRecordsCount = guarantor.bankRecords?.length || 0;
+      const webhookResponsesCount = Object.keys(guarantorWebhookResponses).length;
+      const totalResponses = webhookResponsesCount + bankRecordsCount;
+      
       const guarantorWebhookSummary = {
-        totalResponses: Object.keys(guarantorWebhookResponses).length,
+        totalResponses: totalResponses,
         responsesByPerson: {
-          guarantor: Object.keys(guarantorWebhookResponses).length
+          guarantor: totalResponses
         },
-        webhookResponses: guarantorWebhookResponses
+        webhookResponses: guarantorWebhookResponses,
+        // Include bank records info for debugging
+        bankRecordsCount: bankRecordsCount,
+        webhookResponsesCount: webhookResponsesCount
       };
       
       console.log('🛡️ Guarantor webhook summary generated:', guarantorWebhookSummary);
@@ -5980,6 +6036,36 @@ console.log("#### alldata", allData);
         webhookResponses: webhookResponses
       });
       
+      // Debug: Check if bank records exist in form data
+      console.log('🔍 DEBUG: Checking form data for bank records...');
+      console.log('🔍 DEBUG: currentFormData.guarantors:', currentFormData.guarantors);
+      if (currentFormData.guarantors && currentFormData.guarantors.length > 0) {
+        currentFormData.guarantors.forEach((guarantor: any, index: number) => {
+          console.log(`🔍 DEBUG: guarantors[${index}]:`, guarantor);
+          console.log(`🔍 DEBUG: guarantors[${index}].bankRecords:`, guarantor.bankRecords);
+          console.log(`🔍 DEBUG: guarantors[${index}].bankRecords length:`, guarantor.bankRecords?.length || 0);
+        });
+      }
+      
+      // Debug: Check actual form values
+      console.log('🔍 DEBUG: Checking actual form values...');
+      const formValues = form.getValues();
+      console.log('🔍 DEBUG: formValues.guarantors:', formValues.guarantors);
+      if (formValues.guarantors && formValues.guarantors.length > 0) {
+        formValues.guarantors.forEach((guarantor: any, index: number) => {
+          console.log(`🔍 DEBUG: formValues.guarantors[${index}]:`, guarantor);
+          console.log(`🔍 DEBUG: formValues.guarantors[${index}].bankRecords:`, guarantor.bankRecords);
+          console.log(`🔍 DEBUG: formValues.guarantors[${index}].bankRecords length:`, guarantor.bankRecords?.length || 0);
+        });
+      }
+      console.log('🔍 DEBUG: formData.webhookResponses vs webhookResponses state:');
+      console.log('🔍 formData.webhookResponses:', currentFormData.webhookResponses);
+      console.log('🔍 webhookResponses state:', webhookResponses);
+      console.log('🔍 Are they the same?', JSON.stringify(currentFormData.webhookResponses) === JSON.stringify(webhookResponses));
+      console.log('🔍 DEBUG: Original formData.guarantors:', currentFormData.guarantors);
+      console.log('🔍 DEBUG: Original formData.guarantors[2]:', currentFormData.guarantors?.[2]);
+      console.log('🔍 DEBUG: Original formData.guarantors[2].bankRecords:', currentFormData.guarantors?.[2]?.bankRecords);
+      
       // Build role-scoped data to avoid overwriting unrelated sections
       // Pass webhookResponses to the function so it can filter them properly
       const formDataWithWebhooks = {
@@ -5993,6 +6079,8 @@ console.log("#### alldata", allData);
         userRole: userRole,
         specificIndex: specificIndex
       });
+      console.log('🔍 DEBUG: All webhook response keys:', Object.keys(webhookResponses || {}));
+      console.log('🔍 DEBUG: Webhook responses for guarantors:', Object.keys(webhookResponses || {}).filter(key => key.includes('guarantor')));
       const roleScopedForm = buildRoleScopedFormData(formDataWithWebhooks, userRole || '', specificIndex ?? undefined);
       const roleScopedSign = buildRoleScopedSignatures(signatures, userRole || '', specificIndex ?? undefined);
 
@@ -6006,6 +6094,10 @@ console.log("#### alldata", allData);
       console.log('📊 Guarantor draft data to save:', guarantorData);
       console.log('📊 Guarantor bankRecords in draft data:', guarantorData.bankRecords);
       console.log('📊 Guarantor bankRecords length:', guarantorData.bankRecords?.length || 0);
+      console.log('📊 DEBUG: Full guarantorData object:', JSON.stringify(guarantorData, null, 2));
+      console.log('📊 DEBUG: guarantorData keys:', Object.keys(guarantorData));
+      console.log('📊 DEBUG: guarantorData.bankRecords type:', typeof guarantorData.bankRecords);
+      console.log('📊 DEBUG: guarantorData.bankRecords isArray:', Array.isArray(guarantorData.bankRecords));
       console.log('📊 Role-scoped form structure:', {
         hasGuarantors: !!roleScopedForm.guarantors,
         guarantorsLength: roleScopedForm.guarantors?.length || 0,
@@ -6016,6 +6108,34 @@ console.log("#### alldata", allData);
       });
       
       // Save Guarantor data to Guarantors_nyc table with simplified structure
+      console.log('🔍 DEBUG: Before creating guarantorDraftData...');
+      console.log('🔍 DEBUG: guarantorData:', guarantorData);
+      console.log('🔍 DEBUG: guarantorData.bankRecords:', guarantorData.bankRecords);
+      console.log('🔍 DEBUG: guarantorData.bankRecords length:', guarantorData.bankRecords?.length || 0);
+      
+      // Debug: Check what's in the original form data
+      console.log('🔍 DEBUG: Checking original form data...');
+      console.log('🔍 DEBUG: currentFormData.guarantors:', currentFormData.guarantors);
+      if (currentFormData.guarantors && currentFormData.guarantors.length > 0) {
+        currentFormData.guarantors.forEach((guarantor: any, index: number) => {
+          console.log(`🔍 DEBUG: formData.guarantors[${index}]:`, guarantor);
+          console.log(`🔍 DEBUG: formData.guarantors[${index}].bankRecords:`, guarantor.bankRecords);
+          console.log(`🔍 DEBUG: formData.guarantors[${index}].bankRecords length:`, guarantor.bankRecords?.length || 0);
+        });
+      }
+      
+      // Debug: Check actual form values
+      console.log('🔍 DEBUG: Checking actual form values...');
+      const currentFormValues = form.getValues();
+      console.log('🔍 DEBUG: currentFormValues.guarantors:', currentFormValues.guarantors);
+      if (currentFormValues.guarantors && currentFormValues.guarantors.length > 0) {
+        currentFormValues.guarantors.forEach((guarantor: any, index: number) => {
+          console.log(`🔍 DEBUG: currentFormValues.guarantors[${index}]:`, guarantor);
+          console.log(`🔍 DEBUG: currentFormValues.guarantors[${index}].bankRecords:`, guarantor.bankRecords);
+          console.log(`🔍 DEBUG: currentFormValues.guarantors[${index}].bankRecords length:`, guarantor.bankRecords?.length || 0);
+        });
+      }
+      
       const guarantorDraftData = {
         role: 'guarantor',
         guarantor_info: guarantorData,
@@ -6058,6 +6178,10 @@ console.log("#### alldata", allData);
         webhookSummary: guarantorDraftData.webhookSummary
       });
 
+      console.log('🔍 DEBUG: About to save guarantor data with bank records check...');
+      console.log('🔍 DEBUG: guarantorDraftData.guarantor_info.bankRecords:', guarantorDraftData.guarantor_info?.bankRecords);
+      console.log('🔍 DEBUG: guarantorDraftData.guarantor_info.bankRecords length:', guarantorDraftData.guarantor_info?.bankRecords?.length || 0);
+      
       const guarantorSaveResult = await dynamoDBSeparateTablesUtils.saveGuarantorDataNew(guarantorDraftData, appid);
       
       if (guarantorSaveResult) {
