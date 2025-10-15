@@ -1247,20 +1247,392 @@ export function ApplicationForm() {
     });
   }, []);
 
-  // Debug: Monitor form data changes for co-applicants (disabled to prevent log spam)
-  // useEffect(() => {
-  //   console.log('######### formData:', formData);
-  //   if (formData.coApplicants && Array.isArray(formData.coApplicants)) {
-  //     console.log('📊 Co-applicants in form data:', formData.coApplicants);
-  //     console.log('📊 Co-applicants count:', formData.coApplicants.length);
-  //     formData.coApplicants.forEach((coApp: any, index: number) => {
-  //       if (coApp && Object.keys(coApp).length > 0) {
-  //         console.log(`📊 Co-applicant ${index}:`, coApp);
-  //       }
-  //     });
-  //   }
-  // }, [formData.coApplicants]);
+      // AUTO-POPULATION: Ensure form fields are synced with formData
+  useEffect(() => {
+    if (formData.coApplicants && Array.isArray(formData.coApplicants) && formData.coApplicants.length > 0) {
+          console.log('🔧 AUTO-POPULATION: useEffect triggered - syncing form fields with formData');
+          console.log('🔧 AUTO-POPULATION: formData.coApplicants:', formData.coApplicants);
+          console.log('🔧 AUTO-POPULATION: Current specificIndex:', specificIndex);
+          console.log('🔧 AUTO-POPULATION: User role:', user?.role);
 
+          // Determine the target index for syncing
+          let targetIndex = 0; // Default to index 0
+          if (user?.role && user.role.startsWith('coapplicant') && /coapplicant\d+/.test(user.role)) {
+            const match = user.role.match(/coapplicant(\d+)/);
+            if (match) {
+              targetIndex = parseInt(match[1], 10) - 1; // Convert to 0-based index
+              console.log(`🔧 AUTO-POPULATION: Using specific index ${targetIndex} for role ${user.role}`);
+            }
+          } else if (specificIndex !== null && specificIndex !== undefined) {
+            targetIndex = specificIndex;
+            console.log(`🔧 AUTO-POPULATION: Using specificIndex ${targetIndex}`);
+          }
+
+          // Only sync the target co-applicant that has meaningful data
+          const coApplicantToSync = formData.coApplicants[targetIndex];
+          if (coApplicantToSync && Object.keys(coApplicantToSync).length > 0) {
+            // Check if this co-applicant has meaningful data (not just otherIncomeFrequency)
+            const hasMeaningfulData = coApplicantToSync.name || coApplicantToSync.email || coApplicantToSync.phone || coApplicantToSync.ssn || coApplicantToSync.address;
+
+            if (hasMeaningfulData) {
+              console.log(`🔧 AUTO-POPULATION: Syncing coApplicant[${targetIndex}] (has meaningful data):`, coApplicantToSync);
+
+              // Sync all fields with form
+              const fieldsToSync = [
+                'name', 'relationship', 'ssn', 'phone', 'email', 'address', 'city', 'state', 'zip',
+                'license', 'licenseState', 'employmentType', 'employer', 'employerName', 'employerPhone',
+                'position', 'employerPosition', 'income', 'monthlyIncome', 'otherIncome', 'otherIncomeFrequency', 
+                'otherIncomeSource', 'creditScore', 'landlordName', 'landlordAddressLine1', 'landlordAddressLine2', 
+                'landlordCity', 'landlordState', 'landlordZipCode', 'landlordPhone', 'landlordEmail',
+                'employmentStart', 'bankRecords', 'lengthAtAddressYears', 'lengthAtAddressMonths', 
+                'currentRent', 'reasonForMoving'
+              ];
+
+              fieldsToSync.forEach(field => {
+                // Special handling for different field types
+                let shouldSync = false;
+                let value = coApplicantToSync[field];
+                
+                if (field === 'bankRecords') {
+                  // For bank records, check if it's an array with content
+                  shouldSync = Array.isArray(value) && value.length > 0;
+                } else if (field === 'employmentStart') {
+                  // For employment start date, check if it exists
+                  shouldSync = value !== undefined && value !== null;
+                } else if (field === 'lengthAtAddressYears' || field === 'lengthAtAddressMonths' || field === 'currentRent') {
+                  // For numeric fields, allow 0 values
+                  shouldSync = value !== undefined && value !== null && value !== '';
+                } else {
+                  // For other fields, use the original validation
+                  shouldSync = value !== undefined && value !== null && value !== '';
+                }
+                
+                if (shouldSync) {
+                  const formFieldName = `coApplicants.${targetIndex}.${field}`;
+                  const currentFormValue = form.getValues(formFieldName as any);
+                  
+                  // Special comparison for different field types
+                  let valuesMatch = false;
+                  if (field === 'bankRecords') {
+                    valuesMatch = JSON.stringify(currentFormValue) === JSON.stringify(value);
+                  } else if (field === 'employmentStart') {
+                    valuesMatch = currentFormValue && value && 
+                      (currentFormValue instanceof Date && value instanceof Date && 
+                       currentFormValue.getTime() === value.getTime());
+                  } else {
+                    valuesMatch = currentFormValue === value;
+                  }
+                  
+                  if (!valuesMatch) {
+                    console.log(`🔧 AUTO-POPULATION: Syncing ${formFieldName}: ${currentFormValue} -> ${value}`);
+                    form.setValue(formFieldName as any, value);
+                    
+                    // Also update formData state for UI display
+                    setFormData((prevData: any) => {
+                      const updated = { ...prevData };
+                      if (!updated.coApplicants) updated.coApplicants = [];
+                      if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
+                      updated.coApplicants[targetIndex][field] = value;
+                      return updated;
+                    });
+                  }
+                } else {
+                  console.log(`🔧 AUTO-POPULATION: Skipping sync for ${field} (value: ${value}, type: ${typeof value})`);
+                }
+              });
+
+              // Handle field name mappings for FinancialSection compatibility
+              const fieldMappings = [
+                { from: 'employerName', to: 'employer' },
+                { from: 'employerPosition', to: 'position' },
+                { from: 'monthlyIncome', to: 'income' }
+              ];
+
+              fieldMappings.forEach(mapping => {
+                if (coApplicantToSync[mapping.from] !== undefined && coApplicantToSync[mapping.from] !== null && coApplicantToSync[mapping.from] !== '') {
+                  const formFieldName = `coApplicants.${targetIndex}.${mapping.to}`;
+                  const currentFormValue = form.getValues(formFieldName as any);
+                  if (currentFormValue !== coApplicantToSync[mapping.from]) {
+                    console.log(`🔧 AUTO-POPULATION: Syncing mapped ${formFieldName}: ${currentFormValue} -> ${coApplicantToSync[mapping.from]}`);
+                    form.setValue(formFieldName as any, coApplicantToSync[mapping.from]);
+                    
+                    // Also update formData state for UI display
+                    setFormData((prevData: any) => {
+                      const updated = { ...prevData };
+                      if (!updated.coApplicants) updated.coApplicants = [];
+                      if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
+                      updated.coApplicants[targetIndex][mapping.to] = coApplicantToSync[mapping.from];
+                      return updated;
+                    });
+                  }
+                }
+              });
+
+              // Handle date of birth
+              if (coApplicantToSync.dob) {
+                const dobValue = new Date(coApplicantToSync.dob);
+                const formFieldName = `coApplicants.${targetIndex}.dob`;
+                const currentFormValue = form.getValues(formFieldName as any);
+                if (!currentFormValue || (currentFormValue instanceof Date && currentFormValue.getTime() !== dobValue.getTime())) {
+                  console.log(`🔧 AUTO-POPULATION: Syncing ${formFieldName}: ${currentFormValue} -> ${dobValue}`);
+                  form.setValue(formFieldName as any, dobValue);
+                  
+                  // Also update formData state for UI display
+                  setFormData((prevData: any) => {
+                    const updated = { ...prevData };
+                    if (!updated.coApplicants) updated.coApplicants = [];
+                    if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
+                    updated.coApplicants[targetIndex].dob = dobValue;
+                    return updated;
+                  });
+                }
+              }
+
+              // Handle employment start date
+              if (coApplicantToSync.employmentStart) {
+                const employmentStartValue = new Date(coApplicantToSync.employmentStart);
+                const formFieldName = `coApplicants.${targetIndex}.employmentStart`;
+                const currentFormValue = form.getValues(formFieldName as any);
+                if (!currentFormValue || (currentFormValue instanceof Date && currentFormValue.getTime() !== employmentStartValue.getTime())) {
+                  console.log(`🔧 AUTO-POPULATION: Syncing ${formFieldName}: ${currentFormValue} -> ${employmentStartValue}`);
+                  form.setValue(formFieldName as any, employmentStartValue);
+                  
+                  // Also update formData state for UI display
+                  setFormData((prevData: any) => {
+                    const updated = { ...prevData };
+                    if (!updated.coApplicants) updated.coApplicants = [];
+                    if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
+                    updated.coApplicants[targetIndex].employmentStart = employmentStartValue;
+                    return updated;
+                  });
+                }
+              }
+
+              // Handle bank records (array field)
+              if (coApplicantToSync.bankRecords && Array.isArray(coApplicantToSync.bankRecords) && coApplicantToSync.bankRecords.length > 0) {
+                const formFieldName = `coApplicants.${targetIndex}.bankRecords`;
+                const currentFormValue = form.getValues(formFieldName as any);
+                if (!currentFormValue || JSON.stringify(currentFormValue) !== JSON.stringify(coApplicantToSync.bankRecords)) {
+                  console.log(`🔧 AUTO-POPULATION: Syncing ${formFieldName}:`, coApplicantToSync.bankRecords);
+                  form.setValue(formFieldName as any, coApplicantToSync.bankRecords);
+                  
+                  // Also update formData state for UI display
+                  setFormData((prevData: any) => {
+                    const updated = { ...prevData };
+                    if (!updated.coApplicants) updated.coApplicants = [];
+                    if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
+                    updated.coApplicants[targetIndex].bankRecords = coApplicantToSync.bankRecords;
+                    return updated;
+                  });
+                }
+              }
+            } else {
+              console.log(`🔧 AUTO-POPULATION: Skipping coApplicant[${targetIndex}] (no meaningful data):`, coApplicantToSync);
+            }
+          } else {
+            console.log(`🔧 AUTO-POPULATION: No co-applicant data found at index ${targetIndex}`);
+          }
+        }
+      }, [formData.coApplicants, form, specificIndex, user?.role]);
+
+  // AUTO-POPULATION: Ensure guarantor form fields are synced with formData
+  useEffect(() => {
+    console.log('🔧 AUTO-POPULATION: useEffect triggered - checking guarantor form fields sync');
+    console.log('🔧 AUTO-POPULATION: formData.guarantors exists:', !!formData.guarantors);
+    console.log('🔧 AUTO-POPULATION: formData.guarantors is array:', Array.isArray(formData.guarantors));
+    console.log('🔧 AUTO-POPULATION: formData.guarantors length:', formData.guarantors?.length);
+    
+    if (formData.guarantors && Array.isArray(formData.guarantors) && formData.guarantors.length > 0) {
+      console.log('🔧 AUTO-POPULATION: useEffect triggered - syncing guarantor form fields with formData');
+      console.log('🔧 AUTO-POPULATION: formData.guarantors:', formData.guarantors);
+      console.log('🔧 AUTO-POPULATION: formData.guarantors[0]:', formData.guarantors[0]);
+      console.log('🔧 AUTO-POPULATION: Current specificIndex:', specificIndex);
+      console.log('🔧 AUTO-POPULATION: User role:', user?.role);
+      console.log('#### USEEFFECT GUARANTOR SYNC: formData.guarantors:', formData.guarantors);
+      console.log('#### USEEFFECT GUARANTOR SYNC: formData.guarantors[0]:', formData.guarantors[0]);
+
+      // Determine the target index for syncing
+      let targetIndex = 0; // Default to index 0
+      if (user?.role && user.role.startsWith('guarantor') && /guarantor\d+/.test(user.role)) {
+        const match = user.role.match(/guarantor(\d+)/);
+        if (match) {
+          targetIndex = parseInt(match[1], 10) - 1; // Convert to 0-based index
+          console.log(`🔧 AUTO-POPULATION: Using specific index ${targetIndex} for role ${user.role}`);
+        }
+      } else if (specificIndex !== null && specificIndex !== undefined) {
+        targetIndex = specificIndex;
+        console.log(`🔧 AUTO-POPULATION: Using specificIndex ${targetIndex}`);
+      }
+
+      // Only sync the target guarantor that has meaningful data
+      const guarantorToSync = formData.guarantors[targetIndex];
+      if (guarantorToSync && Object.keys(guarantorToSync).length > 0) {
+        // Check if this guarantor has meaningful data (not just otherIncomeFrequency)
+        const hasMeaningfulData = guarantorToSync.name || guarantorToSync.email || guarantorToSync.phone || guarantorToSync.ssn || guarantorToSync.address || guarantorToSync.license || guarantorToSync.licenseState || guarantorToSync.relationship || guarantorToSync.state || guarantorToSync.zip;
+
+        if (hasMeaningfulData) {
+          console.log(`🔧 AUTO-POPULATION: Syncing guarantor[${targetIndex}] (has meaningful data):`, guarantorToSync);
+
+          // Sync all fields with form
+          const fieldsToSync = [
+            'name', 'relationship', 'ssn', 'phone', 'email', 'address', 'city', 'state', 'zip',
+            'license', 'licenseState', 'employmentType', 'employer', 'employerName', 'employerPhone',
+            'position', 'employerPosition', 'income', 'monthlyIncome', 'otherIncome', 'otherIncomeFrequency', 
+            'otherIncomeSource', 'creditScore', 'landlordName', 'landlordAddressLine1', 'landlordAddressLine2', 
+            'landlordCity', 'landlordState', 'landlordZipCode', 'landlordPhone', 'landlordEmail',
+            'employmentStart', 'bankRecords', 'lengthAtAddressYears', 'lengthAtAddressMonths', 
+            'currentRent', 'reasonForMoving'
+          ];
+
+          fieldsToSync.forEach(field => {
+            // Special handling for different field types
+            let shouldSync = false;
+            let value = guarantorToSync[field];
+            
+            if (field === 'bankRecords') {
+              // For bank records, check if it's an array with content
+              shouldSync = Array.isArray(value) && value.length > 0;
+            } else if (field === 'employmentStart') {
+              // For employment start date, check if it exists
+              shouldSync = value !== undefined && value !== null;
+            } else if (field === 'lengthAtAddressYears' || field === 'lengthAtAddressMonths' || field === 'currentRent') {
+              // For numeric fields, allow 0 values
+              shouldSync = value !== undefined && value !== null && value !== '';
+            } else {
+              // For other fields, allow any non-null/undefined values (including empty strings for some fields)
+              shouldSync = value !== undefined && value !== null;
+            }
+            
+            if (shouldSync) {
+              const formFieldName = `guarantors.${targetIndex}.${field}`;
+              const currentFormValue = form.getValues(formFieldName as any);
+              
+              // Special comparison for different field types
+              let valuesMatch = false;
+              if (field === 'bankRecords') {
+                valuesMatch = JSON.stringify(currentFormValue) === JSON.stringify(value);
+              } else if (field === 'employmentStart') {
+                valuesMatch = currentFormValue && value && 
+                  (currentFormValue instanceof Date && value instanceof Date && 
+                   currentFormValue.getTime() === value.getTime());
+              } else {
+                valuesMatch = currentFormValue === value;
+              }
+              
+              if (!valuesMatch) {
+                console.log(`🔧 AUTO-POPULATION: Syncing ${formFieldName}: ${currentFormValue} -> ${value}`);
+                form.setValue(formFieldName as any, value);
+                
+                // Also update formData state for UI display
+                setFormData((prevData: any) => {
+                  const updated = { ...prevData };
+                  if (!updated.guarantors) updated.guarantors = [];
+                  if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
+                  updated.guarantors[targetIndex][field] = value;
+                  console.log(`🔧 AUTO-POPULATION: Updated formData.guarantors[${targetIndex}].${field} = ${value}`);
+                  return updated;
+                });
+              } else {
+                console.log(`🔧 AUTO-POPULATION: Values already match for ${formFieldName}: ${currentFormValue}`);
+              }
+            } else {
+              console.log(`🔧 AUTO-POPULATION: Skipping sync for ${field} (value: ${value}, type: ${typeof value})`);
+            }
+          });
+
+          // Handle field name mappings for FinancialSection compatibility
+          const fieldMappings = [
+            { from: 'employerName', to: 'employer' },
+            { from: 'employerPosition', to: 'position' },
+            { from: 'monthlyIncome', to: 'income' }
+          ];
+
+          fieldMappings.forEach(mapping => {
+            if (guarantorToSync[mapping.from] !== undefined && guarantorToSync[mapping.from] !== null && guarantorToSync[mapping.from] !== '') {
+              const formFieldName = `guarantors.${targetIndex}.${mapping.to}`;
+              const currentFormValue = form.getValues(formFieldName as any);
+              if (currentFormValue !== guarantorToSync[mapping.from]) {
+                console.log(`🔧 AUTO-POPULATION: Syncing mapped ${formFieldName}: ${currentFormValue} -> ${guarantorToSync[mapping.from]}`);
+                form.setValue(formFieldName as any, guarantorToSync[mapping.from]);
+                
+                // Also update formData state for UI display
+                setFormData((prevData: any) => {
+                  const updated = { ...prevData };
+                  if (!updated.guarantors) updated.guarantors = [];
+                  if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
+                  updated.guarantors[targetIndex][mapping.to] = guarantorToSync[mapping.from];
+                  return updated;
+                });
+              }
+            }
+          });
+
+          // Handle date of birth
+          if (guarantorToSync.dob) {
+            const dobValue = new Date(guarantorToSync.dob);
+            const formFieldName = `guarantors.${targetIndex}.dob`;
+            const currentFormValue = form.getValues(formFieldName as any);
+            if (!currentFormValue || (currentFormValue instanceof Date && currentFormValue.getTime() !== dobValue.getTime())) {
+              console.log(`🔧 AUTO-POPULATION: Syncing ${formFieldName}: ${currentFormValue} -> ${dobValue}`);
+              form.setValue(formFieldName as any, dobValue);
+              
+              // Also update formData state for UI display
+              setFormData((prevData: any) => {
+                const updated = { ...prevData };
+                if (!updated.guarantors) updated.guarantors = [];
+                if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
+                updated.guarantors[targetIndex].dob = dobValue;
+                return updated;
+              });
+            }
+          }
+
+          // Handle employment start date
+          if (guarantorToSync.employmentStart) {
+            const employmentStartValue = new Date(guarantorToSync.employmentStart);
+            const formFieldName = `guarantors.${targetIndex}.employmentStart`;
+            const currentFormValue = form.getValues(formFieldName as any);
+            if (!currentFormValue || (currentFormValue instanceof Date && currentFormValue.getTime() !== employmentStartValue.getTime())) {
+              console.log(`🔧 AUTO-POPULATION: Syncing ${formFieldName}: ${currentFormValue} -> ${employmentStartValue}`);
+              form.setValue(formFieldName as any, employmentStartValue);
+              
+              // Also update formData state for UI display
+              setFormData((prevData: any) => {
+                const updated = { ...prevData };
+                if (!updated.guarantors) updated.guarantors = [];
+                if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
+                updated.guarantors[targetIndex].employmentStart = employmentStartValue;
+                return updated;
+              });
+            }
+          }
+
+          // Handle bank records (array field)
+          if (guarantorToSync.bankRecords && Array.isArray(guarantorToSync.bankRecords) && guarantorToSync.bankRecords.length > 0) {
+            const formFieldName = `guarantors.${targetIndex}.bankRecords`;
+            const currentFormValue = form.getValues(formFieldName as any);
+            if (!currentFormValue || JSON.stringify(currentFormValue) !== JSON.stringify(guarantorToSync.bankRecords)) {
+              console.log(`🔧 AUTO-POPULATION: Syncing ${formFieldName}:`, guarantorToSync.bankRecords);
+              form.setValue(formFieldName as any, guarantorToSync.bankRecords);
+              
+              // Also update formData state for UI display
+              setFormData((prevData: any) => {
+                const updated = { ...prevData };
+                if (!updated.guarantors) updated.guarantors = [];
+                if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
+                updated.guarantors[targetIndex].bankRecords = guarantorToSync.bankRecords;
+                return updated;
+              });
+            }
+          }
+        } else {
+          console.log(`🔧 AUTO-POPULATION: Skipping guarantor[${targetIndex}] (no meaningful data):`, guarantorToSync);
+        }
+      } else {
+        console.log(`🔧 AUTO-POPULATION: No guarantor data found at index ${targetIndex}`);
+      }
+    }
+  }, [formData.guarantors, form, specificIndex, user?.role]);
 
   // Handle webhook responses from formData when it changes
   useEffect(() => {
@@ -1441,6 +1813,8 @@ export function ApplicationForm() {
       console.log('🔍 Applicant webhookSummary:', allData.applicant?.webhookSummary);
       console.log('🔍 CoApplicant webhookSummary:', allData.coApplicant?.webhookSummary);
       console.log('🔍 Guarantor webhookSummary:', allData.guarantor?.webhookSummary);
+      console.log('🔍 DEBUG: allData.coApplicant structure:', allData.coApplicant);
+      console.log('🔍 DEBUG: allData.coApplicant.coapplicant_info:', allData.coApplicant?.coapplicant_info);
       
       // If we have a specific application ID, try to load data for that specific application
       if (applicationId && applicationId !== user?.applicantId) {
@@ -1464,9 +1838,16 @@ export function ApplicationForm() {
         // Get co-applicants and guarantors
         let coApplicantsArray: any[] = [];
         let guarantorsArray: any[] = [];
-        if (allData.applicant) {
+        
+        // Prioritize allData.coApplicant.coapplicant_info for auto-population
+        if (allData.coApplicant && allData.coApplicant.coapplicant_info) {
+          console.log('📊 Using allData.coApplicant.coapplicant_info for auto-population');
+          coApplicantsArray = [normalizeCoApplicantInfo(allData.coApplicant.coapplicant_info)];
+          console.log('🔍 DEBUG: coApplicantsArray after allData.coApplicant:', coApplicantsArray);
+        } else if (allData.applicant) {
           coApplicantsArray = allData.applicant.co_applicants || [];
           guarantorsArray = allData.applicant.guarantors || [];
+          console.log('🔍 DEBUG: coApplicantsArray after allData.applicant:', coApplicantsArray);
         }
 
         // If appId is available, augment from separate tables to ensure full array data
@@ -1482,14 +1863,21 @@ export function ApplicationForm() {
             console.log('📊 Loaded guarantors:', guarantorsByAppId);
             
             if (Array.isArray(coAppsByAppId) && coAppsByAppId.length > 0) {
+              // Only use separate table data if we don't already have allData.coApplicant data
+              if (!allData.coApplicant || !allData.coApplicant.coapplicant_info) {
               // Normalize to plain co-applicant_info objects with field name normalization
               coApplicantsArray = coAppsByAppId.map((c: any) => {
                 const coInfo = c?.coapplicant_info || c || {};
-                return normalizeCoApplicantInfo(coInfo);
-              });
-              console.log('📊 Normalized co-applicants array:', coApplicantsArray);
+                  return normalizeCoApplicantInfo(coInfo);
+                });
+                console.log('📊 Normalized co-applicants array from separate tables:', coApplicantsArray);
+              } else {
+                console.log('📊 Skipping separate table co-applicants data - using allData.coApplicant instead');
+              }
             }
             if (Array.isArray(guarantorsByAppId) && guarantorsByAppId.length > 0) {
+              // Only use separate table data if we don't already have allData.guarantor data
+              if (!allData.guarantor || !allData.guarantor.guarantor_info) {
               // Normalize to plain guarantor_info objects with field name normalization
               guarantorsArray = guarantorsByAppId.map((g: any) => {
                 const guarantorInfo = g?.guarantor_info || g || {};
@@ -1501,7 +1889,10 @@ export function ApplicationForm() {
                 console.log('🔍 GUARANTOR_INFO DEBUG: Normalized guarantor_info from guarantorsByAppId:', normalizedGuarantorInfo);
                 return normalizedGuarantorInfo;
               });
-              console.log('📊 Normalized guarantors array:', guarantorsArray);
+                console.log('📊 Normalized guarantors array from separate tables:', guarantorsArray);
+              } else {
+                console.log('📊 Skipping separate table guarantors data - using allData.guarantor instead');
+              }
             }
           }
         } catch (e) {
@@ -1518,17 +1909,21 @@ export function ApplicationForm() {
         if (user && user.role && user.role.startsWith('coapplicant')) {
           console.log('🔄 Processing Co-Applicant role data mapping...');
           console.log('🔍 Current specificIndex:', specificIndex);
+console.log("#### alldata", allData);
 
           // Prefer Co-Applicants table data for co-applicant role
-          if (allData.coApplicant && allData.coApplicant.coapplicant_info) {
+        if (allData.coApplicant && allData.coApplicant.coapplicant_info) {
             console.log('📊 Using coapplicant_info from Co-Applicants table for Co-Applicant role');
-            coApplicantsArray = [normalizeCoApplicantInfo(allData.coApplicant.coapplicant_info)];
-            // Also load webhookSummary from co-applicant data
-            if (allData.coApplicant.webhookSummary) {
-              parsedFormData.webhookSummary = allData.coApplicant.webhookSummary;
-              console.log('🔍 Loaded webhookSummary from co-applicant data:', parsedFormData.webhookSummary);
+            // Only set coApplicantsArray if it's not already populated from the earlier logic
+            if (coApplicantsArray.length === 0) {
+          coApplicantsArray = [normalizeCoApplicantInfo(allData.coApplicant.coapplicant_info)];
             }
+          // Also load webhookSummary from co-applicant data
+          if (allData.coApplicant.webhookSummary) {
+            parsedFormData.webhookSummary = allData.coApplicant.webhookSummary;
+            console.log('🔍 Loaded webhookSummary from co-applicant data:', parsedFormData.webhookSummary);
           }
+        }
           // Check if data exists in coApplicantsArray from previous loading
           else if (coApplicantsArray.length > 0) {
             console.log('📊 Using existing coApplicantsArray for Co-Applicant role');
@@ -1583,7 +1978,18 @@ export function ApplicationForm() {
             const normalizedGuarantorInfo = normalizeGuarantorInfo(allData.guarantor.guarantor_info);
             
             console.log('🔍 GUARANTOR_INFO DEBUG: Normalized guarantor_info data:', normalizedGuarantorInfo);
+            
+            // Check if the normalized data has meaningful content (not just empty strings)
+            const hasMeaningfulData = normalizedGuarantorInfo.name || normalizedGuarantorInfo.email || normalizedGuarantorInfo.phone || normalizedGuarantorInfo.ssn || normalizedGuarantorInfo.address || normalizedGuarantorInfo.license || normalizedGuarantorInfo.relationship;
+            
+            if (hasMeaningfulData) {
+              console.log('📊 Using allData.guarantor data - has meaningful content');
             guarantorsArray = [normalizedGuarantorInfo];
+              console.log('📊 Set guarantorsArray to allData.guarantor data:', guarantorsArray);
+            } else {
+              console.log('📊 allData.guarantor data is empty - will use separate table data if available');
+              // Don't override guarantorsArray if allData.guarantor is empty
+            }
             
             // Also load webhookSummary from guarantor data
             if (allData.guarantor.webhookSummary) {
@@ -1705,7 +2111,7 @@ export function ApplicationForm() {
         // If no co-applicants/guarantors found on applicant_nyc, try separate tables by appid
         try {
           const currentAppId = allData.application?.appid;
-          if ((!coApplicantsArray || coApplicantsArray.length === 0) && currentAppId) {
+          if ((!coApplicantsArray || coApplicantsArray.length === 0) && currentAppId && (!allData.coApplicant || !allData.coApplicant.coapplicant_info)) {
             const coApps = await dynamoDBSeparateTablesUtils.getCoApplicantsByAppId(currentAppId);
             if (coApps && coApps.length > 0) {
               coApplicantsArray = coApps.map((c: any) => normalizeCoApplicantInfo(c.coapplicant_info || {}));
@@ -1736,14 +2142,26 @@ export function ApplicationForm() {
         parsedFormData.occupants = parsedFormData.occupants || [];
         
         // Restore co-applicant data into form structure - CONSOLIDATED LOGIC
+        console.log('🔍 DEBUG: About to process coApplicantsArray, length:', coApplicantsArray.length);
+        console.log('🔍 DEBUG: coApplicantsArray content:', coApplicantsArray);
         if (coApplicantsArray.length > 0) {
           // Use data from coApplicantsArray (from separate tables)
+          // If we have data from allData.coApplicant, ensure we only use that and clear others
+          if (allData.coApplicant && allData.coApplicant.coapplicant_info) {
+            console.log('🔧 AUTO-POPULATION: Using allData.coApplicant data - ensuring only 1 co-applicant');
+            parsedFormData.coApplicants = [coApplicantsArray[0]]; // Only use the first (correct) co-applicant
+            parsedFormData.coApplicant = coApplicantsArray[0] || {};
+            parsedFormData.coApplicantCount = 1; // Set count to 1
+          } else {
           parsedFormData.coApplicants = coApplicantsArray;
           parsedFormData.coApplicant = coApplicantsArray[0] || {};
-          console.log('📊 Using coApplicantsArray for co-applicant data:', coApplicantsArray.length, 'items');
+            parsedFormData.coApplicantCount = Math.max(parsedFormData.coApplicantCount || 0, coApplicantsArray.length);
+          }
+          console.log('📊 Using coApplicantsArray for co-applicant data:', parsedFormData.coApplicants.length, 'items');
+          console.log('🔍 DEBUG: parsedFormData.coApplicants set to:', parsedFormData.coApplicants);
+          console.log('🔍 DEBUG: parsedFormData.coApplicant set to:', parsedFormData.coApplicant);
           // Ensure checkbox/counts align so Co-Applicant steps render
           if (!parsedFormData.hasCoApplicant) parsedFormData.hasCoApplicant = true;
-          parsedFormData.coApplicantCount = Math.max(parsedFormData.coApplicantCount || 0, coApplicantsArray.length);
         } else if (parsedFormData.coApplicant && Object.keys(parsedFormData.coApplicant).length > 0) {
           // If no coApplicantsArray but we have coApplicant data, map it to coApplicants array
           console.log('📊 Mapping singular coApplicant data to coApplicants array');
@@ -1764,8 +2182,30 @@ export function ApplicationForm() {
         
         if (guarantorsArray.length > 0) {
           // Use data from guarantorsArray (from separate tables)
+          // If we have data from allData.guarantor, check if it has meaningful content
+          if (allData.guarantor && allData.guarantor.guarantor_info) {
+            const normalizedGuarantorInfo = normalizeGuarantorInfo(allData.guarantor.guarantor_info);
+            const hasMeaningfulData = normalizedGuarantorInfo.name || normalizedGuarantorInfo.email || normalizedGuarantorInfo.phone || normalizedGuarantorInfo.ssn || normalizedGuarantorInfo.address || normalizedGuarantorInfo.license || normalizedGuarantorInfo.relationship;
+            
+            if (hasMeaningfulData) {
+              console.log('🔧 AUTO-POPULATION: Using allData.guarantor data - has meaningful content');
+              parsedFormData.guarantors = [normalizedGuarantorInfo]; // Use the normalized allData.guarantor data
+              parsedFormData.guarantor = normalizedGuarantorInfo;
+              parsedFormData.guarantorCount = 1; // Set count to 1
+              console.log('🔧 AUTO-POPULATION: Set parsedFormData.guarantors to allData.guarantor data:', parsedFormData.guarantors);
+              console.log('#### GUARANTOR DATA PRIORITIZATION: Using allData.guarantor - normalizedGuarantorInfo:', normalizedGuarantorInfo);
+            } else {
+              console.log('🔧 AUTO-POPULATION: allData.guarantor data is empty - using separate table data');
           parsedFormData.guarantors = guarantorsArray;
           parsedFormData.guarantor = guarantorsArray[0] || {};
+              parsedFormData.guarantorCount = Math.max(parsedFormData.guarantorCount || 0, guarantorsArray.length);
+              console.log('#### GUARANTOR DATA PRIORITIZATION: Using separate table data - guarantorsArray:', guarantorsArray);
+            }
+          } else {
+            parsedFormData.guarantors = guarantorsArray;
+            parsedFormData.guarantor = guarantorsArray[0] || {};
+            parsedFormData.guarantorCount = Math.max(parsedFormData.guarantorCount || 0, guarantorsArray.length);
+          }
           console.log('📊 GUARANTOR DATA MAPPING DEBUG: Using guarantorsArray for guarantor data:', guarantorsArray.length, 'items');
           console.log('📊 GUARANTOR DATA MAPPING DEBUG: Set parsedFormData.guarantors to:', parsedFormData.guarantors);
         } else if (parsedFormData.guarantor && Object.keys(parsedFormData.guarantor).length > 0) {
@@ -1836,20 +2276,35 @@ export function ApplicationForm() {
           }
           
           // Merge invited people with existing data (invited people take precedence for auto-population)
-          if (invitedCoApplicants.length > 0) {
+          // BUT only if we don't have valid allData.coApplicant data
+          if (invitedCoApplicants.length > 0 && (!allData.coApplicant || !allData.coApplicant.coapplicant_info)) {
             console.log('📊 Auto-populating co-applicants from additional people:', invitedCoApplicants);
             parsedFormData.coApplicants = invitedCoApplicants;
             parsedFormData.coApplicant = invitedCoApplicants[0] || {};
             parsedFormData.hasCoApplicant = true;
             parsedFormData.coApplicantCount = invitedCoApplicants.length;
+          } else if (invitedCoApplicants.length > 0) {
+            console.log('📊 Skipping invited co-applicants - using allData.coApplicant data instead');
           }
           
           if (invitedGuarantors.length > 0) {
-            console.log('📊 Auto-populating guarantors from additional people:', invitedGuarantors);
-            parsedFormData.guarantors = invitedGuarantors;
-            parsedFormData.guarantor = invitedGuarantors[0] || {};
-            parsedFormData.hasGuarantor = true;
-            parsedFormData.guarantorCount = invitedGuarantors.length;
+            // Only use invited guarantors if we do not already have meaningful guarantor data
+            const existingGuarantor = parsedFormData.guarantor || {};
+            const hasMeaningfulGuarantor = !!(
+              existingGuarantor.name || existingGuarantor.email || existingGuarantor.phone ||
+              existingGuarantor.ssn || existingGuarantor.address || existingGuarantor.license ||
+              existingGuarantor.relationship
+            );
+
+            if (!hasMeaningfulGuarantor) {
+              console.log('📊 Auto-populating guarantors from additional people:', invitedGuarantors);
+              parsedFormData.guarantors = invitedGuarantors;
+              parsedFormData.guarantor = invitedGuarantors[0] || {};
+              parsedFormData.hasGuarantor = true;
+              parsedFormData.guarantorCount = invitedGuarantors.length;
+            } else {
+              console.log('📊 Skipping invited guarantors - using prioritized guarantor data from allData');
+            }
           }
         }
 
@@ -1864,6 +2319,11 @@ export function ApplicationForm() {
           console.log('🔧 Auto-setting hasCoApplicant to true based on data presence');
           parsedFormData.hasCoApplicant = true;
         }
+        console.log("#### parsedFormData", parsedFormData);
+        console.log("#### allData.guarantor", allData.guarantor);
+        console.log("#### allData.guarantor.guarantor_info", allData.guarantor?.guarantor_info);
+        console.log("#### parsedFormData.guarantors", parsedFormData.guarantors);
+        console.log("#### parsedFormData.guarantors[0]", parsedFormData.guarantors?.[0]);
         
         // Set guarantor checkbox if data exists
         if ((hasGuarantorDataFlag || hasGuarantorsArray) && parsedFormData.hasGuarantor === undefined) {
@@ -2054,26 +2514,372 @@ export function ApplicationForm() {
           });
         }
         
+      // AUTO-POPULATION SETUP: Populate co-applicant form fields
         if (parsedFormData.coApplicants && Array.isArray(parsedFormData.coApplicants) && parsedFormData.coApplicants.length > 0) {
-          console.log('🔧 Populating co-applicant form fields from mapped data');
-          parsedFormData.coApplicants.forEach((coApplicant: any, index: number) => {
-            if (coApplicant && Object.keys(coApplicant).length > 0) {
-              // Set basic co-applicant fields
-              if (coApplicant.name) form.setValue(`coApplicants.${index}.name`, coApplicant.name);
-              if (coApplicant.relationship) form.setValue(`coApplicants.${index}.relationship`, coApplicant.relationship);
-              if (coApplicant.dob) form.setValue(`coApplicants.${index}.dob`, new Date(coApplicant.dob));
-              if (coApplicant.ssn) form.setValue(`coApplicants.${index}.ssn`, coApplicant.ssn);
-              if (coApplicant.phone) form.setValue(`coApplicants.${index}.phone`, coApplicant.phone);
-              if (coApplicant.email) form.setValue(`coApplicants.${index}.email`, coApplicant.email);
-              if (coApplicant.address) form.setValue(`coApplicants.${index}.address`, coApplicant.address);
-              if (coApplicant.city) form.setValue(`coApplicants.${index}.city`, coApplicant.city);
-              if (coApplicant.state) form.setValue(`coApplicants.${index}.state`, coApplicant.state);
-              if (coApplicant.zip) form.setValue(`coApplicants.${index}.zip`, coApplicant.zip);
-              if (coApplicant.license) form.setValue(`coApplicants.${index}.license`, coApplicant.license);
-              if (coApplicant.licenseState) form.setValue(`coApplicants.${index}.licenseState`, coApplicant.licenseState);
-              console.log(`✅ Populated co-applicant ${index} form fields`);
+        console.log('🔧 AUTO-POPULATION: Starting co-applicant form field population');
+        console.log('🔍 AUTO-POPULATION: parsedFormData.coApplicants:', parsedFormData.coApplicants);
+        console.log('🔍 AUTO-POPULATION: Current specificIndex:', specificIndex);
+        console.log('🔍 AUTO-POPULATION: User role:', user?.role);
+
+        // Ensure hasCoApplicant is true to show co-applicant sections
+        parsedFormData.hasCoApplicant = true;
+        parsedFormData.coApplicantCount = parsedFormData.coApplicants.length;
+
+        // Determine the target index for population
+        let targetIndex = 0; // Default to index 0
+        if (user?.role && user.role.startsWith('coapplicant') && /coapplicant\d+/.test(user.role)) {
+          const match = user.role.match(/coapplicant(\d+)/);
+          if (match) {
+            targetIndex = parseInt(match[1], 10) - 1; // Convert to 0-based index
+            console.log(`🔧 AUTO-POPULATION: Using specific index ${targetIndex} for role ${user.role}`);
+          }
+        } else if (specificIndex !== null && specificIndex !== undefined) {
+          targetIndex = specificIndex;
+          console.log(`🔧 AUTO-POPULATION: Using specificIndex ${targetIndex}`);
+        }
+
+        // Get the co-applicant data to populate (use first available data)
+        const coApplicantToPopulate = parsedFormData.coApplicants[0];
+        console.log(`🔧 AUTO-POPULATION: Using co-applicant data:`, coApplicantToPopulate);
+
+        if (coApplicantToPopulate && Object.keys(coApplicantToPopulate).length > 0) {
+          // Auto-populate all available fields at the target index
+          const fieldsToPopulate = [
+            'name', 'relationship', 'ssn', 'phone', 'email', 'address', 'city', 'state', 'zip',
+            'license', 'licenseState', 'employmentType', 'employer', 'employerName', 'employerPhone',
+            'position', 'employerPosition', 'income', 'monthlyIncome', 'otherIncome', 'otherIncomeFrequency', 
+            'otherIncomeSource', 'creditScore', 'landlordName', 'landlordAddressLine1', 'landlordAddressLine2', 
+            'landlordCity', 'landlordState', 'landlordZipCode', 'landlordPhone', 'landlordEmail',
+            'employmentStart', 'bankRecords', 'lengthAtAddressYears', 'lengthAtAddressMonths', 
+            'currentRent', 'reasonForMoving'
+          ];
+
+          fieldsToPopulate.forEach(field => {
+            // Special handling for different field types
+            let shouldPopulate = false;
+            let value = coApplicantToPopulate[field];
+            
+            if (field === 'bankRecords') {
+              // For bank records, check if it's an array with content
+              shouldPopulate = Array.isArray(value) && value.length > 0;
+            } else if (field === 'employmentStart') {
+              // For employment start date, check if it exists
+              shouldPopulate = value !== undefined && value !== null;
+            } else if (field === 'lengthAtAddressYears' || field === 'lengthAtAddressMonths' || field === 'currentRent') {
+              // For numeric fields, allow 0 values
+              shouldPopulate = value !== undefined && value !== null && value !== '';
+            } else {
+              // For other fields, use the original validation
+              shouldPopulate = value !== undefined && value !== null && value !== '';
+            }
+            
+            if (shouldPopulate) {
+              const formFieldName = `coApplicants.${targetIndex}.${field}`;
+              
+              console.log(`🔧 AUTO-POPULATION: Setting ${formFieldName} =`, value);
+              form.setValue(formFieldName as any, value);
+              
+              // Also update formData state for UI display
+              setFormData((prevData: any) => {
+                const updated = { ...prevData };
+                if (!updated.coApplicants) updated.coApplicants = [];
+                if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
+                updated.coApplicants[targetIndex][field] = value;
+                return updated;
+              });
+              
+              // Verify the value was set
+              const setValue = form.getValues(formFieldName as any);
+              console.log(`🔧 AUTO-POPULATION: Verified ${formFieldName} =`, setValue);
+            } else {
+              console.log(`🔧 AUTO-POPULATION: Skipping ${field} (value: ${value}, type: ${typeof value})`);
             }
           });
+
+          // Handle field name mappings for FinancialSection compatibility
+          const fieldMappings = [
+            { from: 'employerName', to: 'employer' },
+            { from: 'employerPosition', to: 'position' },
+            { from: 'monthlyIncome', to: 'income' }
+          ];
+
+          fieldMappings.forEach(mapping => {
+            if (coApplicantToPopulate[mapping.from] !== undefined && coApplicantToPopulate[mapping.from] !== null && coApplicantToPopulate[mapping.from] !== '') {
+              const formFieldName = `coApplicants.${targetIndex}.${mapping.to}`;
+              const value = coApplicantToPopulate[mapping.from];
+              
+              console.log(`🔧 AUTO-POPULATION: Mapping ${mapping.from} -> ${mapping.to}: Setting ${formFieldName} =`, value);
+              form.setValue(formFieldName as any, value);
+              
+              // Also update formData state for UI display
+              setFormData((prevData: any) => {
+                const updated = { ...prevData };
+                if (!updated.coApplicants) updated.coApplicants = [];
+                if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
+                updated.coApplicants[targetIndex][mapping.to] = value;
+                return updated;
+              });
+              
+              // Verify the value was set
+              const setValue = form.getValues(formFieldName as any);
+              console.log(`🔧 AUTO-POPULATION: Verified mapped ${formFieldName} =`, setValue);
+            }
+          });
+
+          // Handle date fields separately
+          if (coApplicantToPopulate.dob) {
+            const dobValue = new Date(coApplicantToPopulate.dob);
+            console.log(`🔧 AUTO-POPULATION: Setting coApplicants.${targetIndex}.dob =`, dobValue);
+            form.setValue(`coApplicants.${targetIndex}.dob` as any, dobValue);
+            
+            // Also update formData state for UI display
+            setFormData((prevData: any) => {
+              const updated = { ...prevData };
+              if (!updated.coApplicants) updated.coApplicants = [];
+              if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
+              updated.coApplicants[targetIndex].dob = dobValue;
+              return updated;
+            });
+            
+            console.log(`🔧 AUTO-POPULATION: Verified coApplicants.${targetIndex}.dob =`, form.getValues(`coApplicants.${targetIndex}.dob` as any));
+          }
+
+          // Handle employment start date separately
+          if (coApplicantToPopulate.employmentStart) {
+            const employmentStartValue = new Date(coApplicantToPopulate.employmentStart);
+            console.log(`🔧 AUTO-POPULATION: Setting coApplicants.${targetIndex}.employmentStart =`, employmentStartValue);
+            form.setValue(`coApplicants.${targetIndex}.employmentStart` as any, employmentStartValue);
+            
+            // Also update formData state for UI display
+            setFormData((prevData: any) => {
+              const updated = { ...prevData };
+              if (!updated.coApplicants) updated.coApplicants = [];
+              if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
+              updated.coApplicants[targetIndex].employmentStart = employmentStartValue;
+              return updated;
+            });
+            
+            console.log(`🔧 AUTO-POPULATION: Verified coApplicants.${targetIndex}.employmentStart =`, form.getValues(`coApplicants.${targetIndex}.employmentStart` as any));
+          }
+
+          // Handle bank records separately (array field)
+          if (coApplicantToPopulate.bankRecords && Array.isArray(coApplicantToPopulate.bankRecords) && coApplicantToPopulate.bankRecords.length > 0) {
+            console.log(`🔧 AUTO-POPULATION: Setting coApplicants.${targetIndex}.bankRecords =`, coApplicantToPopulate.bankRecords);
+            form.setValue(`coApplicants.${targetIndex}.bankRecords` as any, coApplicantToPopulate.bankRecords);
+            
+            // Also update formData state for UI display
+            setFormData((prevData: any) => {
+              const updated = { ...prevData };
+              if (!updated.coApplicants) updated.coApplicants = [];
+              if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
+              updated.coApplicants[targetIndex].bankRecords = coApplicantToPopulate.bankRecords;
+              return updated;
+            });
+            
+            console.log(`🔧 AUTO-POPULATION: Verified coApplicants.${targetIndex}.bankRecords =`, form.getValues(`coApplicants.${targetIndex}.bankRecords` as any));
+          }
+
+          console.log(`✅ AUTO-POPULATION: Completed co-applicant ${targetIndex} form fields`);
+        }
+
+        console.log('🔧 AUTO-POPULATION: Completed all co-applicant form field population');
+          
+          // Force form to update and sync with formData
+          console.log('🔧 AUTO-POPULATION: Triggering form update...');
+          form.trigger(); // Trigger validation and form update
+          
+          // Update formData to match the form values
+          const currentFormValues = form.getValues();
+          console.log('🔧 AUTO-POPULATION: Current form values:', currentFormValues);
+          
+          // Sync the parsedFormData with the actual form values
+          if (currentFormValues.coApplicants) {
+            parsedFormData.coApplicants = currentFormValues.coApplicants;
+            console.log('🔧 AUTO-POPULATION: Synced parsedFormData.coApplicants with form values');
+          }
+        }
+
+      // AUTO-POPULATION SETUP: Populate guarantor form fields
+      if (parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0) {
+        console.log('🔧 AUTO-POPULATION: Starting guarantor form field population');
+        console.log('🔍 AUTO-POPULATION: parsedFormData.guarantors:', parsedFormData.guarantors);
+        console.log('🔍 AUTO-POPULATION: Current specificIndex:', specificIndex);
+        console.log('🔍 AUTO-POPULATION: User role:', user?.role);
+
+        // Ensure hasGuarantor is true to show guarantor sections
+        parsedFormData.hasGuarantor = true;
+        parsedFormData.guarantorCount = parsedFormData.guarantors.length;
+
+        // Determine the target index for population
+        let targetIndex = 0; // Default to index 0
+        if (user?.role && user.role.startsWith('guarantor') && /guarantor\d+/.test(user.role)) {
+          const match = user.role.match(/guarantor(\d+)/);
+          if (match) {
+            targetIndex = parseInt(match[1], 10) - 1; // Convert to 0-based index
+            console.log(`🔧 AUTO-POPULATION: Using specific index ${targetIndex} for role ${user.role}`);
+          }
+        } else if (specificIndex !== null && specificIndex !== undefined) {
+          targetIndex = specificIndex;
+          console.log(`🔧 AUTO-POPULATION: Using specificIndex ${targetIndex}`);
+        }
+
+        // Get the guarantor data to populate (use first available data)
+        const guarantorToPopulate = parsedFormData.guarantors[0];
+        console.log(`🔧 AUTO-POPULATION: Using guarantor data:`, guarantorToPopulate);
+        console.log('#### GUARANTOR AUTO-POPULATION: allData.guarantor:', allData.guarantor);
+        console.log('#### GUARANTOR AUTO-POPULATION: allData.guarantor.guarantor_info:', allData.guarantor?.guarantor_info);
+        console.log('#### GUARANTOR AUTO-POPULATION: parsedFormData.guarantors:', parsedFormData.guarantors);
+        console.log('#### GUARANTOR AUTO-POPULATION: parsedFormData.guarantors[0]:', parsedFormData.guarantors[0]);
+
+        if (guarantorToPopulate && Object.keys(guarantorToPopulate).length > 0) {
+          console.log('#### GUARANTOR AUTO-POPULATION: Starting field population for targetIndex:', targetIndex);
+          console.log('#### GUARANTOR AUTO-POPULATION: guarantorToPopulate keys:', Object.keys(guarantorToPopulate));
+          
+          // Auto-populate all available fields at the target index
+          const fieldsToPopulate = [
+            'name', 'relationship', 'ssn', 'phone', 'email', 'address', 'city', 'state', 'zip',
+            'license', 'licenseState', 'employmentType', 'employer', 'employerName', 'employerPhone',
+            'position', 'employerPosition', 'income', 'monthlyIncome', 'otherIncome', 'otherIncomeFrequency', 
+            'otherIncomeSource', 'creditScore', 'landlordName', 'landlordAddressLine1', 'landlordAddressLine2', 
+            'landlordCity', 'landlordState', 'landlordZipCode', 'landlordPhone', 'landlordEmail',
+            'employmentStart', 'bankRecords', 'lengthAtAddressYears', 'lengthAtAddressMonths', 
+            'currentRent', 'reasonForMoving'
+          ];
+
+          fieldsToPopulate.forEach(field => {
+            // Special handling for different field types
+            let shouldPopulate = false;
+            let value = guarantorToPopulate[field];
+            
+            console.log(`#### GUARANTOR AUTO-POPULATION: Processing field ${field}: value="${value}", type=${typeof value}`);
+            
+            if (field === 'bankRecords') {
+              // For bank records, check if it's an array with content
+              shouldPopulate = Array.isArray(value) && value.length > 0;
+            } else if (field === 'employmentStart') {
+              // For employment start date, check if it exists
+              shouldPopulate = value !== undefined && value !== null;
+            } else if (field === 'lengthAtAddressYears' || field === 'lengthAtAddressMonths' || field === 'currentRent') {
+              // For numeric fields, allow 0 values
+              shouldPopulate = value !== undefined && value !== null && value !== '';
+            } else {
+              // For other fields, allow any non-null/undefined values (including empty strings for some fields)
+              shouldPopulate = value !== undefined && value !== null;
+            }
+            
+            console.log(`#### GUARANTOR AUTO-POPULATION: Field ${field} shouldPopulate: ${shouldPopulate}`);
+            
+            if (shouldPopulate) {
+              const formFieldName = `guarantors.${targetIndex}.${field}`;
+              
+              console.log(`🔧 AUTO-POPULATION: Setting ${formFieldName} =`, value);
+              form.setValue(formFieldName as any, value);
+              
+              // Also update formData state for UI display
+              setFormData((prevData: any) => {
+                const updated = { ...prevData };
+                if (!updated.guarantors) updated.guarantors = [];
+                if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
+                updated.guarantors[targetIndex][field] = value;
+                console.log(`🔧 AUTO-POPULATION: Updated formData.guarantors[${targetIndex}].${field} = ${value}`);
+                return updated;
+              });
+              
+              // Verify the value was set
+              const setValue = form.getValues(formFieldName as any);
+              console.log(`🔧 AUTO-POPULATION: Verified ${formFieldName} =`, setValue);
+            } else {
+              console.log(`🔧 AUTO-POPULATION: Skipping ${field} (value: ${value}, type: ${typeof value})`);
+            }
+          });
+
+          // Handle field name mappings for FinancialSection compatibility
+          const fieldMappings = [
+            { from: 'employerName', to: 'employer' },
+            { from: 'employerPosition', to: 'position' },
+            { from: 'monthlyIncome', to: 'income' }
+          ];
+
+          fieldMappings.forEach(mapping => {
+            if (guarantorToPopulate[mapping.from] !== undefined && guarantorToPopulate[mapping.from] !== null && guarantorToPopulate[mapping.from] !== '') {
+              const formFieldName = `guarantors.${targetIndex}.${mapping.to}`;
+              const value = guarantorToPopulate[mapping.from];
+              
+              console.log(`🔧 AUTO-POPULATION: Mapping ${mapping.from} -> ${mapping.to}: Setting ${formFieldName} =`, value);
+              form.setValue(formFieldName as any, value);
+              
+              // Also update formData state for UI display
+              setFormData((prevData: any) => {
+                const updated = { ...prevData };
+                if (!updated.guarantors) updated.guarantors = [];
+                if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
+                updated.guarantors[targetIndex][mapping.to] = value;
+                return updated;
+              });
+              
+              // Verify the value was set
+              const setValue = form.getValues(formFieldName as any);
+              console.log(`🔧 AUTO-POPULATION: Verified mapped ${formFieldName} =`, setValue);
+            }
+          });
+
+          // Handle date fields separately
+          if (guarantorToPopulate.dob) {
+            const dobValue = new Date(guarantorToPopulate.dob);
+            console.log(`🔧 AUTO-POPULATION: Setting guarantors.${targetIndex}.dob =`, dobValue);
+            form.setValue(`guarantors.${targetIndex}.dob` as any, dobValue);
+            
+            // Also update formData state for UI display
+            setFormData((prevData: any) => {
+              const updated = { ...prevData };
+              if (!updated.guarantors) updated.guarantors = [];
+              if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
+              updated.guarantors[targetIndex].dob = dobValue;
+              return updated;
+            });
+            
+            console.log(`🔧 AUTO-POPULATION: Verified guarantors.${targetIndex}.dob =`, form.getValues(`guarantors.${targetIndex}.dob` as any));
+          }
+
+          // Handle employment start date separately
+          if (guarantorToPopulate.employmentStart) {
+            const employmentStartValue = new Date(guarantorToPopulate.employmentStart);
+            console.log(`🔧 AUTO-POPULATION: Setting guarantors.${targetIndex}.employmentStart =`, employmentStartValue);
+            form.setValue(`guarantors.${targetIndex}.employmentStart` as any, employmentStartValue);
+            
+            // Also update formData state for UI display
+            setFormData((prevData: any) => {
+              const updated = { ...prevData };
+              if (!updated.guarantors) updated.guarantors = [];
+              if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
+              updated.guarantors[targetIndex].employmentStart = employmentStartValue;
+              return updated;
+            });
+            
+            console.log(`🔧 AUTO-POPULATION: Verified guarantors.${targetIndex}.employmentStart =`, form.getValues(`guarantors.${targetIndex}.employmentStart` as any));
+          }
+
+          // Handle bank records separately (array field)
+          if (guarantorToPopulate.bankRecords && Array.isArray(guarantorToPopulate.bankRecords) && guarantorToPopulate.bankRecords.length > 0) {
+            console.log(`🔧 AUTO-POPULATION: Setting guarantors.${targetIndex}.bankRecords =`, guarantorToPopulate.bankRecords);
+            form.setValue(`guarantors.${targetIndex}.bankRecords` as any, guarantorToPopulate.bankRecords);
+            
+            // Also update formData state for UI display
+            setFormData((prevData: any) => {
+              const updated = { ...prevData };
+              if (!updated.guarantors) updated.guarantors = [];
+              if (!updated.guarantors[targetIndex]) updated.guarantors[targetIndex] = {};
+              updated.guarantors[targetIndex].bankRecords = guarantorToPopulate.bankRecords;
+              return updated;
+            });
+            
+            console.log(`🔧 AUTO-POPULATION: Verified guarantors.${targetIndex}.bankRecords =`, form.getValues(`guarantors.${targetIndex}.bankRecords` as any));
+          }
+
+          console.log(`✅ AUTO-POPULATION: Completed guarantor ${targetIndex} form fields`);
+        }
+
+        console.log('🔧 AUTO-POPULATION: Completed all guarantor form field population');
         }
 
           // Merge webhookSummary.webhookResponses into the main formData.webhookResponses
@@ -2181,9 +2987,18 @@ export function ApplicationForm() {
             coApplicantsData: parsedFormData.coApplicants,
             userRole: userRole
           });
+          console.log('🔍 DEBUG: Final form values after population:', form.getValues());
           // Mark as restored before state updates to avoid duplicate triggers
           hasRestoredFromDraftRef.current = true;
           setFormData(parsedFormData);
+          console.log('🔍 DEBUG: After setFormData, form values are:', form.getValues());
+          console.log('#### formData.guarantors after setFormData:', parsedFormData.guarantors);
+          console.log('#### formData.guarantors[0] after setFormData:', parsedFormData.guarantors?.[0]);
+          
+          // Force a re-render to ensure the form displays the populated values
+          setTimeout(() => {
+            console.log('🔧 AUTO-POPULATION: Final form values after timeout:', form.getValues());
+          }, 100);
           
            // Restore current step only if restoreStep is true
            if (restoreStep) {
@@ -2713,7 +3528,10 @@ export function ApplicationForm() {
       form.setValue('applicantLengthAtAddressMonths', parsedFormData.applicant.lengthAtAddressMonths);
       console.log('⏰ Re-syncing applicantLengthAtAddressMonths after form reset:', parsedFormData.applicant.lengthAtAddressMonths);
     }
-        // Ensure guarantor fields are properly synchronized after form reset
+        // DISABLED: Ensure guarantor fields are properly synchronized after form reset
+        // This section was overriding the correct rich data with wrong separate table data
+        console.log('🔧 GUARANTOR RE-SYNC DEBUG: DISABLED - using main auto-population instead');
+        /*
         console.log('🔧 GUARANTOR RE-SYNC DEBUG: Starting guarantor re-sync after form reset...');
         console.log('🔧 GUARANTOR RE-SYNC DEBUG: parsedFormData.guarantors:', parsedFormData.guarantors);
         console.log('🔧 GUARANTOR RE-SYNC DEBUG: Array.isArray(parsedFormData.guarantors):', Array.isArray(parsedFormData.guarantors));
@@ -2739,6 +3557,7 @@ export function ApplicationForm() {
       if (effectiveSpecificIndexReSync !== null && effectiveSpecificIndexReSync !== undefined) {
         console.log(`🔧 GUARANTOR RE-SYNC DEBUG: Specific role detected - re-syncing only guarantor ${effectiveSpecificIndexReSync}`);
         const guarantor = parsedFormData.guarantors[effectiveSpecificIndexReSync];
+        console.log(`🔧 GUARANTOR RE-SYNC DEBUG: Using guarantor data:`, guarantor);
         if (guarantor && Object.keys(guarantor).length > 0) {
           console.log(`🔧 GUARANTOR RE-SYNC DEBUG: Re-setting form values for specific guarantor ${effectiveSpecificIndexReSync}`);
           
@@ -2884,6 +3703,7 @@ export function ApplicationForm() {
     } else {
       console.log('⚠️ GUARANTOR RE-SYNC DEBUG: No guarantor data to re-sync after form reset');
     }
+    */
     
     // Final verification of guarantor form values after re-sync
     setTimeout(() => {
@@ -11517,52 +12337,25 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
 
   // Step navigation handlers
   const handlePrevious = () => {
-    setCurrentStep((prev: number) => {
-      let prevStep = prev - 1;
-      
-      // If coming back from Other Occupants (step 8) and no co-applicant is selected, go back to Add Co-Applicant step (step 5)
-      if (!hasCoApplicant && prev === 8) {
-        prevStep = 5; // Go back to Add Co-Applicant step
-      }
-      
-      // If coming back from Digital Signatures (step 12) and no guarantor is selected, go back to Add Guarantor step (step 9)
-      if (!hasGuarantor && prev === 12) {
-        prevStep = 9; // Go back to Add Guarantor step
-      }
-      
-      return Math.max(prevStep, 0);
-    });
+    console.log('🔄 Previous step clicked - Current step:', currentStep);
+    setCurrentStep((prev) => getNextAllowedStep(prev, -1));
   };
   const handleNext = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    console.log('🔄 Next step clicked - Current step:', currentStep);
+    // Prevent form submission
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
     
-    // If no existing draft and trying to move from Step 1, check if Step 1 is valid first
-    if (hasExistingDraft === false && currentStep === 0) {
-      // First validate Step 1 - if it's not valid, show validation errors
-      const stepValidation = validateStep(currentStep);
-      if (!stepValidation.isValid) {
-        console.log('🚫 Step 1 validation failed, blocking navigation');
-        toast({
-          title: 'Complete Step 1 First',
-          description: 'Please complete the required fields before proceeding to the next step.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      // If Step 1 is valid, allow navigation (this will create the first draft)
-      console.log('✅ Step 1 is valid, allowing navigation to create first draft');
-    }
-    
-    // Validate current step before proceeding, but be lenient when resuming a draft
+    // Validate current step before proceeding, but don't block if we're restoring a draft
     const validation = validateStep(currentStep);
     if (!validation.isValid) {
+      // If the page was opened with continue=true (restoring a draft), allow navigation and show a gentle hint
       const urlParams = new URLSearchParams(window.location.search);
       const isContinuing = urlParams.get('continue') === 'true';
       if (isContinuing) {
-        
+        console.log('🔄 Continuing draft - allowing navigation despite validation errors');
       } else {
         toast({
           title: 'Required fields missing',
@@ -11573,25 +12366,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
       }
     }
 
-    setCurrentStep((prev: number) => {
-      let nextStep = prev + 1;
-      
-      // If moving to co-applicant steps (step 6, 7) and no co-applicant is selected, skip to Other Occupants (step 8)
-      if (!hasCoApplicant && (nextStep === 6 || nextStep === 7)) {
-        nextStep = 8; // Skip to Other Occupants
-      }
-      
-      // Only skip guarantor steps if user is not already on them and trying to navigate TO them
-      // If user is already on step 10 or 11, allow them to proceed normally
-      if (!hasGuarantor && nextStep === 10 && prev < 10) {
-        nextStep = 12; // Skip to Digital Signatures only when navigating TO step 10
-      }
-      if (!hasGuarantor && nextStep === 11 && prev < 11) {
-        nextStep = 12; // Skip to Digital Signatures only when navigating TO step 11
-      }
-      
-      return Math.min(nextStep, filteredSteps.length - 1);
-    });
+    setCurrentStep((prev) => getNextAllowedStep(prev, 1));
   };
 
   return (
