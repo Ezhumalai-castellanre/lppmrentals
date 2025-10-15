@@ -1,6 +1,6 @@
 version: 1
 applications:
-  - appRoot: .
+  - appRoot: client
     frontend:
       phases:
         preBuild:
@@ -17,7 +17,6 @@ applications:
             - export npm_config_timeout=300000
             - export npm_config_fetch_timeout=300000
             - export npm_config_registry=https://registry.npmjs.org/
-            - cd client
             - echo "=== Cleaning previous build artifacts ==="
             - rm -rf node_modules package-lock.json dist .vite
             - echo "=== Installing dependencies with fallback ==="
@@ -41,19 +40,18 @@ applications:
             - echo "=== Checking available memory ==="
             - free -h || echo "Memory check not available"
             - echo "=== Starting Vite build ==="
-            - cd client
             - timeout 900 npm run build || echo "Build failed, attempting to continue..."
             - echo "=== Build completed, checking output ==="
             - ls -la dist/ || echo "Dist directory not found"
             - echo "=== Build phase completed ==="
       artifacts:
-        baseDirectory: client/dist
+        baseDirectory: dist
         files:
           - '**/*'
       cache:
         paths:
-          - client/node_modules/**/*
-          - client/.npm/**/*
+          - node_modules/**/*
+          - .npm/**/*
       env:
         runtime-versions:
           nodejs: 20.19
