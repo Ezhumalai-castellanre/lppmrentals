@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Payscore Verify Income</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; }
+      h1 { margin: 0 0 12px; font-weight: 600; }
+      p { color: #444; }
+      button { padding: 10px 16px; border-radius: 8px; border: 1px solid #0d6efd; background: #0d6efd; color: #fff; cursor: pointer; }
+      button:disabled { opacity: .7; cursor: not-allowed; }
+      .row { display: flex; gap: 12px; align-items: center; margin: 12px 0; }
+      code { background: #f4f6f8; padding: 2px 6px; border-radius: 6px; }
+      #log { margin-top: 16px; font-size: 14px; color: #555; white-space: pre-wrap; }
+    </style>
+
+    <script type="module">
+      import * as PayscoreSDK from 'https://cdn.skypack.dev/@payscore/web-widget-sdk';
+
+      const { IncomeVerificationWidget } = PayscoreSDK;
+
+      // Use the values you provided
+      const WIDGET_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzZTVhZDA5OS1iMmEwLTQ3ZTYtYmRiNi0xYzk0NDRjMTJiNDciLCJzY3AiOiJzY3JlZW5pbmciLCJhdWQiOm51bGwsImlhdCI6MTc2MDM5NjE0NCwiZXhwIjoxNzYxNjA1NzQ0LCJqdGkiOiIwMjQzMmRjOC1lZWUyLTRjMmItYTI3Yy0yNGU4MmM2NGRkOTIifQ.OVFU1cVz9pgkoX26ncAfu_U2G9D5dCBYzf-zbRqCLCg';
+      const SCREENING_ID = '3e5ad099-b2a0-47e6-bdb6-1c9444c12b47';
+
+      let widget = null;
+      const $ = (sel) => document.querySelector(sel);
+      const log = (msg) => { const el = $('#log'); el.textContent = `${el.textContent}${msg}\n`; };
+
+      function onEvent(event) {
+        // Fall back to string comparisons if enum is not exported by the CDN build
+        const type = event?.type;
+        switch (type) {
+          case 'IncomeVerificationLoaded':
+            log('Widget loaded');
+            break;
+          case 'IncomeVerificationStarted':
+            log('Verification started');
+            break;
+          case 'IncomeVerificationCompleted':
+            log('Verification completed');
+            if (widget) { widget.unmount(); widget = null; }
+            break;
+          default:
+            log(`Event: ${type ?? 'unknown'}`);
+        }
+      }
+
+      function loadWidget() {
+        const container = document.getElementById('widget-container');
+        if (!container) return;
+
+        if (widget) { widget.unmount(); widget = null; }
+
+        widget = new IncomeVerificationWidget({
+          widgetToken: WIDGET_TOKEN,
+          screeningId: SCREENING_ID,
+          environment: 'staging',
+          onEvent,
+          container,
+        });
+
+        log('Loading widget...');
+        widget.load();
+      }
+
+      function unmountWidget() {
+        if (widget) {
+          widget.unmount();
+          widget = null;
+          log('Widget unmounted');
+        }
+      }
+
+      // Attach listeners after DOM is ready
+      window.addEventListener('DOMContentLoaded', () => {
+        const loadBtn = document.getElementById('btn-load');
+        const unmountBtn = document.getElementById('btn-unmount');
+        if (loadBtn) loadBtn.addEventListener('click', loadWidget);
+        if (unmountBtn) unmountBtn.addEventListener('click', unmountWidget);
+      });
+    </script>
+  </head>
+  <body>
+    <h1>Payscore - Verify Income</h1>
+    <p>Click the button to start the income verification flow.</p>
+
+    <div class="row">
+      <button id="btn-load">Verify Income</button>
+      <button id="btn-unmount" style="background:#e4e7eb;color:#111;border-color:#c7cdd4">Unmount</button>
+    </div>
+
+    <div class="row" style="font-size:14px; color:#555;">
+      <div>Screening ID:</div>
+      <code>3e5ad099-b2a0-47e6-bdb6-1c9444c12b47
+    </div>
+    <div class="row" style="font-size:14px; color:#555;">
+      <div>Environment:</div>
+      <code>staging</code>
+    </div>
+
+    <div id="widget-container" style="margin-top:24px;"></div>
+
+    <div id="log"></div>
+  </body>
+  </html>
+
+

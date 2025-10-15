@@ -1236,15 +1236,27 @@ export class WebhookService {
       const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout for large JSON
       
       try {
-        // Debug: Log the final webhook data being sent
-        console.log('🔍 DEBUG: Final webhook data being sent:', JSON.stringify(webhookData, null, 2));
-        console.log('🔍 DEBUG: Role in webhook data:', webhookData.role);
-        console.log('🔍 DEBUG: Webhook data keys:', Object.keys(webhookData));
-        console.log('🔍 DEBUG: Role attribute exists:', 'role' in webhookData);
-        console.log('🔍 DEBUG: Role value type:', typeof webhookData.role);
-        
-        // Send directly to Make.com for main application submission
-        const response = await fetch(this.MAKE_COM_WEBHOOK_URL, {
+      // Debug: Log the final webhook data being sent
+      console.log('🔍 DEBUG: Final webhook data being sent:', JSON.stringify(webhookData, null, 2));
+      console.log('🔍 DEBUG: Role in webhook data:', webhookData.role);
+      console.log('🔍 DEBUG: Webhook data keys:', Object.keys(webhookData));
+      console.log('🔍 DEBUG: Role attribute exists:', 'role' in webhookData);
+      console.log('🔍 DEBUG: Role value type:', typeof webhookData.role);
+
+      // Choose the correct Make.com webhook by role
+      let targetWebhookUrl = this.MAKE_COM_WEBHOOK_URL;
+      if (typeof roleValue === 'string') {
+        if (roleValue.toLowerCase().startsWith('coapplicant')) {
+          // Co-applicant submissions must go ONLY to the co-applicant webhook
+          targetWebhookUrl = this.COAPPLICANT_WEBHOOK_URL;
+        } else if (roleValue.toLowerCase().startsWith('guarantor')) {
+          targetWebhookUrl = this.GUARANTOR_WEBHOOK_URL;
+        }
+      }
+      console.log(`📤 Sending form webhook to: ${targetWebhookUrl}`);
+
+      // Send directly to Make.com (selected URL)
+      const response = await fetch(targetWebhookUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

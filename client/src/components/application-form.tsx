@@ -392,7 +392,42 @@ const applicationSchema = z.object({
     otherIncomeSource: z.string().optional(),
     creditScore: z.string().optional(),
     bankRecords: z.array(z.any()).optional(),
-  })).max(4, "Maximum 4 guarantors allowed"),
+  })
+  .superRefine((g, ctx) => {
+    // If otherIncome provided, otherIncomeSource must be provided
+    const otherIncomeProvided = !!(g.otherIncome && g.otherIncome.toString().trim() !== '');
+    if (otherIncomeProvided && (!g.otherIncomeSource || g.otherIncomeSource.toString().trim() === '')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Other income source is required when other income is provided',
+        path: ['otherIncomeSource']
+      });
+    }
+
+    // If any landlord detail is provided, currentRent must be a positive number
+    const landlordFields = [
+      g.landlordName,
+      g.landlordAddressLine1,
+      g.landlordAddressLine2,
+      g.landlordCity,
+      g.landlordState,
+      g.landlordZipCode,
+      g.landlordPhone,
+      g.landlordEmail,
+    ];
+    const anyLandlordProvided = landlordFields.some((v) => !!(typeof v === 'string' ? v.trim() : v));
+    const currentRentNumeric = typeof g.currentRent === 'string' ? Number(g.currentRent) : g.currentRent;
+    if (anyLandlordProvided) {
+      if (currentRentNumeric === undefined || currentRentNumeric === null || isNaN(Number(currentRentNumeric)) || Number(currentRentNumeric) <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Current rent is required when landlord details are provided',
+          path: ['currentRent']
+        });
+      }
+    }
+  }))
+  .max(4, "Maximum 4 guarantors allowed"),
 
   // Legacy fields for backward compatibility
   coApplicantSsn: z.string().optional().refine((val) => !val || validateSSN(val), {
@@ -579,6 +614,27 @@ function formatPhoneForPayload(phone: string) {
 }
 export function ApplicationForm() {
   const { toast } = useToast();
+  // Ensure the guarantors array has an object at a given index; extend with defaults if needed
+  const ensureGuarantorIndexExists = React.useCallback((index: number) => {
+    setFormData((prev: any) => {
+      const updated = { ...(prev || {}) };
+      const current = Array.isArray(updated.guarantors) ? [...updated.guarantors] : [];
+      const defaultGuarantor = {
+        name: '', relationship: '', dob: undefined as any, ssn: '', phone: '', email: '',
+        license: '', licenseState: '', address: '', city: '', state: '', zip: '',
+        lengthAtAddressYears: undefined as any, lengthAtAddressMonths: undefined as any,
+        landlordName: '', landlordAddressLine1: '', landlordAddressLine2: '', landlordCity: '', landlordState: '', landlordZipCode: '', landlordPhone: '', landlordEmail: '',
+        currentRent: undefined as any, reasonForMoving: '', employmentType: '', employer: '', position: '', employmentStart: undefined as any,
+        income: '', incomeFrequency: 'yearly', businessName: '', businessType: '', yearsInBusiness: '',
+        otherIncome: '', otherIncomeFrequency: 'monthly', otherIncomeSource: '', bankRecords: [] as any[]
+      };
+      while (current.length <= index) current.push({ ...defaultGuarantor });
+      updated.guarantors = current;
+      const neededCount = Math.max(updated.guarantorCount || 0, index + 1);
+      updated.guarantorCount = neededCount;
+      return updated;
+    });
+  }, []);
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   
@@ -1453,25 +1509,28 @@ export function ApplicationForm() {
       console.log('🔧 AUTO-POPULATION: formData.guarantors:', formData.guarantors);
       console.log('🔧 AUTO-POPULATION: formData.guarantors[0]:', formData.guarantors[0]);
       console.log('🔧 AUTO-POPULATION: Current specificIndex:', specificIndex);
-      console.log('🔧 AUTO-POPULATION: User role:', user?.role);
+      console.log('🔧 AUTO-POPULATION: Effective userRole:', userRole);
       console.log('#### USEEFFECT GUARANTOR SYNC: formData.guarantors:', formData.guarantors);
       console.log('#### USEEFFECT GUARANTOR SYNC: formData.guarantors[0]:', formData.guarantors[0]);
 
       // Determine the target index for syncing
       let targetIndex = 0; // Default to index 0
-      if (user?.role && user.role.startsWith('guarantor') && /guarantor\d+/.test(user.role)) {
-        const match = user.role.match(/guarantor(\d+)/);
-        if (match) {
-          targetIndex = parseInt(match[1], 10) - 1; // Convert to 0-based index
-          console.log(`🔧 AUTO-POPULATION: Using specific index ${targetIndex} for role ${user.role}`);
-        }
-      } else if (specificIndex !== null && specificIndex !== undefined) {
+      if (specificIndex !== null && specificIndex !== undefined) {
         targetIndex = specificIndex;
         console.log(`🔧 AUTO-POPULATION: Using specificIndex ${targetIndex}`);
+      } else if (userRole && userRole.startsWith('guarantor') && /guarantor\d+/.test(userRole)) {
+        const match = userRole.match(/guarantor(\d+)/);
+        if (match) {
+          targetIndex = parseInt(match[1], 10) - 1; // Convert to 0-based index
+          console.log(`🔧 AUTO-POPULATION: Using role-derived index ${targetIndex} for role ${userRole}`);
+        }
       }
 
+      // Ensure we have a slot for the target index before syncing
+      ensureGuarantorIndexExists(targetIndex);
+
       // Only sync the target guarantor that has meaningful data
-      const guarantorToSync = formData.guarantors[targetIndex];
+      const guarantorToSync = formData.guarantors[targetIndex] || formData.guarantors[formData.guarantors.length - 1];
       if (guarantorToSync && Object.keys(guarantorToSync).length > 0) {
         // Check if this guarantor has meaningful data (not just otherIncomeFrequency)
         const hasMeaningfulData = guarantorToSync.name || guarantorToSync.email || guarantorToSync.phone || guarantorToSync.ssn || guarantorToSync.address || guarantorToSync.license || guarantorToSync.licenseState || guarantorToSync.relationship || guarantorToSync.state || guarantorToSync.zip;
@@ -1638,7 +1697,7 @@ export function ApplicationForm() {
         console.log(`🔧 AUTO-POPULATION: No guarantor data found at index ${targetIndex}`);
       }
     }
-  }, [formData.guarantors, form, specificIndex, user?.role]);
+  }, [formData.guarantors, form, specificIndex, userRole]);
 
   // Handle webhook responses from formData when it changes
   useEffect(() => {
@@ -2525,7 +2584,7 @@ console.log("#### alldata", allData);
         console.log('🔧 AUTO-POPULATION: Starting co-applicant form field population');
         console.log('🔍 AUTO-POPULATION: parsedFormData.coApplicants:', parsedFormData.coApplicants);
         console.log('🔍 AUTO-POPULATION: Current specificIndex:', specificIndex);
-        console.log('🔍 AUTO-POPULATION: User role:', user?.role);
+        console.log('🔍 AUTO-POPULATION: Effective userRole:', userRole);
 
         // Ensure hasCoApplicant is true to show co-applicant sections
         parsedFormData.hasCoApplicant = true;
@@ -2718,16 +2777,19 @@ console.log("#### alldata", allData);
 
         // Determine the target index for population
         let targetIndex = 0; // Default to index 0
-        if (user?.role && user.role.startsWith('guarantor') && /guarantor\d+/.test(user.role)) {
-          const match = user.role.match(/guarantor(\d+)/);
-          if (match) {
-            targetIndex = parseInt(match[1], 10) - 1; // Convert to 0-based index
-            console.log(`🔧 AUTO-POPULATION: Using specific index ${targetIndex} for role ${user.role}`);
-          }
-        } else if (specificIndex !== null && specificIndex !== undefined) {
+        if (specificIndex !== null && specificIndex !== undefined) {
           targetIndex = specificIndex;
           console.log(`🔧 AUTO-POPULATION: Using specificIndex ${targetIndex}`);
+        } else if (userRole && userRole.startsWith('guarantor') && /guarantor\d+/.test(userRole)) {
+          const match = userRole.match(/guarantor(\d+)/);
+          if (match) {
+            targetIndex = parseInt(match[1], 10) - 1; // Convert to 0-based index
+            console.log(`🔧 AUTO-POPULATION: Using role-derived index ${targetIndex} for role ${userRole}`);
+          }
         }
+
+        // Ensure a slot exists at target index
+        ensureGuarantorIndexExists(targetIndex);
 
         // Get the guarantor data to populate (use first available data)
         const guarantorToPopulate = parsedFormData.guarantors[0];
@@ -12163,7 +12225,18 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                           </FormControl>
                         </FormItem>
                         <div>
-                          <Label htmlFor={`guarantors.${actualIndex}.currentRent`} className="mb-0.5">Monthly Rent</Label>
+                          <Label htmlFor={`guarantors.${actualIndex}.currentRent`} className="mb-0.5">
+                            {`Monthly Rent${(
+                              (formData.guarantors[actualIndex]?.landlordName && formData.guarantors[actualIndex]?.landlordName.trim() !== '') ||
+                              (formData.guarantors[actualIndex]?.landlordAddressLine1 && formData.guarantors[actualIndex]?.landlordAddressLine1.trim() !== '') ||
+                              (formData.guarantors[actualIndex]?.landlordAddressLine2 && formData.guarantors[actualIndex]?.landlordAddressLine2.trim() !== '') ||
+                              (formData.guarantors[actualIndex]?.landlordCity && formData.guarantors[actualIndex]?.landlordCity.trim() !== '') ||
+                              (formData.guarantors[actualIndex]?.landlordState && formData.guarantors[actualIndex]?.landlordState.trim() !== '') ||
+                              (formData.guarantors[actualIndex]?.landlordZipCode && formData.guarantors[actualIndex]?.landlordZipCode.trim() !== '') ||
+                              (formData.guarantors[actualIndex]?.landlordPhone && formData.guarantors[actualIndex]?.landlordPhone.trim() !== '') ||
+                              (formData.guarantors[actualIndex]?.landlordEmail && formData.guarantors[actualIndex]?.landlordEmail.trim() !== '')
+                            ) ? ' *' : ''}`}
+                          </Label>
                           <Input
                             id={`guarantors.${actualIndex}.currentRent`}
                             type="number"
@@ -12177,20 +12250,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                             className="input-field w-full mt-1"
                           />
                         </div>
-                        <FormItem>
-                          <FormLabel className="mb-0.5">Why Are You Moving</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Please explain your reason for moving" 
-                            value={formData.guarantors[actualIndex]?.reasonForMoving || ''}
-                            className="input-field w-full mt-1 border-gray-300 bg-white min-h-[80px]"
-                            onChange={(e) => {
-                              updateArrayItem('guarantors', actualIndex, 'reasonForMoving', e.target.value);
-                              form.setValue(`guarantors.${actualIndex}.reasonForMoving`, e.target.value);
-                            }}
-                            />
-                          </FormControl>
-                        </FormItem>
+                        
                       </div>
                     </CardContent>
                   </Card>

@@ -290,13 +290,15 @@ export function FinancialSection({ title, person, formData, updateFormData }: Fi
           />
         </div>
         <div className="form-field">
-          <Label htmlFor={`${person}-otherIncomeSource`}>Other Income Source</Label>
+          <Label htmlFor={`${person}-otherIncomeSource`}>
+            Other Income Source{personData.otherIncome && personData.otherIncome.toString().trim() !== '' ? ' *' : ''}
+          </Label>
           <Input
             id={`${person}-otherIncomeSource`}
             placeholder="e.g., investments, alimony, etc."
             value={personData.otherIncomeSource || ""}
             onChange={(e) => handleChange("otherIncomeSource", e.target.value)}
-            className="input-field"
+            className={`input-field ${personData.otherIncome && personData.otherIncome.toString().trim() !== '' && (!personData.otherIncomeSource || personData.otherIncomeSource.toString().trim() === '') ? 'border-red-500' : ''}`}
           />
         </div>
 
