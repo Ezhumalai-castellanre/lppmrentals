@@ -114,14 +114,24 @@ export default function MissingDocumentsPage() {
 
       // Parse applicant ID from URL query parameters and auto-load
     useEffect(() => {
-      // Always load all documents regardless of URL or saved state
+      // Determine applicant ID from URL or logged-in user's zoneinfo
       const urlParams = new URLSearchParams(window.location.search);
-      const applicantIdFromUrl = urlParams.get('applicantId');
+      const applicantIdFromUrl = (urlParams.get('applicantId') || '').trim();
+      const zoneinfoId = (user?.zoneinfo || '').trim();
+
       if (applicantIdFromUrl) {
         setApplicantId(applicantIdFromUrl);
         setLoadedFromUrl(true);
+        fetchMissingSubitems(applicantIdFromUrl);
+      } else if (zoneinfoId) {
+        setApplicantId(zoneinfoId);
+        setLoadedFromUrl(false);
+        fetchMissingSubitems(zoneinfoId);
+      } else {
+        // No applicant id available; do not fetch until user searches
+        setApplicantId('');
+        setLoadedFromUrl(false);
       }
-      fetchMissingSubitems('');
     }, [user]);
 
   const fetchMissingSubitems = async (id: string) => {
@@ -130,9 +140,9 @@ export default function MissingDocumentsPage() {
     setSuccessMessage(null);
     
     try {
-      // Always show all documents; ignore provided applicantId
-      const apiId = '';
-      console.log('Searching for applicant ID:', apiId);
+      // Determine target applicant ID: explicit arg or user's zoneinfo
+      const apiId = (id && id.trim()) || (user?.zoneinfo || '').trim();
+      console.log('Searching for applicant ID:', apiId || '(none)');
 
       const MONDAY_API_TOKEN = environment.monday.apiToken;
       const BOARD_ID = environment.monday.documentsBoardId;
@@ -212,16 +222,25 @@ export default function MissingDocumentsPage() {
       });
 
       // Find items matching the applicant ID (check both new Lppm format and old formats)
-      const searchApplicantIds: string[] = [];
-      
-      // Applicant format cross-mapping removed when showing all
-      
-      // Applicant format cross-mapping removed when showing all
-      
-      console.log('🔍 Showing all documents (no applicant filter)');
-      
-      // Find items that have subitems matching any of the possible applicant IDs
-      const matchingItems = items;
+      // Find items matching the applicant ID (check both new Lppm format and old formats)
+      let searchApplicantIds: string[] = [];
+      let matchingItems: MondayItem[] = [];
+      if (apiId) {
+        searchApplicantIds = getAllApplicantIdFormats(apiId);
+        console.log('🔍 Searching with applicant ID formats:', searchApplicantIds);
+        matchingItems = items.filter((item: MondayItem) => {
+          const itemApplicantId = item.column_values.find(cv => cv.id === 'text_mksxyax3')?.text || '';
+          const itemMatch = searchApplicantIds.includes(itemApplicantId);
+          const subMatch = (item.subitems || []).some((sub: MondaySubitem) => {
+            const subApplicantId = sub.column_values.find(cv => cv.id === 'text_mkt9gepz')?.text || '';
+            return searchApplicantIds.includes(subApplicantId);
+          });
+          return itemMatch || subMatch;
+        });
+      } else {
+        console.log('⚠️ No applicant ID provided; skipping results');
+        matchingItems = [];
+      }
 
       console.log('📊 Found', matchingItems.length, 'items matching applicant ID', `"${apiId}"`);
 
@@ -232,9 +251,9 @@ export default function MissingDocumentsPage() {
         const subitems = item.subitems || [];
         
         subitems.forEach((subitem: MondaySubitem) => {
-          const subitemApplicantId = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mkt9gepz")?.text;
-          // Always include all subitems
-          {
+          const subitemApplicantId = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mkt9gepz")?.text || '';
+          // Only include subitems that match applicant ID formats when apiId is provided
+          if (!apiId || (subitemApplicantId && searchApplicantIds.includes(subitemApplicantId))) {
             const status = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "status")?.label || "Missing";
             const applicantType = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mkt9x4qd")?.text || "Applicant";
             const coApplicantName = subitem.column_values.find((cv: MondayColumnValue) => cv.id === "text_mktanfxj")?.text || undefined;
@@ -263,23 +282,62 @@ export default function MissingDocumentsPage() {
 
       console.log('📄 Processed missing subitems:', missingSubitems);
       
-      // Role-based filtering using Monday column "color_mksyqx5h" (mapped to guarantorName)
-      const normalizeRole = (value?: string | null) => {
-        if (!value) return null;
-        const v = String(value).trim().toLowerCase();
-        if (v.includes('co')) return 'co-applicant';
-        if (v.includes('guarantor')) return 'guarantor';
-        if (v.includes('applicant')) return 'applicant';
+      // Role-based filtering using Monday column "color_mksyqx5h" and related fields
+      const normalizeSpecificRole = (raw?: string | null) => {
+        if (!raw) return null;
+        const v = String(raw)
+          .toLowerCase()
+          .replace(/^role:\s*/, '')
+          .replace(/\s+/g, '')
+          .trim();
+        // Map patterns: coApplicants_0_*, coapplicant1..4, guarantor1..4
+        const coApplicantsIdx = v.match(/^coapplicants?_?(\d+)/); // coapplicants_0 => index 0
+        if (coApplicantsIdx) {
+          const idx = parseInt(coApplicantsIdx[1], 10);
+          if (!Number.isNaN(idx)) return `coapplicant${idx + 1}`; // 0-based to 1-based
+        }
+        const coApplicantN = v.match(/^co-?applicant(\d+)$/) || v.match(/^coapplicant(\d+)$/);
+        if (coApplicantN) return `coapplicant${coApplicantN[1]}`;
+        const guarantorN = v.match(/^guarantor(\d+)$/);
+        if (guarantorN) return `guarantor${guarantorN[1]}`;
+        // Treat occupants as applicant-owned documents
+        if (v.includes('occupant')) return 'applicant';
+        if (v === 'coapplicant' || v.includes('co-applicant') || v.includes('coapplicant')) return 'co-applicant';
+        if (v.startsWith('guarantor')) return 'guarantor';
+        if (v === 'applicant' || v.includes('applicant')) return 'applicant';
         return null;
       };
-      const userRoleCandidate = normalizeRole(
+      const getItemSpecificRole = (item: MissingSubitem) => {
+        // Prefer Monday color column explicit value like coapplicant1/guarantor2
+        const fromColor = normalizeSpecificRole(item.guarantorName);
+        if (fromColor) return fromColor;
+        // Fallback: infer from applicantType like coApplicants_0_*
+        const fromApplicantType = normalizeSpecificRole(item.applicantType);
+        if (fromApplicantType) return fromApplicantType;
+        // Fallback: any co-applicant name hint
+        const fromCoApplicant = normalizeSpecificRole(item.coApplicantName);
+        return fromCoApplicant || null;
+      };
+      const userRoleRaw =
         (user as any)?.role ||
         (user as any)?.profile ||
         (user as any)?.['custom:role'] ||
-        (Array.isArray((user as any)?.['cognito:groups']) ? (user as any)['cognito:groups'][0] : null)
-      );
-      const itemsForUser = userRoleCandidate
-        ? missingSubitems.filter(item => normalizeRole(item.guarantorName) === userRoleCandidate)
+        (Array.isArray((user as any)?.['cognito:groups']) ? (user as any)['cognito:groups'][0] : null);
+      const userSpecificRole = normalizeSpecificRole(userRoleRaw);
+      const itemsForUser = userSpecificRole
+        ? missingSubitems.filter(item => {
+            const itemRole = getItemSpecificRole(item);
+            if (!itemRole) return false;
+            // Exact numbered match (e.g., coapplicant1)
+            if (/^(coapplicant|guarantor)\d+$/.test(userSpecificRole)) {
+              return itemRole === userSpecificRole;
+            }
+            // Generic role match
+            if (userSpecificRole === 'co-applicant') return itemRole.startsWith('coapplicant');
+            if (userSpecificRole === 'guarantor') return itemRole.startsWith('guarantor');
+            if (userSpecificRole === 'applicant') return itemRole === 'applicant';
+            return false;
+          })
         : missingSubitems;
 
       setMissingItems(itemsForUser);

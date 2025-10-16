@@ -1,3 +1,5 @@
+import { dynamoDBSeparateTablesUtils } from "../lib/dynamodb-separate-tables-service";
+import { IncomeVerificationWidget } from '@payscore/web-widget-sdk';
 import React from 'react';
 import DraftCards from '../components/draft-cards';
 
@@ -14,10 +16,46 @@ export default function DraftsPage() {
 function PayscoreEmbed() {
   const widgetRef = React.useRef<any>(null);
   const [logText, setLogText] = React.useState<string>("");
+  const [screeningId, setScreeningId] = React.useState<string>("");
+  const [widgetToken, setWidgetToken] = React.useState<string>("");
 
   const appendLog = React.useCallback((msg: string) => {
     setLogText((prev) => `${prev}${msg}\n`);
   }, []);
+
+  // Load latest Payscore tokens on page load
+  const loadTokens = React.useCallback(async (): Promise<{ widgetToken: string; screeningId: string }> => {
+    try {
+      let WIDGET_TOKEN: string = '';
+      let SCREENING_ID: string = '';
+      const tokens = await dynamoDBSeparateTablesUtils.getLatestPayscoreTokensForCurrentUser();
+      if (tokens) {
+        WIDGET_TOKEN = tokens.widget_token || WIDGET_TOKEN;
+        SCREENING_ID = tokens.screening_id || SCREENING_ID;
+      }
+      if (!SCREENING_ID) {
+        // Try to derive from widget token if it's a JWT with payload
+        try {
+          const parts = (WIDGET_TOKEN || '').split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1]));
+            if (typeof payload?.screening_id === 'string') SCREENING_ID = payload.screening_id;
+            if (!SCREENING_ID && typeof payload?.screeningId === 'string') SCREENING_ID = payload.screeningId;
+          }
+        } catch {}
+      }
+      setWidgetToken(WIDGET_TOKEN);
+      setScreeningId(SCREENING_ID);
+      return { widgetToken: WIDGET_TOKEN, screeningId: SCREENING_ID };
+    } catch (e) {
+      console.warn('⚠️ Could not load payscore tokens on mount:', e);
+      return { widgetToken: '', screeningId: '' };
+    }
+  }, []);
+
+  React.useEffect(() => {
+    loadTokens();
+  }, [loadTokens]);
 
   const onEvent = React.useCallback((event: any) => {
     const type = event?.type;
@@ -48,25 +86,32 @@ function PayscoreEmbed() {
 
     appendLog('Loading widget...');
 
-    // Dynamically import the Payscore SDK from CDN at runtime to avoid bundler resolution
-    const payscoreModule: any = await import(
-      /* @vite-ignore */ 'https://cdn.skypack.dev/@payscore/web-widget-sdk'
-    );
-    const { IncomeVerificationWidget } = payscoreModule;
+    // SDK is imported from the bundle (CSP-friendly)
 
-    // Use the provided values
-    const WIDGET_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzZTVhZDA5OS1iMmEwLTQ3ZTYtYmRiNi0xYzk0NDRjMTJiNDciLCJzY3AiOiJzY3JlZW5pbmciLCJhdWQiOm51bGwsImlhdCI6MTc2MDM5NjE0NCwiZXhwIjoxNzYxNjA1NzQ0LCJqdGkiOiIwMjQzMmRjOC1lZWUyLTRjMmItYTI3Yy0yNGU4MmM2NGRkOTIifQ.OVFU1cVz9pgkoX26ncAfu_U2G9D5dCBYzf-zbRqCLCg';
-    const SCREENING_ID = '3e5ad099-b2a0-47e6-bdb6-1c9444c12b47';
+    // Ensure we have tokens; load if missing
+    let effectiveWidgetToken = widgetToken;
+    let effectiveScreeningId = screeningId;
+    if (!effectiveWidgetToken || !effectiveScreeningId) {
+      const fetched = await loadTokens();
+      effectiveWidgetToken = fetched.widgetToken;
+      effectiveScreeningId = fetched.screeningId;
+    }
+    if (!effectiveWidgetToken || !effectiveScreeningId) {
+      appendLog('❌ Missing Payscore tokens. Ensure payscore submission created a record.');
+      return;
+    }
 
     widgetRef.current = new IncomeVerificationWidget({
-      widgetToken: WIDGET_TOKEN,
-      screeningId: SCREENING_ID,
+      widgetToken: effectiveWidgetToken,
+      screeningId: effectiveScreeningId,
       environment: 'staging',
       onEvent,
     });
+    console.log(effectiveScreeningId);
+    
 
     widgetRef.current.load();
-  }, [onEvent, appendLog]);
+  }, [onEvent, appendLog, loadTokens, widgetToken, screeningId]);
 
   const unmountWidget = React.useCallback(() => {
     if (widgetRef.current) {
@@ -104,7 +149,7 @@ function PayscoreEmbed() {
 
       <div className="text-sm text-muted-foreground mb-2 flex gap-2 items-center">
         <div>Screening ID:</div>
-        <code className="bg-slate-100 px-1.5 py-0.5 rounded">3e5ad099-b2a0-47e6-bdb6-1c9444c12b47</code>
+        <code className="bg-slate-100 px-1.5 py-0.5 rounded">{screeningId || '—'}</code>
       </div>
 
       <pre className="mt-3 text-sm text-slate-600 whitespace-pre-wrap">{logText}</pre>

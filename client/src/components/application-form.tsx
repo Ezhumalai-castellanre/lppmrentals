@@ -7516,6 +7516,96 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
     setIsSubmitting(true);
     
     try {
+      // === Payscore submission for applicant role ===
+      try {
+        if (!userRole || userRole === 'applicant') {
+          const fullName = (data.applicantName || '').trim();
+          const nameParts = fullName.split(/\s+/);
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+          // Pull property details from stored primary applicant/application data when available
+          let resolvedProperty = {
+            name: data.buildingAddress || '',
+            street_address: (data as any).applicantAddress || '',
+            city: (data as any).applicantCity || '',
+            state: (data as any).applicantState || '',
+            zip_code: (data as any).applicantZip || ''
+          };
+          let resolvedMonthlyRent = Number(data.monthlyRent || 0) || 0;
+          try {
+            const prop = await dynamoDBSeparateTablesUtils.getPrimaryApplicantPropertyInfo();
+            if (prop) {
+              resolvedProperty = {
+                name: prop.name || resolvedProperty.name,
+                street_address: resolvedProperty.street_address || prop.street_address || '',
+                city: resolvedProperty.city || prop.city || '',
+                state: resolvedProperty.state || prop.state || '',
+                zip_code: resolvedProperty.zip_code || prop.zip_code || ''
+              };
+              if (typeof prop.monthly_rent === 'number') {
+                resolvedMonthlyRent = prop.monthly_rent;
+              }
+            }
+          } catch {}
+
+          // Normalize phone to E.164 with default +1
+          const rawPhone = (data.applicantPhone || '').toString();
+          const phoneDigits = rawPhone.replace(/\D/g, '');
+          const e164Phone = phoneDigits ? `+1${phoneDigits.slice(-10)}` : '';
+
+          const payscorePayload = {
+            applicants: [
+              {
+                applicant_first_name: firstName,
+                applicant_last_name: lastName,
+                applicant_email: data.applicantEmail || '',
+                applicant_phone_number: e164Phone
+              }
+            ],
+            property: resolvedProperty,
+            is_decision_maker_paying: true,
+            decision_maker_display_name: 'Liberty Place Property Management',
+            monthly_rent: resolvedMonthlyRent,
+            webhook_url: 'https://hook.us1.make.com/78cgvrcr4ifaitsii3dn4sza6ckibd29'
+          };
+
+          let payscoreResponseBody: any = null;
+          let payscoreStatus = 'ok';
+          try {
+            const wrappedPayload = { metadata: payscorePayload };
+            const psRes = await fetch('https://5sdpaqwf0f.execute-api.us-east-1.amazonaws.com/prod/payscore', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(wrappedPayload)
+            });
+            const text = await psRes.text();
+            try { payscoreResponseBody = JSON.parse(text); } catch { payscoreResponseBody = text; }
+            if (!psRes.ok) {
+              payscoreStatus = `error_${psRes.status}`;
+            }
+          } catch (e: any) {
+            payscoreStatus = 'network_error';
+            payscoreResponseBody = e?.message || String(e);
+          }
+
+          try {
+            await dynamoDBSeparateTablesUtils.savePayscoreResponse({
+              email: (data.applicantEmail || '').toLowerCase(),
+              role: 'applicant',
+              zoneinfo: user?.zoneinfo || user?.applicantId || null,
+              userId: user?.sub || null,
+              requestPayload: { metadata: payscorePayload },
+              responseBody: payscoreResponseBody,
+              status: payscoreStatus
+            });
+          } catch (saveErr) {
+            console.warn('⚠️ Failed to save payscore response (non-blocking):', saveErr);
+          }
+        }
+      } catch (psErr) {
+        console.warn('⚠️ Payscore submission block failed (non-blocking):', psErr);
+      }
       // === Generate individual applicantId for specific roles ===
       let individualApplicantId = user?.applicantId || user?.zoneinfo || 'unknown';
       

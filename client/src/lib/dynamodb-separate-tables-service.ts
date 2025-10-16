@@ -81,6 +81,7 @@ export class DynamoDBSeparateTablesService {
     applicant_nyc: string;
     coapplicants: string;
     guarantors: string;
+    payscore?: string;
   };
 
   constructor() {
@@ -89,7 +90,8 @@ export class DynamoDBSeparateTablesService {
       app_nyc: 'app_nyc',
       applicant_nyc: 'applicant_nyc',
       coapplicants: 'Co-Applicants',
-      guarantors: 'Guarantors_nyc'
+      guarantors: 'Guarantors_nyc',
+      payscore: 'payscore'
     };
     
     console.log('🔧 DynamoDB Separate Tables Service initialized with:', {
@@ -1917,6 +1919,180 @@ export class DynamoDBSeparateTablesService {
   }
 
   // UTILITY METHODS
+  
+  // Get property info (city/state/street/zip) from Primary Applicant Information
+  async getPrimaryApplicantPropertyInfo(): Promise<{
+    name: string;
+    street_address: string;
+    city: string;
+    state: string;
+    zip_code: string;
+    monthly_rent?: number;
+  } | null> {
+    if (!this.client) {
+      console.error('❌ DynamoDB client not initialized');
+      return null;
+    }
+    try {
+      // Prefer application data for name/monthly rent, applicant data for address
+      const [application, applicant] = await Promise.all([
+        this.getApplicationData(),
+        this.getApplicantData()
+      ]);
+
+      const appInfo: any = application?.application_info || {};
+      const applicationSection: any = appInfo.application || {};
+      const name = applicationSection.buildingAddress || appInfo.buildingAddress || '';
+      const monthly = Number(applicationSection.monthlyRent ?? appInfo.monthlyRent ?? 0) || 0;
+
+      const ainfo: any = applicant?.applicant_info || {};
+      const street = ainfo.address || ainfo.addressLine1 || '';
+      const city = ainfo.city || '';
+      const state = ainfo.state || '';
+      const zip = ainfo.zip || '';
+
+      return {
+        name,
+        street_address: street,
+        city,
+        state,
+        zip_code: zip,
+        monthly_rent: monthly
+      };
+    } catch (error) {
+      console.error('❌ Error getting primary applicant property info:', error);
+      return null;
+    }
+  }
+  
+  // Save payscore response keyed by email and role
+  async savePayscoreResponse(params: { email: string; role: string; zoneinfo?: string | null; userId?: string | null; requestPayload?: any; responseBody?: any; status?: string; }): Promise<boolean> {
+    if (!this.client) {
+      console.error('❌ DynamoDB client not initialized');
+      return false;
+    }
+    try {
+      const zoneinfo = params.zoneinfo ?? (await this.getCurrentUserZoneinfo());
+      const userId = params.userId ?? (await this.getCurrentUserId());
+      const nowIso = new Date().toISOString();
+
+      const item = this.sanitizeForDynamo({
+        email: params.email,
+        role: params.role,
+        zoneinfo: zoneinfo || '',
+        userId: userId || '',
+        status: params.status || 'ok',
+        requestPayload: params.requestPayload,
+        responseBody: params.responseBody,
+        created_at: nowIso,
+        last_updated: nowIso
+      });
+
+      const command = new PutItemCommand({
+        TableName: this.tables.payscore || 'payscore',
+        Item: marshall(item, { removeUndefinedValues: true, convertClassInstanceToMap: true })
+      });
+
+      await (this.client as DynamoDBClient).send(command);
+      console.log('✅ Payscore response saved for', params.email, params.role);
+      return true;
+    } catch (error) {
+      console.error('❌ Error saving payscore response:', error);
+      return false;
+    }
+  }
+
+  // Extract screening_id and widget_token from arbitrary payscore response shapes
+  private extractPayscoreTokens(responseBody: any): { screening_id?: string; widget_token?: string } {
+    const tokens: { screening_id?: string; widget_token?: string } = {};
+    try {
+      // Normalize to object if possible
+      let body: any = responseBody;
+      if (typeof body === 'string') {
+        try { body = JSON.parse(body); } catch {}
+      }
+      if (body && typeof body === 'object' && typeof body.body === 'string') {
+        try { const parsed = JSON.parse(body.body); if (parsed && typeof parsed === 'object') body = parsed; } catch {}
+      }
+
+      const candidates: any[] = [body];
+      // Also inspect nested common wrappers
+      if (body && typeof body === 'object') {
+        if (body.data) candidates.push(body.data);
+        if (body.result) candidates.push(body.result);
+        if (body.metadata) candidates.push(body.metadata);
+        if (body.screening) candidates.push(body.screening);
+      }
+      const get = (o: any, path: string[]) => path.reduce((p, k) => (p && typeof p === 'object' ? p[k] : undefined), o);
+      const screenKeys = [['screening_id'], ['screeningId'], ['screening', 'id'], ['id']];
+      const tokenKeys = [['widget_token'], ['widgetToken'], ['token']];
+      for (const obj of candidates) {
+        if (!obj || typeof obj !== 'object') continue;
+        for (const path of screenKeys) {
+          const val = get(obj, path);
+          if (typeof val === 'string' && val) { tokens.screening_id = val; break; }
+        }
+        for (const path of tokenKeys) {
+          const val = get(obj, path);
+          if (typeof val === 'string' && val) { tokens.widget_token = val; break; }
+        }
+      }
+
+      // Fallback: deep scan for keys anywhere
+      if (!tokens.screening_id || !tokens.widget_token) {
+        const stack: any[] = [...candidates];
+        while (stack.length) {
+          const curr = stack.pop();
+          if (!curr || typeof curr !== 'object') continue;
+          for (const [k, v] of Object.entries(curr)) {
+            if (!tokens.screening_id && (k === 'screening_id' || k === 'screeningId')) {
+              if (typeof v === 'string' && v) tokens.screening_id = v;
+            }
+            if (!tokens.widget_token && (k === 'widget_token' || k === 'widgetToken' || k === 'token')) {
+              if (typeof v === 'string' && v) tokens.widget_token = v;
+            }
+            if (v && typeof v === 'object') stack.push(v as any);
+          }
+        }
+      }
+    } catch {}
+    return tokens;
+  }
+
+  // Get latest payscore record for current user (email+role), extract tokens
+  async getLatestPayscoreTokensForCurrentUser(): Promise<{ screening_id?: string; widget_token?: string; record?: any } | null> {
+    if (!this.client) {
+      console.error('❌ DynamoDB client not initialized');
+      return null;
+    }
+    try {
+      const userAttributes = await fetchUserAttributes();
+      const email = (userAttributes.email || '').toLowerCase();
+      const role = await this.getCurrentUserRole();
+      if (!email || !role) {
+        console.warn('⚠️ Missing email or role for payscore lookup');
+        return null;
+      }
+
+      // Use Query on (email PK, role SK); 'role' is a reserved word -> alias with ExpressionAttributeNames
+      const command = new QueryCommand({
+        TableName: this.tables.payscore || 'payscore',
+        KeyConditionExpression: 'email = :email AND #role = :role',
+        ExpressionAttributeNames: { '#role': 'role' },
+        ExpressionAttributeValues: marshall({ ':email': email, ':role': role }, { convertClassInstanceToMap: true })
+      });
+      const result = await (this.client as DynamoDBClient).send(command);
+      const items = (result.Items || []).map(i => unmarshall(i));
+      if (items.length === 0) return null;
+      items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
+      const latest = items[0];
+      const tokens = this.extractPayscoreTokens(latest.responseBody);
+      return { ...tokens, record: latest };
+    } catch (error) {
+      console.error('❌ Error getting latest payscore tokens:', error);
+      return null;
+    }
+  }
 
   // Get application data by zoneinfo (scan since app_nyc uses appid as partition key)
   async getApplicationDataByUserId(): Promise<ApplicationData | null> {
@@ -2176,5 +2352,24 @@ export const dynamoDBSeparateTablesUtils = {
   // Expose current userId for client filtering/diagnostics
   async getCurrentUserId(): Promise<string | null> {
     return dynamoDBSeparateTablesService.getCurrentUserId();
+  },
+  
+  async savePayscoreResponse(params: { email: string; role: string; zoneinfo?: string | null; userId?: string | null; requestPayload?: any; responseBody?: any; status?: string; }): Promise<boolean> {
+    return dynamoDBSeparateTablesService.savePayscoreResponse(params);
+  },
+  
+  async getLatestPayscoreTokensForCurrentUser(): Promise<{ screening_id?: string; widget_token?: string; record?: any } | null> {
+    return dynamoDBSeparateTablesService.getLatestPayscoreTokensForCurrentUser();
+  },
+  
+  async getPrimaryApplicantPropertyInfo(): Promise<{
+    name: string;
+    street_address: string;
+    city: string;
+    state: string;
+    zip_code: string;
+    monthly_rent?: number;
+  } | null> {
+    return dynamoDBSeparateTablesService.getPrimaryApplicantPropertyInfo();
   }
 };
