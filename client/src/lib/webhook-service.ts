@@ -872,8 +872,8 @@ export class WebhookService {
     this.ongoingSubmissions.add(submissionId);
     
     try {
-      // Create co-applicant-only payload
-      const coApplicantPayload = this.createCoApplicantOnlyPayload(coApplicant, coApplicantIndex, formData, uploadedFiles);
+      // Create co-applicant-only payload (ensure role marker so transform filters correctly)
+      const coApplicantPayload = this.createCoApplicantOnlyPayload(coApplicant, coApplicantIndex, { ...formData, role: `coapplicant${coApplicantIndex + 1}` }, uploadedFiles);
       
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
@@ -888,7 +888,7 @@ export class WebhookService {
       
       // Attach webhook summary if available from transform (scoped to this co-applicant)
       try {
-        const transformed = this.transformFormDataToWebhookFormat({ ...formData, coApplicants: [coApplicant] }, uploadedFiles);
+        const transformed = this.transformFormDataToWebhookFormat({ ...formData, role: `coapplicant${coApplicantIndex + 1}`, coApplicants: [coApplicant] }, uploadedFiles);
         if (transformed && (transformed as any).webhookSummary) {
           (webhookData as any).webhookSummary = (transformed as any).webhookSummary;
         }
@@ -936,8 +936,8 @@ export class WebhookService {
     this.ongoingSubmissions.add(submissionId);
     
     try {
-      // Create guarantor-only payload
-      const guarantorPayload = this.createGuarantorOnlyPayload(guarantor, guarantorIndex, formData, uploadedFiles);
+      // Create guarantor-only payload (ensure role marker so transform filters correctly)
+      const guarantorPayload = this.createGuarantorOnlyPayload(guarantor, guarantorIndex, { ...formData, role: `guarantor${guarantorIndex + 1}` }, uploadedFiles);
       
       const webhookData: FormDataWebhookData = {
         reference_id: referenceId,
@@ -950,7 +950,7 @@ export class WebhookService {
 
       // Attach webhook summary if available from transform
       try {
-        const transformed = this.transformFormDataToWebhookFormat({ ...formData, guarantors: [guarantor] }, uploadedFiles);
+        const transformed = this.transformFormDataToWebhookFormat({ ...formData, role: `guarantor${guarantorIndex + 1}`, guarantors: [guarantor] }, uploadedFiles);
         if (transformed && (transformed as any).webhookSummary) {
           (webhookData as any).webhookSummary = (transformed as any).webhookSummary;
         }
@@ -1722,8 +1722,36 @@ export class WebhookService {
    * Transforms form data into the exact webhook format structure
    */
   private static transformFormDataToWebhookFormat(formData: any, uploadedFiles?: any): any {
-    // Extract webhook responses from the form data
-    const webhookResponses = formData.webhookResponses || {};
+    // Extract webhook responses from the form data and normalize (flatten nested role maps)
+    const rawWebhookResponses = formData.webhookResponses || {};
+    const webhookResponses: Record<string, any> = (() => {
+      try {
+        const keys = Object.keys(rawWebhookResponses || {});
+        const hasFlatKeys = keys.some(k => /^(applicant_|coApplicant_|coApplicants_|guarantor_|guarantors_|occupants_|.*_userrole_)/.test(k));
+        if (hasFlatKeys) return rawWebhookResponses as Record<string, any>;
+
+        // Some flows provide nested structure like { applicant: { photo_id: url }, guarantor: { ... } }
+        const flattened: Record<string, any> = {};
+        const roleMaps: Array<{ role: string; prefix: string }> = [
+          { role: 'applicant', prefix: 'applicant_' },
+          { role: 'coApplicant', prefix: 'coApplicant_' },
+          { role: 'guarantor', prefix: 'guarantor_' },
+          { role: 'occupants', prefix: 'occupants_' },
+        ];
+        for (const { role, prefix } of roleMaps) {
+          const section = (rawWebhookResponses as any)[role];
+          if (section && typeof section === 'object') {
+            Object.entries(section as Record<string, any>).forEach(([sectionName, value]) => {
+              const url = extractWebhookUrl(value as any, role, sectionName) || value;
+              flattened[`${prefix}${sectionName}`] = url;
+            });
+          }
+        }
+        return flattened;
+      } catch {
+        return rawWebhookResponses as Record<string, any>;
+      }
+    })();
     
     // Debug logging for income fields
     console.log('🔍 === INCOME FIELD DEBUG ===');
@@ -1787,28 +1815,71 @@ export class WebhookService {
     console.log('=== END DETAILED INCOME FREQUENCY DEBUG ===');
     console.log('=== END INCOME FIELD DEBUG ===');
     
-    // Count total responses and responses by person
-    let totalResponses = 0;
-    const responsesByPerson: { [key: string]: number } = {
-      applicant: 0,
-      coApplicant: 0,
-      guarantor: 0,
-      occupants: 0
+    // Count total responses and responses by person (FILTERED to current role/index when provided)
+    const roleString = ((formData.role || formData?.application?.role) || '').toString().toLowerCase();
+    // Extract specific index for coapplicant/guarantor if present (coapplicant2 => index 1)
+    const roleIndexMatch = roleString.match(/(coapplicant|guarantor)(\d+)/);
+    const roleIndex = roleIndexMatch ? Math.max(parseInt(roleIndexMatch[2], 10) - 1, 0) : undefined;
+
+    // Helper to decide if a webhook key belongs to the current role/index
+    const isForCurrentRole = (key: string, value: any): boolean => {
+      if (!roleString) return true; // default allow if role unknown
+      if (roleString.startsWith('applicant')) return key.startsWith('applicant_');
+      if (roleString.startsWith('coapplicant')) {
+        if (roleIndex !== undefined) {
+          // Accept exact-index plural keys and any singular coApplicant_ keys
+          if (key.startsWith(`coApplicants_${roleIndex}_`)) return true;
+          if (key.startsWith('coApplicant_')) return true;
+          // userrole variant (if used): ensure URL index (if present) matches
+          if (key.startsWith('coApplicants_userrole_')) {
+            const url = extractWebhookUrl(value as any) || '';
+            const m = url.match(/coApplicants?_(\d+)[/_]/i);
+            if (m) return parseInt(m[1], 10) === roleIndex;
+            return true; // no index info in URL; accept
+          }
+          return false;
+        }
+        // No index -> accept any coApplicant
+        return key.startsWith('coApplicant_') || key.startsWith('coApplicants_') || key.startsWith('coApplicants_userrole_');
+      }
+      if (roleString.startsWith('guarantor')) {
+        if (roleIndex !== undefined) {
+          // Accept exact-index plural keys and any singular guarantor_ keys
+          if (key.startsWith(`guarantors_${roleIndex}_`)) return true;
+          if (key.startsWith('guarantor_')) return true;
+          // userrole variant: ensure URL index (if present) matches current index
+          if (key.startsWith('guarantors_userrole_')) {
+            const url = extractWebhookUrl(value as any) || '';
+            const m = url.match(/guarantors?_(\d+)[/_]/i);
+            if (m) return parseInt(m[1], 10) === roleIndex;
+            return true; // no index info in URL; accept
+          }
+          return false;
+        }
+        // No index -> accept any guarantor
+        return key.startsWith('guarantor_') || key.startsWith('guarantors_') || key.startsWith('guarantors_userrole_');
+      }
+      return false;
     };
 
-    // Count responses for each person type
-    Object.keys(webhookResponses).forEach(key => {
-      if (webhookResponses[key]) {
-        totalResponses++;
-        if (key.startsWith('applicant_')) {
-          responsesByPerson.applicant++;
-        } else if (key.startsWith('coApplicant_')) {
-          responsesByPerson.coApplicant++;
-        } else if (key.startsWith('guarantor_')) {
-          responsesByPerson.guarantor++;
-        } else if (key.startsWith('occupants_')) {
-          responsesByPerson.occupants++;
-        }
+    let totalResponses = 0;
+    const responsesByPerson: { [key: string]: number } = { applicant: 0, coApplicant: 0, guarantor: 0, occupants: 0 };
+    const filteredWebhookResponses: Record<string, any> = {};
+
+    // Count responses for each person type (filtered to current role)
+    Object.entries(webhookResponses).forEach(([key, value]) => {
+      if (!value) return;
+      if (!isForCurrentRole(key, value)) return;
+      filteredWebhookResponses[key] = value;
+      totalResponses++;
+      if (key.startsWith('applicant_')) {
+        responsesByPerson.applicant++;
+      } else if (key.startsWith('coApplicant_') || key.startsWith('coApplicants_') || key.startsWith('coApplicants_userrole_')) {
+        responsesByPerson.coApplicant++;
+      } else if (key.startsWith('guarantor_') || key.startsWith('guarantors_') || key.startsWith('guarantors_userrole_')) {
+        responsesByPerson.guarantor++;
+      } else if (key.startsWith('occupants_')) {
+        responsesByPerson.occupants++;
       }
     });
 
@@ -1819,6 +1890,20 @@ export class WebhookService {
         Object.entries(webhookResponses).forEach(([key, value]) => {
           if (key.startsWith(`${rolePrefix}_`)) {
             const sectionName = key.replace(`${rolePrefix}_`, '');
+            const url = extractWebhookUrl(value as any);
+            if (url) {
+              docs[sectionName] = url;
+            }
+          } else if (rolePrefix === 'coApplicant' && key.startsWith('coApplicants_userrole_')) {
+            // Support keys like coApplicants_userrole_credit_report -> credit_report
+            const sectionName = key.replace('coApplicants_userrole_', '');
+            const url = extractWebhookUrl(value as any);
+            if (url) {
+              docs[sectionName] = url;
+            }
+          } else if (rolePrefix === 'guarantor' && key.startsWith('guarantors_userrole_')) {
+            // Support keys like guarantors_userrole_credit_report -> credit_report
+            const sectionName = key.replace('guarantors_userrole_', '');
             const url = extractWebhookUrl(value as any);
             if (url) {
               docs[sectionName] = url;
@@ -1918,7 +2003,7 @@ export class WebhookService {
       webhookSummary: {
         totalResponses,
         responsesByPerson,
-        webhookResponses
+        webhookResponses: filteredWebhookResponses
       },
       
       // PDF URL from generated application PDF
