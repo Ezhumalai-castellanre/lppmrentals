@@ -8690,7 +8690,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                   totalBankRecords: coApplicant.bankRecords?.length || 0,
                   hasBankRecords: !!(coApplicant.bankRecords && coApplicant.bankRecords.length > 0)
                 })),
-                totalBankRecords: formData.coApplicants.reduce((total: number, coApplicant: any) => total + coApplicant.bankRecords.length, 0),
+                totalBankRecords: formData.coApplicants.reduce((total: number, coApplicant: any) => total + (coApplicant.bankRecords?.length || 0), 0),
                 hasBankRecords: !!(formData.coApplicants?.[0]?.bankRecords?.length)
               } : null,
               guarantors: hasGuarantor ? {
@@ -8700,14 +8700,14 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                   totalBankRecords: guarantor.bankRecords?.length || 0,
                   hasBankRecords: !!(guarantor.bankRecords && guarantor.bankRecords.length > 0)
                 })),
-                totalBankRecords: formData.guarantors.reduce((total: number, guarantor: any) => total + guarantor.bankRecords.length, 0),
+                totalBankRecords: formData.guarantors.reduce((total: number, guarantor: any) => total + (guarantor.bankRecords?.length || 0), 0),
                 hasBankRecords: !!(formData.guarantors?.[0]?.bankRecords?.length)
               } : null,
               summary: {
                 totalPeople: 1 + (hasCoApplicant ? formData.coApplicants.length : 0) + (hasGuarantor ? formData.guarantors.length : 0),
                 totalBankRecords: (formData.applicant?.bankRecords?.length || 0) + 
-                                 (hasCoApplicant ? formData.coApplicants.reduce((total: number, coApplicant: any) => total + coApplicant.bankRecords.length, 0) : 0) + 
-                                 (hasGuarantor ? formData.guarantors.reduce((total: number, guarantor: any) => total + guarantor.bankRecords.length, 0) : 0),
+                                 (hasCoApplicant ? formData.coApplicants.reduce((total: number, coApplicant: any) => total + (coApplicant.bankRecords?.length || 0), 0) : 0) + 
+                                 (hasGuarantor ? formData.guarantors.reduce((total: number, guarantor: any) => total + (guarantor.bankRecords?.length || 0), 0) : 0),
                 peopleWithBankRecords: [
                   ...(formData.applicant?.bankRecords && formData.applicant.bankRecords.length > 0 ? ['applicant'] : []),
                   ...(hasCoApplicant ? (formData.coApplicants || []).map((coApplicant: any) => `coApplicant_${coApplicant.name}`) : []),
