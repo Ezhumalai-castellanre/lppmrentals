@@ -2318,75 +2318,255 @@ console.log("#### alldata", allData);
 
         // Auto-populate co-applicants and guarantors from additional people data
         if (additionalPeopleData && typeof additionalPeopleData === 'object') {
+          console.log('🔄 ===== AUTO-POPULATION START =====');
           console.log('🔄 Auto-populating form from additional people data...');
+          console.log('🔍 Additional People Data:', additionalPeopleData);
+          console.log('🔍 Additional People Data Keys:', Object.keys(additionalPeopleData));
           
           // Parse co-applicants from additional people
           const invitedCoApplicants: any[] = [];
           const invitedGuarantors: any[] = [];
           
+          // First, collect all co-applicants with their indices
+          const coApplicantEntries: Array<{index: number, data: any}> = [];
+
+          console.log("#### coApplicantEntries", coApplicantEntries);
+          
+          
+          console.log('🔍 ===== PROCESSING CO-APPLICANTS =====');
+          console.log('🔍 Total keys in additionalPeopleData:', Object.keys(additionalPeopleData).length);
+          console.log('🔍 All keys in additionalPeopleData:', Object.keys(additionalPeopleData));
+          
           for (const [key, value] of Object.entries(additionalPeopleData)) {
+            console.log(`🔍 Processing key: "${key}", value:`, value);
+            console.log(`🔍 Key starts with 'coApplicants': ${key.startsWith('coApplicants')}`);
+            console.log(`🔍 Value is object: ${value && typeof value === 'object'}`);
+            console.log(`🔍 Value type: ${typeof value}`);
+            console.log(`🔍 Value truthy: ${!!value}`);
+            
             if (key.startsWith('coApplicants') && value && typeof value === 'object') {
+              console.log(`✅ Found co-applicant key: ${key}`);
               const coAppData = value as any;
+              console.log(`🔍 Co-applicant data:`, coAppData);
+              console.log(`🔍 Co-applicant has name: ${!!coAppData.name}, email: ${!!coAppData.email}`);
+              console.log(`🔍 Co-applicant name: "${coAppData.name}", email: "${coAppData.email}"`);
+              
               if (coAppData.name && coAppData.email) {
-                invitedCoApplicants.push({
+                // Extract the index from the key (coApplicants1 -> index 0, coApplicants2 -> index 1)
+                const indexMatch = key.match(/coApplicants(\d+)/);
+                const index = indexMatch ? parseInt(indexMatch[1], 10) - 1 : coApplicantEntries.length;
+                console.log(`🔍 Extracted index from "${key}": ${index}`);
+                
+                // Parse name into first and last name if possible
+                const nameParts = coAppData.name.split(' ');
+                const firstName = nameParts[0] || '';
+                const lastName = nameParts.slice(1).join(' ') || '';
+                console.log(`🔍 Parsed name "${coAppData.name}" -> firstName: "${firstName}", lastName: "${lastName}"`);
+                
+                const coApplicantData = {
                   name: coAppData.name,
-                  email: coAppData.email
+                  firstName: firstName,
+                  lastName: lastName,
+                  email: coAppData.email,
+                  // Add any other available fields from the additional people data
+                  phone: coAppData.phone || '',
+                  relationship: coAppData.relationship || 'Co-Applicant'
+                };
+                console.log("#### coApplicantData", coApplicantData);
+                
+                console.log("#### coApplicantEntries", coApplicantEntries);
+                
+                coApplicantEntries.push({
+                  index: index,
+                  data: coApplicantData
                 });
+                
+                console.log(`✅ Collected co-applicant from ${key} at index ${index}:`, coApplicantData);
+                console.log(`✅ Total co-applicant entries so far: ${coApplicantEntries.length}`);
+                console.log(`🔄 MAPPING: ${key} -> index ${index} -> data:`, {
+                  originalKey: key,
+                  extractedIndex: index,
+                  name: coApplicantData.name,
+                  firstName: coApplicantData.firstName,
+                  lastName: coApplicantData.lastName,
+                  email: coApplicantData.email
+                });
+              } else {
+                console.log(`⚠️ Skipping co-applicant ${key} - missing name or email`);
+                console.log(`⚠️ Name: "${coAppData.name}", Email: "${coAppData.email}"`);
               }
-            } else if (key.startsWith('guarantor') && value && typeof value === 'object') {
+            } else {
+              console.log(`⚠️ Key "${key}" does not match co-applicant criteria`);
+            }
+          }
+          
+          console.log('🔍 ===== CO-APPLICANT PROCESSING COMPLETE =====');
+          console.log('🔍 Total co-applicant entries collected:', coApplicantEntries.length);
+          console.log('🔍 Co-applicant entries:', coApplicantEntries);
+          
+          // Sort by index and add to the array in correct order
+          console.log(`🔍 Co-applicant entries before sorting:`, coApplicantEntries);
+          coApplicantEntries.sort((a, b) => a.index - b.index);
+          console.log(`🔍 Co-applicant entries after sorting:`, coApplicantEntries);
+          
+          console.log('🔄 ===== BUILDING INVITED CO-APPLICANTS ARRAY =====');
+          coApplicantEntries.forEach((entry, forEachIndex) => {
+            console.log(`🔄 Processing entry ${forEachIndex}:`, entry);
+            console.log(`🔄 Adding to invitedCoApplicants[${entry.index}]:`, entry.data);
+            invitedCoApplicants.push(entry.data);
+            console.log(`✅ Added co-applicant at index ${entry.index}: ${entry.data.name} (${entry.data.email})`);
+            console.log(`🔄 Current invitedCoApplicants array:`, invitedCoApplicants);
+          });
+          
+          console.log(`🔍 Final invitedCoApplicants array:`, invitedCoApplicants);
+          console.log(`🔍 Final invitedCoApplicants length:`, invitedCoApplicants.length);
+          console.log(`🔍 Final invitedCoApplicants[0]:`, invitedCoApplicants[0]);
+          console.log(`🔍 Final invitedCoApplicants[1]:`, invitedCoApplicants[1]);
+          
+          // Now process guarantors with index-based sorting
+          const guarantorEntries: Array<{index: number, data: any}> = [];
+          
+          console.log('🔍 ===== PROCESSING GUARANTORS =====');
+          for (const [key, value] of Object.entries(additionalPeopleData)) {
+            console.log(`🔍 Processing key: "${key}", value:`, value);
+            if (key.startsWith('guarantor') && value && typeof value === 'object') {
+              console.log(`✅ Found guarantor key: ${key}`);
               const guarData = value as any;
+              console.log(`🔍 Guarantor data:`, guarData);
+              console.log(`🔍 Guarantor has name: ${!!guarData.name}, email: ${!!guarData.email}`);
+              
               if (guarData.name && guarData.email) {
-                invitedGuarantors.push({
+                // Extract the index from the key (guarantor1 -> index 0, guarantor2 -> index 1)
+                const indexMatch = key.match(/guarantor(\d+)/);
+                const index = indexMatch ? parseInt(indexMatch[1], 10) - 1 : guarantorEntries.length;
+                console.log(`🔍 Extracted index from "${key}": ${index}`);
+                
+                // Parse name into first and last name if possible
+                const nameParts = guarData.name.split(' ');
+                const firstName = nameParts[0] || '';
+                const lastName = nameParts.slice(1).join(' ') || '';
+                console.log(`🔍 Parsed name "${guarData.name}" -> firstName: "${firstName}", lastName: "${lastName}"`);
+                
+                const guarantorData = {
                   name: guarData.name,
-                  email: guarData.email
+                  firstName: firstName,
+                  lastName: lastName,
+                  email: guarData.email,
+                  // Add any other available fields from the additional people data
+                  phone: guarData.phone || '',
+                  relationship: guarData.relationship || 'Guarantor'
+                };
+                
+                guarantorEntries.push({
+                  index: index,
+                  data: guarantorData
                 });
+                
+                console.log(`✅ Collected guarantor from ${key} at index ${index}:`, guarantorData);
+              } else {
+                console.log(`⚠️ Skipping guarantor ${key} - missing name or email`);
               }
             }
           }
           
+          // Sort by index and add to the array in correct order
+          console.log(`🔍 Guarantor entries before sorting:`, guarantorEntries);
+          guarantorEntries.sort((a, b) => a.index - b.index);
+          console.log(`🔍 Guarantor entries after sorting:`, guarantorEntries);
+          
+          guarantorEntries.forEach(entry => {
+            invitedGuarantors.push(entry.data);
+            console.log(`✅ Added guarantor at index ${entry.index}: ${entry.data.name} (${entry.data.email})`);
+          });
+          
+          console.log(`🔍 Final invitedGuarantors array:`, invitedGuarantors);
+          
           // Merge invited people with existing data (invited people take precedence for auto-population)
-          // BUT only if we don't have valid allData.coApplicant data
-          if (invitedCoApplicants.length > 0 && (!allData.coApplicant || !allData.coApplicant.coapplicant_info)) {
+          // Always use Additional People data when available, as it's the most current
+          console.log('🔍 ===== MERGING CO-APPLICANTS =====');
+          console.log(`🔍 invitedCoApplicants.length: ${invitedCoApplicants.length}`);
+          console.log(`🔍 allData.coApplicant:`, allData.coApplicant);
+          console.log(`🔍 allData.coApplicant?.coapplicant_info:`, allData.coApplicant?.coapplicant_info);
+          
+          if (invitedCoApplicants.length > 0) {
+            console.log('📊 ===== AUTO-POPULATING CO-APPLICANTS =====');
             console.log('📊 Auto-populating co-applicants from additional people:', invitedCoApplicants);
+            console.log('📊 Number of invited co-applicants:', invitedCoApplicants.length);
+            
+            console.log('📊 Before setting - parsedFormData.coApplicants:', parsedFormData.coApplicants);
+            console.log('📊 Before setting - parsedFormData.coApplicant:', parsedFormData.coApplicant);
+            console.log('📊 Before setting - parsedFormData.hasCoApplicant:', parsedFormData.hasCoApplicant);
+            console.log('📊 Before setting - parsedFormData.coApplicantCount:', parsedFormData.coApplicantCount);
+            
             parsedFormData.coApplicants = invitedCoApplicants;
             parsedFormData.coApplicant = invitedCoApplicants[0] || {};
             parsedFormData.hasCoApplicant = true;
             parsedFormData.coApplicantCount = invitedCoApplicants.length;
-          } else if (invitedCoApplicants.length > 0) {
-            console.log('📊 Skipping invited co-applicants - using allData.coApplicant data instead');
+            
+            console.log('📊 After setting - parsedFormData.coApplicantCount:', parsedFormData.coApplicantCount);
+            console.log('📊 After setting - parsedFormData.coApplicants:', parsedFormData.coApplicants);
+            console.log('📊 After setting - parsedFormData.coApplicant:', parsedFormData.coApplicant);
+            console.log('📊 After setting - parsedFormData.hasCoApplicant:', parsedFormData.hasCoApplicant);
+          } else {
+            console.log('⚠️ No co-applicants to auto-populate');
           }
           
+          console.log('🔍 ===== MERGING GUARANTORS =====');
+          console.log(`🔍 invitedGuarantors.length: ${invitedGuarantors.length}`);
+          
           if (invitedGuarantors.length > 0) {
-            // Only use invited guarantors if we do not already have meaningful guarantor data
-            const existingGuarantor = parsedFormData.guarantor || {};
-            const hasMeaningfulGuarantor = !!(
-              existingGuarantor.name || existingGuarantor.email || existingGuarantor.phone ||
-              existingGuarantor.ssn || existingGuarantor.address || existingGuarantor.license ||
-              existingGuarantor.relationship
-            );
-
-            if (!hasMeaningfulGuarantor) {
-              console.log('📊 Auto-populating guarantors from additional people:', invitedGuarantors);
-              parsedFormData.guarantors = invitedGuarantors;
-              parsedFormData.guarantor = invitedGuarantors[0] || {};
-              parsedFormData.hasGuarantor = true;
-              parsedFormData.guarantorCount = invitedGuarantors.length;
-            } else {
-              console.log('📊 Skipping invited guarantors - using prioritized guarantor data from allData');
-            }
+            // Always use Additional People data when available, as it's the most current
+            console.log('📊 ===== AUTO-POPULATING GUARANTORS =====');
+            console.log('📊 Auto-populating guarantors from additional people:', invitedGuarantors);
+            console.log('📊 Number of invited guarantors:', invitedGuarantors.length);
+            
+            console.log('📊 Before setting - parsedFormData.guarantors:', parsedFormData.guarantors);
+            console.log('📊 Before setting - parsedFormData.guarantor:', parsedFormData.guarantor);
+            console.log('📊 Before setting - parsedFormData.hasGuarantor:', parsedFormData.hasGuarantor);
+            console.log('📊 Before setting - parsedFormData.guarantorCount:', parsedFormData.guarantorCount);
+            
+            parsedFormData.guarantors = invitedGuarantors;
+            parsedFormData.guarantor = invitedGuarantors[0] || {};
+            parsedFormData.hasGuarantor = true;
+            parsedFormData.guarantorCount = invitedGuarantors.length;
+            
+            console.log('📊 After setting - parsedFormData.guarantorCount:', parsedFormData.guarantorCount);
+            console.log('📊 After setting - parsedFormData.guarantors:', parsedFormData.guarantors);
+            console.log('📊 After setting - parsedFormData.guarantor:', parsedFormData.guarantor);
+            console.log('📊 After setting - parsedFormData.hasGuarantor:', parsedFormData.hasGuarantor);
+          } else {
+            console.log('⚠️ No guarantors to auto-populate');
           }
         }
 
+        console.log('🔄 ===== AUTO-POPULATION END =====');
+
         // Auto-set checkbox states based on data presence - RELIABLE APPROACH
+        console.log('🔍 ===== CHECKING DATA PRESENCE =====');
         const hasCoApplicantDataFlag = parsedFormData.coApplicant && Object.keys(parsedFormData.coApplicant).length > 0;
         const hasCoApplicantsArray = parsedFormData.coApplicants && Array.isArray(parsedFormData.coApplicants) && parsedFormData.coApplicants.length > 0;
         const hasGuarantorDataFlag = parsedFormData.guarantor && Object.keys(parsedFormData.guarantor).length > 0;
         const hasGuarantorsArray = parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors) && parsedFormData.guarantors.length > 0;
         
+        console.log('🔍 hasCoApplicantDataFlag:', hasCoApplicantDataFlag);
+        console.log('🔍 hasCoApplicantsArray:', hasCoApplicantsArray);
+        console.log('🔍 hasGuarantorDataFlag:', hasGuarantorDataFlag);
+        console.log('🔍 hasGuarantorsArray:', hasGuarantorsArray);
+        
         // Set co-applicant checkbox if data exists
+        console.log('🔍 ===== SETTING CO-APPLICANT FLAGS =====');
+        console.log(`🔍 Checking co-applicant flags - hasCoApplicantDataFlag: ${hasCoApplicantDataFlag}, hasCoApplicantsArray: ${hasCoApplicantsArray}, hasCoApplicant: ${parsedFormData.hasCoApplicant}`);
+        
         if ((hasCoApplicantDataFlag || hasCoApplicantsArray) && parsedFormData.hasCoApplicant === undefined) {
           console.log('🔧 Auto-setting hasCoApplicant to true based on data presence');
           parsedFormData.hasCoApplicant = true;
+        }
+        
+        // Ensure co-applicant count is properly set
+        console.log(`🔍 Checking co-applicant count - hasCoApplicantsArray: ${hasCoApplicantsArray}, coApplicantCount: ${parsedFormData.coApplicantCount}`);
+        if (hasCoApplicantsArray && parsedFormData.coApplicantCount === undefined) {
+          parsedFormData.coApplicantCount = parsedFormData.coApplicants.length;
+          console.log('🔧 Auto-setting coApplicantCount to', parsedFormData.coApplicantCount);
         }
         console.log("#### parsedFormData", parsedFormData);
         console.log("#### allData.guarantor", allData.guarantor);
@@ -2395,9 +2575,19 @@ console.log("#### alldata", allData);
         console.log("#### parsedFormData.guarantors[0]", parsedFormData.guarantors?.[0]);
         
         // Set guarantor checkbox if data exists
+        console.log('🔍 ===== SETTING GUARANTOR FLAGS =====');
+        console.log(`🔍 Checking guarantor flags - hasGuarantorDataFlag: ${hasGuarantorDataFlag}, hasGuarantorsArray: ${hasGuarantorsArray}, hasGuarantor: ${parsedFormData.hasGuarantor}`);
+        
         if ((hasGuarantorDataFlag || hasGuarantorsArray) && parsedFormData.hasGuarantor === undefined) {
           console.log('🔧 Auto-setting hasGuarantor to true based on data presence');
           parsedFormData.hasGuarantor = true;
+        }
+        
+        // Ensure guarantor count is properly set
+        console.log(`🔍 Checking guarantor count - hasGuarantorsArray: ${hasGuarantorsArray}, guarantorCount: ${parsedFormData.guarantorCount}`);
+        if (hasGuarantorsArray && parsedFormData.guarantorCount === undefined) {
+          parsedFormData.guarantorCount = parsedFormData.guarantors.length;
+          console.log('🔧 Auto-setting guarantorCount to', parsedFormData.guarantorCount);
         }
         
         // Ensure form fields are populated from mapped data - RELIABLE APPROACH WITH DEBUG
@@ -3081,9 +3271,208 @@ console.log("#### alldata", allData);
           console.log('#### formData.guarantors after setFormData:', parsedFormData.guarantors);
           console.log('#### formData.guarantors[0] after setFormData:', parsedFormData.guarantors?.[0]);
           
+          // Ensure Additional People section form fields are properly populated
+          console.log('🔍 ===== FORM FIELD POPULATION START =====');
+          console.log('🔍 parsedFormData.hasCoApplicant:', parsedFormData.hasCoApplicant);
+          console.log('🔍 parsedFormData.coApplicants:', parsedFormData.coApplicants);
+          console.log('🔍 Array.isArray(parsedFormData.coApplicants):', Array.isArray(parsedFormData.coApplicants));
+          console.log('🔍 parsedFormData.coApplicants.length:', parsedFormData.coApplicants?.length);
+          console.log('🔍 parsedFormData.coApplicants[0]:', parsedFormData.coApplicants?.[0]);
+          console.log('🔍 parsedFormData.coApplicants[1]:', parsedFormData.coApplicants?.[1]);
+          
+          if (parsedFormData.hasCoApplicant && parsedFormData.coApplicants && Array.isArray(parsedFormData.coApplicants)) {
+            console.log('🔧 ===== POPULATING CO-APPLICANT FORM FIELDS =====');
+            console.log('🔧 Ensuring co-applicant form fields are populated');
+            console.log('🔧 Number of co-applicants to populate:', parsedFormData.coApplicants.length);
+            
+            parsedFormData.coApplicants.forEach((coApp: any, index: number) => {
+              console.log(`🔧 ===== PROCESSING CO-APPLICANT ${index} =====`);
+              console.log(`🔧 Co-applicant ${index} data:`, coApp);
+              console.log(`🔧 Co-applicant ${index} has data:`, coApp && Object.keys(coApp).length > 0);
+              console.log(`🔧 Co-applicant ${index} keys:`, coApp ? Object.keys(coApp) : 'no data');
+              console.log(`🔧 Co-applicant ${index} name: "${coApp?.name}", email: "${coApp?.email}"`);
+              console.log(`🔄 FORM MAPPING: parsedFormData.coApplicants[${index}] -> form fields:`, {
+                arrayIndex: index,
+                name: coApp?.name,
+                firstName: coApp?.firstName,
+                lastName: coApp?.lastName,
+                email: coApp?.email
+              });
+              
+              if (coApp && Object.keys(coApp).length > 0) {
+                console.log(`📝 Co-applicant ${index} has name:`, coApp.name);
+                console.log(`📝 Co-applicant ${index} has email:`, coApp.email);
+                
+                // Parse name into first and last name if not already split
+                let firstName = coApp.firstName;
+                let lastName = coApp.lastName;
+                
+                if (!firstName && !lastName && coApp.name) {
+                  const nameParts = coApp.name.split(' ');
+                  firstName = nameParts[0] || '';
+                  lastName = nameParts.slice(1).join(' ') || '';
+                  console.log(`📝 Parsed name "${coApp.name}" into firstName: "${firstName}", lastName: "${lastName}"`);
+                }
+                
+                if (firstName) {
+                  console.log(`🔄 SETTING FORM FIELD: coApplicants.${index}.firstName = ${firstName}`);
+                  form.setValue(`coApplicants.${index}.firstName` as any, firstName);
+                  console.log(`✅ Set coApplicants.${index}.firstName = ${firstName}`);
+                  // Verify the value was set
+                  const verifyValue = form.getValues(`coApplicants.${index}.firstName` as any);
+                  console.log(`🔍 Verified coApplicants.${index}.firstName = ${verifyValue}`);
+                }
+                if (lastName) {
+                  console.log(`🔄 SETTING FORM FIELD: coApplicants.${index}.lastName = ${lastName}`);
+                  form.setValue(`coApplicants.${index}.lastName` as any, lastName);
+                  console.log(`✅ Set coApplicants.${index}.lastName = ${lastName}`);
+                  // Verify the value was set
+                  const verifyValue = form.getValues(`coApplicants.${index}.lastName` as any);
+                  console.log(`🔍 Verified coApplicants.${index}.lastName = ${verifyValue}`);
+                }
+                if (coApp.name) {
+                  form.setValue(`coApplicants.${index}.name`, coApp.name);
+                  console.log(`✅ Set coApplicants.${index}.name = ${coApp.name}`);
+                  // Verify the value was set
+                  const verifyValue = form.getValues(`coApplicants.${index}.name` as any);
+                  console.log(`🔍 Verified coApplicants.${index}.name = ${verifyValue}`);
+                }
+                if (coApp.relationship) {
+                  form.setValue(`coApplicants.${index}.relationship`, coApp.relationship);
+                  console.log(`✅ Set coApplicants.${index}.relationship = ${coApp.relationship}`);
+                }
+                if (coApp.dob) form.setValue(`coApplicants.${index}.dob`, new Date(coApp.dob));
+                if (coApp.ssn) form.setValue(`coApplicants.${index}.ssn`, coApp.ssn);
+                if (coApp.phone) form.setValue(`coApplicants.${index}.phone`, coApp.phone);
+                if (coApp.email) {
+                  console.log(`🔄 SETTING FORM FIELD: coApplicants.${index}.email = ${coApp.email}`);
+                  form.setValue(`coApplicants.${index}.email`, coApp.email);
+                  console.log(`✅ Set coApplicants.${index}.email = ${coApp.email}`);
+                  // Verify the value was set
+                  const verifyValue = form.getValues(`coApplicants.${index}.email` as any);
+                  console.log(`🔍 Verified coApplicants.${index}.email = ${verifyValue}`);
+                }
+                
+                // Immediately update formData state to ensure UI reflects the changes
+                console.log(`🔧 Updating formData state for co-applicant ${index}`);
+                setFormData((prevData: any) => {
+                  const updated = { ...prevData };
+                  if (!updated.coApplicants) updated.coApplicants = [];
+                  if (!updated.coApplicants[index]) updated.coApplicants[index] = {};
+                  
+                  if (firstName) updated.coApplicants[index].firstName = firstName;
+                  if (lastName) updated.coApplicants[index].lastName = lastName;
+                  if (coApp.name) updated.coApplicants[index].name = coApp.name;
+                  if (coApp.email) updated.coApplicants[index].email = coApp.email;
+                  if (coApp.relationship) updated.coApplicants[index].relationship = coApp.relationship;
+                  
+                  console.log(`🔧 Updated formData.coApplicants[${index}] with:`, updated.coApplicants[index]);
+                  return updated;
+                });
+              } else {
+                console.log(`⚠️ Co-applicant ${index} has no data to populate`);
+              }
+            });
+          } else {
+            console.log('⚠️ No co-applicants to populate form fields for');
+          }
+          
+          console.log('🔍 ===== CHECKING GUARANTOR FORM FIELDS =====');
+          console.log('🔍 parsedFormData.hasGuarantor:', parsedFormData.hasGuarantor);
+          console.log('🔍 parsedFormData.guarantors:', parsedFormData.guarantors);
+          console.log('🔍 Array.isArray(parsedFormData.guarantors):', Array.isArray(parsedFormData.guarantors));
+          
+          if (parsedFormData.hasGuarantor && parsedFormData.guarantors && Array.isArray(parsedFormData.guarantors)) {
+            console.log('🔧 ===== POPULATING GUARANTOR FORM FIELDS =====');
+            console.log('🔧 Ensuring guarantor form fields are populated');
+            console.log('🔧 Number of guarantors to populate:', parsedFormData.guarantors.length);
+            
+            parsedFormData.guarantors.forEach((guar: any, index: number) => {
+              console.log(`🔧 ===== PROCESSING GUARANTOR ${index} =====`);
+              console.log(`🔧 Guarantor ${index} data:`, guar);
+              console.log(`🔧 Guarantor ${index} has data:`, guar && Object.keys(guar).length > 0);
+              
+              if (guar && Object.keys(guar).length > 0) {
+                // Parse name into first and last name if not already split
+                let firstName = guar.firstName;
+                let lastName = guar.lastName;
+                
+                if (!firstName && !lastName && guar.name) {
+                  const nameParts = guar.name.split(' ');
+                  firstName = nameParts[0] || '';
+                  lastName = nameParts.slice(1).join(' ') || '';
+                  console.log(`📝 Parsed guarantor name "${guar.name}" into firstName: "${firstName}", lastName: "${lastName}"`);
+                }
+                
+                if (firstName) form.setValue(`guarantors.${index}.firstName` as any, firstName);
+                if (lastName) form.setValue(`guarantors.${index}.lastName` as any, lastName);
+                if (guar.name) form.setValue(`guarantors.${index}.name`, guar.name);
+                if (guar.relationship) form.setValue(`guarantors.${index}.relationship`, guar.relationship);
+                if (guar.dob) form.setValue(`guarantors.${index}.dob`, new Date(guar.dob));
+                if (guar.ssn) form.setValue(`guarantors.${index}.ssn`, guar.ssn);
+                if (guar.phone) form.setValue(`guarantors.${index}.phone`, guar.phone);
+                if (guar.email) form.setValue(`guarantors.${index}.email`, guar.email);
+                if (guar.license) form.setValue(`guarantors.${index}.license`, guar.license);
+                if (guar.licenseState) form.setValue(`guarantors.${index}.licenseState`, guar.licenseState);
+                if (guar.address) form.setValue(`guarantors.${index}.address`, guar.address);
+                if (guar.city) form.setValue(`guarantors.${index}.city`, guar.city);
+                if (guar.state) form.setValue(`guarantors.${index}.state`, guar.state);
+                if (guar.zip) form.setValue(`guarantors.${index}.zip`, guar.zip);
+                
+                // Immediately update formData state to ensure UI reflects the changes
+                console.log(`🔧 Updating formData state for guarantor ${index}`);
+                setFormData((prevData: any) => {
+                  const updated = { ...prevData };
+                  if (!updated.guarantors) updated.guarantors = [];
+                  if (!updated.guarantors[index]) updated.guarantors[index] = {};
+                  
+                  if (firstName) updated.guarantors[index].firstName = firstName;
+                  if (lastName) updated.guarantors[index].lastName = lastName;
+                  if (guar.name) updated.guarantors[index].name = guar.name;
+                  if (guar.email) updated.guarantors[index].email = guar.email;
+                  if (guar.relationship) updated.guarantors[index].relationship = guar.relationship;
+                  
+                  console.log(`🔧 Updated formData.guarantors[${index}] with:`, updated.guarantors[index]);
+                  return updated;
+                });
+              } else {
+                console.log(`⚠️ Guarantor ${index} has no data to populate`);
+              }
+            });
+          } else {
+            console.log('⚠️ No guarantors to populate form fields for');
+          }
+          
+          console.log('🔍 ===== FORM FIELD POPULATION END =====');
+          
           // Force a re-render to ensure the form displays the populated values
           setTimeout(() => {
+            console.log('🔧 ===== FINAL FORM VALUES CHECK =====');
             console.log('🔧 AUTO-POPULATION: Final form values after timeout:', form.getValues());
+            
+            // Update formData state to reflect the populated form values
+            const currentFormValues = form.getValues();
+            console.log('🔧 Current form values for co-applicants:', currentFormValues.coApplicants);
+            console.log('🔧 Current form values for guarantors:', currentFormValues.guarantors);
+            
+            setFormData((prevData: any) => {
+              const updated = { ...prevData };
+              
+              // Update co-applicants in formData
+              if (currentFormValues.coApplicants && Array.isArray(currentFormValues.coApplicants)) {
+                updated.coApplicants = currentFormValues.coApplicants;
+                console.log('🔧 Updated formData.coApplicants with form values:', updated.coApplicants);
+              }
+              
+              // Update guarantors in formData
+              if (currentFormValues.guarantors && Array.isArray(currentFormValues.guarantors)) {
+                updated.guarantors = currentFormValues.guarantors;
+                console.log('🔧 Updated formData.guarantors with form values:', updated.guarantors);
+              }
+              
+              console.log('🔧 Final updated formData:', updated);
+              return updated;
+            });
           }, 100);
           
             // Restore current step only if restoreStep is true
