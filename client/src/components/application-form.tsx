@@ -1772,6 +1772,27 @@ export function ApplicationForm() {
 
   // When webhookResponses contains direct file URLs, seed preview slots and map URLs
   useEffect(() => {
+    // Normalize any composite guarantor save-type keys to the new format
+    const normalizeWebhookSaveTypeKey = (key: string): string => {
+      // Example: guarantors_0_guarantors_1_pay_stubs_2 -> guarantors_userrole_pay_stubs_2
+      const match = key.match(/^guarantors_\d+_guarantors_\d+_(.+)$/);
+      if (match) {
+        return `guarantors_userrole_${match[1]}`;
+      }
+      return key;
+    };
+
+    if (webhookResponses && Object.keys(webhookResponses).length > 0) {
+      const normalizedEntries = Object.entries(webhookResponses).map(([k, v]) => [normalizeWebhookSaveTypeKey(k), v] as const);
+      const normalized = Object.fromEntries(normalizedEntries as any);
+      const changed = JSON.stringify(normalized) !== JSON.stringify(webhookResponses);
+      if (changed) {
+        setWebhookResponses(normalized);
+        setFormData((prev: any) => ({ ...prev, webhookResponses: normalized }));
+        return; // Wait for state to update before proceeding with seeding below
+      }
+    }
+
     if (!webhookResponses || Object.keys(webhookResponses).length === 0) return;
 
     const ensureEncryptedSlot = (personKey: string, documentType: string) => {
@@ -6987,69 +7008,82 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
 
       case 5: // Co-Applicant Information - conditional based on checkbox
         if (formData.hasCoApplicant && ((formData.coApplicantCount || 0) > 0)) {
-          // Determine which co-applicant to validate
-          const coApplicantIndex = (userRole?.startsWith('coapplicant') && specificIndex !== null)
-            ? specificIndex
-            : 0;
-          const coApplicant = formData.coApplicants?.[coApplicantIndex];
-          if (!coApplicant?.name?.trim()) {
-            errors.push('Co-Applicant Full Name is required');
-          }
-          if (!coApplicant?.ssn?.trim()) {
-            errors.push('Co-Applicant Social Security Number is required');
-          }
-          if (!coApplicant?.phone?.trim()) {
-            errors.push('Co-Applicant Phone Number is required');
-          }
-          if (!coApplicant?.email?.trim()) {
-            errors.push('Co-Applicant Email Address is required');
-          }
-          if (!coApplicant?.license?.trim()) {
-            errors.push('Co-Applicant Driver\'s License is required');
-          }
-          if (!coApplicant?.licenseState?.trim()) {
-            errors.push('Co-Applicant Driver\'s License State is required');
-          }
-          if (!coApplicant?.address?.trim()) {
-            errors.push('Co-Applicant Address is required');
-          }
-          if (!coApplicant?.city?.trim()) {
-            errors.push('Co-Applicant City is required');
-          }
-          if (!coApplicant?.state?.trim()) {
-            errors.push('Co-Applicant State is required');
-          }
-          if (!coApplicant?.zip?.trim()) {
-            errors.push('Co-Applicant ZIP Code is required');
-          }
+          // Validate either a specific co-applicant (by role) or all co-applicants
+          const totalCoApplicants = Math.min(
+            formData.coApplicantCount || 0,
+            (formData.coApplicants?.length || 0)
+          );
+          const indicesToValidate = (userRole?.startsWith('coapplicant') && specificIndex !== null && specificIndex !== undefined)
+            ? [specificIndex as number]
+            : Array.from({ length: totalCoApplicants }, (_, i) => i);
+
+          indicesToValidate.forEach((idx: number) => {
+            const coApplicant = formData.coApplicants?.[idx];
+            if (!coApplicant?.name?.trim()) {
+              errors.push(`Co-Applicant ${idx + 1} Full Name is required`);
+            }
+            if (!coApplicant?.ssn?.trim()) {
+              errors.push(`Co-Applicant ${idx + 1} Social Security Number is required`);
+            }
+            if (!coApplicant?.phone?.trim()) {
+              errors.push(`Co-Applicant ${idx + 1} Phone Number is required`);
+            }
+            if (!coApplicant?.email?.trim()) {
+              errors.push(`Co-Applicant ${idx + 1} Email Address is required`);
+            }
+            if (!coApplicant?.license?.trim()) {
+              errors.push(`Co-Applicant ${idx + 1} Driver's License is required`);
+            }
+            if (!coApplicant?.licenseState?.trim()) {
+              errors.push(`Co-Applicant ${idx + 1} Driver's License State is required`);
+            }
+            if (!coApplicant?.address?.trim()) {
+              errors.push(`Co-Applicant ${idx + 1} Address is required`);
+            }
+            if (!coApplicant?.city?.trim()) {
+              errors.push(`Co-Applicant ${idx + 1} City is required`);
+            }
+            if (!coApplicant?.state?.trim()) {
+              errors.push(`Co-Applicant ${idx + 1} State is required`);
+            }
+            if (!coApplicant?.zip?.trim()) {
+              errors.push(`Co-Applicant ${idx + 1} ZIP Code is required`);
+            }
+          });
         }
         break;
 
       case 6: // Co-Applicant Financial Information - conditional based on employment type
         if (formData.hasCoApplicant && ((formData.coApplicantCount || 0) > 0)) {
-          // Determine which co-applicant to validate
-          const coApplicantIndex = (userRole?.startsWith('coapplicant') && specificIndex !== null)
-            ? specificIndex
-            : 0;
-          const coApplicant = formData.coApplicants?.[coApplicantIndex];
-          if (!coApplicant?.employmentType?.trim()) {
-            errors.push('Co-Applicant Employment Type is required');
-          }
-          // If not student, require financial fields
-          if (coApplicant?.employmentType !== 'student') {
-            if (!coApplicant?.employer?.trim()) {
-              errors.push('Co-Applicant Current Employer is required');
+          const totalCoApplicants = Math.min(
+            formData.coApplicantCount || 0,
+            (formData.coApplicants?.length || 0)
+          );
+          const indicesToValidate = (userRole?.startsWith('coapplicant') && specificIndex !== null && specificIndex !== undefined)
+            ? [specificIndex as number]
+            : Array.from({ length: totalCoApplicants }, (_, i) => i);
+
+          indicesToValidate.forEach((idx: number) => {
+            const coApplicant = formData.coApplicants?.[idx];
+            if (!coApplicant?.employmentType?.trim()) {
+              errors.push(`Co-Applicant ${idx + 1} Employment Type is required`);
             }
-            if (!coApplicant?.position?.trim()) {
-              errors.push('Co-Applicant Position/Title is required');
+            // If not student, require financial fields
+            if (coApplicant?.employmentType !== 'student') {
+              if (!coApplicant?.employer?.trim()) {
+                errors.push(`Co-Applicant ${idx + 1} Current Employer is required`);
+              }
+              if (!coApplicant?.position?.trim()) {
+                errors.push(`Co-Applicant ${idx + 1} Position/Title is required`);
+              }
+              if (!coApplicant?.income || coApplicant?.income <= 0) {
+                errors.push(`Co-Applicant ${idx + 1} Income is required`);
+              }
+              if (!coApplicant?.incomeFrequency?.trim()) {
+                errors.push(`Co-Applicant ${idx + 1} Income Frequency is required`);
+              }
             }
-            if (!coApplicant?.income || coApplicant?.income <= 0) {
-              errors.push('Co-Applicant Income is required');
-            }
-            if (!coApplicant?.incomeFrequency?.trim()) {
-              errors.push('Co-Applicant Income Frequency is required');
-            }
-          }
+          });
         }
         break;
 
@@ -7078,61 +7112,75 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
 
       case 9: // Guarantor Information - conditional based on checkbox
         if (formData.hasGuarantor) {
-          const guarantor = formData.guarantors?.[0]; // Get first guarantor
-          if (!guarantor?.name?.trim()) {
-            errors.push('Guarantor Full Name is required');
-          }
-          if (!guarantor?.ssn?.trim()) {
-            errors.push('Guarantor Social Security Number is required');
-          }
-          if (!guarantor?.phone?.trim()) {
-            errors.push('Guarantor Phone Number is required');
-          }
-          if (!guarantor?.email?.trim()) {
-            errors.push('Guarantor Email Address is required');
-          }
-          if (!guarantor?.license?.trim()) {
-            errors.push('Guarantor Driver\'s License is required');
-          }
-          if (!guarantor?.licenseState?.trim()) {
-            errors.push('Guarantor Driver\'s License State is required');
-          }
-          if (!guarantor?.address?.trim()) {
-            errors.push('Guarantor Address is required');
-          }
-          if (!guarantor?.city?.trim()) {
-            errors.push('Guarantor City is required');
-          }
-          if (!guarantor?.state?.trim()) {
-            errors.push('Guarantor State is required');
-          }
-          if (!guarantor?.zip?.trim()) {
-            errors.push('Guarantor ZIP Code is required');
-          }
+          const totalGuarantors = formData.guarantors?.length || 0;
+          const indicesToValidate = (userRole?.startsWith('guarantor') && specificIndex !== null && specificIndex !== undefined)
+            ? [specificIndex as number]
+            : Array.from({ length: Math.max(1, totalGuarantors) }, (_, i) => i);
+
+          indicesToValidate.forEach((idx: number) => {
+            const guarantor = formData.guarantors?.[idx] || formData.guarantors?.[0];
+            if (!guarantor?.name?.trim()) {
+              errors.push(`Guarantor ${idx + 1} Full Name is required`);
+            }
+            if (!guarantor?.ssn?.trim()) {
+              errors.push(`Guarantor ${idx + 1} Social Security Number is required`);
+            }
+            if (!guarantor?.phone?.trim()) {
+              errors.push(`Guarantor ${idx + 1} Phone Number is required`);
+            }
+            if (!guarantor?.email?.trim()) {
+              errors.push(`Guarantor ${idx + 1} Email Address is required`);
+            }
+            if (!guarantor?.license?.trim()) {
+              errors.push(`Guarantor ${idx + 1} Driver's License is required`);
+            }
+            if (!guarantor?.licenseState?.trim()) {
+              errors.push(`Guarantor ${idx + 1} Driver's License State is required`);
+            }
+            if (!guarantor?.address?.trim()) {
+              errors.push(`Guarantor ${idx + 1} Address is required`);
+            }
+            if (!guarantor?.city?.trim()) {
+              errors.push(`Guarantor ${idx + 1} City is required`);
+            }
+            if (!guarantor?.state?.trim()) {
+              errors.push(`Guarantor ${idx + 1} State is required`);
+            }
+            if (!guarantor?.zip?.trim()) {
+              errors.push(`Guarantor ${idx + 1} ZIP Code is required`);
+            }
+          });
         }
         break;
 
       case 10: // Guarantor Financial Information - conditional based on employment type
         if (formData.hasGuarantor) {
-          const guarantor = formData.guarantors?.[0]; // Get first guarantor
-          if (!guarantor?.employmentType?.trim()) {
-            errors.push('Guarantor Employment Type is required');
-          }
-          // If not student, require financial fields
-          if (guarantor?.employmentType !== 'student') {
-            if (!guarantor?.employer?.trim()) {
-              errors.push('Guarantor Current Employer is required');
+          const totalGuarantors = formData.guarantors?.length || 0;
+          const indicesToValidate = (userRole?.startsWith('guarantor') && specificIndex !== null && specificIndex !== undefined)
+            ? [specificIndex as number]
+            : Array.from({ length: Math.max(1, totalGuarantors) }, (_, i) => i);
+
+          indicesToValidate.forEach((idx: number) => {
+            const guarantor = formData.guarantors?.[idx] || formData.guarantors?.[0];
+            if (!guarantor?.employmentType?.trim()) {
+              errors.push(`Guarantor ${idx + 1} Employment Type is required`);
             }
-            if (!guarantor?.position?.trim()) {
-              errors.push('Guarantor Position/Title is required');
+            // If not student, require financial fields
+            if (guarantor?.employmentType !== 'student') {
+              if (!guarantor?.employer?.trim()) {
+                errors.push(`Guarantor ${idx + 1} Current Employer is required`);
+              }
+              if (!guarantor?.position?.trim()) {
+                errors.push(`Guarantor ${idx + 1} Position/Title is required`);
+              }
+              if (!guarantor?.income || guarantor?.income <= 0) {
+                errors.push(`Guarantor ${idx + 1} Income is required`);
+              }
+              if (!guarantor?.incomeFrequency?.trim()) {
+                errors.push(`Guarantor ${idx + 1} Income Frequency is required`);
+              }
             }
-            if (!guarantor?.income || guarantor?.income <= 0) {
-              errors.push('Guarantor Income is required');
-            }
-            if (!guarantor?.incomeFrequency?.trim()) {
-              errors.push('Guarantor Income Frequency is required');
-            }
-          }
+          });
         }
         break;
 
