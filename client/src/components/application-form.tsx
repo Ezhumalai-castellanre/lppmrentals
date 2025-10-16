@@ -10808,8 +10808,8 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                 )}
 
                 {hasCoApplicant && (
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-4">
+                  <div className="space-y-4 block">
+                    <div className="flex items-center space-x-4 hidden">
                       <Label className="text-sm font-medium">How many Co-Applicants?</Label>
                       <Select
                         value={formData.coApplicantCount?.toString() || '1'}
