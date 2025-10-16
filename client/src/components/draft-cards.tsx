@@ -5,6 +5,7 @@ import { Badge } from "./ui/badge";
 import { Button } from './ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { FileText, Clock, Edit, Trash2, Building, User, Calendar, DollarSign, CheckCircle, File, Eye, Users, Shield, LayoutDashboard, CreditCard, Home, Briefcase, FileCheck } from "lucide-react";
+import { IncomeVerificationWidget } from '@payscore/web-widget-sdk';
 import { useAuth } from "../hooks/use-auth";
 import { dynamoDBSeparateTablesUtils } from "../lib/dynamodb-separate-tables-service";
 import { format } from "date-fns";
@@ -41,7 +42,85 @@ interface DraftCardProps {
 const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
   const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("income");
+  // Payscore state for Income Verification tab
+  const widgetRef = React.useRef<any>(null);
+  const [screeningId, setScreeningId] = useState<string>("");
+  const [widgetToken, setWidgetToken] = useState<string>("");
+  const [status, setStatus] = useState<string>("");
+  const [logText, setLogText] = useState<string>("");
+
+  const appendLog = React.useCallback((msg: string) => {
+    setLogText((prev) => `${prev}${msg}\n`);
+  }, []);
+
+  const loadTokens = React.useCallback(async (): Promise<{ widgetToken: string; screeningId: string; status: string }> => {
+    try {
+      let WIDGET_TOKEN: string = '';
+      let SCREENING_ID: string = '';
+      let STATUS: string = '';
+      const tokens = await dynamoDBSeparateTablesUtils.getLatestPayscoreTokensForCurrentUser();
+      if (tokens) {
+        WIDGET_TOKEN = tokens.widget_token || WIDGET_TOKEN;
+        SCREENING_ID = tokens.screening_id || SCREENING_ID;
+        STATUS = tokens.status || STATUS;
+      }
+      if (!SCREENING_ID && WIDGET_TOKEN) {
+        try {
+          const parts = (WIDGET_TOKEN || '').split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1]));
+            if (typeof payload?.screening_id === 'string') SCREENING_ID = payload.screening_id;
+            if (!SCREENING_ID && typeof payload?.screeningId === 'string') SCREENING_ID = payload.screeningId;
+          }
+        } catch {}
+      }
+      setWidgetToken(WIDGET_TOKEN);
+      setScreeningId(SCREENING_ID);
+      setStatus(STATUS || '');
+      return { widgetToken: WIDGET_TOKEN, screeningId: SCREENING_ID, status: STATUS };
+    } catch (e) {
+      console.warn('⚠️ Could not load payscore tokens:', e);
+      return { widgetToken: '', screeningId: '', status: '' };
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTokens();
+  }, [loadTokens]);
+
+  const onEvent = React.useCallback((event: any) => {
+    try {
+      const { type, payload } = event || {};
+      appendLog(`📨 ${type || 'event'}: ${JSON.stringify(payload || {})}`);
+    } catch {}
+  }, [appendLog]);
+
+  const loadWidget = React.useCallback(async () => {
+    try {
+      let effectiveWidgetToken = widgetToken;
+      let effectiveScreeningId = screeningId;
+      if (!effectiveWidgetToken || !effectiveScreeningId) {
+        const fetched = await loadTokens();
+        effectiveWidgetToken = fetched.widgetToken;
+        effectiveScreeningId = fetched.screeningId;
+      }
+      if (!effectiveWidgetToken || !effectiveScreeningId) {
+        appendLog('❌ Missing Payscore tokens. Ensure payscore submission created a record.');
+        return;
+      }
+      widgetRef.current = new IncomeVerificationWidget({
+        widgetToken: effectiveWidgetToken,
+        screeningId: effectiveScreeningId,
+        environment: 'staging',
+        onEvent,
+      });
+      widgetRef.current.mount('#income-verification-widget');
+      appendLog('✅ Payscore widget mounted');
+    } catch (e: any) {
+      appendLog(`❌ Failed to load widget: ${e?.message || String(e)}`);
+    }
+  }, [widgetToken, screeningId, loadTokens, onEvent, appendLog]);
 
   const formatDate = (dateInput: string | Date) => {
     try {
@@ -376,28 +455,9 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
               <CardTitle className="text-base sm:text-lg font-semibold text-gray-900">
                 {draft.status === 'submitted' ? 'Submitted Application' : 'Draft Application'}
               </CardTitle>
-              {/* Flow Type Indicator */}
-              {draft.flow_type && (
-                <Badge 
-                  variant="outline" 
-                  className={`text-xs ${
-                    draft.flow_type === 'separate_webhooks' 
-                      ? 'border-blue-300 text-blue-700 bg-blue-50' 
-                      : 'border-gray-300 text-gray-700 bg-gray-50'
-                  }`}
-                >
-                  {draft.flow_type === 'separate_webhooks' ? 'New Flow' : 'Legacy'}
-                </Badge>
-              )}
+            
             </div>
-            <p className="text-xs sm:text-sm text-gray-600 mt-1">
-              {draft.status === 'submitted' ? 'Application has been submitted successfully' : 'Application in progress'}
-              {draft.webhook_flow_version && (
-                <span className="ml-2 text-gray-500">
-                  (v{draft.webhook_flow_version})
-                </span>
-              )}
-            </p>
+            
           </div>
           {draft.status === 'submitted' && (
             <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-500" />
@@ -414,16 +474,16 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
         }
         {(() => {
           const userRole = (user as any)?.role || '';
-          let allowedTabs = ["overview", "main", "applicant", "coapplicants", "guarantors", "occupants"] as string[];
+          let allowedTabs = ["overview", "main", "applicant", "coapplicants", "guarantors", "occupants", "income"] as string[];
 
           // Apply role-based tab visibility for both draft and submitted previews
           if (userRole && userRole.startsWith('coapplicant')) {
-            allowedTabs = ["coapplicants"];
+            allowedTabs = ["coapplicants", "income"];
           } else if (userRole && userRole.startsWith('guarantor')) {
-            allowedTabs = ["guarantors"];
+            allowedTabs = ["guarantors", "income"];
           } else {
             // Primary applicant (or unknown/admin defaults to primary view)
-            allowedTabs = ["overview", "applicant"];
+            allowedTabs = ["overview", "applicant", "income"];
           }
 
           if (!allowedTabs.includes(activeTab)) {
@@ -432,7 +492,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
 
           return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6 mb-4">
+          <TabsList className="grid w-full grid-cols-7 mb-4">
             {allowedTabs.includes('overview') && (
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="w-4 h-4" />
@@ -467,6 +527,12 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
             <TabsTrigger value="occupants" className="flex items-center gap-2">
               <Home className="w-4 h-4" />
               <span className="hidden sm:inline">Occupants</span>
+            </TabsTrigger>
+            )}
+            {allowedTabs.includes('income') && (
+            <TabsTrigger value="income" className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              <span className="hidden sm:inline">Income Verification</span>
             </TabsTrigger>
             )}
           </TabsList>
@@ -654,6 +720,54 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
             </div>
 
             {/* Removed: Complete Data from Separate Tables and Data Summary */}
+          </TabsContent>
+
+          {/* Income Verification Tab */}
+          <TabsContent value="income" className="space-y-4">
+            <div className="p-6 border rounded-lg bg-white shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h5 className="text-lg font-semibold text-gray-900">Income Verification</h5>
+                  <p className="text-sm text-gray-500 mt-1">Powered by Payscore</p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={loadWidget} 
+                    className="px-4 py-2 rounded-md bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 transition-colors duration-200 font-medium"
+                  >
+                    Verify Now
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium text-gray-700 mb-1">Screening ID</label>
+                  <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+                    <code className="text-sm text-gray-800 font-mono">{screeningId || 'Not available'}</code>
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+                    <span className={`text-sm font-medium ${
+                      status === 'completed' ? 'text-green-600' : 
+                      status === 'pending' ? 'text-yellow-600' : 
+                      status === 'failed' ? 'text-red-600' : 
+                      'text-gray-600'
+                    }`}>
+                      {status || 'Not available'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div id="income-verification-widget" className="mt-4" />
+
+              {logText && (
+                <pre className="mt-4 text-xs bg-gray-50 border border-gray-200 rounded p-2 max-h-40 overflow-auto whitespace-pre-wrap">{logText}</pre>
+              )}
+            </div>
           </TabsContent>
 
           {/* Main Application Tab */}

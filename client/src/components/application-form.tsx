@@ -7554,15 +7554,54 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
           const phoneDigits = rawPhone.replace(/\D/g, '');
           const e164Phone = phoneDigits ? `+1${phoneDigits.slice(-10)}` : '';
 
-          const payscorePayload = {
-            applicants: [
-              {
-                applicant_first_name: firstName,
-                applicant_last_name: lastName,
-                applicant_email: data.applicantEmail || '',
+          // Build applicants list including Additional People (co-applicants, guarantors)
+          const applicantsList: Array<{ applicant_first_name: string; applicant_last_name: string; applicant_email: string; applicant_phone_number: string; }> = [];
+          // Primary applicant
+          applicantsList.push({
+            applicant_first_name: firstName,
+            applicant_last_name: lastName,
+            applicant_email: data.applicantEmail || '',
+            applicant_phone_number: e164Phone
+          });
+          // Co-Applicants: use main applicant phone number
+          try {
+            const coApps = Array.isArray(formData.coApplicants) ? formData.coApplicants : [];
+            coApps.forEach((co: any) => {
+              const coFirst = (co?.firstName || (co?.name ? String(co.name).trim().split(/\s+/)[0] : '') || '').trim();
+              const coLast = (() => {
+                if (co?.lastName) return String(co.lastName).trim();
+                const parts = (co?.name ? String(co.name).trim().split(/\s+/) : []) as string[];
+                return parts.length > 1 ? parts.slice(1).join(' ') : '';
+              })();
+              applicantsList.push({
+                applicant_first_name: coFirst,
+                applicant_last_name: coLast,
+                applicant_email: co?.email || '',
                 applicant_phone_number: e164Phone
-              }
-            ],
+              });
+            });
+          } catch {}
+          // Guarantors: use main applicant phone number
+          try {
+            const guars = Array.isArray(formData.guarantors) ? formData.guarantors : [];
+            guars.forEach((g: any) => {
+              const gFirst = (g?.firstName || (g?.name ? String(g.name).trim().split(/\s+/)[0] : '') || '').trim();
+              const gLast = (() => {
+                if (g?.lastName) return String(g.lastName).trim();
+                const parts = (g?.name ? String(g.name).trim().split(/\s+/) : []) as string[];
+                return parts.length > 1 ? parts.slice(1).join(' ') : '';
+              })();
+              applicantsList.push({
+                applicant_first_name: gFirst,
+                applicant_last_name: gLast,
+                applicant_email: g?.email || '',
+                applicant_phone_number: e164Phone
+              });
+            });
+          } catch {}
+
+          const payscorePayload = {
+            applicants: applicantsList,
             property: resolvedProperty,
             is_decision_maker_paying: true,
             decision_maker_display_name: 'Liberty Place Property Management',
@@ -10616,16 +10655,38 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                       <div className="space-y-4">
                         {Array.from({ length: formData.coApplicantCount || 0 }, (_, index) => (
                           <div key={`coapplicant-quick-${index}`} className="p-4 bg-white border border-blue-200 rounded-lg">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                               <div>
-                                <Label className="text-sm">Co-Applicant {index + 1} Name</Label>
+                                <Label className="text-sm">Co-Applicant {index + 1} First Name</Label>
                                 <Input
-                                  value={formData.coApplicants?.[index]?.name || ''}
+                                  value={formData.coApplicants?.[index]?.firstName || ''}
                                   onChange={(e) => {
-                                    updateArrayItem('coApplicants', index, 'name', e.target.value);
-                                    form.setValue(`coApplicants.${index}.name`, e.target.value);
+                                    updateArrayItem('coApplicants', index, 'firstName', e.target.value);
+                                    // Store firstName in formData only; avoid strict form.setValue path
+                                    // Update full name by combining first and last
+                                    const lastName = formData.coApplicants?.[index]?.lastName || '';
+                                    const fullName = `${e.target.value} ${lastName}`.trim();
+                                    updateArrayItem('coApplicants', index, 'name', fullName);
+                                    form.setValue('applicantName', form.getValues('applicantName')); // no-op to satisfy types
                                   }}
-                                  placeholder="Full name"
+                                  placeholder="First name"
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-sm">Co-Applicant {index + 1} Last Name</Label>
+                                <Input
+                                  value={formData.coApplicants?.[index]?.lastName || ''}
+                                  onChange={(e) => {
+                                    updateArrayItem('coApplicants', index, 'lastName', e.target.value);
+                                    // Store lastName in formData only; avoid strict form.setValue path
+                                    // Update full name by combining first and last
+                                    const firstName = formData.coApplicants?.[index]?.firstName || '';
+                                    const fullName = `${firstName} ${e.target.value}`.trim();
+                                    updateArrayItem('coApplicants', index, 'name', fullName);
+                                    form.setValue('applicantName', form.getValues('applicantName'));
+                                  }}
+                                  placeholder="Last name"
                                   className="mt-1"
                                 />
                               </div>
@@ -10688,16 +10749,38 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
                       <div className="space-y-4">
                         {Array.from({ length: formData.guarantorCount || 0 }, (_, index) => (
                           <div key={`guarantor-quick-${index}`} className="p-4 bg-white border border-blue-200 rounded-lg">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                               <div>
-                                <Label className="text-sm">Guarantor {index + 1} Name</Label>
+                                <Label className="text-sm">Guarantor {index + 1} First Name</Label>
                                 <Input
-                                  value={formData.guarantors?.[index]?.name || ''}
+                                  value={formData.guarantors?.[index]?.firstName || ''}
                                   onChange={(e) => {
-                                    updateArrayItem('guarantors', index, 'name', e.target.value);
-                                    form.setValue(`guarantors.${index}.name`, e.target.value);
+                                    updateArrayItem('guarantors', index, 'firstName', e.target.value);
+                                    // Store firstName in formData only; avoid strict form.setValue path
+                                    // Update full name by combining first and last
+                                    const lastName = formData.guarantors?.[index]?.lastName || '';
+                                    const fullName = `${e.target.value} ${lastName}`.trim();
+                                    updateArrayItem('guarantors', index, 'name', fullName);
+                                    form.setValue('applicantName', form.getValues('applicantName'));
                                   }}
-                                  placeholder="Full name"
+                                  placeholder="First name"
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-sm">Guarantor {index + 1} Last Name</Label>
+                                <Input
+                                  value={formData.guarantors?.[index]?.lastName || ''}
+                                  onChange={(e) => {
+                                    updateArrayItem('guarantors', index, 'lastName', e.target.value);
+                                    // Store lastName in formData only; avoid strict form.setValue path
+                                    // Update full name by combining first and last
+                                    const firstName = formData.guarantors?.[index]?.firstName || '';
+                                    const fullName = `${firstName} ${e.target.value}`.trim();
+                                    updateArrayItem('guarantors', index, 'name', fullName);
+                                    form.setValue('applicantName', form.getValues('applicantName'));
+                                  }}
+                                  placeholder="Last name"
                                   className="mt-1"
                                 />
                               </div>

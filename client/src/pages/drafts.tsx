@@ -8,7 +8,7 @@ export default function DraftsPage() {
     <div className="space-y-8">
       <DraftCards />
 
-      <PayscoreEmbed />
+      {/* <PayscoreEmbed /> */}
     </div>
   );
 }
@@ -18,20 +18,23 @@ function PayscoreEmbed() {
   const [logText, setLogText] = React.useState<string>("");
   const [screeningId, setScreeningId] = React.useState<string>("");
   const [widgetToken, setWidgetToken] = React.useState<string>("");
+  const [status, setStatus] = React.useState<string>("");
 
   const appendLog = React.useCallback((msg: string) => {
     setLogText((prev) => `${prev}${msg}\n`);
   }, []);
 
   // Load latest Payscore tokens on page load
-  const loadTokens = React.useCallback(async (): Promise<{ widgetToken: string; screeningId: string }> => {
+  const loadTokens = React.useCallback(async (): Promise<{ widgetToken: string; screeningId: string; status?: string }> => {
     try {
       let WIDGET_TOKEN: string = '';
       let SCREENING_ID: string = '';
+      let STATUS: string | undefined = '';
       const tokens = await dynamoDBSeparateTablesUtils.getLatestPayscoreTokensForCurrentUser();
       if (tokens) {
         WIDGET_TOKEN = tokens.widget_token || WIDGET_TOKEN;
         SCREENING_ID = tokens.screening_id || SCREENING_ID;
+        STATUS = tokens.status || STATUS;
       }
       if (!SCREENING_ID) {
         // Try to derive from widget token if it's a JWT with payload
@@ -46,10 +49,11 @@ function PayscoreEmbed() {
       }
       setWidgetToken(WIDGET_TOKEN);
       setScreeningId(SCREENING_ID);
-      return { widgetToken: WIDGET_TOKEN, screeningId: SCREENING_ID };
+      setStatus(STATUS || '');
+      return { widgetToken: WIDGET_TOKEN, screeningId: SCREENING_ID, status: STATUS };
     } catch (e) {
       console.warn('⚠️ Could not load payscore tokens on mount:', e);
-      return { widgetToken: '', screeningId: '' };
+      return { widgetToken: '', screeningId: '', status: '' };
     }
   }, []);
 
@@ -131,28 +135,45 @@ function PayscoreEmbed() {
   }, []);
 
   return (
-    <div className="p-4 border rounded-md">
-      <div className="flex items-center justify-between mb-3">
+    <div className="p-6 border rounded-lg bg-white shadow-sm">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <div className="font-semibold">Payscore - Verify Income</div>
-          <div className="text-sm text-muted-foreground">Environment: staging</div>
+          <h3 className="text-lg font-semibold text-gray-900">Income Verification</h3>
+          <p className="text-sm text-gray-500 mt-1">Complete your income verification process</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={loadWidget} className="px-3 py-2 rounded-md bg-blue-600 text-white border border-blue-600">
-            Verify Income
-          </button>
-          <button onClick={unmountWidget} className="px-3 py-2 rounded-md bg-gray-200 text-gray-900 border border-gray-300">
-            Unmount
+          <button 
+            onClick={loadWidget} 
+            className="px-4 py-2 rounded-md bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 transition-colors duration-200 font-medium"
+          >
+            Verify Now
           </button>
         </div>
       </div>
 
-      <div className="text-sm text-muted-foreground mb-2 flex gap-2 items-center">
-        <div>Screening ID:</div>
-        <code className="bg-slate-100 px-1.5 py-0.5 rounded">{screeningId || '—'}</code>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-700 mb-1">Screening ID</label>
+          <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+            <code className="text-sm text-gray-800 font-mono">
+              {screeningId || 'Not available'}
+            </code>
+          </div>
+        </div>
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-700 mb-1">Status</label>
+          <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+            <span className={`text-sm font-medium ${
+              status === 'completed' ? 'text-green-600' : 
+              status === 'pending' ? 'text-yellow-600' : 
+              status === 'failed' ? 'text-red-600' : 
+              'text-gray-600'
+            }`}>
+              {status || 'Not available'}
+            </span>
+          </div>
+        </div>
       </div>
-
-      <pre className="mt-3 text-sm text-slate-600 whitespace-pre-wrap">{logText}</pre>
     </div>
   );
 }

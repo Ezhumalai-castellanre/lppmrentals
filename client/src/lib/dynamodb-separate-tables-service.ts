@@ -2060,7 +2060,7 @@ export class DynamoDBSeparateTablesService {
   }
 
   // Get latest payscore record for current user (email+role), extract tokens
-  async getLatestPayscoreTokensForCurrentUser(): Promise<{ screening_id?: string; widget_token?: string; record?: any } | null> {
+  async getLatestPayscoreTokensForCurrentUser(): Promise<{ screening_id?: string; widget_token?: string; status?: string; record?: any } | null> {
     if (!this.client) {
       console.error('❌ DynamoDB client not initialized');
       return null;
@@ -2074,19 +2074,70 @@ export class DynamoDBSeparateTablesService {
         return null;
       }
 
-      // Use Query on (email PK, role SK); 'role' is a reserved word -> alias with ExpressionAttributeNames
+      // Use Query on email PK only
       const command = new QueryCommand({
         TableName: this.tables.payscore || 'payscore',
-        KeyConditionExpression: 'email = :email AND #role = :role',
-        ExpressionAttributeNames: { '#role': 'role' },
-        ExpressionAttributeValues: marshall({ ':email': email, ':role': role }, { convertClassInstanceToMap: true })
+        KeyConditionExpression: 'email = :email',
+        ExpressionAttributeValues: marshall({ ':email': email }, { convertClassInstanceToMap: true })
       });
       const result = await (this.client as DynamoDBClient).send(command);
-      const items = (result.Items || []).map(i => unmarshall(i));
+      let items = (result.Items || []).map(i => unmarshall(i));
+
+      // Fallback: if no direct match for current email+role, try scanning by zoneinfo
+      if (!items.length) {
+        try {
+          const zoneinfo = await this.getCurrentUserZoneinfo();
+          if (zoneinfo) {
+            const scan = new ScanCommand({
+              TableName: this.tables.payscore || 'payscore',
+              FilterExpression: 'zoneinfo = :zoneinfo',
+              ExpressionAttributeValues: marshall({ ':zoneinfo': zoneinfo }, { convertClassInstanceToMap: true })
+            });
+            const scanRes = await (this.client as DynamoDBClient).send(scan);
+            items = (scanRes.Items || []).map(i => unmarshall(i));
+          }
+        } catch {}
+      }
       if (items.length === 0) return null;
       items.sort((a, b) => new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime());
       const latest = items[0];
-      const tokens = this.extractPayscoreTokens(latest.responseBody);
+
+      // Prefer tokens from responseBody.body.screening_details filtered by current email
+      const parseBody = (raw: any) => {
+        let b: any = raw;
+        try {
+          if (typeof b === 'string') b = JSON.parse(b);
+        } catch {}
+        try {
+          if (b && typeof b === 'object' && typeof b.body === 'string') {
+            const embedded = JSON.parse(b.body);
+            if (embedded && typeof embedded === 'object') b = { ...b, body: embedded };
+          }
+        } catch {}
+        return b;
+      };
+
+      let tokens: { screening_id: string | undefined; widget_token: string | undefined; status?: string } = { screening_id: undefined, widget_token: undefined };
+      try {
+        const body = parseBody(latest.responseBody);
+        const details = (body?.body?.screening_details || body?.screening_details) as any[] | undefined;
+        if (Array.isArray(details)) {
+          const match = details.find((d: any) => {
+            const e = (d?.email || d?.applicant_email || '').toLowerCase();
+            return e && e === email;
+          }) || details[0];
+          if (match && typeof match === 'object') {
+            tokens.screening_id = match.screening_id || match.screeningId || match.id;
+            tokens.widget_token = match.widget_token || match.widgetToken || match.token;
+            tokens.status = match.status || match.screening_status || match.state || undefined;
+          }
+        }
+      } catch {}
+
+      if (!tokens.screening_id || !tokens.widget_token) {
+        const fallback = this.extractPayscoreTokens(latest.responseBody);
+        tokens = { screening_id: fallback.screening_id, widget_token: fallback.widget_token };
+      }
       return { ...tokens, record: latest };
     } catch (error) {
       console.error('❌ Error getting latest payscore tokens:', error);
@@ -2358,7 +2409,7 @@ export const dynamoDBSeparateTablesUtils = {
     return dynamoDBSeparateTablesService.savePayscoreResponse(params);
   },
   
-  async getLatestPayscoreTokensForCurrentUser(): Promise<{ screening_id?: string; widget_token?: string; record?: any } | null> {
+  async getLatestPayscoreTokensForCurrentUser(): Promise<{ screening_id?: string; widget_token?: string; status?: string; record?: any } | null> {
     return dynamoDBSeparateTablesService.getLatestPayscoreTokensForCurrentUser();
   },
   
