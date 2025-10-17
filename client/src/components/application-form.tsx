@@ -5568,8 +5568,21 @@ console.log("#### alldata", allData);
     } else if (person === 'occupants') {
       responseKey = `occupants_${documentTypeOrIndex}`;
       console.log(`🔑 Occupant: responseKey = ${responseKey}`);
+    } else if (person === 'coApplicant') {
+      // Map single co-applicant context to proper indexed key using specificIndex/role
+      let idx = 0;
+      if (typeof index === 'number' && index >= 0) {
+        idx = index;
+      } else if (typeof specificIndex === 'number' && specificIndex >= 0) {
+        idx = specificIndex;
+      } else if (userRole && /^coapplicant\d+$/.test(userRole)) {
+        const m = userRole.match(/coapplicant(\d+)/);
+        idx = m ? Math.max(parseInt(m[1], 10) - 1, 0) : 0;
+      }
+      responseKey = `coApplicants_${idx}_${documentTypeOrIndex}`;
+      console.log(`🔑 Singular coApplicant mapped to index ${idx}: responseKey = ${responseKey}`);
     } else {
-      // Handle applicant, coApplicant, guarantor (singular)
+      // Handle applicant and guarantor (singular)
       responseKey = `${person}_${documentTypeOrIndex}`;
       console.log(`🔑 Singular person: responseKey = ${responseKey}`);
     }
