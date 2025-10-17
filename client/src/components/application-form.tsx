@@ -2201,6 +2201,19 @@ console.log("#### alldata", allData);
               });
             }
           }
+          // Fallbacks for role-scoped users (e.g., coapplicant2) when app-based lookup is empty
+          if ((!coApplicantsArray || coApplicantsArray.length === 0) && user?.role && user.role.startsWith('coapplicant')) {
+            try {
+              console.log('🔎 Fallback: Loading co-applicants for current user (role-scoped)');
+              const selfCoApps = await dynamoDBSeparateTablesUtils.getAllCoApplicantsForCurrentUser();
+              if (Array.isArray(selfCoApps) && selfCoApps.length > 0) {
+                coApplicantsArray = selfCoApps.map((c: any) => normalizeCoApplicantInfo((c && (c.coapplicant_info || c)) || {}));
+                console.log('📊 Fallback: Loaded co-applicants for current user:', coApplicantsArray);
+              }
+            } catch (e) {
+              console.warn('⚠️ Fallback load of current-user co-applicants failed', e);
+            }
+          }
         } catch {}
 
         // Ensure all required sections exist first
@@ -2214,6 +2227,21 @@ console.log("#### alldata", allData);
         console.log('🔍 DEBUG: About to process coApplicantsArray, length:', coApplicantsArray.length);
         console.log('🔍 DEBUG: coApplicantsArray content:', coApplicantsArray);
         if (coApplicantsArray.length > 0) {
+          // If this is a specific co-applicant role (e.g., coapplicant2) and we only have a single record,
+          // place it at the correct index so the correct slot is populated.
+          if (user?.role && /coapplicant\d+/.test(user.role) && coApplicantsArray.length === 1) {
+            const match = user.role.match(/coapplicant(\d+)/);
+            if (match) {
+              const idx = Math.max(parseInt(match[1], 10) - 1, 0);
+              if (idx > 0) {
+                const single = coApplicantsArray[0];
+                const positioned: any[] = [];
+                positioned[idx] = single;
+                coApplicantsArray = positioned;
+                console.log(`🔧 Positioned single co-applicant record at index ${idx} for role ${user.role}`);
+              }
+            }
+          }
           // Use data from coApplicantsArray (from separate tables)
           // Use ALL co-applicants from coApplicantsArray, not just the first one
           if (coApplicantsArray.length > 0) {
@@ -11445,7 +11473,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
 
         return (
           <div className="space-y-8">
-            <Card className="form-section border-l-4 border-l-green-500 hidden">
+            <Card className="form-section border-l-4 border-l-green-500">
               <CardHeader>
                 <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                   <Users className="w-5 h-5 mr-2" />
