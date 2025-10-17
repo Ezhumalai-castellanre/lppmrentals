@@ -16,6 +16,9 @@ export default defineConfig({
       crypto: 'crypto-browserify',
     },
   },
+  optimizeDeps: {
+    include: ['crypto-browserify']
+  },
   plugins: [
     react(),
   ],

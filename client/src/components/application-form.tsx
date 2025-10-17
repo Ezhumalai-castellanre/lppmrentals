@@ -2215,16 +2215,18 @@ console.log("#### alldata", allData);
         console.log('🔍 DEBUG: coApplicantsArray content:', coApplicantsArray);
         if (coApplicantsArray.length > 0) {
           // Use data from coApplicantsArray (from separate tables)
-          // If we have data from allData.coApplicant, ensure we only use that and clear others
-          if (allData.coApplicant && allData.coApplicant.coapplicant_info) {
-            console.log('🔧 AUTO-POPULATION: Using allData.coApplicant data - ensuring only 1 co-applicant');
-            parsedFormData.coApplicants = [coApplicantsArray[0]]; // Only use the first (correct) co-applicant
+          // Use ALL co-applicants from coApplicantsArray, not just the first one
+          if (coApplicantsArray.length > 0) {
+            console.log('🔧 AUTO-POPULATION: Using ALL co-applicants from coApplicantsArray');
+            parsedFormData.coApplicants = coApplicantsArray; // ✅ Use ALL co-applicants
             parsedFormData.coApplicant = coApplicantsArray[0] || {};
-            parsedFormData.coApplicantCount = 1; // Set count to 1
+            parsedFormData.coApplicantCount = coApplicantsArray.length; // ✅ Set count to actual length
+            console.log(`🔧 AUTO-POPULATION: Set coApplicantCount to ${coApplicantsArray.length} for ${coApplicantsArray.length} co-applicants`);
           } else {
-          parsedFormData.coApplicants = coApplicantsArray;
-          parsedFormData.coApplicant = coApplicantsArray[0] || {};
-            parsedFormData.coApplicantCount = Math.max(parsedFormData.coApplicantCount || 0, coApplicantsArray.length);
+            console.log('🔧 AUTO-POPULATION: No co-applicants in coApplicantsArray');
+            parsedFormData.coApplicants = [];
+            parsedFormData.coApplicant = {};
+            parsedFormData.coApplicantCount = 0;
           }
           console.log('📊 Using coApplicantsArray for co-applicant data:', parsedFormData.coApplicants.length, 'items');
           console.log('🔍 DEBUG: parsedFormData.coApplicants set to:', parsedFormData.coApplicants);
@@ -2329,8 +2331,9 @@ console.log("#### alldata", allData);
           
           // First, collect all co-applicants with their indices
           const coApplicantEntries: Array<{index: number, data: any}> = [];
+          const debugId = Math.random().toString(36).substr(2, 9);
 
-          console.log("#### coApplicantEntries", coApplicantEntries);
+          console.log(`#### [${debugId}] coApplicantEntries INIT`, coApplicantEntries);
           
           
           console.log('🔍 ===== PROCESSING CO-APPLICANTS =====');
@@ -2372,17 +2375,18 @@ console.log("#### alldata", allData);
                   phone: coAppData.phone || '',
                   relationship: coAppData.relationship || 'Co-Applicant'
                 };
-                console.log("#### coApplicantData", coApplicantData);
+                console.log(`#### [${debugId}] coApplicantData`, coApplicantData);
                 
-                console.log("#### coApplicantEntries", coApplicantEntries);
+                console.log(`#### [${debugId}] coApplicantEntries BEFORE PUSH`, coApplicantEntries);
                 
                 coApplicantEntries.push({
                   index: index,
                   data: coApplicantData
                 });
                 
-                console.log(`✅ Collected co-applicant from ${key} at index ${index}:`, coApplicantData);
-                console.log(`✅ Total co-applicant entries so far: ${coApplicantEntries.length}`);
+                console.log(`#### [${debugId}] coApplicantEntries AFTER PUSH`, coApplicantEntries);
+                console.log(`✅ [${debugId}] Collected co-applicant from ${key} at index ${index}:`, coApplicantData);
+                console.log(`✅ [${debugId}] Total co-applicant entries so far: ${coApplicantEntries.length}`);
                 console.log(`🔄 MAPPING: ${key} -> index ${index} -> data:`, {
                   originalKey: key,
                   extractedIndex: index,
@@ -2405,23 +2409,29 @@ console.log("#### alldata", allData);
           console.log('🔍 Co-applicant entries:', coApplicantEntries);
           
           // Sort by index and add to the array in correct order
-          console.log(`🔍 Co-applicant entries before sorting:`, coApplicantEntries);
+          console.log(`🔍 [${debugId}] Co-applicant entries before sorting:`, coApplicantEntries);
           coApplicantEntries.sort((a, b) => a.index - b.index);
-          console.log(`🔍 Co-applicant entries after sorting:`, coApplicantEntries);
+          console.log(`🔍 [${debugId}] Co-applicant entries after sorting:`, coApplicantEntries);
           
-          console.log('🔄 ===== BUILDING INVITED CO-APPLICANTS ARRAY =====');
+          console.log(`🔄 [${debugId}] ===== BUILDING INVITED CO-APPLICANTS ARRAY =====`);
+          console.log(`🔍 [${debugId}] About to start forEach loop with ${coApplicantEntries.length} entries`);
+          console.log(`🔍 [${debugId}] coApplicantEntries.length: ${coApplicantEntries.length}`);
+          console.log(`🔍 [${debugId}] coApplicantEntries content:`, coApplicantEntries);
+          
+          // Copy the exact same logic as guarantors
           coApplicantEntries.forEach((entry, forEachIndex) => {
-            console.log(`🔄 Processing entry ${forEachIndex}:`, entry);
-            console.log(`🔄 Adding to invitedCoApplicants[${entry.index}]:`, entry.data);
+            console.log(`🔄 [${debugId}] Processing entry ${forEachIndex}:`, entry);
+            console.log(`🔄 [${debugId}] Adding to invitedCoApplicants[${entry.index}]:`, entry.data);
             invitedCoApplicants.push(entry.data);
-            console.log(`✅ Added co-applicant at index ${entry.index}: ${entry.data.name} (${entry.data.email})`);
-            console.log(`🔄 Current invitedCoApplicants array:`, invitedCoApplicants);
+            console.log(`✅ [${debugId}] Added co-applicant at index ${entry.index}: ${entry.data.name} (${entry.data.email})`);
+            console.log(`🔄 [${debugId}] Current invitedCoApplicants array:`, invitedCoApplicants);
+            console.log(`🔄 [${debugId}] Current invitedCoApplicants.length: ${invitedCoApplicants.length}`);
           });
           
-          console.log(`🔍 Final invitedCoApplicants array:`, invitedCoApplicants);
-          console.log(`🔍 Final invitedCoApplicants length:`, invitedCoApplicants.length);
-          console.log(`🔍 Final invitedCoApplicants[0]:`, invitedCoApplicants[0]);
-          console.log(`🔍 Final invitedCoApplicants[1]:`, invitedCoApplicants[1]);
+          console.log(`🔍 [${debugId}] Final invitedCoApplicants array:`, invitedCoApplicants);
+          console.log(`🔍 [${debugId}] Final invitedCoApplicants.length: ${invitedCoApplicants.length}`);
+          console.log(`🔍 [${debugId}] Final invitedCoApplicants[0]:`, invitedCoApplicants[0]);
+          console.log(`🔍 [${debugId}] Final invitedCoApplicants[1]:`, invitedCoApplicants[1]);
           
           // Now process guarantors with index-based sorting
           const guarantorEntries: Array<{index: number, data: any}> = [];
@@ -2484,31 +2494,34 @@ console.log("#### alldata", allData);
           // Merge invited people with existing data (invited people take precedence for auto-population)
           // Always use Additional People data when available, as it's the most current
           console.log('🔍 ===== MERGING CO-APPLICANTS =====');
-          console.log(`🔍 invitedCoApplicants.length: ${invitedCoApplicants.length}`);
-          console.log(`🔍 allData.coApplicant:`, allData.coApplicant);
-          console.log(`🔍 allData.coApplicant?.coapplicant_info:`, allData.coApplicant?.coapplicant_info);
+          console.log(`🔍 [${debugId}] invitedCoApplicants.length: ${invitedCoApplicants.length}`);
+          console.log(`🔍 [${debugId}] invitedCoApplicants:`, invitedCoApplicants);
+          console.log(`🔍 [${debugId}] allData.coApplicant:`, allData.coApplicant);
+          console.log(`🔍 [${debugId}] allData.coApplicant?.coapplicant_info:`, allData.coApplicant?.coapplicant_info);
           
+          // Copy the exact same logic as guarantors - Always use Additional People data when available
           if (invitedCoApplicants.length > 0) {
-            console.log('📊 ===== AUTO-POPULATING CO-APPLICANTS =====');
-            console.log('📊 Auto-populating co-applicants from additional people:', invitedCoApplicants);
-            console.log('📊 Number of invited co-applicants:', invitedCoApplicants.length);
+            console.log(`📊 [${debugId}] ===== AUTO-POPULATING CO-APPLICANTS =====`);
+            console.log(`📊 [${debugId}] Auto-populating co-applicants from additional people:`, invitedCoApplicants);
+            console.log(`📊 [${debugId}] Number of invited co-applicants:`, invitedCoApplicants.length);
             
-            console.log('📊 Before setting - parsedFormData.coApplicants:', parsedFormData.coApplicants);
-            console.log('📊 Before setting - parsedFormData.coApplicant:', parsedFormData.coApplicant);
-            console.log('📊 Before setting - parsedFormData.hasCoApplicant:', parsedFormData.hasCoApplicant);
-            console.log('📊 Before setting - parsedFormData.coApplicantCount:', parsedFormData.coApplicantCount);
+            console.log(`📊 [${debugId}] Before setting - parsedFormData.coApplicants:`, parsedFormData.coApplicants);
+            console.log(`📊 [${debugId}] Before setting - parsedFormData.coApplicant:`, parsedFormData.coApplicant);
+            console.log(`📊 [${debugId}] Before setting - parsedFormData.hasCoApplicant:`, parsedFormData.hasCoApplicant);
+            console.log(`📊 [${debugId}] Before setting - parsedFormData.coApplicantCount:`, parsedFormData.coApplicantCount);
             
+            // Copy exact same assignment logic as guarantors
             parsedFormData.coApplicants = invitedCoApplicants;
             parsedFormData.coApplicant = invitedCoApplicants[0] || {};
             parsedFormData.hasCoApplicant = true;
             parsedFormData.coApplicantCount = invitedCoApplicants.length;
             
-            console.log('📊 After setting - parsedFormData.coApplicantCount:', parsedFormData.coApplicantCount);
-            console.log('📊 After setting - parsedFormData.coApplicants:', parsedFormData.coApplicants);
-            console.log('📊 After setting - parsedFormData.coApplicant:', parsedFormData.coApplicant);
-            console.log('📊 After setting - parsedFormData.hasCoApplicant:', parsedFormData.hasCoApplicant);
+            console.log(`📊 [${debugId}] After setting - parsedFormData.coApplicantCount:`, parsedFormData.coApplicantCount);
+            console.log(`📊 [${debugId}] After setting - parsedFormData.coApplicants:`, parsedFormData.coApplicants);
+            console.log(`📊 [${debugId}] After setting - parsedFormData.coApplicant:`, parsedFormData.coApplicant);
+            console.log(`📊 [${debugId}] After setting - parsedFormData.hasCoApplicant:`, parsedFormData.hasCoApplicant);
           } else {
-            console.log('⚠️ No co-applicants to auto-populate');
+            console.log(`⚠️ [${debugId}] No co-applicants to auto-populate`);
           }
           
           console.log('🔍 ===== MERGING GUARANTORS =====');
@@ -2811,13 +2824,19 @@ console.log("#### alldata", allData);
           console.log(`🔧 AUTO-POPULATION: Using specificIndex ${targetIndex}`);
         }
 
-        // Get the co-applicant data to populate (use first available data)
-        const coApplicantToPopulate = parsedFormData.coApplicants[0];
-        console.log(`🔧 AUTO-POPULATION: Using co-applicant data:`, coApplicantToPopulate);
+        // Process ALL co-applicants, not just the first one
+        console.log(`🔧 AUTO-POPULATION: Processing ${parsedFormData.coApplicants.length} co-applicants`);
+        
+        parsedFormData.coApplicants.forEach((coApplicantToPopulate: any, coAppIndex: number) => {
+          console.log(`🔧 AUTO-POPULATION: Processing co-applicant ${coAppIndex}:`, coApplicantToPopulate);
 
-        if (coApplicantToPopulate && Object.keys(coApplicantToPopulate).length > 0) {
-          // Auto-populate all available fields at the target index
-          const fieldsToPopulate = [
+          if (coApplicantToPopulate && Object.keys(coApplicantToPopulate).length > 0) {
+            // Use the current co-applicant index as the target index
+            const currentTargetIndex = coAppIndex;
+            console.log(`🔧 AUTO-POPULATION: Using target index ${currentTargetIndex} for co-applicant ${coAppIndex}`);
+            
+            // Auto-populate all available fields at the target index
+            const fieldsToPopulate = [
             'name', 'relationship', 'ssn', 'phone', 'email', 'address', 'city', 'state', 'zip',
             'license', 'licenseState', 'employmentType', 'employer', 'employerName', 'employerPhone',
             'position', 'employerPosition', 'income', 'monthlyIncome', 'otherIncome', 'otherIncomeFrequency', 
@@ -2847,7 +2866,7 @@ console.log("#### alldata", allData);
             }
             
             if (shouldPopulate) {
-              const formFieldName = `coApplicants.${targetIndex}.${field}`;
+              const formFieldName = `coApplicants.${currentTargetIndex}.${field}`;
               
               console.log(`🔧 AUTO-POPULATION: Setting ${formFieldName} =`, value);
               form.setValue(formFieldName as any, value);
@@ -2856,8 +2875,8 @@ console.log("#### alldata", allData);
               setFormData((prevData: any) => {
                 const updated = { ...prevData };
                 if (!updated.coApplicants) updated.coApplicants = [];
-                if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
-                updated.coApplicants[targetIndex][field] = value;
+                if (!updated.coApplicants[currentTargetIndex]) updated.coApplicants[currentTargetIndex] = {};
+                updated.coApplicants[currentTargetIndex][field] = value;
                 return updated;
               });
               
@@ -2878,7 +2897,7 @@ console.log("#### alldata", allData);
 
           fieldMappings.forEach(mapping => {
             if (coApplicantToPopulate[mapping.from] !== undefined && coApplicantToPopulate[mapping.from] !== null && coApplicantToPopulate[mapping.from] !== '') {
-              const formFieldName = `coApplicants.${targetIndex}.${mapping.to}`;
+              const formFieldName = `coApplicants.${currentTargetIndex}.${mapping.to}`;
               const value = coApplicantToPopulate[mapping.from];
               
               console.log(`🔧 AUTO-POPULATION: Mapping ${mapping.from} -> ${mapping.to}: Setting ${formFieldName} =`, value);
@@ -2888,8 +2907,8 @@ console.log("#### alldata", allData);
               setFormData((prevData: any) => {
                 const updated = { ...prevData };
                 if (!updated.coApplicants) updated.coApplicants = [];
-                if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
-                updated.coApplicants[targetIndex][mapping.to] = value;
+                if (!updated.coApplicants[currentTargetIndex]) updated.coApplicants[currentTargetIndex] = {};
+                updated.coApplicants[currentTargetIndex][mapping.to] = value;
                 return updated;
               });
               
@@ -2902,58 +2921,61 @@ console.log("#### alldata", allData);
           // Handle date fields separately
           if (coApplicantToPopulate.dob) {
             const dobValue = new Date(coApplicantToPopulate.dob);
-            console.log(`🔧 AUTO-POPULATION: Setting coApplicants.${targetIndex}.dob =`, dobValue);
-            form.setValue(`coApplicants.${targetIndex}.dob` as any, dobValue);
+            console.log(`🔧 AUTO-POPULATION: Setting coApplicants.${currentTargetIndex}.dob =`, dobValue);
+            form.setValue(`coApplicants.${currentTargetIndex}.dob` as any, dobValue);
             
             // Also update formData state for UI display
             setFormData((prevData: any) => {
               const updated = { ...prevData };
               if (!updated.coApplicants) updated.coApplicants = [];
-              if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
-              updated.coApplicants[targetIndex].dob = dobValue;
+              if (!updated.coApplicants[currentTargetIndex]) updated.coApplicants[currentTargetIndex] = {};
+              updated.coApplicants[currentTargetIndex].dob = dobValue;
               return updated;
             });
             
-            console.log(`🔧 AUTO-POPULATION: Verified coApplicants.${targetIndex}.dob =`, form.getValues(`coApplicants.${targetIndex}.dob` as any));
+            console.log(`🔧 AUTO-POPULATION: Verified coApplicants.${currentTargetIndex}.dob =`, form.getValues(`coApplicants.${currentTargetIndex}.dob` as any));
           }
 
           // Handle employment start date separately
           if (coApplicantToPopulate.employmentStart) {
             const employmentStartValue = new Date(coApplicantToPopulate.employmentStart);
-            console.log(`🔧 AUTO-POPULATION: Setting coApplicants.${targetIndex}.employmentStart =`, employmentStartValue);
-            form.setValue(`coApplicants.${targetIndex}.employmentStart` as any, employmentStartValue);
+            console.log(`🔧 AUTO-POPULATION: Setting coApplicants.${currentTargetIndex}.employmentStart =`, employmentStartValue);
+            form.setValue(`coApplicants.${currentTargetIndex}.employmentStart` as any, employmentStartValue);
             
             // Also update formData state for UI display
             setFormData((prevData: any) => {
               const updated = { ...prevData };
               if (!updated.coApplicants) updated.coApplicants = [];
-              if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
-              updated.coApplicants[targetIndex].employmentStart = employmentStartValue;
+              if (!updated.coApplicants[currentTargetIndex]) updated.coApplicants[currentTargetIndex] = {};
+              updated.coApplicants[currentTargetIndex].employmentStart = employmentStartValue;
               return updated;
             });
             
-            console.log(`🔧 AUTO-POPULATION: Verified coApplicants.${targetIndex}.employmentStart =`, form.getValues(`coApplicants.${targetIndex}.employmentStart` as any));
+            console.log(`🔧 AUTO-POPULATION: Verified coApplicants.${currentTargetIndex}.employmentStart =`, form.getValues(`coApplicants.${currentTargetIndex}.employmentStart` as any));
           }
 
           // Handle bank records separately (array field)
           if (coApplicantToPopulate.bankRecords && Array.isArray(coApplicantToPopulate.bankRecords) && coApplicantToPopulate.bankRecords.length > 0) {
-            console.log(`🔧 AUTO-POPULATION: Setting coApplicants.${targetIndex}.bankRecords =`, coApplicantToPopulate.bankRecords);
-            form.setValue(`coApplicants.${targetIndex}.bankRecords` as any, coApplicantToPopulate.bankRecords);
+            console.log(`🔧 AUTO-POPULATION: Setting coApplicants.${currentTargetIndex}.bankRecords =`, coApplicantToPopulate.bankRecords);
+            form.setValue(`coApplicants.${currentTargetIndex}.bankRecords` as any, coApplicantToPopulate.bankRecords);
             
             // Also update formData state for UI display
             setFormData((prevData: any) => {
               const updated = { ...prevData };
               if (!updated.coApplicants) updated.coApplicants = [];
-              if (!updated.coApplicants[targetIndex]) updated.coApplicants[targetIndex] = {};
-              updated.coApplicants[targetIndex].bankRecords = coApplicantToPopulate.bankRecords;
+              if (!updated.coApplicants[currentTargetIndex]) updated.coApplicants[currentTargetIndex] = {};
+              updated.coApplicants[currentTargetIndex].bankRecords = coApplicantToPopulate.bankRecords;
               return updated;
             });
             
-            console.log(`🔧 AUTO-POPULATION: Verified coApplicants.${targetIndex}.bankRecords =`, form.getValues(`coApplicants.${targetIndex}.bankRecords` as any));
+            console.log(`🔧 AUTO-POPULATION: Verified coApplicants.${currentTargetIndex}.bankRecords =`, form.getValues(`coApplicants.${currentTargetIndex}.bankRecords` as any));
           }
 
-          console.log(`✅ AUTO-POPULATION: Completed co-applicant ${targetIndex} form fields`);
-        }
+            console.log(`✅ AUTO-POPULATION: Completed co-applicant ${coAppIndex} form fields`);
+          } else {
+            console.log(`⚠️ AUTO-POPULATION: Co-applicant ${coAppIndex} has no data to populate`);
+          }
+        });
 
         console.log('🔧 AUTO-POPULATION: Completed all co-applicant form field population');
           
