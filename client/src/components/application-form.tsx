@@ -12158,9 +12158,6 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
         // Wrapper functions for SupportingDocuments to match expected signature
         const coApplicantDocumentChange = (documentType: string, files: File[]) => handleDocumentChange('coApplicants', documentType, files, 0);
         const coApplicantEncryptedDocumentChange = (documentType: string, encryptedFiles: EncryptedFile[]) => handleEncryptedDocumentChange('coApplicants', documentType, encryptedFiles, 0);
-        const coApplicantWebhookResponse = (documentType: string, response: any) => {
-          handleWebhookResponse('coApplicants', `0_${documentType}`, response);
-        };
         return (
           (hasCoApplicant || (userRole.startsWith('coapplicant') && specificIndex !== null)) ? (
             <>

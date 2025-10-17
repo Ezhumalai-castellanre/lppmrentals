@@ -1894,9 +1894,24 @@ export class WebhookService {
             if (url) {
               docs[sectionName] = url;
             }
+          } else if (rolePrefix === 'coApplicant' && key.startsWith('coApplicants_') && !key.includes('coApplicants_0_coApplicants_')) {
+            // Support keys like coApplicants_0_credit_report -> credit_report
+            // But exclude duplicate keys like coApplicants_0_coApplicants_0_credit_report
+            const sectionName = key.replace(/^coApplicants_\d+_/, '');
+            const url = extractWebhookUrl(value as any);
+            if (url) {
+              docs[sectionName] = url;
+            }
           } else if (rolePrefix === 'coApplicant' && key.startsWith('coApplicants_userrole_')) {
             // Support keys like coApplicants_userrole_credit_report -> credit_report
             const sectionName = key.replace('coApplicants_userrole_', '');
+            const url = extractWebhookUrl(value as any);
+            if (url) {
+              docs[sectionName] = url;
+            }
+          } else if (rolePrefix === 'guarantor' && key.startsWith('guarantors_')) {
+            // Support keys like guarantors_0_credit_report -> credit_report
+            const sectionName = key.replace(/^guarantors_\d+_/, '');
             const url = extractWebhookUrl(value as any);
             if (url) {
               docs[sectionName] = url;
