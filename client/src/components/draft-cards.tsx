@@ -1332,7 +1332,7 @@ const DraftCard = ({ draft, onEdit, onDelete }: DraftCardProps) => {
             className="flex-1"
           >
                 <Edit className="w-4 h-4 mr-2" />
-            Continue from Step <span className="font-bold hidden">{draft.current_step + 1}
+            Continue from<span className="font-bold hidden">{draft.current_step + 1}
               </span>
           
           </Button>

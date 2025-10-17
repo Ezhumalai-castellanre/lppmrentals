@@ -5747,9 +5747,76 @@ console.log("#### alldata", allData);
       } else if (typeof coGuarIndex === 'number') {
         index = coGuarIndex;
       }
+      // Override with coGuarIndex if explicitly provided (more reliable than role parsing)
+      if (typeof coGuarIndex === 'number' && coGuarIndex >= 0) {
+        index = coGuarIndex;
+        console.log('👥 DEBUG: Overriding co-applicant index with coGuarIndex:', { coGuarIndex, index });
+      }
       
       console.log('👥 Co-applicant role detected, using index:', index);
-      const coApplicant = (data.coApplicants || [])[index] || {};
+      let coApplicant = (data.coApplicants || [])[index] || {};
+      // Fallback: if array slot is empty, derive from singular coApplicant* fields
+      if (!coApplicant || Object.keys(coApplicant).length === 0) {
+        const fallback: any = {};
+        const mappings: Array<{ to: string; from: string[]; isDate?: boolean }> = [
+          { to: 'name', from: ['coApplicantName', 'name'] },
+          { to: 'relationship', from: ['coApplicantRelationship', 'relationship'] },
+          { to: 'email', from: ['coApplicantEmail', 'email'] },
+          { to: 'phone', from: ['coApplicantPhone', 'phone'] },
+          { to: 'ssn', from: ['coApplicantSsn', 'ssn'] },
+          { to: 'license', from: ['coApplicantLicense', 'license'] },
+          { to: 'licenseState', from: ['coApplicantLicenseState', 'licenseState'] },
+          { to: 'address', from: ['coApplicantAddress', 'address'] },
+          { to: 'city', from: ['coApplicantCity', 'city'] },
+          { to: 'state', from: ['coApplicantState', 'state'] },
+          { to: 'zip', from: ['coApplicantZip', 'zip'] },
+          { to: 'landlordName', from: ['coApplicantLandlordName', 'landlordName'] },
+          { to: 'landlordAddressLine1', from: ['coApplicantLandlordAddressLine1', 'landlordAddressLine1'] },
+          { to: 'landlordAddressLine2', from: ['coApplicantLandlordAddressLine2', 'landlordAddressLine2'] },
+          { to: 'landlordCity', from: ['coApplicantLandlordCity', 'landlordCity'] },
+          { to: 'landlordState', from: ['coApplicantLandlordState', 'landlordState'] },
+          { to: 'landlordZipCode', from: ['coApplicantLandlordZipCode', 'landlordZipCode'] },
+          { to: 'landlordPhone', from: ['coApplicantLandlordPhone', 'landlordPhone'] },
+          { to: 'landlordEmail', from: ['coApplicantLandlordEmail', 'landlordEmail'] },
+          { to: 'reasonForMoving', from: ['coApplicantReasonForMoving', 'reasonForMoving'] },
+          { to: 'employmentType', from: ['coApplicantEmploymentType', 'employmentType'] },
+          { to: 'employer', from: ['coApplicantEmployer', 'employer', 'employerName'] },
+          { to: 'position', from: ['coApplicantPosition', 'position', 'employerPosition'] },
+          { to: 'income', from: ['coApplicantIncome', 'income', 'monthlyIncome'] },
+          { to: 'incomeFrequency', from: ['coApplicantIncomeFrequency', 'incomeFrequency'] },
+          { to: 'otherIncome', from: ['coApplicantOtherIncome', 'otherIncome'] },
+          { to: 'otherIncomeFrequency', from: ['coApplicantOtherIncomeFrequency', 'otherIncomeFrequency'] },
+          { to: 'otherIncomeSource', from: ['coApplicantOtherIncomeSource', 'otherIncomeSource'] },
+          { to: 'lengthAtAddressYears', from: ['coApplicantLengthAtAddressYears', 'lengthAtAddressYears'] },
+          { to: 'lengthAtAddressMonths', from: ['coApplicantLengthAtAddressMonths', 'lengthAtAddressMonths'] },
+          { to: 'currentRent', from: ['coApplicantCurrentRent', 'currentRent'] },
+          { to: 'creditScore', from: ['coApplicantCreditScore', 'creditScore'] },
+          { to: 'employerPhone', from: ['coApplicantEmployerPhone', 'employerPhone'] },
+          { to: 'dob', from: ['coApplicantDob', 'dob'], isDate: true },
+          { to: 'employmentStart', from: ['coApplicantEmploymentStart', 'employmentStart'], isDate: true },
+        ];
+        for (const map of mappings) {
+          let value: any = undefined;
+          for (const fromKey of map.from) {
+            const v = (data as any)[fromKey];
+            if (v !== undefined && v !== null && v !== '') {
+              value = v;
+              break;
+            }
+          }
+          if (value !== undefined) {
+            fallback[map.to] = map.isDate ? new Date(value as any) : value;
+          }
+        }
+        // Include bankRecords if directly present
+        if (Array.isArray((data as any).coApplicantBankRecords)) {
+          fallback.bankRecords = (data as any).coApplicantBankRecords;
+        }
+        if (Object.keys(fallback).length > 0) {
+          coApplicant = fallback;
+          console.log('👥 Derived co-applicant from singular/generic fields for index', index, ':', coApplicant);
+        }
+      }
       console.log('👥 Co-applicant data for index', index, ':', coApplicant);
       console.log('👥 Available webhookResponses in data:', data.webhookResponses);
       console.log('👥 WebhookResponses keys:', Object.keys(data.webhookResponses || {}));
@@ -6199,9 +6266,13 @@ console.log("#### alldata", allData);
 
     setIsSavingDraft(true);
     try {
-      // Get the latest form data from state
-      const currentFormData = formData;
-      console.log('🔍 Current form data structure for Co-Applicant:', {
+      // Get the latest form values from react-hook-form (authoritative), merge with state as fallback
+      const formValues = form.getValues();
+      const currentFormData = {
+        ...formData,
+        ...formValues,
+      };
+      console.log('🔍 Current form data structure for Co-Applicant (using form.getValues merge):', {
         hasCoApplicants: !!currentFormData.coApplicants,
         coApplicantsLength: currentFormData.coApplicants?.length || 0,
         specificIndex: specificIndex,
@@ -6210,6 +6281,14 @@ console.log("#### alldata", allData);
         webhookResponsesCount: Object.keys(webhookResponses).length,
         webhookResponses: webhookResponses
       });
+      // Ensure coApplicants has a slot for the specific index when role is coapplicantN
+      if ((userRole && /^coapplicant\d+$/.test(userRole)) && typeof specificIndex === 'number') {
+        const idx = specificIndex;
+        if (!Array.isArray(currentFormData.coApplicants)) currentFormData.coApplicants = [];
+        if (!currentFormData.coApplicants[idx]) {
+          currentFormData.coApplicants[idx] = {};
+        }
+      }
       
       // Build role-scoped data to avoid overwriting unrelated sections
       // Pass webhookResponses to the function so it can filter them properly
@@ -6246,7 +6325,7 @@ console.log("#### alldata", allData);
       
       // Save Co-Applicant data to Co-Applicants table with simplified structure
       const coApplicantDraftData = {
-        role: 'coApplicant',
+        role: userRole || 'coApplicant',
         coapplicant_info: coApplicantData,
         occupants: roleScopedForm.occupants || [],
         webhookSummary: roleScopedForm.webhookSummary || getRoleSpecificWebhookSummary(userRole || '', specificIndex ?? undefined),
