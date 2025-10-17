@@ -11445,7 +11445,7 @@ console.log('######docsEncrypted documents:', encryptedDocuments);
 
         return (
           <div className="space-y-8">
-            <Card className="form-section border-l-4 border-l-green-500">
+            <Card className="form-section border-l-4 border-l-green-500 hidden">
               <CardHeader>
                 <CardTitle className="flex items-center text-green-700 dark:text-green-400">
                   <Users className="w-5 h-5 mr-2" />
