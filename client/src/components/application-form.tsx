@@ -1774,10 +1774,12 @@ export function ApplicationForm() {
   useEffect(() => {
     // Normalize any composite guarantor save-type keys to the new format
     const normalizeWebhookSaveTypeKey = (key: string): string => {
-      // Example: guarantors_0_guarantors_1_pay_stubs_2 -> guarantors_userrole_pay_stubs_2
-      const match = key.match(/^guarantors_\d+_guarantors_\d+_(.+)$/);
-      if (match) {
-        return `guarantors_userrole_${match[1]}`;
+      // Example: guarantors_0_guarantors_1_pay_stubs_2 -> guarantors_1_pay_stubs_2 (preserve proper index, no userrole)
+      const m = key.match(/^guarantors_\d+_guarantors_(\d+)_(.+)$/);
+      if (m) {
+        const idx = m[1];
+        const rest = m[2];
+        return `guarantors_${idx}_${rest}`;
       }
       return key;
     };
